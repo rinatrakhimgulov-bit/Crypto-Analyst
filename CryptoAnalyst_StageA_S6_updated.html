@@ -687,6 +687,7 @@
               providerTimeMs: providerTimeAvailable ? serverTimeMs : null,
               timeSource,
               clockSkewMs,
+              requestedLimit: limit,
               tickerStatus
             });
           } catch (err) {
@@ -704,6 +705,7 @@
       normalize(rawList, meta) {
         const { symbol, interval, hostUsed, serverTimeMs, providerTimeMs, timeSource, clockSkewMs, tickerStatus } = meta;
         const stepMs = this.intervalToMs(interval);
+        const requestedLimit = Number.isInteger(meta.requestedLimit) && meta.requestedLimit > 0 ? meta.requestedLimit : rawList.length;
         const parsed = [];
         let invalidRows = 0;
         let invalidTimestamps = 0;
@@ -849,6 +851,16 @@
             currentPriceSource,
             priceWarning
           },
+          coverage: (() => {
+            if (!stepMs || !Number.isFinite(serverTimeMs) || requestedLimit < 1) return null;
+            const currentOpenTimeMs = Math.floor(serverTimeMs / stepMs) * stepMs;
+            const expectedClosedStartMs = currentOpenTimeMs - (requestedLimit - 1) * stepMs;
+            const lastExpectedClosedOpenMs = Math.floor((serverTimeMs - finalityBufferMs) / stepMs) * stepMs - stepMs;
+            const expectedClosedCount = lastExpectedClosedOpenMs < expectedClosedStartMs
+              ? 0
+              : Math.floor((lastExpectedClosedOpenMs - expectedClosedStartMs) / stepMs) + 1;
+            return { requestedLimit, expectedClosedStartMs, expectedClosedEndMs: lastExpectedClosedOpenMs, expectedClosedCount };
+          })(),
           quality: {
             totalFetched: rawList.length,
             closedCount: closedCandles.length,
@@ -2159,6 +2171,7 @@
           receivedAtMs: Number(dataset.fetchedAtLocalMs),
           candles: closed.map(c => toCanonicalCandle(c, timeframe, 'TIME_DERIVED')),
           formingCandle: forming,
+          coverage: dataset.coverage ? Object.assign({}, dataset.coverage) : null,
           adapterQuality: {
             invalidRows: Number(quality.invalidRows || 0),
             invalidTimestamps: Number(quality.invalidTimestamps || 0),
@@ -2245,6 +2258,20 @@
         if (counts.duplicate) add('DUPLICATE_CANDLES', 'CRITICAL', 'В каноническом ряду есть повторяющиеся временные метки.');
         if (counts.outOfOrder) add('CANDLE_ORDER_INVALID', 'CRITICAL', 'Свечи расположены не в строго возрастающем порядке.');
         if (counts.gaps) add('CANDLE_GAPS_IN_SERIES', 'MAJOR', 'Канонический ряд содержит пропуски.');
+        if (snapshot && snapshot.coverage && stepMs) {
+          const cv = snapshot.coverage;
+          const firstOpen = candles.length ? candles[0].openTimeMs : null;
+          const lastOpen = candles.length ? candles[candles.length - 1].openTimeMs : null;
+          if (Number.isFinite(cv.expectedClosedStartMs) && firstOpen !== cv.expectedClosedStartMs) {
+            add('COVERAGE_START_MISSING', 'MAJOR', 'Начало запрошенного диапазона закрытых свечей отсутствует или смещено.');
+          }
+          if (Number.isFinite(cv.expectedClosedEndMs) && lastOpen !== cv.expectedClosedEndMs) {
+            add('COVERAGE_END_MISSING', 'MAJOR', 'Последняя ожидаемая закрытая свеча отсутствует.');
+          }
+          if (Number.isFinite(cv.expectedClosedCount) && candles.length !== cv.expectedClosedCount) {
+            add('COVERAGE_COUNT_MISMATCH', 'MAJOR', 'Количество закрытых свечей не соответствует ожидаемому покрытию.');
+          }
+        }
         if (candles.length < cfg.minimumClosedCandles) add('INSUFFICIENT_HISTORY', 'CRITICAL', 'Недостаточно закрытых свечей для базового набора индикаторов.');
 
         const critical = reasons.some(r => r.severity === 'CRITICAL');
@@ -2281,16 +2308,18 @@
           contractVersion: DataQualityEngine.CONTRACT_VERSION,
           provider: 'fixture', venue: 'linear', symbol: 'BTCUSDT', timeframe: '60',
           analysisAsOfMs: now + 5000, providerTimeMs: now + 5000, timeSource: 'PROVIDER',
-          receivedAtMs: now, candles, formingCandle: null, adapterQuality: {}
+          receivedAtMs: now, candles, formingCandle: null,
+          coverage: { expectedClosedStartMs: now - 60 * step, expectedClosedEndMs: now - step, expectedClosedCount: 60 },
+          adapterQuality: {}
         }, overrides);
         const tests = [];
         const test = (name, fn) => { try { fn(); tests.push({ name, passed: true }); } catch (e) { tests.push({ name, passed: false, error: e.message }); } };
         const expect = (ok, message) => { if (!ok) throw new Error(message); };
         const status = (s, expected) => expect(DataQualityEngine.validate(s, now).status === expected, 'expected '+expected+' got '+DataQualityEngine.validate(s, now).status);
         test('01 valid full history', () => status(make(), 'VALID'));
-        test('02 missing first candle reported', () => { const s=make(base().slice(1)); expect(DataQualityEngine.validate(s,now).counts.receivedCount===59,'count'); });
+        test('02 missing first candle detected by coverage', () => { const s=make(base().slice(1)); expect(DataQualityEngine.validate(s,now).reasons.some(r=>r.code==='COVERAGE_START_MISSING'),'coverage start'); });
         test('03 internal gap detected', () => { const a=base(); a.splice(20,1); expect(DataQualityEngine.validate(make(a),now).counts.gaps===1,'gap'); });
-        test('04 missing last candle reported by count', () => expect(DataQualityEngine.validate(make(base().slice(0,-1)),now).counts.receivedCount===59,'count'));
+        test('04 missing last candle detected by coverage', () => { const s=make(base().slice(0,-1)); expect(DataQualityEngine.validate(s,now).reasons.some(r=>r.code==='COVERAGE_END_MISSING'),'coverage end'); });
         test('05 identical duplicate flagged from adapter metadata', () => { const s=make(); s.adapterQuality.identicalDuplicates=1; status(s,'DEGRADED'); });
         test('06 conflicting duplicate blocks', () => { const s=make(); s.adapterQuality.conflictingDuplicates=1; status(s,'INVALID'); });
         test('07 out of order rejected', () => { const a=base(); [a[10],a[11]]=[a[11],a[10]]; status(make(a),'INVALID'); });
