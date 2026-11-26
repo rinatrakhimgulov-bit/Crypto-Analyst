@@ -1270,3 +1270,13 @@ Do not mark B1 DONE. Do not merge PR #6 until the remaining review and runtime c
 - B1-E common cutoff для MTF и B1-F второй provider.
 
 PR #6 остаётся draft и не слит в main. Не объявлять B1 DONE. Следующий технический контрольный этап: browser/runtime + live-source verification; после него отдельно оценить оставшиеся B1-E/B1-F требования. Не путать Grok APPROVE unit/static candidate с полным runtime approval.
+
+# B1-E HANDOVER ADDENDUM — 2026-11-26
+
+Current branch source audit found that `loadAndAnalyze()` fetches and analyzes only the selected timeframe. There is no coordinated 1D/4H/1H snapshot assembler.
+
+Important implementation constraint: `BybitAdapter.normalize()` classifies candles using each response's own `serverTimeMs`; `DataQualityEngine.createSnapshot()` currently maps that to `analysisAsOfMs`; `validate()` expects analysis time to closely match provider time. Do not implement MTF by merely replacing `serverTimeMs` with a common value. Preserve each TF's original provider time, define a common cutoff separately, reclassify closed/forming candles against it, and recalculate coverage.
+
+Specification: `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md` (23 acceptance tests). Proposed cutoff is the minimum trusted provider time across all required TF responses. Provider-time spread threshold must be measured against live API behavior before setting a production default. Any missing/invalid/stale required TF blocks directional MTF output; never combine fresh TFs with stale cache and call the set VALID.
+
+This is specification/source-audit work only. No B1-E production code changed. B1-E NOT IMPLEMENTED. Do not mark B1 complete. Keep B1-F (second provider) separate until B1-E is stable.
