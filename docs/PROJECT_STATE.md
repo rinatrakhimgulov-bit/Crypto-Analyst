@@ -349,11 +349,11 @@ PR #6 / branch `impl/b1-quality-contract-2026-11-26` обновлены посл
 
 ## B1 latest verification — 2026-11-26
 
-Latest candidate HTML blob: `76ad147ba105d97fb642b0e5c5e002cb79e1d685`.
+Latest candidate HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`.
 - Strict adapter counters: all eight required values must be non-negative safe integers; malformed/missing values block.
 - Aggregate `duplicates` must equal `identicalDuplicates + conflictingDuplicates`.
 - `analysisAsOfMs` must agree with provider time within the allowed skew; candle finality uses the earlier cutoff and 500 ms buffer.
 - Coverage requires complete integer/aligned start, end and count with consistent arithmetic.
-- B1 suite: 49/49 PASS; both inline scripts parse; 4/4 direct gate probes return WAIT/INVALID for the four malformed cases.
+- B1 suite: 50/50 PASS; both inline scripts parse; 4/4 direct gate probes return WAIT/INVALID for the four malformed cases.
 
 No live Bybit, browser/iPhone Safari or full StageASelfTest 44/44 run. Grok re-audit pending. PR #6 remains draft; main unchanged; B1 not complete.
