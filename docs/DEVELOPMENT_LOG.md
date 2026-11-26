@@ -446,3 +446,11 @@ Grok проверил полный candidate HTML blob `e92c44d1397a8499a5a5adac
 LOW-наблюдения: F1 boundary tests проверяют status и directionalAllowed, но не конкретный reason code; forming candle остаётся вне Quality Gate, что честно зафиксировано characterization tests; stale recovery не включает реальный UI/renderError путь. Эти пункты не блокируют unit/static approval.
 
 Ограничения остаются: полный browser `StageASelfTest` 44/44, Chrome/iPhone Safari, live Bybit request и UI stale-badge не проверялись. PR #6 остаётся draft и unmerged; main не изменён; B1 не завершён.
+
+## B1-E source audit and specification — 2026-11-26
+
+Inspected the current `BybitAdapter.normalize()`, `DataQualityEngine.createSnapshot()/validate()`, `BasicAnalyticsEngine.analyze()` and `loadAndAnalyze()` flow. Confirmed one-timeframe-at-a-time fetch/analysis and no shared 1D/4H/1H assembly. Identified that the current per-response closed/forming partition and provider-time consistency check make a naive common-cutoff override unsafe.
+
+Added `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md`: target MTF orchestration, common-cutoff selection, reclassification of candles, coverage recalculation, aggregate quality rules, cache/concurrency safety and 23 deterministic acceptance tests. The live provider-time spread limit is intentionally not guessed; it must be calibrated from live measurements.
+
+No application code changed. B1-E remains specification-only / NOT IMPLEMENTED.
