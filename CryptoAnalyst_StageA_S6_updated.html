@@ -718,7 +718,7 @@
           const close = Number(row[4]);
           const volume = Number(row[5]);
 
-          if (!Number.isFinite(openTs) || !Number.isInteger(openTs) || openTs <= 0 || openTs > serverTimeMs + 24 * 60 * 60 * 1000) {
+          if (!Number.isFinite(openTs) || !Number.isInteger(openTs) || openTs <= 0 || openTs > serverTimeMs + 2000) {
             invalidTimestamps++;
             invalidRows++;
             continue;
