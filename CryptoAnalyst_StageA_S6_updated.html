@@ -2522,6 +2522,12 @@
           dataset.fetchedAtLocalMs = fixedNow;
           return dataset;
         };
+        const analyzeAtFixtureTime = (dataset) => {
+          const originalNow = Date.now;
+          Date.now = () => now;
+          try { return BasicAnalyticsEngine.analyze(dataset); }
+          finally { Date.now = originalNow; }
+        };
         test('51 adapter fixture sorts rows and separates 60 closed + 1 forming candle', () => {
           const d=adapterFixture();
           const p=DataQualityEngine.preflight(d,now);
@@ -2548,11 +2554,10 @@
         });
 
         // Exact 500 ms finality boundary: the two lower values are accepted; the next millisecond is rejected.
-        const finalityCase = (delta) => {
-          const candles = base();
-          candles[candles.length - 1].closeTimeMs = now + 5000 - delta;
-          return make(candles);
-        };
+        const finalityCase = (boundaryMs) => make(base(), {
+          analysisAsOfMs: now + boundaryMs,
+          providerTimeMs: now + boundaryMs
+        });
         test('55 finality boundary T-501 ms remains VALID and directional-eligible', () => {
           const q=DataQualityEngine.validate(finalityCase(501),now);
           expect(q.status==='VALID' && q.directionalAllowed===true,'T-501 must be VALID / true');
@@ -2589,7 +2594,7 @@
         });
         test('63 adapter fixture completes normalize -> preflight -> analyze', () => {
           const d=adapterFixture();
-          const analysis=BasicAnalyticsEngine.analyze(d);
+          const analysis=analyzeAtFixtureTime(d);
           expect(d.closedCandles.length===60 && !!d.formingCandle,'normalized 60 closed + 1 forming candles');
           expect(analysis.qualityReport.status==='VALID' && analysis.qualityReport.directionalAllowed===true,'full adapter-to-analysis path must pass Quality Gate');
           expect(['LONG','SHORT','WAIT'].includes(analysis.decision),'analysis must return a recognized decision');
@@ -2597,12 +2602,12 @@
         for (const priorDecision of ['LONG','SHORT']) {
           test('64 stale '+priorDecision+' is blocked and fresh snapshot can be re-analyzed', () => {
             const freshSource=adapterFixture();
-            const initial=BasicAnalyticsEngine.analyze(freshSource);
+            const initial=analyzeAtFixtureTime(freshSource);
             const cached=Object.assign({},initial,{decision:priorDecision});
             const stale=DataQualityEngine.staleDecision(cached,'fixture refresh failure',now+6000);
             expect(stale.decision==='WAIT' && stale.qualityReport.status==='STALE' && stale.qualityReport.directionalAllowed===false,'stale '+priorDecision+' must become WAIT / STALE / blocked');
             const recoveredSource=adapterFixture();
-            const recovered=BasicAnalyticsEngine.analyze(recoveredSource);
+            const recovered=analyzeAtFixtureTime(recoveredSource);
             expect(recovered!==stale && recovered.qualityReport.status==='VALID' && recovered.qualityReport.directionalAllowed===true,'fresh data must produce a new valid analysis');
             expect(!recovered.reasons.some(x=>String(x).includes('fixture refresh failure')),'stale reason must not leak into fresh analysis');
           });
