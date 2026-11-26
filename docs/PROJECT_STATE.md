@@ -333,3 +333,15 @@ PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6
 - отдельная изолированная проверка интеграции показала WAIT при DEGRADED quality.
 
 Не выполнены: live Bybit, Chrome/iPhone Safari runtime, полный StageASelfTest 44/44 в browser harness. MTF common cutoff (B1-E) и второй provider (B1-F) ещё не реализованы. Поэтому B1 остаётся IN PROGRESS, не DONE.
+
+
+## B1 quality-hardening status — 2026-11-26 (latest candidate branch state)
+
+PR #6 / branch `impl/b1-quality-contract-2026-11-26` обновлены после замечаний независимого Grok-аудита:
+- `createSnapshot()` сохраняет исходные значения adapter counters; отсутствующие значения остаются null, строки/NaN/отрицательные значения не маскируются.
+- `validate()` требует все восемь обязательных счётчиков как неотрицательные safe integers.
+- Добавлена повторная проверка candle close time против provider time с finality buffer 500 ms.
+- Coverage теперь требует expected start/end/count, integer + UTC alignment + математическую согласованность диапазона.
+- Новые regression tests расширили B1 suite с 35 до 46.
+
+Последняя проверка: 46/46 B1 tests PASS в isolated JS execution; два inline script blocks syntax-parse PASS; четыре direct integration probes вернули WAIT / INVALID при каждом из четырёх дефектных наборов. Не проверены live Bybit, Chrome/iPhone Safari runtime и полный StageASelfTest 44/44 в реальном браузере. Независимый повторный аудит после исправлений ожидается. PR draft, main не изменён, B1 не завершён.
