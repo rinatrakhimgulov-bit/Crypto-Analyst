@@ -2126,6 +2126,7 @@
       const DEFAULTS = Object.freeze({
         maxSnapshotAgeMs: 120000,
         allowedFutureSkewMs: 2000,
+        closedCandleFinalityBufferMs: 500,
         minimumClosedCandles: 50
       });
 
@@ -2154,7 +2155,9 @@
       function createSnapshot(dataset) {
         if (!dataset || typeof dataset !== 'object') throw new TypeError('dataset is required');
         const timeframe = String(dataset.interval || '');
-        const quality = dataset.quality || {};
+        const quality = dataset.quality && typeof dataset.quality === 'object' ? dataset.quality : {};
+        const readQualityCounter = (name) =>
+          Object.prototype.hasOwnProperty.call(quality, name) ? quality[name] : null;
         const closed = Array.isArray(dataset.closedCandles) ? dataset.closedCandles : [];
         const forming = dataset.formingCandle
           ? toCanonicalCandle(dataset.formingCandle, timeframe, 'FORMING')
@@ -2174,14 +2177,14 @@
           formingCandle: forming,
           coverage: dataset.coverage ? Object.assign({}, dataset.coverage) : null,
           adapterQuality: {
-            invalidRows: Number(quality.invalidRows || 0),
-            invalidTimestamps: Number(quality.invalidTimestamps || 0),
-            gaps: Number(quality.gaps || 0),
-            duplicates: Number(quality.duplicates || 0),
-            identicalDuplicates: Number(quality.identicalDuplicates || 0),
-            conflictingDuplicates: Number(quality.conflictingDuplicates || 0),
-            anomalousIntervals: Number(quality.anomalousIntervals || 0),
-            misalignedTimestamps: Number(quality.misalignedTimestamps || 0)
+            invalidRows: readQualityCounter('invalidRows'),
+            invalidTimestamps: readQualityCounter('invalidTimestamps'),
+            gaps: readQualityCounter('gaps'),
+            duplicates: readQualityCounter('duplicates'),
+            identicalDuplicates: readQualityCounter('identicalDuplicates'),
+            conflictingDuplicates: readQualityCounter('conflictingDuplicates'),
+            anomalousIntervals: readQualityCounter('anomalousIntervals'),
+            misalignedTimestamps: readQualityCounter('misalignedTimestamps')
           }
         };
       }
@@ -2192,7 +2195,7 @@
         const counts = {
           receivedCount: Array.isArray(snapshot && snapshot.candles) ? snapshot.candles.length : 0,
           invalidOhlc: 0, nonFinite: 0, negativeVolume: 0, misaligned: 0,
-          future: 0, duplicate: 0, outOfOrder: 0, gaps: 0
+          future: 0, notClosed: 0, duplicate: 0, outOfOrder: 0, gaps: 0
         };
         const add = (code, severity, message) => reasons.push({ code, severity, message });
         if (!snapshot || snapshot.contractVersion !== CONTRACT_VERSION) {
@@ -2216,8 +2219,22 @@
         if (snapshot && stepMs && !snapshot.coverage) {
           add('COVERAGE_UNVERIFIED', 'MAJOR', 'Ожидаемое покрытие свечей не передано и не может быть проверено.');
         }
-        if (snapshot && snapshot.adapterQuality) {
+        const qualityCounterKeys = [
+          'invalidRows', 'invalidTimestamps', 'gaps', 'duplicates',
+          'identicalDuplicates', 'conflictingDuplicates', 'anomalousIntervals',
+          'misalignedTimestamps'
+        ];
+        if (!snapshot || !snapshot.adapterQuality || typeof snapshot.adapterQuality !== 'object') {
+          add('ADAPTER_QUALITY_MISSING', 'CRITICAL', 'Отсутствуют счётчики качества адаптера.');
+        } else {
           const q = snapshot.adapterQuality;
+          const malformedCounters = qualityCounterKeys.filter(key =>
+            !Number.isSafeInteger(q[key]) || q[key] < 0
+          );
+          if (malformedCounters.length) {
+            add('ADAPTER_QUALITY_COUNTER_INVALID', 'CRITICAL',
+              'Некорректные или отсутствующие счётчики качества адаптера: ' + malformedCounters.join(', ') + '.');
+          }
           if (q.invalidRows > 0 || q.invalidTimestamps > 0) add('ADAPTER_INVALID_ROWS', 'CRITICAL', 'Адаптер отбросил некорректные строки или временные метки.');
           if (q.conflictingDuplicates > 0) add('CONFLICTING_DUPLICATES', 'CRITICAL', 'Обнаружены конфликтующие свечи с одинаковой временной меткой.');
           if (q.identicalDuplicates > 0) add('IDENTICAL_DUPLICATES', 'MAJOR', 'Обнаружены повторяющиеся идентичные свечи.');
@@ -2243,6 +2260,8 @@
           if (c.volumeBase < 0) counts.negativeVolume++;
           if (stepMs && (c.openTimeMs % stepMs !== 0 || c.closeTimeMs !== c.openTimeMs + stepMs)) counts.misaligned++;
           if (Number.isFinite(snapshot.analysisAsOfMs) && c.openTimeMs > snapshot.analysisAsOfMs + cfg.allowedFutureSkewMs) counts.future++;
+          if (Number.isFinite(snapshot.providerTimeMs) &&
+              c.closeTimeMs + cfg.closedCandleFinalityBufferMs > snapshot.providerTimeMs) counts.notClosed++;
           if (previousOpen !== null) {
             const diff = c.openTimeMs - previousOpen;
             if (diff <= 0) {
@@ -2261,21 +2280,33 @@
         if (counts.negativeVolume) add('NEGATIVE_VOLUME', 'CRITICAL', 'Объём не может быть отрицательным.');
         if (counts.misaligned) add('CANDLE_ALIGNMENT_INVALID', 'CRITICAL', 'Свечи имеют неверную временную сетку или длительность.');
         if (counts.future) add('FUTURE_CANDLES', 'CRITICAL', 'В набор попали свечи из будущего относительно времени анализа.');
+        if (counts.notClosed) add('UNCONFIRMED_CLOSED_CANDLES', 'CRITICAL', 'В набор закрытых свечей попала свеча, для закрытия которой ещё не прошёл provider-time finality buffer.');
         if (counts.duplicate) add('DUPLICATE_CANDLES', 'CRITICAL', 'В каноническом ряду есть повторяющиеся временные метки.');
         if (counts.outOfOrder) add('CANDLE_ORDER_INVALID', 'CRITICAL', 'Свечи расположены не в строго возрастающем порядке.');
         if (counts.gaps) add('CANDLE_GAPS_IN_SERIES', 'MAJOR', 'Канонический ряд содержит пропуски.');
-        if (snapshot && snapshot.coverage && stepMs) {
+        if (snapshot && stepMs) {
           const cv = snapshot.coverage;
+          const requiredCoverageFields = ['expectedClosedStartMs', 'expectedClosedEndMs', 'expectedClosedCount'];
+          const coverageValid = cv && typeof cv === 'object' &&
+            requiredCoverageFields.every(key => Number.isSafeInteger(cv[key])) &&
+            cv.expectedClosedCount > 0 && cv.expectedClosedStartMs >= 0 &&
+            cv.expectedClosedEndMs >= cv.expectedClosedStartMs &&
+            cv.expectedClosedStartMs % stepMs === 0 && cv.expectedClosedEndMs % stepMs === 0 &&
+            (cv.expectedClosedEndMs - cv.expectedClosedStartMs) / stepMs + 1 === cv.expectedClosedCount;
+          if (!coverageValid) {
+            add('COVERAGE_METADATA_INVALID', 'CRITICAL', 'Метаданные ожидаемого покрытия отсутствуют, неполны или математически противоречивы.');
+          } else {
           const firstOpen = candles.length ? candles[0].openTimeMs : null;
           const lastOpen = candles.length ? candles[candles.length - 1].openTimeMs : null;
-          if (Number.isFinite(cv.expectedClosedStartMs) && firstOpen !== cv.expectedClosedStartMs) {
+          if (firstOpen !== cv.expectedClosedStartMs) {
             add('COVERAGE_START_MISSING', 'MAJOR', 'Начало запрошенного диапазона закрытых свечей отсутствует или смещено.');
           }
-          if (Number.isFinite(cv.expectedClosedEndMs) && lastOpen !== cv.expectedClosedEndMs) {
+          if (lastOpen !== cv.expectedClosedEndMs) {
             add('COVERAGE_END_MISSING', 'MAJOR', 'Последняя ожидаемая закрытая свеча отсутствует.');
           }
-          if (Number.isFinite(cv.expectedClosedCount) && candles.length !== cv.expectedClosedCount) {
+          if (candles.length !== cv.expectedClosedCount) {
             add('COVERAGE_COUNT_MISMATCH', 'MAJOR', 'Количество закрытых свечей не соответствует ожидаемому покрытию.');
+          }
           }
         }
         if (candles.length < cfg.minimumClosedCandles) add('INSUFFICIENT_HISTORY', 'CRITICAL', 'Недостаточно закрытых свечей для базового набора индикаторов.');
@@ -2341,7 +2372,11 @@
           analysisAsOfMs: now + 5000, providerTimeMs: now + 5000, timeSource: 'PROVIDER',
           receivedAtMs: now, candles, formingCandle: null,
           coverage: { expectedClosedStartMs: now - 60 * step, expectedClosedEndMs: now - step, expectedClosedCount: 60 },
-          adapterQuality: {}
+          adapterQuality: {
+            invalidRows: 0, invalidTimestamps: 0, gaps: 0, duplicates: 0,
+            identicalDuplicates: 0, conflictingDuplicates: 0, anomalousIntervals: 0,
+            misalignedTimestamps: 0
+          }
         }, overrides);
         const tests = [];
         const test = (name, fn) => { try { fn(); tests.push({ name, passed: true }); } catch (e) { tests.push({ name, passed: false, error: e.message }); } };
@@ -2422,6 +2457,31 @@
         });
         test('35 invalid rows outrank insufficient history', () => {
           const s=make(base(20)); s.adapterQuality.invalidRows=1; status(s,'INVALID');
+        });
+        test('36 missing adapter counter is critical', () => { const s=make(); delete s.adapterQuality.invalidRows; status(s,'INVALID'); });
+        test('37 string adapter counter is critical', () => { const s=make(); s.adapterQuality.invalidRows='0'; status(s,'INVALID'); });
+        test('38 negative adapter counter is critical', () => { const s=make(); s.adapterQuality.gaps=-1; status(s,'INVALID'); });
+        test('39 non-finite adapter counter is critical', () => { const s=make(); s.adapterQuality.duplicates=NaN; status(s,'INVALID'); });
+        test('40 incomplete coverage object is critical', () => { const s=make(); s.coverage={}; status(s,'INVALID'); });
+        test('41 null coverage field is critical', () => { const s=make(); s.coverage={expectedClosedStartMs:now-60*step,expectedClosedEndMs:now-step,expectedClosedCount:null}; status(s,'INVALID'); });
+        test('42 inconsistent coverage arithmetic is critical', () => { const s=make(); s.coverage.expectedClosedCount=59; status(s,'INVALID'); });
+        test('43 candle not closed at provider time is critical', () => { const a=base(); a[59].closeTimeMs=now+1000; status(make(a,{providerTimeMs:now+1200,analysisAsOfMs:now+1200}),'INVALID'); });
+        test('44 candle inside finality buffer is critical', () => { const a=base(); a[59].closeTimeMs=now+500; status(make(a,{providerTimeMs:now+800,analysisAsOfMs:now+800}),'INVALID'); });
+        test('45 createSnapshot preserves malformed adapter counter', () => {
+          const snap=DataQualityEngine.createSnapshot({source:'Bybit',symbol:'BTCUSDT',interval:'60',
+            serverTimeMs:now+5000,providerTimeMs:now+5000,timeSource:'PROVIDER',fetchedAtLocalMs:now,
+            closedCandles:base().map(c=>({ts:c.openTimeMs,closeTs:c.closeTimeMs,open:c.open,high:c.high,low:c.low,close:c.close,volume:c.volumeBase})),
+            coverage:{expectedClosedStartMs:now-60*step,expectedClosedEndMs:now-step,expectedClosedCount:60},
+            quality:{invalidRows:'0',invalidTimestamps:0,gaps:0,duplicates:0,identicalDuplicates:0,conflictingDuplicates:0,anomalousIntervals:0,misalignedTimestamps:0}});
+          expect(snap.adapterQuality.invalidRows==='0','malformed counter must not be coerced');
+          expect(DataQualityEngine.validate(snap,now).status==='INVALID','malformed counter must block');
+        });
+        test('46 createSnapshot missing adapter counter remains missing', () => {
+          const snap=DataQualityEngine.createSnapshot({source:'Bybit',symbol:'BTCUSDT',interval:'60',
+            serverTimeMs:now+5000,providerTimeMs:now+5000,timeSource:'PROVIDER',fetchedAtLocalMs:now,
+            closedCandles:[],coverage:{expectedClosedStartMs:now,expectedClosedEndMs:now,expectedClosedCount:1},
+            quality:{invalidTimestamps:0,gaps:0,duplicates:0,identicalDuplicates:0,conflictingDuplicates:0,anomalousIntervals:0,misalignedTimestamps:0}});
+          expect(snap.adapterQuality.invalidRows===null,'missing counter must not default to zero');
         });
         const passed = tests.filter(t=>t.passed).length;
         return { total: tests.length, passed, failed: tests.length-passed, tests };
