@@ -4,7 +4,7 @@
 **Дата актуализации:** 2026-11-26  
 **Основная ветка:** `main`  
 **Основной исходный файл:** `CryptoAnalyst_StageA_S6_updated.html`  
-**Текущий этап:** Stage A / S6; B0 аудит завершён. B1 — исследование data layer и review draft-контракта. Основной HTML не изменён.
+**Текущий этап:** B1 implementation in draft PR #6. B0 audit завершён; B1-A/B/C/D внесены в отдельную ветку. `main` не изменён.
 
 ---
 
@@ -217,7 +217,7 @@ B0 завершён как аудит текущего исходника. Вс�
 
 Подтверждены два дефекта, которые требуется устранить до доверия directional output: D0-01 — `BasicAnalyticsEngine.analyze()` возвращает LONG при `quality.status=INVALID`; D0-02 — stale-cache path может повторно отобразить прежний LONG/SHORT после ошибки обновления. См. B0 audit report.
 
-B1: изучены `rinng` и `CCXT`; подготовлен draft provider-neutral data contract и quality gate (`docs/specs/B1_DATA_CONTRACT_DRAFT.md`). Текущий статус B1 — исследование и review спецификации; реализация не начата. Исследовательский отчёт: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`.
+B1: изучены `rinng` и `CCXT`; draft provider-neutral contract и mapping подготовлены. B1-A/B/C/D теперь реализованы в draft PR #6; MTF common cutoff и второй provider остаются незавершёнными. Исследовательский отчёт: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`.
 
 Дополнительное предварительное исследование будущего B2 (без изменения последовательности roadmap): `docs/research/B2_PYVSMC_CANDIDATE_AUDIT_2026-11-26.md` и `docs/research/B2_MARKET_STRUCTURE_CANDIDATES_2026-11-26.md`.
 
@@ -283,3 +283,28 @@ B0 acceptance: StageASelfTest 44/44 в изолированном harness; EMA/A
 ## B1 current adapter mapping — 2026-11-26
 
 Подготовлен `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`: сопоставление BybitAdapter с canonical Candle/Snapshot/QualityReport и 11 конкретных разрывов (canonical contract, duplicates, future timestamps, provider-time fallback, closed-state, quality gate, coverage, pagination, MTF cutoff, stale cache). Предложен минимальный план B1 без переписывания приложения и предварительная рекомендация сохранить JavaScript на первом проходе; Python backend оставить открытой опцией при доказанной необходимости. Это спецификация, не реализация.
+
+
+## Актуальное состояние B1 — 2026-11-26, draft PR #6
+
+Ветка: `impl/b1-quality-contract-2026-11-26`  
+PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6  
+Статус: draft, не влито в `main`.
+
+В канонический HTML в ветке добавлены:
+- `DataQualityEngine`: canonical contract v1.0.0, snapshot mapping и QualityReport;
+- явная provenance provider time vs local fallback;
+- подсчёт identical/conflicting duplicate candles без молчаливого перезаписывания конфликта;
+- expected coverage для закрытого диапазона свечей;
+- validation OHLCV, finite values, volume, UTC alignment, order, gaps, future timestamps, snapshot freshness и minimum history;
+- 2-секундный допуск для future open timestamps;
+- обязательный preflight quality gate перед `BasicAnalyticsEngine`: directional output разрешён только при VALID;
+- stale-cache suppression: cached LONG/SHORT преобразуется в WAIT после ошибки обновления;
+- отображение B1 Quality Gate в панели качества.
+
+Тестирование:
+- `window.B1QualitySelfTest.runAll()`: 32/32 PASS в изолированном JavaScript execution;
+- оба script blocks прошли syntax parse;
+- отдельная изолированная проверка интеграции показала WAIT при DEGRADED quality.
+
+Не выполнены: live Bybit, Chrome/iPhone Safari runtime, полный StageASelfTest 44/44 в browser harness. MTF common cutoff (B1-E) и второй provider (B1-F) ещё не реализованы. Поэтому B1 остаётся IN PROGRESS, не DONE.
