@@ -1290,3 +1290,46 @@ Important: `providerTimeToleranceMs` is an explicit option and DEFAULTS value is
 Latest candidate blob: `b69758a2e332348de7ffaca402fe0eb8819dd059`. Isolated harness: B1-E 23/23 PASS; B1 suite 65/65 PASS; both inline scripts syntax-parse. Harness uses test doubles for AbortController/DOMException/timers; it is not browser verification. No live Bybit, Chrome/iPhone Safari, UI integration or full StageASelfTest browser run. MTF is not connected to the decision engine. Do not merge or mark B1 complete on these results alone.
 
 B1-E audit refinement: a candle whose open time is later than the common cutoff is now excluded from the as-of snapshot and counted in `excludedAfterCutoffCount`; its mere presence no longer invalidates a coherent snapshot. This handles ordinary response-time differences across an interval boundary. B1-E remains 23/23 PASS and B1 remains 65/65 PASS after this correction.
+
+
+# LATEST HANDOVER ADDENDUM — 2026-11-26 (B1-E coverage correction)
+
+## Current candidate source
+
+- Repository: `rinatrakhimgulov-bit/Crypto-Analyst`
+- Branch: `impl/b1-quality-contract-2026-11-26`
+- Draft PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6
+- Latest HTML blob: `d9bb093001299ef8a835fc01dcaa6fb87e0425cd`
+- Latest branch commit after spec update: `4e7668f098427acbd033a0bb9acc41a9714353b6`
+- `main` has not been changed by this candidate.
+
+## B1-E corrections now present
+
+The first B1-E candidate retained the original adapter expected-start timestamp and recalculated only the expected end at the common cutoff. That was insufficient across interval-boundary rollover. A later provider response may include a new candle opened after the minimum provider-time cutoff; excluding it can otherwise shorten the target closed history.
+
+The corrected implementation:
+- distinguishes the desired closed-candle count from the raw provider-row limit;
+- over-fetches raw rows per TF by `ceil(maxProviderTimeSpreadMs / stepMs) + 1` beyond the desired closed count;
+- enforces the Bybit V5 1000-row maximum;
+- derives expected start/end/count from the common cutoff and explicit closed-candle target;
+- trims only excess older eligible candles, never concealing a short response;
+- records excluded post-cutoff rows;
+- blocks ambiguous multiple-forming-candle cases and publishes no arbitrary forming candle;
+- provides stable per-timeframe diagnostics on missing or invalid assembly inputs.
+
+Integration fixtures use newest-first Bybit V5-shaped rows and execute the actual production `BybitAdapter.normalize()` followed by `MTFDataEngine.assemble()` across 1H, 4H and 1D boundary rollovers. A short raw response is tested as a coverage failure.
+
+## Latest verification
+
+- `B1EMtfSelfTest.runAll()`: 31/31 PASS.
+- `B1QualitySelfTest.runAll()`: 65/65 PASS.
+- Both inline JS blocks parse.
+- Isolated V8 harness; concurrency primitives are test doubles.
+
+## Still not verified / do not claim
+
+- Live Bybit REST request, live provider-time spread measurements or production spread policy.
+- Browser DOM/UI integration, Chrome/iPhone Safari, full Stage A self-test 44/44.
+- Actual HTTP abort behavior under network conditions.
+- MTFDataEngine is not connected to the UI, chart, or directional decision pipeline. The selected-timeframe flow remains the current app flow.
+- B1 is not complete. PR #6 is draft and unmerged. Do not merge without independent audit and browser/live verification.
