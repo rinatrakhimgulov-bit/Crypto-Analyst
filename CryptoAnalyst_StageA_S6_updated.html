@@ -2555,7 +2555,7 @@
           const adapter={fetchMarketSnapshot:(symbol,tf,signal)=>{
             call++;
             if(call<=3) return new Promise(resolve=>pending.push({tf,resolve}));
-            return Promise.resolve(makeDataset(tf,baseNow+1000));
+            return Promise.resolve(makeDataset(tf,baseNow+1000,{fetchedAtLocalMs:Date.now()}));
           }};
           const oldPromise=coordinator.fetch(adapter,'BTCUSDT',{maxProviderTimeSpreadMs:3000});
           const newPromise=coordinator.fetch(adapter,'BTCUSDT',{maxProviderTimeSpreadMs:3000});
