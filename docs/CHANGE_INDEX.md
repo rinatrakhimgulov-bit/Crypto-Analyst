@@ -260,3 +260,18 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 Verified source locations in the candidate branch: DataQualityEngine line 2124; preflight line 2303; staleDecision line 2309; BasicAnalyticsEngine line 2434; B1QualitySelfTest line 2328; BybitAdapter.normalize line 705; renderError line 3293; loadAndAnalyze line 3329.
 
 **Not implemented:** common-cutoff MTF snapshot assembly and second provider. Browser/live API verification remains pending. These statuses apply only to the draft branch, not `main`.
+
+
+## 16. B1 quality-hardening patch — 2026-11-26
+
+Файл: `CryptoAnalyst_StageA_S6_updated.html`, branch `impl/b1-quality-contract-2026-11-26`, draft PR #6.
+
+| Изменение | Назначение | Статус |
+|---|---|---|
+| Strict adapter counter validation | Reject missing/string/negative/non-finite counters | IMPLEMENTED; regression-tested |
+| Closed-candle finality check | Reject closed-array candles whose close + 500ms exceeds provider time | IMPLEMENTED; regression-tested |
+| Strict coverage validation | Require complete, aligned and arithmetically consistent expected range | IMPLEMENTED; regression-tested |
+| B1 quality suite | 11 new tests, 46 total | 46/46 PASS |
+| Basic analytics gate probes | Four malformed datasets all return WAIT / INVALID | 4/4 PASS |
+
+Ограничения: tests executed in isolated JS context, not in real browser; no live Bybit; no full StageASelfTest 44/44. Independent re-audit pending. No changes merged to main.
