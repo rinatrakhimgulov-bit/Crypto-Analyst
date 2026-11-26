@@ -1280,3 +1280,11 @@ Important implementation constraint: `BybitAdapter.normalize()` classifies candl
 Specification: `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md` (23 acceptance tests). Proposed cutoff is the minimum trusted provider time across all required TF responses. Provider-time spread threshold must be measured against live API behavior before setting a production default. Any missing/invalid/stale required TF blocks directional MTF output; never combine fresh TFs with stale cache and call the set VALID.
 
 This is specification/source-audit work only. No B1-E production code changed. B1-E NOT IMPLEMENTED. Do not mark B1 complete. Keep B1-F (second provider) separate until B1-E is stable.
+
+# B1-E IMPLEMENTATION CANDIDATE HANDOVER — 2026-11-26
+
+Latest PR #6 HTML candidate now contains isolated `MTFDataEngine` and `window.B1EMtfSelfTest`. It fetches required 1D/4H/1H concurrently, selects minimum trusted provider time as common cutoff, reclassifies all normalized candles against that cutoff with 500 ms finality, recalculates expected coverage, validates each TF and aggregates quality. `createCoordinator()` aborts previous generations and suppresses late results; one fetch failure aborts sibling requests.
+
+Important: `providerTimeToleranceMs` is an explicit option and DEFAULTS value is null. Do not invent a production tolerance. Measure live provider-time spread/latency first. The existing single-TF validator continues to use the original 2 s tolerance unless an explicit override is supplied.
+
+Latest candidate blob: `76351f86faec790d52f89d213294134d4a6a9dca`. Isolated harness: B1-E 23/23 PASS; B1 suite 65/65 PASS; both inline scripts syntax-parse. Harness uses test doubles for AbortController/DOMException/timers; it is not browser verification. No live Bybit, Chrome/iPhone Safari, UI integration or full StageASelfTest browser run. MTF is not connected to the decision engine. Do not merge or mark B1 complete on these results alone.
