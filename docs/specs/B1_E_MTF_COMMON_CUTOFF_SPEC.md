@@ -57,7 +57,7 @@ For each timeframe with interval length `stepMs` and the existing 500 ms finalit
 - A candle is eligible for the closed set only when `closeTimeMs + 500 <= analysisAsOfMs`.
 - Candles not meeting that condition must not enter closed-candle analytics.
 - The latest eligible in-progress candle may be retained separately as forming context, but it must not enter closed historical calculations.
-- A candle with an open time beyond the common cutoff must never enter the closed set.
+- A candle with an open time beyond the common cutoff must be excluded from the assembled as-of snapshot (and never enter closed or forming analytics). Its presence in a response is not by itself an error: a slightly later provider response can legitimately contain a newly opened candle. Record the excluded count. The configured provider-time spread policy bounds how far ahead the response may be; reject only when the time policy or remaining candle/coverage validation fails.
 - Duplicate/conflicting rows, malformed OHLCV, misalignment, gaps and invalid adapter counters remain quality findings; reclassification must not erase or hide them.
 - The forming candle remains outside the current B1 Quality Gate policy unless a separate explicit change is approved. B1-E must not claim that malformed forming OHLC is validated.
 
@@ -131,6 +131,7 @@ A missing 1D, 4H or 1H response is not silently replaced by an old cached timefr
 21. Superseded request responses cannot mutate the current MTF snapshot.
 22. One request failure cancels or safely ignores the other outstanding results.
 23. Repeated execution on identical fixtures produces byte-equivalent canonical MTF content (excluding intentionally variable receive timestamps / IDs).
+24. A response that legitimately contains a candle opened after the common cutoff excludes that candle without invalidating otherwise coherent MTF data; the excluded count is reported.
 
 All tests must assert status, directional permission, common cutoff, closed/forming membership and machine-readable reason codes where relevant.
 
