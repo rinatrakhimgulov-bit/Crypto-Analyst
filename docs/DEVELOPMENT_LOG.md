@@ -392,3 +392,14 @@ B1 остаётся IN PROGRESS. Draft PR #6: https://github.com/rinatrakhimgulo
 - Повторный независимый Grok review ещё не получен.
 
 PR #6 остаётся draft и не слит в main. B1 остаётся IN PROGRESS; B1-E common MTF cutoff и B1-F второй provider ещё не реализованы.
+
+
+## 16. B1 strict-consistency follow-up — 2026-11-26
+
+Additional audit hardening in PR #6:
+- Aggregate duplicate count is checked against identical + conflicting duplicate counts.
+- Provider analysis time must agree with provider timestamp within the configured skew tolerance.
+- Closed-candle finality is checked against the earlier of analysis and provider cutoffs, with the 500 ms buffer.
+- Regression suite now contains 49 tests, all 49 PASS in isolated JS execution. Both inline scripts parse; 4/4 direct quality-gate probes block malformed datasets with WAIT/INVALID.
+
+Real browser, live Bybit and full StageASelfTest 44/44 remain untested. Independent Grok re-audit pending. PR #6 remains draft and unmerged.
