@@ -464,3 +464,41 @@ Added an explicit `providerTimeToleranceMs` validator override, defaulting to nu
 Tests on latest candidate blob: B1-E **23/23 PASS**, existing B1 quality suite **65/65 PASS**, both inline script blocks syntax-parse. Isolated V8 execution used test doubles for browser AbortController/DOMException/timer globals. No live HTTP, browser UI, mobile Safari or full StageASelfTest browser run. Candidate only; not merged.
 
 B1-E audit refinement: a candle whose open time is later than the common cutoff is now excluded from the as-of snapshot and counted in `excludedAfterCutoffCount`; its mere presence no longer invalidates a coherent snapshot. This handles ordinary response-time differences across an interval boundary. B1-E remains 23/23 PASS and B1 remains 65/65 PASS after this correction.
+
+
+## 16. B1-E common-cutoff coverage correction and adapter integration fixtures — 2026-11-26
+
+**Branch:** `impl/b1-quality-contract-2026-11-26` (draft PR #6)  
+**Latest HTML blob:** `d9bb093001299ef8a835fc01dcaa6fb87e0425cd`  
+**Latest branch commit after spec update:** `4e7668f098427acbd033a0bb9acc41a9714353b6`
+
+### Problem addressed
+
+Independent review identified that retaining each response's original `expectedClosedStartMs` while moving only the end to the common cutoff could create a hybrid coverage window. At an interval boundary, a later response can spend one of its raw Bybit rows on a candle opened after the common cutoff. Simply excluding that candle then leaves too few rows for the common-cutoff target history.
+
+### Implementation changes
+
+1. Split MTF `desiredClosedCount` from provider `rawLimit`.
+2. Calculate per-timeframe raw request limit as desired closed count + ceiling of permitted provider-time spread divided by timeframe duration + one forming-row allowance.
+3. Reject raw limits above Bybit V5's documented maximum of 1000.
+4. Recalculate expected end and start from the common cutoff and explicit desired closed count.
+5. Keep exactly the newest target number of eligible closed candles; do not hide short responses by trimming missing data.
+6. Preserve adapter quality findings and report missing leading/count coverage when a response is short.
+7. Do not publish a forming candle when multiple forming candidates make the partition ambiguous.
+8. Add stable per-timeframe diagnostic objects for missing/invalid assembly paths.
+9. Add actual adapter integration fixtures: V5-shaped newest-first raw rows -> production `BybitAdapter.normalize()` -> `MTFDataEngine.assemble()`, covering 1H, 4H and 1D boundary rollovers and short response behavior.
+10. Update `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md` with explicit raw-row and closed-history semantics.
+
+### Verification
+
+- `B1EMtfSelfTest.runAll()`: **31/31 PASS**.
+- `B1QualitySelfTest.runAll()`: **65/65 PASS**.
+- Both inline JavaScript blocks: syntax parse PASS.
+- Tests ran in isolated V8 against the extracted production implementations. Concurrency tests used controlled test doubles; this is not a browser or live-network test.
+
+### Limitations / acceptance status
+
+- No live Bybit HTTP request or provider-time spread calibration.
+- No browser DOM/UI, Chrome/iPhone Safari, full `StageASelfTest` 44/44, or actual HTTP abort verification.
+- MTFDataEngine remains isolated and is not connected to UI or directional decision logic.
+- PR #6 remains draft and unmerged. `main` unchanged. B1 remains IN PROGRESS; no production readiness claim.
