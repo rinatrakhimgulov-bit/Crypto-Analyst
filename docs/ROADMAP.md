@@ -278,3 +278,13 @@ B1-A/B/C/D реализованы в отдельной ветке `impl/b1-qual
 - Embedded B1 quality suite: 35/35 passed; оба script blocks syntax-parse PASS; отдельная проверка gate на degraded dataset вернула WAIT.
 
 **Ограничения:** PR остаётся draft. Не выполнены live Bybit, реальный Chrome/iPhone Safari и полный StageASelfTest 44/44 в браузерном harness. MTF common cutoff и второй provider ещё не реализованы. B1 не завершён.
+
+
+### B1 quality-hardening update — 2026-11-26
+
+В candidate branch PR #6 исправлены три дефекта, подтверждённые независимым аудитом:
+- Счётчики адаптера больше не приводятся к нулю через coercion. Все восемь обязательных счётчиков проверяются как неотрицательные safe integers; отсутствующее или malformed значение даёт CRITICAL.
+- Validator повторно проверяет закрытость каждой canonical candle по provider time и finality buffer 500 ms.
+- Coverage требует три целых поля, UTC alignment и согласованную арифметику start/end/count. Отсутствующее или противоречивое coverage даёт CRITICAL.
+
+Проверки candidate branch: B1 suite 46/46 PASS в isolated JavaScript execution; оба inline script blocks syntax-parse PASS; 4/4 direct integration probes подтвердили WAIT/INVALID при malformed counter, negative counter, unclosed candle и missing coverage. Реальный браузер, live Bybit и полный StageASelfTest 44/44 пока не выполнены. PR #6 остаётся draft, B1 остаётся IN PROGRESS.
