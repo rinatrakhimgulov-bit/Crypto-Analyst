@@ -2215,6 +2215,9 @@
           add('PROVIDER_TIME_UNTRUSTED', 'MAJOR', 'Время провайдера отсутствует или заменено локальными часами.');
         } else if (snapshot && !Number.isFinite(snapshot.providerTimeMs)) {
           add('PROVIDER_TIME_MISSING', 'CRITICAL', 'Время помечено как provider time, но provider timestamp отсутствует.');
+        } else if (snapshot && Number.isFinite(snapshot.analysisAsOfMs) && Number.isFinite(snapshot.providerTimeMs) &&
+            Math.abs(snapshot.analysisAsOfMs - snapshot.providerTimeMs) > cfg.allowedFutureSkewMs) {
+          add('PROVIDER_TIME_MISMATCH', 'CRITICAL', 'Analysis time не согласуется с provider time в пределах допустимого clock skew.');
         }
         if (snapshot && stepMs && !snapshot.coverage) {
           add('COVERAGE_UNVERIFIED', 'MAJOR', 'Ожидаемое покрытие свечей не передано и не может быть проверено.');
@@ -2234,6 +2237,10 @@
           if (malformedCounters.length) {
             add('ADAPTER_QUALITY_COUNTER_INVALID', 'CRITICAL',
               'Некорректные или отсутствующие счётчики качества адаптера: ' + malformedCounters.join(', ') + '.');
+          }
+          if (qualityCounterKeys.every(key => Number.isSafeInteger(q[key]) && q[key] >= 0) &&
+              q.duplicates !== q.identicalDuplicates + q.conflictingDuplicates) {
+            add('ADAPTER_DUPLICATE_TOTAL_MISMATCH', 'CRITICAL', 'Общий счётчик duplicates не равен сумме identicalDuplicates и conflictingDuplicates.');
           }
           if (q.invalidRows > 0 || q.invalidTimestamps > 0) add('ADAPTER_INVALID_ROWS', 'CRITICAL', 'Адаптер отбросил некорректные строки или временные метки.');
           if (q.conflictingDuplicates > 0) add('CONFLICTING_DUPLICATES', 'CRITICAL', 'Обнаружены конфликтующие свечи с одинаковой временной меткой.');
@@ -2260,8 +2267,9 @@
           if (c.volumeBase < 0) counts.negativeVolume++;
           if (stepMs && (c.openTimeMs % stepMs !== 0 || c.closeTimeMs !== c.openTimeMs + stepMs)) counts.misaligned++;
           if (Number.isFinite(snapshot.analysisAsOfMs) && c.openTimeMs > snapshot.analysisAsOfMs + cfg.allowedFutureSkewMs) counts.future++;
-          if (Number.isFinite(snapshot.providerTimeMs) &&
-              c.closeTimeMs + cfg.closedCandleFinalityBufferMs > snapshot.providerTimeMs) counts.notClosed++;
+          const providerCutoff = Number.isFinite(snapshot.providerTimeMs) ? snapshot.providerTimeMs : -Infinity;
+          const analysisCutoff = Number.isFinite(snapshot.analysisAsOfMs) ? snapshot.analysisAsOfMs : -Infinity;
+          if (c.closeTimeMs + cfg.closedCandleFinalityBufferMs > Math.min(providerCutoff, analysisCutoff)) counts.notClosed++;
           if (previousOpen !== null) {
             const diff = c.openTimeMs - previousOpen;
             if (diff <= 0) {
@@ -2482,6 +2490,16 @@
             closedCandles:[],coverage:{expectedClosedStartMs:now,expectedClosedEndMs:now,expectedClosedCount:1},
             quality:{invalidTimestamps:0,gaps:0,duplicates:0,identicalDuplicates:0,conflictingDuplicates:0,anomalousIntervals:0,misalignedTimestamps:0}});
           expect(snap.adapterQuality.invalidRows===null,'missing counter must not default to zero');
+        });
+        test('47 duplicate aggregate must equal classified duplicates', () => {
+          const s=make(); s.adapterQuality.duplicates=1; status(s,'INVALID');
+        });
+        test('48 analysis time/provider time mismatch is critical', () => {
+          const s=make(base(),{analysisAsOfMs:now+10000,providerTimeMs:now+5000}); status(s,'INVALID');
+        });
+        test('49 candle finality uses the earlier trusted cutoff', () => {
+          const a=base(); a[59].closeTimeMs=now+1000;
+          status(make(a,{analysisAsOfMs:now+5000,providerTimeMs:now+1200}),'INVALID');
         });
         const passed = tests.filter(t=>t.passed).length;
         return { total: tests.length, passed, failed: tests.length-passed, tests };
