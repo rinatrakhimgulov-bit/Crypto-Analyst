@@ -1131,3 +1131,14 @@ Stage A/S6 остаётся базовым прототипом сбора да�
 * UI mapping проверен статической трассировкой `renderSuccess()`; stale path — `renderError()`.
 * B1 открыт к началу. Цель: provider-neutral data contract, source adapters, synchronized multi-timeframe data, data-quality status/gating и воспроизводимые fixtures.
 * Исследовательский отчёт по pyvsmc: `docs/research/B2_PYVSMC_CANDIDATE_AUDIT_2026-11-26.md`; не интегрировать напрямую из-за потенциального look-ahead timing.
+
+
+⸻
+
+B1 research update — 26.11.2026:
+
+* B1 находится в исследовании; реализация и изменения HTML не начинались.
+* Изучен `rinng`: полезны Exchange Protocol, UTC contract, canonical OHLCV schema, exchange adapters, backfill, polling overlap и raw/curated pipeline. Найдены проблемы: quality `ok` не учитывает missing bars; resampling не доказывает полноту внутренних минутных свечей перед `is_closed=True`; анализ не запускает quality validation автоматически.
+* Изучен `CCXT`: MIT, unified OHLCV transport и Bybit adapter. Рассматривать только как транспортный слой, не как canonical data contract или quality engine.
+* Подробности и точные source blob SHA: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`.
+* Следующий шаг B1: зафиксировать контракт Candle/Snapshot/QualityReport, quality states, freshness/closed-candle policy и тестовую матрицу. D0-01 и D0-02 должны быть устранены до допуска LONG/SHORT.
