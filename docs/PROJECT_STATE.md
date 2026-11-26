@@ -434,3 +434,14 @@ B1-E has advanced from an isolated first-pass assembler to a corrected common-cu
 **Verification:** `B1EMtfSelfTest.runAll()` 31/31 PASS; `B1QualitySelfTest.runAll()` 65/65 PASS; both inline JavaScript blocks parse. Tests ran in an isolated V8 harness against extracted production implementations. Concurrency tests used test doubles for AbortController/DOMException/timers.
 
 **Not verified:** live Bybit requests, production provider-time spread calibration, browser DOM/UI, Chrome/iPhone Safari, full `StageASelfTest` 44/44, and actual network abort behavior. MTFDataEngine remains isolated and is not connected to the UI or directional decision pipeline. PR #6 remains draft and unmerged; `main` is unchanged. B1 is still IN PROGRESS.
+
+
+### B1-E boundary-finality refinement — latest update, 2026-11-26
+
+A further boundary case was identified and corrected: immediately after an interval boundary but before the 500 ms finality buffer expires, the just-ended candle and the new interval candle can both fail the closed predicate. They are not two active forming candles. The candidate now separates:
+- active forming: candle close time is later than the common cutoff;
+- pending finality: close time has passed, but close time + 500 ms is still later than the common cutoff.
+
+Only multiple active forming candidates are treated as ambiguous. The pending-finality count is exposed per timeframe. Raw-row reserve is now desiredClosedCount + ceil(maxProviderTimeSpreadMs / stepMs) + 2, accounting for spread rollover, active forming row and pending-finality row. Added a post-boundary fixture.
+
+Latest verification: B1-E 32/32 PASS; B1 Quality 65/65 PASS; both inline scripts parse. Still isolated V8 only, no browser/live verification. PR #6 draft/unmerged; main unchanged.
