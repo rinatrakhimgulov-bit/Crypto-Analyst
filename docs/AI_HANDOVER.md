@@ -1188,7 +1188,7 @@ Implemented in the candidate branch:
 - Mandatory quality preflight before `BasicAnalyticsEngine`; only VALID data can proceed to directional calculation.
 - Cached LONG/SHORT suppression after refresh failure: stale display becomes WAIT.
 - UI quality status row.
-- `B1QualitySelfTest.runAll()`: 32/32 isolated tests passed; both JS script blocks parse successfully.
+- `B1QualitySelfTest.runAll()`: 35/35 isolated tests passed; both JS script blocks parse successfully.
 
 ## Not yet complete
 
