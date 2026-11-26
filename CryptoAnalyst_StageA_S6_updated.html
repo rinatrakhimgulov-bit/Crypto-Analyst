@@ -2502,7 +2502,7 @@
           status(make(base(),{analysisAsOfMs:now+5000,providerTimeMs:now+1200}),'INVALID');
         });
         test('50 candle finality also enforces earlier analysis cutoff', () => {
-          status(make(base(),{analysisAsOfMs:now+1200,providerTimeMs:now+2500}),'INVALID');
+          status(make(base(),{analysisAsOfMs:now+200,providerTimeMs:now+1800}),'INVALID');
         });
         const passed = tests.filter(t=>t.passed).length;
         return { total: tests.length, passed, failed: tests.length-passed, tests };
