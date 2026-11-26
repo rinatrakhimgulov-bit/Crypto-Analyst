@@ -2443,12 +2443,15 @@
           const closedCandidates = sourceCandles.filter(c=>Number.isFinite(Number(c.ts)) &&
             Number.isFinite(Number(c.closeTs)) && Number(c.closeTs)+FINALITY_BUFFER_MS<=minProviderTime &&
             Number(c.ts)<=minProviderTime);
+          const pendingFinalityCandidates = sourceCandles.filter(c=>Number.isFinite(Number(c.ts)) &&
+            Number.isFinite(Number(c.closeTs)) && Number(c.ts)<=minProviderTime &&
+            Number(c.closeTs)<=minProviderTime && Number(c.closeTs)+FINALITY_BUFFER_MS>minProviderTime);
           const formingCandidates = sourceCandles.filter(c=>Number.isFinite(Number(c.ts)) &&
             Number.isFinite(Number(c.closeTs)) && Number(c.ts)<=minProviderTime &&
-            Number(c.closeTs)+FINALITY_BUFFER_MS>minProviderTime);
+            Number(c.closeTs)>minProviderTime);
           if (formingCandidates.length>1)
-            aggregateReasons.push({code:'MTF_MULTIPLE_FORMING_CANDLES',severity:'CRITICAL',timeframe:tf,message:'На общем срезе обнаружено больше одной незакрытой свечи.'});
-          // Never publish an arbitrary forming candle when the as-of partition is ambiguous.
+            aggregateReasons.push({code:'MTF_MULTIPLE_FORMING_CANDLES',severity:'CRITICAL',timeframe:tf,message:'На общем срезе обнаружено больше одной реально формирующейся свечи.'});
+          // A candle whose close time passed but whose finality buffer has not elapsed is pending finality, not a second forming candle.
           const forming = formingCandidates.length===1 ? formingCandidates[0] : null;
           const originalCoverage = dataset.coverage || {};
           const requestedClosedCount = dataset.mtfExpectedClosedCount;
@@ -2469,7 +2472,7 @@
           const canonical = DataQualityEngine.createSnapshot(rebased);
           const report = DataQualityEngine.validate(canonical,nowMs,{providerTimeToleranceMs:maxSpread});
           perTimeframe[tf] = {timeframe:tf,providerTimeMs:dataset.providerTimeMs,
-            excludedAfterCutoffCount,
+            excludedAfterCutoffCount,pendingFinalityCount:pendingFinalityCandidates.length,
             receivedAtMs:dataset.fetchedAtLocalMs,
             requestStartedAtMs:Number.isFinite(dataset.requestStartedAtMs)?dataset.requestStartedAtMs:null,
             requestCompletedAtMs:Number.isFinite(dataset.requestCompletedAtMs)?dataset.requestCompletedAtMs:null,
@@ -2503,7 +2506,7 @@
             const stepMs=DataQualityEngine.intervalToMs(tf);
             const spreadRows=Math.ceil(maxSpread/stepMs);
             // Bybit limit counts raw rows. Reserve rows for provider-time skew and one forming candle.
-            const rawLimit=desiredClosedCount+spreadRows+1;
+            const rawLimit=desiredClosedCount+spreadRows+2;
             if(rawLimit>1000) throw new RangeError('MTF raw kline limit exceeds Bybit V5 maximum of 1000.');
             const dataset=await adapter.fetchMarketSnapshot(symbol,tf,controller.signal,rawLimit);
             dataset.mtfExpectedClosedCount=desiredClosedCount;
@@ -2612,7 +2615,7 @@
         test('23 repeated fixture assembly is deterministic',()=>{const a=run(),b=run(),stable=m=>JSON.stringify({cutoff:m.analysisAsOfMs,status:m.status,candles:Object.fromEntries(['D','240','60'].map(tf=>[tf,m.timeframes[tf].snapshot.candles]))});expect(stable(a)===stable(b),'non-deterministic fixture result');});
         const makeRawV5Dataset=(tf,providerTime,desiredCount,spreadMs,shortBy=0)=>{
           const step=steps[tf],latestOpen=Math.floor(providerTime/step)*step;
-          const rawLimit=desiredCount+Math.ceil(spreadMs/step)+1;
+          const rawLimit=desiredCount+Math.ceil(spreadMs/step)+2;
           const rows=Array.from({length:rawLimit-shortBy},(_,i)=>{
             const ts=latestOpen-i*step,p=1000+i;
             return [String(ts),String(p),String(p+2),String(p-1),String(p+1),String(10),String(100)];
@@ -2691,6 +2694,16 @@
           const a=makeSet();a['240'].allCandles=[];
           const m=run(a);
           expect(m.timeframes['240'].qualityReport.status==='INVALID'&&m.timeframes['240'].snapshot===null,'missing candles diagnostic incomplete');
+        });
+        test('32 immediately post-boundary candle is pending finality, not a second forming candle',()=>{
+          const boundary=baseNow+steps['60'],cutoff=boundary+100,spread=0,n=60;
+          const set={D:makeRawV5Dataset('D',cutoff,n,spread),
+            '240':makeRawV5Dataset('240',cutoff,n,spread),
+            '60':makeRawV5Dataset('60',cutoff,n,spread)};
+          const m=run(set,{maxProviderTimeSpreadMs:spread});
+          expect(m.directionalAllowed,'normal post-boundary snapshot was blocked');
+          expect(m.timeframes['60'].pendingFinalityCount===1,'just-closed candle not tracked as pending finality');
+          expect(m.timeframes['60'].snapshot.formingCandle.openTimeMs===boundary,'active forming candle not retained');
         });
         return {total:tests.length,passed:tests.filter(t=>t.passed).length,failed:tests.filter(t=>!t.passed).length,tests};
       }
