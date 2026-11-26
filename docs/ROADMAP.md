@@ -296,3 +296,13 @@ B1-A/B/C/D реализованы в отдельной ветке `impl/b1-qual
 ### B1 finality regression test update — 2026-11-26
 
 Latest HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`. Added a dedicated regression test proving candle finality is checked against the earlier analysis-time cutoff as well as provider time. B1 suite now passes 50/50; both inline scripts parse. Browser/live exchange checks and independent Grok re-audit remain pending.
+
+
+### Latest candidate verification refresh (2026-11-26)
+
+- HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`.
+- `B1QualitySelfTest.runAll()`: 50/50 PASS in isolated JavaScript execution.
+- Both inline script blocks syntax-parse successfully.
+- Synthetic `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: 60 closed candles + 1 forming candle, status VALID.
+- Four direct quality-gate probes block malformed counters, negative counters, unclosed candles and missing coverage with WAIT / INVALID.
+- These are isolated JavaScript/fixture checks, not a live Bybit request or real browser runtime. Full StageASelfTest 44-case browser harness and independent Grok re-audit remain pending. PR #6 remains draft and unmerged; main is unchanged.
