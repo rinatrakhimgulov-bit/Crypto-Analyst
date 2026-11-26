@@ -187,7 +187,7 @@ Pong без `req_id` не подтверждает конкретный запр
 - B9 — новости и макро-контекст.
 - B10 — журнал, мониторинг и расширение.
 
-**Ближайший этап: B0, UNDER AUDIT.** До завершения аудита исходный код не менять. Данный индекс фиксирует навигацию по плану, а не наличие перечисленных функций в исходнике.
+**Ближайший этап: B1, READY TO START. B0 audit — DONE.** До завершения аудита исходный код не менять. Данный индекс фиксирует навигацию по плану, а не наличие перечисленных функций в исходнике.
 
 Канонический HTML в рамках этого документационного обновления не менялся.
 
@@ -200,3 +200,14 @@ Pong без `req_id` не подтверждает конкретный запр
 - `StageASelfTest.runAll()` — браузерный прогон на точной версии пока NOT RUN.
 
 Внешний кандидат `pyvsmc` исследован для B2/B4, не интегрирован. Обнаружен потенциальный look-ahead timing в swing → structure. Подробности: `docs/research/B2_PYVSMC_CANDIDATE_AUDIT_2026-11-26.md`.
+
+
+## 10. B0 acceptance / B1 handoff — 2026-11-26
+
+- `StageASelfTest.runAll()` — 44/44 в изолированном DOM/runtime harness; PARTIALLY TESTED (не реальный браузер).
+- `renderSuccess()` — UI mapping аналитических полей прослежен статически.
+- `renderError()` — stale-cache путь подтверждён: cached LONG/SHORT повторно отображается при ошибке обновления; DEFECT CONFIRMED.
+- `BasicAnalyticsEngine.analyze()` — INVALID quality reproducer возвращает LONG; DEFECT CONFIRMED.
+- `calcEMA()` / `calcATR()` — независимая численная spot-check сверка PASS на фиксированных synthetic fixtures.
+
+B0 завершён как аудит. B1 — следующий этап. Основной HTML не менялся.
