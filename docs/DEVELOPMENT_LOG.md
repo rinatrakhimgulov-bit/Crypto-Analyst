@@ -454,3 +454,11 @@ Inspected the current `BybitAdapter.normalize()`, `DataQualityEngine.createSnaps
 Added `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md`: target MTF orchestration, common-cutoff selection, reclassification of candles, coverage recalculation, aggregate quality rules, cache/concurrency safety and 23 deterministic acceptance tests. The live provider-time spread limit is intentionally not guessed; it must be calibrated from live measurements.
 
 No application code changed. B1-E remains specification-only / NOT IMPLEMENTED.
+
+## B1-E MTF implementation candidate — 2026-11-26
+
+Added an isolated `MTFDataEngine` to the PR #6 candidate HTML. The module supports coordinated concurrent 1D/4H/1H fetching, minimum trusted provider-time common cutoff, closed/forming reclassification, per-TF coverage recalculation, per-TF validation, aggregate quality, request supersession and sibling cancellation on failure. Existing selected-timeframe chart and analysis flow are not connected to this module.
+
+Added an explicit `providerTimeToleranceMs` validator override, defaulting to null (therefore existing single-timeframe validation continues to use the original 2-second skew limit). MTF passes its explicit measured spread policy; no production policy value has been selected pending live timing measurements.
+
+Tests on latest candidate blob: B1-E **23/23 PASS**, existing B1 quality suite **65/65 PASS**, both inline script blocks syntax-parse. Isolated V8 execution used test doubles for browser AbortController/DOMException/timer globals. No live HTTP, browser UI, mobile Safari or full StageASelfTest browser run. Candidate only; not merged.
