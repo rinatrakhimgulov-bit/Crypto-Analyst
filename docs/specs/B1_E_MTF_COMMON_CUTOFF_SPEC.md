@@ -70,7 +70,7 @@ Coverage is recomputed against the common cutoff. The request contract distingui
 **Definitions**
 - `desiredClosedCount` is the number of closed historical candles the MTF consumer requires per timeframe. `fetchAndAssemble()` receives it through `options.limit` (default 160).
 - Bybit V5 `limit` counts raw response rows, not closed candles. The response list is newest-first and may contain a forming candle whose close field is the latest traded price. Official endpoint: https://bybit-exchange.github.io/docs/v5/market/kline
-- For each timeframe, `rawLimit = desiredClosedCount + ceil(maxProviderTimeSpreadMs / stepMs) + 1`. The extra rows cover possible interval-boundary rollover across the permitted provider-time spread plus the forming row at the common cutoff.
+- For each timeframe, `rawLimit = desiredClosedCount + ceil(maxProviderTimeSpreadMs / stepMs) + 2`. The extra rows cover possible interval-boundary rollover across the permitted provider-time spread, the active forming row, and a candle whose close time has passed but whose 500 ms finality buffer has not yet elapsed.
 - The raw request limit must not exceed Bybit's maximum of 1000. Exceeding it fails the MTF request instead of silently reducing the requested history.
 - The adapter's original raw request window remains provenance metadata. It is not reused as the expected common-cutoff closed window.
 
@@ -78,7 +78,7 @@ For each timeframe:
 1. Compute `lastExpectedClosedOpenMs = floor((analysisAsOfMs - 500) / stepMs) * stepMs - stepMs`.
 2. Compute `expectedClosedStartMs = lastExpectedClosedOpenMs - (desiredClosedCount - 1) * stepMs`.
 3. Set `expectedClosedCount = desiredClosedCount` and validate that the canonical closed series begins and ends at the expected timestamps and contains exactly that count.
-4. Reclassify all normalized candles at the common cutoff before selecting the newest `desiredClosedCount` closed candles. Older excess rows may be trimmed; missing rows must not be hidden.
+4. Reclassify all normalized candles at the common cutoff before selecting the newest `desiredClosedCount` closed candles. A candle with `closeTimeMs <= analysisAsOfMs` but `closeTimeMs + 500 > analysisAsOfMs` is pending finality, not actively forming. An active forming candle has `closeTimeMs > analysisAsOfMs`. Older excess rows may be trimmed; missing rows must not be hidden.
 5. If the response is short, or the boundary rollover consumed rows so that the target window is incomplete, report coverage start/count findings and block directional permission.
 6. Preserve adapter-level gap, duplicate, malformed-row and alignment counters.
 
@@ -142,8 +142,9 @@ A missing 1D, 4H or 1H response is not silently replaced by an old cached timefr
 25. Actual Bybit V5-shaped rows pass through `BybitAdapter.normalize()` and then MTF assembly across 1H, 4H and 1D boundary rollovers.
 26. The fetch path requests sufficient raw rows for the configured provider-time spread and forming row; the assembled common-cutoff series contains exactly the requested closed-candle count.
 27. A short raw response is detected as incomplete coverage and cannot qualify for directional analysis.
-28. Multiple forming candidates produce an ambiguity reason and do not publish an arbitrary `formingCandle`.
+28. Multiple active forming candidates produce an ambiguity reason and do not publish an arbitrary `formingCandle`.
 29. Missing closed-count target, missing timeframe, interval mismatch or missing normalized candles produce stable per-timeframe diagnostics.
+30. Immediately after an interval boundary, the just-closed candle is tracked as pending finality, the new interval candle remains the sole forming candle, and the MTF set is not rejected merely because both rows are not yet final.
 
 All tests must assert status, directional permission, common cutoff, closed/forming membership and machine-readable reason codes where relevant.
 
@@ -167,4 +168,4 @@ B1-E is complete only when:
 - all deterministic tests pass;
 - integration with the future MTF analytics consumer is documented.
 
-The current candidate implements the isolated MTF assembler and deterministic fixtures. This does not claim browser/live verification or production readiness. Live provider measurements are still required to finalize the provider-time spread policy before enabling directional use.
+The current candidate implements the isolated MTF assembler and deterministic fixtures (32 MTF tests passing). This does not claim browser/live verification or production readiness. Live provider measurements are still required to finalize the provider-time spread policy before enabling directional use.
