@@ -24,7 +24,7 @@ MTF request (symbol, marketType, required TFs)
   -> recompute expected coverage for each TF at that cutoff
   -> run per-timeframe DataQualityEngine validation
   -> aggregate quality (worst required TF governs directional permission)
-  -> emit immutable MTF snapshot with one shared analysis_as_of_ms
+  -> emit deeply immutable MTF snapshot with one shared analysis_as_of_ms
   -> only then allow the MTF analytics layer to consume it
 ```
 
@@ -145,6 +145,7 @@ A missing 1D, 4H or 1H response is not silently replaced by an old cached timefr
 28. Multiple active forming candidates produce an ambiguity reason and do not publish an arbitrary `formingCandle`.
 29. Missing closed-count target, missing timeframe, interval mismatch or missing normalized candles produce stable per-timeframe diagnostics.
 30. Immediately after an interval boundary, the just-closed candle is tracked as pending finality, the new interval candle remains the sole forming candle, and the MTF set is not rejected merely because both rows are not yet final.
+31. Successful and failed assembled MTF snapshots are deeply immutable, including nested per-timeframe snapshots, candle arrays and quality reports.
 
 All tests must assert status, directional permission, common cutoff, closed/forming membership and machine-readable reason codes where relevant.
 
