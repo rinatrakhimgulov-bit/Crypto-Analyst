@@ -2412,8 +2412,8 @@
         const maxProviderTime = Math.max(...providerTimes);
         const providerTimeSpreadMs = maxProviderTime-minProviderTime;
         if (providerTimeSpreadMs>maxSpread)
-          return Object.assign(fail('INVALID','MTF_PROVIDER_TIME_SPREAD_EXCEEDED','Разброс времени ответов провайдера превышает установленную политику.'),
-            {analysisAsOfMs:minProviderTime,providerTimeSpreadMs});
+          return deepFreeze(Object.assign({},fail('INVALID','MTF_PROVIDER_TIME_SPREAD_EXCEEDED','Разброс времени ответов провайдера превышает установленную политику.'),
+            {analysisAsOfMs:minProviderTime,providerTimeSpreadMs}));
         const perTimeframe = {}, aggregateReasons = [], statuses = [];
         for (const tf of REQUIRED_TIMEFRAMES) {
           const dataset = datasetsByTimeframe[tf], stepMs = DataQualityEngine.intervalToMs(tf);
