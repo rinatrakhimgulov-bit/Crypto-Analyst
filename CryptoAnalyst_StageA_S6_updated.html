@@ -674,9 +674,9 @@
               throw new Error('Некорректный формат списка свечей');
             }
 
-            const serverTimeMs = Number.isFinite(Number(klineJson.time)) && Number(klineJson.time) > 0
-              ? Number(klineJson.time)
-              : Date.now();
+            const providerTimeAvailable = Number.isFinite(Number(klineJson.time)) && Number(klineJson.time) > 0;
+            const serverTimeMs = providerTimeAvailable ? Number(klineJson.time) : Date.now();
+            const timeSource = providerTimeAvailable ? 'PROVIDER' : 'LOCAL_FALLBACK';
             const clockSkewMs = serverTimeMs - Date.now();
 
             return this.normalize(klineJson.result.list, {
@@ -684,6 +684,8 @@
               interval,
               hostUsed: hostLabel,
               serverTimeMs,
+              providerTimeMs: providerTimeAvailable ? serverTimeMs : null,
+              timeSource,
               clockSkewMs,
               tickerStatus
             });
@@ -700,7 +702,7 @@
       },
 
       normalize(rawList, meta) {
-        const { symbol, interval, hostUsed, serverTimeMs, clockSkewMs, tickerStatus } = meta;
+        const { symbol, interval, hostUsed, serverTimeMs, providerTimeMs, timeSource, clockSkewMs, tickerStatus } = meta;
         const stepMs = this.intervalToMs(interval);
         const parsed = [];
         let invalidRows = 0;
@@ -742,10 +744,17 @@
 
         const deduped = [];
         let duplicates = 0;
+        let identicalDuplicates = 0;
+        let conflictingDuplicates = 0;
         for (const c of parsed) {
           if (deduped.length && deduped[deduped.length - 1].ts === c.ts) {
             duplicates++;
-            deduped[deduped.length - 1] = c;
+            const prior = deduped[deduped.length - 1];
+            const identical = prior.open === c.open && prior.high === c.high &&
+              prior.low === c.low && prior.close === c.close && prior.volume === c.volume;
+            if (identical) identicalDuplicates++;
+            else conflictingDuplicates++;
+            // Keep the first row deterministically; conflicts are surfaced and block analysis.
           } else {
             deduped.push(c);
           }
@@ -824,6 +833,8 @@
           hostUsed,
           fetchedAtLocalMs: Date.now(),
           serverTimeMs,
+          providerTimeMs: Number.isFinite(providerTimeMs) ? providerTimeMs : null,
+          timeSource: timeSource || 'UNKNOWN',
           clockSkewMs,
           allCandles: deduped,
           closedCandles,
@@ -845,6 +856,8 @@
             invalidRows,
             invalidTimestamps,
             duplicates,
+            identicalDuplicates,
+            conflictingDuplicates,
             gaps,
             anomalousIntervals,
             misalignedTimestamps,
@@ -2091,6 +2104,219 @@
       }
     };
 
+
+    // =========================================================================
+    // B1-A/B: CANONICAL DATA CONTRACT + DETERMINISTIC QUALITY VALIDATOR
+    // Provider adapter remains separate; no directional decisions are made here.
+    // =========================================================================
+    const DataQualityEngine = (() => {
+      const CONTRACT_VERSION = '1.0.0';
+      const DEFAULTS = Object.freeze({
+        maxSnapshotAgeMs: 120000,
+        allowedFutureSkewMs: 2000,
+        minimumClosedCandles: 50
+      });
+
+      function intervalToMs(timeframe) {
+        if (timeframe === '60') return 3600000;
+        if (timeframe === '240') return 14400000;
+        if (timeframe === 'D') return 86400000;
+        return null;
+      }
+
+      function toCanonicalCandle(candle, timeframe, state) {
+        const stepMs = intervalToMs(timeframe);
+        return {
+          openTimeMs: Number(candle.ts),
+          closeTimeMs: Number(candle.closeTs ?? (Number(candle.ts) + stepMs)),
+          open: Number(candle.open),
+          high: Number(candle.high),
+          low: Number(candle.low),
+          close: Number(candle.close),
+          volumeBase: Number(candle.volume),
+          closedState: state || 'TIME_DERIVED',
+          sourceTimestamp: Number(candle.ts)
+        };
+      }
+
+      function createSnapshot(dataset) {
+        if (!dataset || typeof dataset !== 'object') throw new TypeError('dataset is required');
+        const timeframe = String(dataset.interval || '');
+        const quality = dataset.quality || {};
+        const closed = Array.isArray(dataset.closedCandles) ? dataset.closedCandles : [];
+        const forming = dataset.formingCandle
+          ? toCanonicalCandle(dataset.formingCandle, timeframe, 'FORMING')
+          : null;
+        return {
+          contractVersion: CONTRACT_VERSION,
+          provider: String(dataset.source || 'unknown'),
+          venue: String(dataset.marketType || 'unknown'),
+          symbol: String(dataset.symbol || ''),
+          timeframe,
+          analysisAsOfMs: Number(dataset.serverTimeMs),
+          providerTimeMs: Number.isFinite(Number(dataset.providerTimeMs)) ? Number(dataset.providerTimeMs) : null,
+          timeSource: dataset.timeSource || (Number.isFinite(Number(dataset.providerTimeMs)) ? 'PROVIDER' : 'UNKNOWN'),
+          receivedAtMs: Number(dataset.fetchedAtLocalMs),
+          candles: closed.map(c => toCanonicalCandle(c, timeframe, 'TIME_DERIVED')),
+          formingCandle: forming,
+          adapterQuality: {
+            invalidRows: Number(quality.invalidRows || 0),
+            invalidTimestamps: Number(quality.invalidTimestamps || 0),
+            gaps: Number(quality.gaps || 0),
+            duplicates: Number(quality.duplicates || 0),
+            identicalDuplicates: Number(quality.identicalDuplicates || 0),
+            conflictingDuplicates: Number(quality.conflictingDuplicates || 0),
+            anomalousIntervals: Number(quality.anomalousIntervals || 0),
+            misalignedTimestamps: Number(quality.misalignedTimestamps || 0)
+          }
+        };
+      }
+
+      function validate(snapshot, nowMs = Date.now(), overrides = {}) {
+        const cfg = Object.assign({}, DEFAULTS, overrides || {});
+        const reasons = [];
+        const counts = {
+          receivedCount: Array.isArray(snapshot && snapshot.candles) ? snapshot.candles.length : 0,
+          invalidOhlc: 0, nonFinite: 0, negativeVolume: 0, misaligned: 0,
+          future: 0, duplicate: 0, outOfOrder: 0, gaps: 0
+        };
+        const add = (code, severity, message) => reasons.push({ code, severity, message });
+        if (!snapshot || snapshot.contractVersion !== CONTRACT_VERSION) {
+          add('CONTRACT_VERSION_INVALID', 'CRITICAL', 'Неизвестная версия контракта данных.');
+        }
+        const stepMs = intervalToMs(snapshot && snapshot.timeframe);
+        if (!stepMs) add('TIMEFRAME_UNSUPPORTED', 'CRITICAL', 'Неподдерживаемый таймфрейм.');
+        if (!snapshot || !snapshot.symbol) add('SYMBOL_MISSING', 'CRITICAL', 'Не указан торговый инструмент.');
+        if (!Number.isFinite(snapshot && snapshot.analysisAsOfMs)) add('ANALYSIS_TIME_MISSING', 'CRITICAL', 'Отсутствует достоверное время анализа.');
+        if (!Number.isFinite(snapshot && snapshot.receivedAtMs)) add('RECEIVE_TIME_MISSING', 'CRITICAL', 'Отсутствует время получения снимка.');
+        if (Number.isFinite(snapshot && snapshot.receivedAtMs) && Number.isFinite(nowMs)) {
+          const age = nowMs - snapshot.receivedAtMs;
+          if (age < -cfg.allowedFutureSkewMs) add('RECEIVE_TIME_IN_FUTURE', 'CRITICAL', 'Время получения снимка находится в будущем.');
+          else if (age > cfg.maxSnapshotAgeMs) add('SNAPSHOT_STALE', 'CRITICAL', 'Снимок данных устарел.');
+        }
+        if (snapshot && snapshot.timeSource !== 'PROVIDER') {
+          add('PROVIDER_TIME_UNTRUSTED', 'MAJOR', 'Время провайдера отсутствует или заменено локальными часами.');
+        }
+        if (snapshot && snapshot.adapterQuality) {
+          const q = snapshot.adapterQuality;
+          if (q.invalidRows > 0 || q.invalidTimestamps > 0) add('ADAPTER_INVALID_ROWS', 'CRITICAL', 'Адаптер отбросил некорректные строки или временные метки.');
+          if (q.conflictingDuplicates > 0) add('CONFLICTING_DUPLICATES', 'CRITICAL', 'Обнаружены конфликтующие свечи с одинаковой временной меткой.');
+          if (q.identicalDuplicates > 0) add('IDENTICAL_DUPLICATES', 'MAJOR', 'Обнаружены повторяющиеся идентичные свечи.');
+          if (q.gaps > 0) add('CANDLE_GAPS', 'MAJOR', 'В последовательности свечей обнаружены пропуски.');
+          if (q.anomalousIntervals > 0) add('ANOMALOUS_INTERVALS', 'CRITICAL', 'Обнаружены аномальные интервалы между свечами.');
+          if (q.misalignedTimestamps > 0) add('MISALIGNED_TIMESTAMPS', 'CRITICAL', 'Временные метки не соответствуют UTC-сетке таймфрейма.');
+        }
+
+        const candles = snapshot && Array.isArray(snapshot.candles) ? snapshot.candles : [];
+        let previousOpen = null;
+        for (const c of candles) {
+          const fields = [c.openTimeMs, c.closeTimeMs, c.open, c.high, c.low, c.close, c.volumeBase];
+          if (!fields.every(Number.isFinite)) {
+            counts.nonFinite++;
+            continue;
+          }
+          if (c.open <= 0 || c.high <= 0 || c.low <= 0 || c.close <= 0 ||
+              c.high < Math.max(c.open, c.close, c.low) ||
+              c.low > Math.min(c.open, c.close, c.high) ||
+              c.high < c.low || c.closeTimeMs <= c.openTimeMs) {
+            counts.invalidOhlc++;
+          }
+          if (c.volumeBase < 0) counts.negativeVolume++;
+          if (stepMs && (c.openTimeMs % stepMs !== 0 || c.closeTimeMs !== c.openTimeMs + stepMs)) counts.misaligned++;
+          if (Number.isFinite(snapshot.analysisAsOfMs) && c.openTimeMs > snapshot.analysisAsOfMs + cfg.allowedFutureSkewMs) counts.future++;
+          if (previousOpen !== null) {
+            const diff = c.openTimeMs - previousOpen;
+            if (diff <= 0) {
+              counts.outOfOrder++;
+              if (diff === 0) counts.duplicate++;
+            } else if (stepMs && diff > stepMs) {
+              counts.gaps += Math.max(1, Math.round(diff / stepMs) - 1);
+            } else if (stepMs && diff < stepMs) {
+              counts.misaligned++;
+            }
+          }
+          previousOpen = c.openTimeMs;
+        }
+        if (counts.nonFinite) add('NON_FINITE_VALUES', 'CRITICAL', 'Есть нечисловые или бесконечные значения.');
+        if (counts.invalidOhlc) add('INVALID_OHLC', 'CRITICAL', 'Нарушены математические ограничения OHLC.');
+        if (counts.negativeVolume) add('NEGATIVE_VOLUME', 'CRITICAL', 'Объём не может быть отрицательным.');
+        if (counts.misaligned) add('CANDLE_ALIGNMENT_INVALID', 'CRITICAL', 'Свечи имеют неверную временную сетку или длительность.');
+        if (counts.future) add('FUTURE_CANDLES', 'CRITICAL', 'В набор попали свечи из будущего относительно времени анализа.');
+        if (counts.duplicate) add('DUPLICATE_CANDLES', 'CRITICAL', 'В каноническом ряду есть повторяющиеся временные метки.');
+        if (counts.outOfOrder) add('CANDLE_ORDER_INVALID', 'CRITICAL', 'Свечи расположены не в строго возрастающем порядке.');
+        if (counts.gaps) add('CANDLE_GAPS_IN_SERIES', 'MAJOR', 'Канонический ряд содержит пропуски.');
+        if (candles.length < cfg.minimumClosedCandles) add('INSUFFICIENT_HISTORY', 'CRITICAL', 'Недостаточно закрытых свечей для базового набора индикаторов.');
+
+        const critical = reasons.some(r => r.severity === 'CRITICAL');
+        const major = reasons.some(r => r.severity === 'MAJOR');
+        const status = critical
+          ? (reasons.some(r => r.code === 'SNAPSHOT_STALE') ? 'STALE'
+            : reasons.some(r => r.code === 'INSUFFICIENT_HISTORY') ? 'INSUFFICIENT' : 'INVALID')
+          : major ? 'DEGRADED' : 'VALID';
+        return {
+          contractVersion: CONTRACT_VERSION,
+          status,
+          directionalAllowed: status === 'VALID',
+          checkedAtMs: nowMs,
+          snapshotAgeMs: Number.isFinite(snapshot && snapshot.receivedAtMs) ? nowMs - snapshot.receivedAtMs : null,
+          counts,
+          reasons
+        };
+      }
+
+      return Object.freeze({ CONTRACT_VERSION, DEFAULTS, intervalToMs, createSnapshot, validate });
+    })();
+
+    window.B1QualitySelfTest = {
+      runAll() {
+        const now = 1800000000000;
+        const step = 3600000;
+        const base = (n = 60) => Array.from({ length: n }, (_, i) => ({
+          openTimeMs: now - (n - i) * step,
+          closeTimeMs: now - (n - i - 1) * step,
+          open: 100 + i, high: 102 + i, low: 99 + i, close: 101 + i,
+          volumeBase: 10, closedState: 'TIME_DERIVED'
+        }));
+        const make = (candles = base(), overrides = {}) => Object.assign({
+          contractVersion: DataQualityEngine.CONTRACT_VERSION,
+          provider: 'fixture', venue: 'linear', symbol: 'BTCUSDT', timeframe: '60',
+          analysisAsOfMs: now + 5000, providerTimeMs: now + 5000, timeSource: 'PROVIDER',
+          receivedAtMs: now, candles, formingCandle: null, adapterQuality: {}
+        }, overrides);
+        const tests = [];
+        const test = (name, fn) => { try { fn(); tests.push({ name, passed: true }); } catch (e) { tests.push({ name, passed: false, error: e.message }); } };
+        const expect = (ok, message) => { if (!ok) throw new Error(message); };
+        const status = (s, expected) => expect(DataQualityEngine.validate(s, now).status === expected, 'expected '+expected+' got '+DataQualityEngine.validate(s, now).status);
+        test('01 valid full history', () => status(make(), 'VALID'));
+        test('02 missing first candle reported', () => { const s=make(base().slice(1)); expect(DataQualityEngine.validate(s,now).counts.receivedCount===59,'count'); });
+        test('03 internal gap detected', () => { const a=base(); a.splice(20,1); expect(DataQualityEngine.validate(make(a),now).counts.gaps===1,'gap'); });
+        test('04 missing last candle reported by count', () => expect(DataQualityEngine.validate(make(base().slice(0,-1)),now).counts.receivedCount===59,'count'));
+        test('05 identical duplicate flagged from adapter metadata', () => { const s=make(); s.adapterQuality.identicalDuplicates=1; status(s,'DEGRADED'); });
+        test('06 conflicting duplicate blocks', () => { const s=make(); s.adapterQuality.conflictingDuplicates=1; status(s,'INVALID'); });
+        test('07 out of order rejected', () => { const a=base(); [a[10],a[11]]=[a[11],a[10]]; status(make(a),'INVALID'); });
+        test('08 invalid high rejected', () => { const a=base(); a[4].high=100; status(make(a),'INVALID'); });
+        test('09 invalid low rejected', () => { const a=base(); a[4].low=200; status(make(a),'INVALID'); });
+        test('10 NaN rejected', () => { const a=base(); a[4].close=NaN; status(make(a),'INVALID'); });
+        test('11 Infinity rejected', () => { const a=base(); a[4].volumeBase=Infinity; status(make(a),'INVALID'); });
+        test('12 negative volume rejected', () => { const a=base(); a[4].volumeBase=-1; status(make(a),'INVALID'); });
+        test('13 misaligned open rejected', () => { const a=base(); a[4].openTimeMs+=1000; status(make(a),'INVALID'); });
+        test('14 future candle rejected', () => { const a=base(); a[59].openTimeMs=now+step; a[59].closeTimeMs=now+2*step; status(make(a),'INVALID'); });
+        test('15 stale snapshot rejected', () => status(make(base(),{receivedAtMs:now-180000}),'STALE'));
+        test('16 insufficient history rejected', () => status(make(base(49)),'INSUFFICIENT'));
+        test('17 local fallback time blocks direction', () => status(make(base(),{timeSource:'LOCAL_FALLBACK'}),'DEGRADED'));
+        test('18 unknown time source blocks direction', () => status(make(base(),{timeSource:'UNKNOWN'}),'DEGRADED'));
+        test('19 missing symbol rejected', () => status(make(base(),{symbol:''}),'INVALID'));
+        test('20 unsupported timeframe rejected', () => status(make(base(),{timeframe:'5'}),'INVALID'));
+        test('21 missing analysis time rejected', () => status(make(base(),{analysisAsOfMs:null}),'INVALID'));
+        test('22 missing receive time rejected', () => status(make(base(),{receivedAtMs:null}),'INVALID'));
+        test('23 invalid adapter rows block', () => { const s=make(); s.adapterQuality.invalidRows=1; status(s,'INVALID'); });
+        test('24 adapter gap degrades', () => { const s=make(); s.adapterQuality.gaps=1; status(s,'DEGRADED'); });
+        test('25 exact duplicate timestamps rejected', () => { const a=base(); a[30]={...a[29]}; status(make(a),'INVALID'); });
+        const passed = tests.filter(t=>t.passed).length;
+        return { total: tests.length, passed, failed: tests.length-passed, tests };
+      }
+    };
+
     // =========================================================================
     // 2. БАЗОВОЕ АНАЛИТИЧЕСКОЕ ЯДРО (ЭТАП 1)
     // =========================================================================
@@ -3190,7 +3416,7 @@
             rows.push([String(ts), o.toFixed(2), (Math.max(o, c) + 40).toFixed(2), (Math.min(o, c) - 40).toFixed(2), c.toFixed(2), '100']);
           }
           return BybitAdapter.normalize(rows, {
-            symbol, interval, hostUsed: 'selftest-mock (СИМУЛЯЦИЯ)', serverTimeMs: nowMs, clockSkewMs: 0,
+            symbol, interval, hostUsed: 'selftest-mock (СИМУЛЯЦИЯ)', serverTimeMs: nowMs, providerTimeMs: nowMs, timeSource: 'PROVIDER', clockSkewMs: 0,
             tickerStatus: { available: false, price: null, timeMs: null, hostUsed: 'selftest-mock', error: 'симуляция StageASelfTest' }
           });
         };
