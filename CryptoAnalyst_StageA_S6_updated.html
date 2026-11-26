@@ -2584,7 +2584,7 @@
         test('07 local fallback provider time cannot qualify',()=>{const a=makeSet();a.D.timeSource='LOCAL_FALLBACK';const m=run(a);expect(!m.directionalAllowed&&m.status==='INVALID','fallback accepted');});
         test('08 finality T-501 ms remains closed',()=>{const c=baseNow+501,m=run(makeSet({D:c,'240':c,'60':c}),{maxProviderTimeSpreadMs:0});expect(m.timeframes['60'].snapshot.candles.length===60,'T-501 not closed');});
         test('09 finality T-500 ms remains closed',()=>{const c=baseNow+500,m=run(makeSet({D:c,'240':c,'60':c}),{maxProviderTimeSpreadMs:0});expect(m.timeframes['60'].snapshot.candles.length===60,'T-500 not closed');});
-        test('10 finality T-499 ms moves latest candle out of closed set',()=>{const c=baseNow+499,m=run(makeSet({D:c,'240':c,'60':c}),{maxProviderTimeSpreadMs:0});expect(m.timeframes['60'].snapshot.candles.length===59&&!!m.timeframes['60'].snapshot.formingCandle,'T-499 remained closed');});
+        test('10 finality T-499 ms moves latest candle out of closed set',()=>{const c=baseNow+499,m=run(makeSet({D:c,'240':c,'60':c}),{maxProviderTimeSpreadMs:0});expect(m.timeframes['60'].snapshot.candles.length===59&&m.timeframes['60'].pendingFinalityCount===1&&!m.timeframes['60'].snapshot.formingCandle,'T-499 candle was not classified as pending finality');});
         test('11 later response candle set is reclassified against common cutoff',()=>{const m=run();expect(m.timeframes.D.snapshot.candles.every(c=>c.closeTimeMs+500<=m.analysisAsOfMs),'D candles beyond cutoff');});
         test('12 candle opening after common cutoff is excluded without invalidating a coherent snapshot',()=>{const a=makeSet();a.D.allCandles.push({ts:baseNow+2000,closeTs:baseNow+day+2000,open:1,high:2,low:1,close:2,volume:1});const m=run(a);expect(m.directionalAllowed,'legitimate later-open candle blocked MTF');expect(m.timeframes.D.excludedAfterCutoffCount===1,'excluded candle not counted');expect(m.timeframes.D.snapshot.candles.every(c=>c.openTimeMs<=m.analysisAsOfMs),'post-cutoff candle entered closed set');});
         test('13 adapter quality findings survive reclassification',()=>{const a=makeSet();a['240'].quality.gaps=1;const m=run(a);expect(!m.directionalAllowed&&m.reasons.some(r=>r.timeframe==='240'&&r.code==='CANDLE_GAPS'),'gap finding lost');});
@@ -2664,7 +2664,7 @@
           const boundary=baseNow+steps['60'],cutoff=boundary-200,spread=400,n=60;
           const set={D:makeRawV5Dataset('D',cutoff,n,spread),
             '240':makeRawV5Dataset('240',boundary+100,n,spread),
-            '60':makeRawV5Dataset('60',boundary+200,n,spread,1)};
+            '60':makeRawV5Dataset('60',boundary+200,n,spread,2)};
           const m=run(set,{maxProviderTimeSpreadMs:spread});
           expect(!m.directionalAllowed,'short V5 response incorrectly qualified');
           expect(m.reasons.some(r=>r.timeframe==='60'&&['COVERAGE_START_MISSING','COVERAGE_COUNT_MISMATCH'].includes(r.code)),
