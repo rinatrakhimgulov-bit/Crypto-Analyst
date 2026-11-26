@@ -187,6 +187,38 @@ Pong без `req_id` не подтверждает конкретный запр
 - B9 — новости и макро-контекст.
 - B10 — журнал, мониторинг и расширение.
 
-**Ближайший этап: B0, НЕ НАЧАТ.** До завершения аудита исходный код не менять. Данный индекс фиксирует навигацию по плану, а не наличие перечисленных функций в исходнике.
+**Ближайший этап: B1, IN RESEARCH. B0 audit — DONE.** До завершения аудита исходный код не менять. Данный индекс фиксирует навигацию по плану, а не наличие перечисленных функций в исходнике.
 
 Канонический HTML в рамках этого документационного обновления не менялся.
+
+
+## 9. Актуализация 2026-11-26 — B0 audit и внешний B2-кандидат
+
+- `BasicAnalyticsEngine.calcEMA()` — сверена на одном фиксированном ряду с независимой рекуррентной реализацией; PARTIALLY TESTED.
+- `BasicAnalyticsEngine.calcATR()` — сверена на одном фиксированном ряду с независимым Wilder smoothing; PARTIALLY TESTED.
+- `BasicAnalyticsEngine.analyze()` — воспроизведено отсутствие quality gate: INVALID dataset допускает LONG; DEFECT CONFIRMED.
+- `StageASelfTest.runAll()` — браузерный прогон на точной версии пока NOT RUN.
+
+Внешний кандидат `pyvsmc` исследован для B2/B4, не интегрирован. Обнаружен потенциальный look-ahead timing в swing → structure. Подробности: `docs/research/B2_PYVSMC_CANDIDATE_AUDIT_2026-11-26.md`.
+
+
+## 10. B0 acceptance / B1 handoff — 2026-11-26
+
+- `StageASelfTest.runAll()` — 44/44 в изолированном DOM/runtime harness; PARTIALLY TESTED (не реальный браузер).
+- `renderSuccess()` — UI mapping аналитических полей прослежен статически.
+- `renderError()` — stale-cache путь подтверждён: cached LONG/SHORT повторно отображается при ошибке обновления; DEFECT CONFIRMED.
+- `BasicAnalyticsEngine.analyze()` — INVALID quality reproducer возвращает LONG; DEFECT CONFIRMED.
+- `calcEMA()` / `calcATR()` — независимая численная spot-check сверка PASS на фиксированных synthetic fixtures.
+
+B0 завершён как аудит. B1 — следующий этап. Основной HTML не менялся.
+
+
+## 11. B1 research — Data Layer candidates — 2026-11-26
+
+- `rinng` Exchange Protocol / Binance / OKX adapters / canonical schemas — RESEARCHED, not integrated.
+- `rinng.pipeline.validate.check_candles()` — candidate quality checker; issue found: `CandleReport.ok` ignores `missing` count.
+- `rinng.store.resample.resample_ohlcv()` — candidate resampling logic; possible incomplete-window `is_closed` issue identified.
+- `rinng.pipeline.run.analyze()` — no mandatory validation preflight found.
+- `CCXT` Bybit `fetch_ohlcv()` — source adapter candidate; unified OHLCV transport, not data quality validation.
+
+Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 remains IN RESEARCH. No application HTML changes.

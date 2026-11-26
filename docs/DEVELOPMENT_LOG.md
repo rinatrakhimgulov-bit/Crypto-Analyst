@@ -235,3 +235,78 @@ B0 — полный аудит существующего конвейера о�
 - Статусы Roadmap выставлены по имеющимся подтверждённым сведениям; B0 остаётся НЕ НАЧАТ.
 
 **Итог:** документационный этап принят после проверки наличия файлов и коммита в отдельной ветке. Это не является технической приёмкой новых функций приложения.
+
+
+## 7. B0 — предварительный аудит и изолированные вычислительные проверки
+
+**Дата:** 2026-11-26. Исполнитель: ChatGPT (куратор/аудитор). Тип работы: аудит и документация; основной HTML не изменялся.
+
+### Результаты
+- Прослежен путь REST → нормализация → dataset → BasicAnalyticsEngine → UI.
+- Зафиксированы отсутствие quality gate, stale-cache directional risk, отсутствие MTF, неполная структура рынка и необходимость causal timestamp для swing.
+- Оба inline JavaScript script blocks канонического файла проходят синтаксический парсинг (2/2).
+- Извлечённые из канонического исходника EMA и ATR исполнены на фиксированных синтетических данных и совпали с независимыми расчётами (максимальная абсолютная ошибка 0 для каждого тестового ряда).
+- Прямой вызов BasicAnalyticsEngine с quality.status=INVALID, gaps=5, duplicates=2, invalidRows=3 вернул LONG. Отсутствие quality gate подтверждено исполнением функции.
+- Полный браузерный StageASelfTest, UI и live REST пока не запускались.
+
+### Документы
+- `docs/audits/B0_AUDIT_2026-11-26.md`
+- `docs/ROADMAP.md` (B0 — В РАБОТЕ)
+
+### Статус
+**B0 не завершён.** Изолированные проверки не заменяют полный браузерный runtime. Дефекты не исправлялись; основной HTML не менялся.
+
+## 8. B2 — предварительный аудит внешнего кандидата pyvsmc
+
+**Дата:** 2026-11-26. Тип работы: исследование внешнего кода; интеграции нет.
+
+Проверены README, MIT LICENSE, `src/pyvsmc/swings.py`, `src/pyvsmc/structure.py`, тесты swing/structure и `pyproject.toml` проекта `Khaymat/pyvsmc`.
+
+Обнаружен потенциальный look-ahead в связке swing → structure: fractal swing требует N правых свечей, но структура начинает использовать уровень со следующего бара, а не с фактического момента подтверждения. Дополнительно зафиксированы default tie='all' и bullish приоритет при одновременных пробоях в нейтральном состоянии. Заявленные автором 92 теста нами не запускались.
+
+**Решение:** кандидат полезен для исследования B2/B4, но прямая интеграция HOLD до причинной коррекции и независимых тестов.
+
+Подробности: `docs/research/B2_PYVSMC_CANDIDATE_AUDIT_2026-11-26.md`.
+
+
+## 9. B0 — аудит завершён; B1 открыт
+
+**Дата:** 2026-11-26. Тип: аудит, без изменения исходного HTML.
+
+### Итоговые проверки
+- `StageASelfTest.runAll()` на точном исходнике выполнен в изолированном DOM/runtime harness: 44/44, setupError отсутствует, cleanupErrors пуст.
+- `renderSuccess()` сопоставлен с фактическими полями `analysis` и `dataset`; отображаются decision, reasons, EMA, ATR, volume, уровни и quality metadata.
+- `renderError()` при наличии cached snapshot повторно вызывает `renderSuccess(cached.dataset, cached.analysis)`, то есть сохраняет старый LONG/SHORT при сетевой ошибке. D0-02 подтверждён статической трассировкой.
+- D0-01 подтверждён исполняемым reproducer: `quality.status=INVALID` при gaps/duplicates/invalidRows не блокирует LONG.
+- Изолированные проверки EMA и ATR совпали с независимыми формулами на выбранных synthetic fixtures.
+
+### Ограничения
+Это не запуск в настоящем Chrome/Safari и не проверка живого REST endpoint. Основной HTML не менялся. B0 принят как аудит текущего конвейера; открытые дефекты переданы в требования B1.
+
+### Решение
+B0 — DONE (audit only). B1 — READY TO START. Внешние библиотеки не интегрированы.
+
+
+## 10. B1 — исследование кандидатов для Data Layer
+
+**Дата:** 2026-11-26. Тип: исследование исходного кода; интеграции нет.
+
+### rinng
+
+Проверены Exchange Protocol, Binance/OKX adapters, canonical schemas, resampling, validation, pipeline runner и тесты adapters/store. Полезные идеи: provider protocol, UTC milliseconds, явные [start,end) интервалы, canonical OHLCV schema, exchange-specific pagination/timezone/error handling, backfill, polling overlap, raw/curated storage и mock tests.
+
+Обнаружены проблемы: `CandleReport.ok` не учитывает missing bars; `resample_ohlcv()` может отметить агрегат закрытым без проверки полноты внутренних 1m свечей; `pipeline.run.analyze()` не вызывает обязательную quality validation; отдельные тесты на `validate.py` и `resample.py` в дереве не найдены. Заявленные/имеющиеся тесты проекта нами не запускались.
+
+### CCXT
+
+Проверены MIT LICENSE, README и реализация Bybit `fetch_ohlcv()` в Python. CCXT предоставляет unified OHLCV API, market/timeframe mapping, pagination option и поддержку обычных/mark/index/premium candles. Но это транспортный слой, не quality engine; некоторые дополнительные OHLCV поля и exchange closed flag не входят в базовый унифицированный ряд.
+
+### Решение
+
+- rinng: KEEP/ADAPT как архитектурный источник, но не копировать data-quality/resample логику без исправлений.
+- CCXT: shortlist для source adapters, но не считать заменой собственного canonical contract и quality gate.
+- Собственный контракт Candle/Snapshot/QualityReport и обязательный preflight quality gate остаются необходимыми.
+
+Подробности: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`.
+
+B1 находится в исследовании. Основной HTML не изменён.
