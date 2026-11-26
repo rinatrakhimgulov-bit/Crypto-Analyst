@@ -353,3 +353,12 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. Added a dedicated 
 - No UI or existing selected-timeframe chart flow is connected to MTF yet. No live Bybit request, Chrome/iPhone Safari runtime or full StageASelfTest browser run. B1-E remains IN PROGRESS; PR #6 remains draft.
 
 B1-E audit refinement: a candle whose open time is later than the common cutoff is now excluded from the as-of snapshot and counted in `excludedAfterCutoffCount`; its mere presence no longer invalidates a coherent snapshot. This handles ordinary response-time differences across an interval boundary. B1-E remains 23/23 PASS and B1 remains 65/65 PASS after this correction.
+
+
+### B1-E common-cutoff implementation correction — 2026-11-26 (latest candidate update)
+
+The B1-E candidate in draft PR #6 now separates desired closed-candle history from Bybit raw-row request limit. Per-TF raw limit is calculated as desired closed count + `ceil(maxProviderTimeSpreadMs / stepMs) + 1`, reserving for interval-boundary rollover and a forming row. Bybit's 1000-row maximum is enforced. Expected coverage start/end/count are derived from the shared cutoff and explicit target count. Excess older eligible candles may be trimmed; missing history is reported and blocks directional permission.
+
+Multiple forming candidates no longer publish an arbitrary forming candle. Missing target/timeframe, interval mismatch and missing normalized rows produce stable per-TF diagnostics. Integration fixtures run V5-shaped raw rows through the actual adapter normalizer and MTF assembler across 1H, 4H and 1D boundaries, plus short-response coverage failure.
+
+Verification in isolated V8: B1-E 31/31 PASS; B1 Quality 65/65 PASS; both inline scripts parse. This is not live Bybit or browser verification. Production provider-time spread policy remains uncalibrated. MTFDataEngine is not wired into UI/decision logic. PR #6 remains draft/unmerged; main unchanged; B1 remains IN PROGRESS.
