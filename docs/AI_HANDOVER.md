@@ -1085,9 +1085,9 @@ B0 аудит; B1 качество данных; B2 структура рынк�
 
 Не создавать параллельные версии Roadmap в других документах. При изменении приоритетов обновлять именно этот файл и синхронизировать краткие указатели в остальных документах.
 
-## Ближайшая задача — B0
+## Историческая задача B0 (ЗАВЕРШЕНА; нижеследующая формулировка заменена актуальным статусом в конце документа)
 
-B0 ещё НЕ НАЧАТ. Провести полный аудит текущего HTML от получения данных до UI, включая:
+B0 выполнен как source audit. Актуальный handover и дальнейшие задачи указаны в последнем разделе. Исторический перечень проверок B0:
 - Bybit REST/WS, адаптеры и путь данных;
 - фактическое получение 1D/4H/1H;
 - закрытые и формирующиеся свечи;
@@ -1098,11 +1098,9 @@ B0 ещё НЕ НАЧАТ. Провести полный аудит текуще
 
 На B0 запрещено менять код. Результат — доказательная матрица «реализовано / частично / отсутствует / не подтверждено», точные ссылки на код, дефекты и спецификация B1.
 
-## Текущие ограничения
+## Текущие ограничения (исторический раздел; сверять с последним статусом документа)
 
-Stage A/S6 остаётся базовым прототипом сбора данных и базовой технической аналитики. Нельзя описывать его как полноценную MTF-аналитику, Market Structure/Regime Engine, Market Research, validated strategy library, полноценный Trade Scenario Engine или готовый риск-планировщик. 44 теста присутствуют, но прохождение 44/44 именно на окончательной версии не подтверждено сохранённым полным логом. Реальный Bybit runtime и iPhone Safari lifecycle не подтверждены.
-
-Документационное обновление Roadmap не меняет исходный HTML и не является реализацией B0–B10.
+Stage A/S6 остаётся прототипом; полноценные MTF, Market Structure/Regime, Market Research, validated strategy library, Trade Scenario Engine и риск-планировщик не реализованы. Реальный Bybit runtime и iPhone Safari lifecycle не подтверждены.
 
 ## Правило продолжения
 
@@ -1166,3 +1164,38 @@ B1 adapter mapping update — 26.11.2026:
 * `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps the exact Stage A `BybitAdapter` (lines 546–857) to the proposed canonical contract and lists 11 gaps.
 * Keep current JS adapter as first provider; do not rewrite or migrate to Python before proving need. Proposed B1 first pass: canonical mapping → pure validator → quality gate → stale-cache suppression → MTF cutoff → second provider.
 * This is a specification only; canonical HTML remains unchanged.
+
+
+# CURRENT HANDOVER STATUS — 2026-11-26 (supersedes earlier status statements)
+
+## Current branch and PR
+
+- Repository: `rinatrakhimgulov-bit/Crypto-Analyst`
+- Canonical main source remains unchanged until review/merge.
+- Candidate branch: `impl/b1-quality-contract-2026-11-26`
+- Draft PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6
+- Current active stage: B1 — Data Quality & Normalization.
+
+## B1 implementation candidate in PR #6
+
+Implemented in the candidate branch:
+- Canonical provider-neutral contract v1.0.0 and `DataQualityEngine`.
+- Provider-time provenance; local fallback explicitly marked untrusted.
+- Identical/conflicting duplicate classification.
+- Expected closed-candle coverage.
+- Validation of OHLCV, finite values, volume, UTC alignment, candle order/gaps, future timestamps, snapshot freshness and minimum history.
+- 2-second future timestamp tolerance.
+- Mandatory quality preflight before `BasicAnalyticsEngine`; only VALID data can proceed to directional calculation.
+- Cached LONG/SHORT suppression after refresh failure: stale display becomes WAIT.
+- UI quality status row.
+- `B1QualitySelfTest.runAll()`: 32/32 isolated tests passed; both JS script blocks parse successfully.
+
+## Not yet complete
+
+- B1-E common analysis cutoff for synchronized 1D/4H/1H.
+- B1-F second provider comparison.
+- Independent external review.
+- Full browser runtime, live Bybit and iPhone Safari verification.
+- Full StageASelfTest 44/44 in an actual browser harness.
+
+Do not mark B1 DONE. Do not merge PR #6 until the remaining review and runtime checks are complete. Keep `main` as source of truth; candidate branch changes are not yet part of main.
