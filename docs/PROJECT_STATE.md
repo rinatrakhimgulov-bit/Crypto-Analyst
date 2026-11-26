@@ -308,3 +308,28 @@ PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6
 - отдельная изолированная проверка интеграции показала WAIT при DEGRADED quality.
 
 Не выполнены: live Bybit, Chrome/iPhone Safari runtime, полный StageASelfTest 44/44 в browser harness. MTF common cutoff (B1-E) и второй provider (B1-F) ещё не реализованы. Поэтому B1 остаётся IN PROGRESS, не DONE.
+
+
+## Актуальное состояние B1 — 2026-11-26, draft PR #6
+
+Ветка: `impl/b1-quality-contract-2026-11-26`  
+PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6  
+Статус: draft, не влито в `main`.
+
+В канонический HTML в ветке добавлены:
+- `DataQualityEngine`: canonical contract v1.0.0, snapshot mapping и QualityReport;
+- явная provenance provider time vs local fallback;
+- подсчёт identical/conflicting duplicate candles без молчаливого перезаписывания конфликта;
+- expected coverage для закрытого диапазона свечей;
+- validation OHLCV, finite values, volume, UTC alignment, order, gaps, future timestamps, snapshot freshness и minimum history;
+- 2-секундный допуск для future open timestamps;
+- обязательный preflight quality gate перед `BasicAnalyticsEngine`: directional output разрешён только при VALID;
+- stale-cache suppression: cached LONG/SHORT преобразуется в WAIT после ошибки обновления;
+- отображение B1 Quality Gate в панели качества.
+
+Тестирование:
+- `window.B1QualitySelfTest.runAll()`: 32/32 PASS в изолированном JavaScript execution;
+- оба script blocks прошли syntax parse;
+- отдельная изолированная проверка интеграции показала WAIT при DEGRADED quality.
+
+Не выполнены: live Bybit, Chrome/iPhone Safari runtime, полный StageASelfTest 44/44 в browser harness. MTF common cutoff (B1-E) и второй provider (B1-F) ещё не реализованы. Поэтому B1 остаётся IN PROGRESS, не DONE.
