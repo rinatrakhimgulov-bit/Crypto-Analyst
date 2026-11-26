@@ -1119,3 +1119,15 @@ Stage A/S6 остаётся базовым прототипом сбора да�
 * Подтверждено, что BasicAnalyticsEngine допускает LONG даже при quality.status=INVALID. Это блокирующий дефект до использования directional output.
 * Для B2 исследован pyvsmc; прямую интеграцию не принимать из-за потенциального look-ahead в моменте подтверждения swing. См. `docs/research/B2_PYVSMC_CANDIDATE_AUDIT_2026-11-26.md`.
 * Целевой Data Layer должен быть provider-neutral. Bybit — только текущий источник Stage A, а не неизменное требование продукта.
+
+
+⸻
+
+Статус на 26.11.2026 после B0:
+
+* B0 принят как аудит текущего конвейера; основной HTML не менялся.
+* `StageASelfTest.runAll()` — 44/44 в изолированном DOM/runtime harness. Это не реальный Chrome/Safari и не live exchange test.
+* Подтверждены блокирующие D0-01 (INVALID quality допускает LONG) и D0-02 (stale cache повторно отображает старый directional decision).
+* UI mapping проверен статической трассировкой `renderSuccess()`; stale path — `renderError()`.
+* B1 открыт к началу. Цель: provider-neutral data contract, source adapters, synchronized multi-timeframe data, data-quality status/gating и воспроизводимые fixtures.
+* Исследовательский отчёт по pyvsmc: `docs/research/B2_PYVSMC_CANDIDATE_AUDIT_2026-11-26.md`; не интегрировать напрямую из-за потенциального look-ahead timing.
