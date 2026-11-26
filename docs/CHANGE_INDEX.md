@@ -248,15 +248,15 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 |---|---|---|
 | `DataQualityEngine` | Provider-neutral contract v1.0.0, Candle/Snapshot mapping, validation | IMPLEMENTED IN BRANCH |
 | `DataQualityEngine.createSnapshot()` | Map adapter dataset to canonical snapshot | IMPLEMENTED IN BRANCH |
-| `DataQualityEngine.validate()` | Deterministic OHLCV/time/coverage/freshness/history validation | 32 TESTS PASS |
+| `DataQualityEngine.validate()` | Deterministic OHLCV/time/coverage/freshness/history validation | 35 TESTS PASS |
 | `DataQualityEngine.preflight()` | Build snapshot and quality report before analytics | IMPLEMENTED IN BRANCH |
 | `DataQualityEngine.staleDecision()` | Convert cached directional decision to WAIT | IMPLEMENTED IN BRANCH |
-| `window.B1QualitySelfTest.runAll()` | 32 deterministic quality-contract tests | 32/32 PASS |
+| `window.B1QualitySelfTest.runAll()` | 35 deterministic quality-contract tests | 35/35 PASS |
 | `BybitAdapter.normalize()` | Preserve provider-time provenance, duplicate classification and coverage | IMPLEMENTED IN BRANCH |
 | `BasicAnalyticsEngine.analyze()` | Mandatory quality gate; only VALID reaches directional calculation | IMPLEMENTED IN BRANCH |
 | `renderError()` | Suppress cached LONG/SHORT after refresh failure | IMPLEMENTED IN BRANCH |
 | `renderSuccess()` | Display B1 Quality Gate status | IMPLEMENTED IN BRANCH |
 
-Verified source locations in the candidate branch: DataQualityEngine line 2124; preflight line 2295; staleDecision line 2301; BasicAnalyticsEngine line 2417; B1QualitySelfTest line 2320; BybitAdapter.normalize line 705; renderError line 3276; loadAndAnalyze line 3312.
+Verified source locations in the candidate branch: DataQualityEngine line 2124; preflight line 2303; staleDecision line 2309; BasicAnalyticsEngine line 2434; B1QualitySelfTest line 2328; BybitAdapter.normalize line 705; renderError line 3293; loadAndAnalyze line 3329.
 
 **Not implemented:** common-cutoff MTF snapshot assembly and second provider. Browser/live API verification remains pending. These statuses apply only to the draft branch, not `main`.
