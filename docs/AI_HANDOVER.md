@@ -1333,3 +1333,16 @@ Integration fixtures use newest-first Bybit V5-shaped rows and execute the actua
 - Actual HTTP abort behavior under network conditions.
 - MTFDataEngine is not connected to the UI, chart, or directional decision pipeline. The selected-timeframe flow remains the current app flow.
 - B1 is not complete. PR #6 is draft and unmerged. Do not merge without independent audit and browser/live verification.
+
+
+## Latest B1-E boundary-finality refinement — 2026-11-26
+
+The latest candidate also separates an actively forming candle from a candle whose close time has passed but whose 500 ms finality buffer has not elapsed. The latter is reported as pending finality, not as a second forming candle. This avoids rejecting an otherwise coherent MTF snapshot during the ordinary first 500 ms after an interval boundary.
+
+- Active forming predicate: closeTimeMs > analysisAsOfMs.
+- Pending finality predicate: closeTimeMs <= analysisAsOfMs and closeTimeMs + 500 > analysisAsOfMs.
+- Only multiple active forming candidates create the ambiguity block.
+- Raw-row reserve: desired closed count + ceil(maxProviderTimeSpreadMs / stepMs) + 2.
+- New test covers the post-boundary pending-finality case.
+
+Latest verification: B1-E 32/32 PASS; B1 Quality 65/65 PASS; both inline scripts parse. No browser/live verification. PR #6 remains draft/unmerged; main unchanged.
