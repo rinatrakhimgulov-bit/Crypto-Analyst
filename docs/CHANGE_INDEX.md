@@ -237,3 +237,11 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 ## 14. B1 current adapter mapping — 2026-11-26
 
 `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps Stage A `BybitAdapter` to the proposed provider-neutral contract and records 11 implementation gaps. Proposed minimal path: retain JS for B1 first pass; canonical mapping, pure validator, mandatory quality gate, stale-cache suppression, then MTF cutoff and second provider. Specification only; no code changes.
+
+
+## 2026-11-26 — B2 external candidate audit
+
+- Added `docs/research/B2_STRUCTURE_POI_SOURCE_AUDIT_2026-11-26.md`.
+- External candidates only; no application functions or source files changed.
+- `market-structure-engine`: ADAPT / CONDITIONAL CANDIDATE; `poi-liquidity-detector`: ADAPT / HOLD.
+- B1 remains active; B2 is not implemented. Tests were inspected, not executed.
