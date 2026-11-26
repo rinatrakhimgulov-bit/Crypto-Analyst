@@ -2292,7 +2292,29 @@
         };
       }
 
-      return Object.freeze({ CONTRACT_VERSION, DEFAULTS, intervalToMs, createSnapshot, validate });
+      function preflight(dataset, nowMs = Date.now()) {
+        const canonicalSnapshot = createSnapshot(dataset);
+        const qualityReport = validate(canonicalSnapshot, nowMs);
+        return { canonicalSnapshot, qualityReport, allowed: qualityReport.directionalAllowed };
+      }
+
+      function staleDecision(analysis, reason, nowMs = Date.now()) {
+        const prior = analysis && analysis.qualityReport ? analysis.qualityReport : {};
+        const message = reason || 'Обновление не удалось: сохранённый снимок используется только как исторический контекст.';
+        return Object.assign({}, analysis || {}, {
+          decision: 'WAIT',
+          reasons: [...(Array.isArray(analysis && analysis.reasons) ? analysis.reasons : []), message],
+          qualityReport: Object.assign({}, prior, {
+            status: 'STALE',
+            directionalAllowed: false,
+            checkedAtMs: nowMs,
+            reasons: [...(Array.isArray(prior.reasons) ? prior.reasons : []),
+              { code: 'STALE_CACHE_FALLBACK', severity: 'CRITICAL', message }]
+          })
+        });
+      }
+
+      return Object.freeze({ CONTRACT_VERSION, DEFAULTS, intervalToMs, createSnapshot, validate, preflight, staleDecision });
     })();
 
     window.B1QualitySelfTest = {
@@ -2363,6 +2385,26 @@
         test('29 duplicate conflict metadata blocks directional validation', () => {
           const s=make(); s.adapterQuality.conflictingDuplicates=1;
           expect(DataQualityEngine.validate(s,now).directionalAllowed===false,'conflict must block');
+        });
+        const toDataset = (snap) => ({
+          source:snap.provider, marketType:snap.venue, symbol:snap.symbol, interval:snap.timeframe,
+          serverTimeMs:snap.analysisAsOfMs, providerTimeMs:snap.providerTimeMs, timeSource:snap.timeSource,
+          fetchedAtLocalMs:snap.receivedAtMs,
+          closedCandles:snap.candles.map(c=>({ts:c.openTimeMs,closeTs:c.closeTimeMs,open:c.open,high:c.high,low:c.low,close:c.close,volume:c.volumeBase})),
+          formingCandle:null, coverage:snap.coverage, quality:snap.adapterQuality, prices:{}
+        });
+        test('30 preflight allows a fully valid provider snapshot', () => {
+          const s=make(); const p=DataQualityEngine.preflight(toDataset(s),now);
+          expect(p.allowed===true && p.qualityReport.status==='VALID','valid preflight');
+        });
+        test('31 preflight blocks incomplete coverage', () => {
+          const s=make(base().slice(1)); const p=DataQualityEngine.preflight(toDataset(s),now);
+          expect(p.allowed===false && p.qualityReport.status==='DEGRADED','coverage must block');
+        });
+        test('32 stale cache converts prior LONG to WAIT', () => {
+          const prior={decision:'LONG',reasons:['old signal'],qualityReport:{status:'VALID',directionalAllowed:true}};
+          const stale=DataQualityEngine.staleDecision(prior,'refresh failed',now);
+          expect(stale.decision==='WAIT' && stale.qualityReport.status==='STALE' && stale.qualityReport.directionalAllowed===false,'stale suppression');
         });
         const passed = tests.filter(t=>t.passed).length;
         return { total: tests.length, passed, failed: tests.length-passed, tests };
@@ -2438,6 +2480,33 @@
       },
 
       analyze(dataset) {
+        const preflight = DataQualityEngine.preflight(dataset);
+        dataset.canonicalSnapshot = preflight.canonicalSnapshot;
+        dataset.qualityReport = preflight.qualityReport;
+        if (!preflight.allowed) {
+          const report = preflight.qualityReport;
+          const blockedReasons = [
+            `B1 Quality Gate: ${report.status}. Направленный сценарий запрещён из-за качества данных.`,
+            ...report.reasons.map(r => `${r.code}: ${r.message}`)
+          ];
+          const prices = dataset.prices || {};
+          return {
+            decision: 'WAIT',
+            reasons: blockedReasons,
+            ema20: [], ema50: [], atr14: [],
+            swings: { highs: [], lows: [] },
+            levels: { resistance: null, support: null },
+            qualityReport: report,
+            metrics: {
+              lastClosedPrice: prices.lastClosedPrice ?? null,
+              formingClosePrice: prices.formingClosePrice ?? null,
+              tickerLastPrice: prices.tickerLastPrice ?? null,
+              currentMarketPrice: prices.currentMarketPrice ?? null,
+              currentPriceSource: prices.currentPriceSource || 'Нет данных',
+              priceWarning: prices.priceWarning || null
+            }
+          };
+        }
         const candles = dataset.closedCandles;
         const {
           lastClosedPrice,
@@ -2562,6 +2631,7 @@
         return {
           decision,
           reasons,
+          qualityReport: preflight.qualityReport,
           ema20,
           ema50,
           atr14,
@@ -3191,6 +3261,7 @@
       const issuesClass = hasIssues ? 'status-warn' : 'status-ok';
 
       renderKvRows(document.getElementById('dataQualityList'), [
+        { k: 'B1 Quality Gate', v: dataset.qualityReport ? `${dataset.qualityReport.status} · directional ${dataset.qualityReport.directionalAllowed ? 'allowed' : 'blocked'}` : 'не рассчитан', cls: dataset.qualityReport && dataset.qualityReport.directionalAllowed ? 'status-ok' : 'status-warn' },
         { k: 'Источник / Рынок', v: `${dataset.source} · ${dataset.marketType}` },
         { k: 'Закрытых свечей в расчёте', v: `${q.closedCount} (всего ${q.totalFetched})` },
         { k: 'Последняя закрытая (закр. UTC)', v: fmtUtc(q.lastClosedCloseTs) },
@@ -3209,7 +3280,12 @@
 
       const cached = state.snapshotsByKey.get(makeKey(symbol, interval));
       if (cached) {
-        renderSuccess(cached.dataset, cached.analysis);
+        const staleAnalysis = DataQualityEngine.staleDecision(
+          cached.analysis,
+          `Не удалось обновить данные (${errorMsg}). Старый сценарий LONG/SHORT снят; снимок оставлен только для справки.`
+        );
+        const staleDataset = Object.assign({}, cached.dataset, { qualityReport: staleAnalysis.qualityReport });
+        renderSuccess(staleDataset, staleAnalysis);
         setRestStatus('ошибка связи · показан устаревший снимок', 'status-err');
         const lastTime = new Date(cached.dataset.fetchedAtLocalMs).toLocaleTimeString('ru-RU');
         document.getElementById('lastUpdate').textContent = `Устарело (от ${lastTime})`;
