@@ -1253,3 +1253,20 @@ Do not mark B1 DONE. Do not merge PR #6 until the remaining review and runtime c
 - Both inline script blocks syntax-parse successfully.
 - Verification remains isolated and deterministic: no browser DOM/runtime, no live Bybit HTTP request, no Chrome/iPhone Safari run, and no full `StageASelfTest` run. The stale recovery tests validate engine-level recovery, not the rendered UI badge.
 - PR #6 remains draft and unmerged; `main` is unchanged. These checks do not complete B1 or authorize merging yet.
+
+# LATEST HANDOVER ADDENDUM — независимый аудит PR #6 (2026-11-26)
+
+## Подтверждённое состояние
+- PR #6: `https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6`.
+- Branch: `impl/b1-quality-contract-2026-11-26`.
+- Candidate HTML blob, проверенный Grok: `e92c44d1397a8499a5a5adac7c12294923e3f494`.
+- Grok самостоятельно запустил `B1QualitySelfTest.runAll()`: **65/65 PASS**; verdict **APPROVE**; новых CRITICAL/HIGH дефектов нет.
+- LOW-наблюдения: F1-тесты не assert'ят `UNCONFIRMED_CLOSED_CANDLES`; forming candle остаётся вне Gate и покрыта characterization-тестами; stale recovery unit/engine-level, не полный UI/renderError путь.
+
+## Что ещё не доказано
+- Полный `StageASelfTest` 44/44 в настоящем браузере.
+- Реальный Chrome/iPhone Safari runtime и UI stale-badge.
+- Live Bybit HTTP response и поведение на реальном потоке данных.
+- B1-E common cutoff для MTF и B1-F второй provider.
+
+PR #6 остаётся draft и не слит в main. Не объявлять B1 DONE. Следующий технический контрольный этап: browser/runtime + live-source verification; после него отдельно оценить оставшиеся B1-E/B1-F требования. Не путать Grok APPROVE unit/static candidate с полным runtime approval.
