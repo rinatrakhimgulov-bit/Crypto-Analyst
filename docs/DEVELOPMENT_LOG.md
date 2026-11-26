@@ -462,3 +462,5 @@ Added an isolated `MTFDataEngine` to the PR #6 candidate HTML. The module suppor
 Added an explicit `providerTimeToleranceMs` validator override, defaulting to null (therefore existing single-timeframe validation continues to use the original 2-second skew limit). MTF passes its explicit measured spread policy; no production policy value has been selected pending live timing measurements.
 
 Tests on latest candidate blob: B1-E **23/23 PASS**, existing B1 quality suite **65/65 PASS**, both inline script blocks syntax-parse. Isolated V8 execution used test doubles for browser AbortController/DOMException/timer globals. No live HTTP, browser UI, mobile Safari or full StageASelfTest browser run. Candidate only; not merged.
+
+B1-E audit refinement: a candle whose open time is later than the common cutoff is now excluded from the as-of snapshot and counted in `excludedAfterCutoffCount`; its mere presence no longer invalidates a coherent snapshot. This handles ordinary response-time differences across an interval boundary. B1-E remains 23/23 PASS and B1 remains 65/65 PASS after this correction.
