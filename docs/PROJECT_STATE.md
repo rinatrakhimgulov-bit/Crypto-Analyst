@@ -349,21 +349,29 @@ PR #6 / branch `impl/b1-quality-contract-2026-11-26` обновлены посл
 
 ## B1 latest verification — 2026-11-26
 
-Latest candidate HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`.
+Latest candidate HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
 - Strict adapter counters: all eight required values must be non-negative safe integers; malformed/missing values block.
 - Aggregate `duplicates` must equal `identicalDuplicates + conflictingDuplicates`.
 - `analysisAsOfMs` must agree with provider time within the allowed skew; candle finality uses the earlier cutoff and 500 ms buffer.
 - Coverage requires complete integer/aligned start, end and count with consistent arithmetic.
-- B1 suite: 50/50 PASS; both inline scripts parse; 4/4 direct gate probes return WAIT/INVALID for the four malformed cases.
+- B1 suite: 54/54 PASS; both inline scripts parse; 4/4 direct gate probes return WAIT/INVALID for the four malformed cases.
 
 No live Bybit, browser/iPhone Safari or full StageASelfTest 44/44 run. Grok re-audit pending. PR #6 remains draft; main unchanged; B1 not complete.
 
 
 ### Latest candidate verification refresh (2026-11-26)
 
-- HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`.
-- `B1QualitySelfTest.runAll()`: 50/50 PASS in isolated JavaScript execution.
+- HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
+- `B1QualitySelfTest.runAll()`: 54/54 PASS in isolated JavaScript execution.
 - Both inline script blocks syntax-parse successfully.
 - Synthetic `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: 60 closed candles + 1 forming candle, status VALID.
 - Four direct quality-gate probes block malformed counters, negative counters, unclosed candles and missing coverage with WAIT / INVALID.
 - These are isolated JavaScript/fixture checks, not a live Bybit request or real browser runtime. Full StageASelfTest 44-case browser harness and independent Grok re-audit remain pending. PR #6 remains draft and unmerged; main is unchanged.
+
+
+### B1 adapter integration regression refresh (2026-11-26)
+
+- Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
+- `B1QualitySelfTest.runAll()`: **54/54 PASS**; both inline script blocks syntax-parse.
+- Four new end-to-end fixture tests now exercise actual `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: valid reversed rows and 60/1 closed/forming split; invalid row rejection; identical duplicate classification; conflicting duplicate classification.
+- Browser/Chrome/iPhone Safari runtime, live Bybit, StageASelfTest 44/44 and independent Grok re-audit remain pending. PR #6 remains draft; main unchanged.
