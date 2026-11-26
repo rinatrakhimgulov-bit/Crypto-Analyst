@@ -267,3 +267,21 @@ B0 — полный аудит существующего конвейера о�
 **Решение:** кандидат полезен для исследования B2/B4, но прямая интеграция HOLD до причинной коррекции и независимых тестов.
 
 Подробности: `docs/research/B2_PYVSMC_CANDIDATE_AUDIT_2026-11-26.md`.
+
+
+## 9. B0 — аудит завершён; B1 открыт
+
+**Дата:** 2026-11-26. Тип: аудит, без изменения исходного HTML.
+
+### Итоговые проверки
+- `StageASelfTest.runAll()` на точном исходнике выполнен в изолированном DOM/runtime harness: 44/44, setupError отсутствует, cleanupErrors пуст.
+- `renderSuccess()` сопоставлен с фактическими полями `analysis` и `dataset`; отображаются decision, reasons, EMA, ATR, volume, уровни и quality metadata.
+- `renderError()` при наличии cached snapshot повторно вызывает `renderSuccess(cached.dataset, cached.analysis)`, то есть сохраняет старый LONG/SHORT при сетевой ошибке. D0-02 подтверждён статической трассировкой.
+- D0-01 подтверждён исполняемым reproducer: `quality.status=INVALID` при gaps/duplicates/invalidRows не блокирует LONG.
+- Изолированные проверки EMA и ATR совпали с независимыми формулами на выбранных synthetic fixtures.
+
+### Ограничения
+Это не запуск в настоящем Chrome/Safari и не проверка живого REST endpoint. Основной HTML не менялся. B0 принят как аудит текущего конвейера; открытые дефекты переданы в требования B1.
+
+### Решение
+B0 — DONE (audit only). B1 — READY TO START. Внешние библиотеки не интегрированы.
