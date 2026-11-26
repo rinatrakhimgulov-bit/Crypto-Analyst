@@ -375,3 +375,20 @@ B1 находится в исследовании. Основной HTML не и
 - Независимый review и browser/runtime verification до merge.
 
 B1 остаётся IN PROGRESS. Draft PR #6: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6.
+
+
+## 15. B1 quality-hardening after independent audit — 2026-11-26
+
+В candidate branch PR #6 внесены локальные исправления по трём подтверждённым дефектам:
+1. Убрано молчаливое преобразование adapter counters через `Number(value || 0)`. Все восемь полей обязательны; проверяются тип, целочисленность, конечность и неотрицательность.
+2. Добавлена повторная проверка закрытости каждой свечи: `closeTimeMs + 500ms <= providerTimeMs`. Незакрытая свеча в массиве closed candles блокирует направленный анализ.
+3. Coverage metadata теперь валидируется структурно и математически: обязательные integer start/end/count, UTC alignment и согласованное число свечей в диапазоне. Missing/malformed/inconsistent coverage — CRITICAL.
+
+### Regression verification
+- B1QualitySelfTest: 46/46 PASS в isolated JavaScript execution.
+- Оба inline script blocks прошли syntax parsing.
+- 4/4 direct integration probes: malformed counter, negative counter, unclosed candle, missing coverage — все дали decision WAIT, status INVALID, directionalAllowed=false.
+- Не выполнены: live Bybit, реальный браузер Chrome/iPhone Safari, полный StageASelfTest 44/44 в браузерном harness.
+- Повторный независимый Grok review ещё не получен.
+
+PR #6 остаётся draft и не слит в main. B1 остаётся IN PROGRESS; B1-E common MTF cutoff и B1-F второй provider ещё не реализованы.
