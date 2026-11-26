@@ -285,3 +285,8 @@ Candidate branch `impl/b1-quality-contract-2026-11-26`, draft PR #6:
 - Coverage metadata validated structurally and arithmetically.
 - `B1QualitySelfTest.runAll()`: 49/49 PASS; 2 script blocks syntax-parse PASS; 4/4 integration gate probes block malformed data.
 - Browser, live exchange and full StageASelfTest 44/44 remain outstanding. No main merge.
+
+
+### Final B1 candidate verification refresh — 2026-11-26
+
+Latest HTML blob: `76ad147ba105d97fb642b0e5c5e002cb79e1d685`. B1 suite 49/49 PASS; two inline script blocks syntax-parse; synthetic adapter-to-preflight fixture returns 60 closed + 1 forming candle and VALID; 4/4 direct analytics gate probes block malformed data with WAIT/INVALID. These are isolated tests, not live exchange/browser verification. StageASelfTest and independent re-audit remain pending.
