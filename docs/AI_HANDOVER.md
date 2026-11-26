@@ -1218,8 +1218,8 @@ Do not mark B1 DONE. Do not merge PR #6 until the remaining review and runtime c
 
 # FINAL CURRENT B1 CANDIDATE UPDATE — 2026-11-26
 
-- Latest candidate HTML blob: `76ad147ba105d97fb642b0e5c5e002cb79e1d685`.
+- Latest candidate HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`.
 - Strict eight-counter validation; duplicate aggregate consistency; provider-time/analysis-time consistency; closed-candle finality against earlier cutoff + 500 ms; strict coverage metadata validation.
-- B1 suite is now 49/49 PASS in isolated JavaScript execution. Both inline script blocks syntax-parse. Four direct BasicAnalyticsEngine probes all return WAIT / INVALID / directionalAllowed=false for malformed counters, negative counters, unclosed candles and missing coverage.
+- B1 suite is now 50/50 PASS in isolated JavaScript execution. Both inline script blocks syntax-parse. Four direct BasicAnalyticsEngine probes all return WAIT / INVALID / directionalAllowed=false for malformed counters, negative counters, unclosed candles and missing coverage.
 - No real browser/iPhone Safari runtime, live Bybit request or full StageASelfTest 44/44 browser harness has been run.
 - Grok re-audit after this patch is pending. PR #6 is still draft, main unchanged, B1 not DONE. B1-E MTF common cutoff and B1-F second provider remain outstanding.
