@@ -2394,8 +2394,8 @@
         test('02 missing first candle detected by coverage', () => { const s=make(base().slice(1)); expect(DataQualityEngine.validate(s,now).reasons.some(r=>r.code==='COVERAGE_START_MISSING'),'coverage start'); });
         test('03 internal gap detected', () => { const a=base(); a.splice(20,1); expect(DataQualityEngine.validate(make(a),now).counts.gaps===1,'gap'); });
         test('04 missing last candle detected by coverage', () => { const s=make(base().slice(0,-1)); expect(DataQualityEngine.validate(s,now).reasons.some(r=>r.code==='COVERAGE_END_MISSING'),'coverage end'); });
-        test('05 identical duplicate flagged from adapter metadata', () => { const s=make(); s.adapterQuality.identicalDuplicates=1; status(s,'DEGRADED'); });
-        test('06 conflicting duplicate blocks', () => { const s=make(); s.adapterQuality.conflictingDuplicates=1; status(s,'INVALID'); });
+        test('05 identical duplicate flagged from adapter metadata', () => { const s=make(); s.adapterQuality.duplicates=1; s.adapterQuality.identicalDuplicates=1; status(s,'DEGRADED'); });
+        test('06 conflicting duplicate blocks', () => { const s=make(); s.adapterQuality.duplicates=1; s.adapterQuality.conflictingDuplicates=1; status(s,'INVALID'); });
         test('07 out of order rejected', () => { const a=base(); [a[10],a[11]]=[a[11],a[10]]; status(make(a),'INVALID'); });
         test('08 invalid high rejected', () => { const a=base(); a[4].high=100; status(make(a),'INVALID'); });
         test('09 invalid low rejected', () => { const a=base(); a[4].low=200; status(make(a),'INVALID'); });
@@ -2434,7 +2434,7 @@
           expect(snap.candles.length===1 && snap.formingCandle.closedState==='FORMING','forming separation');
         });
         test('29 duplicate conflict metadata blocks directional validation', () => {
-          const s=make(); s.adapterQuality.conflictingDuplicates=1;
+          const s=make(); s.adapterQuality.duplicates=1; s.adapterQuality.conflictingDuplicates=1;
           expect(DataQualityEngine.validate(s,now).directionalAllowed===false,'conflict must block');
         });
         const toDataset = (snap) => ({
