@@ -275,3 +275,13 @@ Verified source locations in the candidate branch: DataQualityEngine line 2124; 
 | Basic analytics gate probes | Four malformed datasets all return WAIT / INVALID | 4/4 PASS |
 
 Ограничения: tests executed in isolated JS context, not in real browser; no live Bybit; no full StageASelfTest 44/44. Independent re-audit pending. No changes merged to main.
+
+
+## 17. B1 strict consistency follow-up — 2026-11-26
+
+Candidate branch `impl/b1-quality-contract-2026-11-26`, draft PR #6:
+- Adapter counters validated strictly, including duplicate aggregate consistency.
+- Provider-time and analysis-time coherence enforced; closed-candle finality uses earlier cutoff + 500 ms.
+- Coverage metadata validated structurally and arithmetically.
+- `B1QualitySelfTest.runAll()`: 49/49 PASS; 2 script blocks syntax-parse PASS; 4/4 integration gate probes block malformed data.
+- Browser, live exchange and full StageASelfTest 44/44 remain outstanding. No main merge.
