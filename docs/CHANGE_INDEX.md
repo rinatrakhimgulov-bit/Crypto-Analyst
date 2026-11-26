@@ -187,7 +187,7 @@ Pong без `req_id` не подтверждает конкретный запр
 - B9 — новости и макро-контекст.
 - B10 — журнал, мониторинг и расширение.
 
-**Ближайший этап: B1, READY TO START. B0 audit — DONE.** До завершения аудита исходный код не менять. Данный индекс фиксирует навигацию по плану, а не наличие перечисленных функций в исходнике.
+**Ближайший этап: B1, IN RESEARCH. B0 audit — DONE.** До завершения аудита исходный код не менять. Данный индекс фиксирует навигацию по плану, а не наличие перечисленных функций в исходнике.
 
 Канонический HTML в рамках этого документационного обновления не менялся.
 
@@ -211,3 +211,14 @@ Pong без `req_id` не подтверждает конкретный запр
 - `calcEMA()` / `calcATR()` — независимая численная spot-check сверка PASS на фиксированных synthetic fixtures.
 
 B0 завершён как аудит. B1 — следующий этап. Основной HTML не менялся.
+
+
+## 11. B1 research — Data Layer candidates — 2026-11-26
+
+- `rinng` Exchange Protocol / Binance / OKX adapters / canonical schemas — RESEARCHED, not integrated.
+- `rinng.pipeline.validate.check_candles()` — candidate quality checker; issue found: `CandleReport.ok` ignores `missing` count.
+- `rinng.store.resample.resample_ohlcv()` — candidate resampling logic; possible incomplete-window `is_closed` issue identified.
+- `rinng.pipeline.run.analyze()` — no mandatory validation preflight found.
+- `CCXT` Bybit `fetch_ohlcv()` — source adapter candidate; unified OHLCV transport, not data quality validation.
+
+Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 remains IN RESEARCH. No application HTML changes.
