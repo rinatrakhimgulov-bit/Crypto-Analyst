@@ -342,3 +342,12 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. Added a dedicated 
 - Found an important integration constraint: each adapter response is currently split into closed/forming using its own `serverTimeMs`; canonical `analysisAsOfMs` is copied from that value, and validator currently requires close agreement with provider time. A common cutoff therefore needs explicit contract/validator semantics, not just overwriting timestamps.
 - Added `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md` with common-cutoff selection, candle reclassification, coverage recalculation, aggregate quality, stale/concurrency policy and 23 deterministic acceptance tests.
 - Status: specification only. No application code changed for B1-E. Provider-time spread policy remains pending live latency measurement. B1-E is NOT IMPLEMENTED.
+
+### B1-E implementation candidate — 2026-11-26
+
+- Added an isolated `MTFDataEngine` to the candidate HTML. It fetches 1D/4H/1H concurrently, retains provider/receive/request timing provenance, selects the minimum trusted provider time as the common cutoff, reclassifies candles using the 500 ms finality buffer, recalculates coverage, validates each TF and produces aggregate quality.
+- Added request-generation coordination: newer requests supersede older ones; one fetch failure aborts sibling requests; stale/missing/invalid TFs block directional eligibility.
+- Provider-time tolerance is an explicit required option. No production default is guessed; the runtime must remain disconnected from directional consumers until live provider timing is measured and a policy is approved.
+- Verification in isolated V8 harness using extracted production code: B1-E 23/23 PASS; existing B1 quality suite 65/65 PASS; both inline scripts syntax-parse PASS.
+- Harness supplied test doubles for AbortController/DOMException/timer APIs because the isolated runner has no browser globals. This is not browser verification.
+- No UI or existing selected-timeframe chart flow is connected to MTF yet. No live Bybit request, Chrome/iPhone Safari runtime or full StageASelfTest browser run. B1-E remains IN PROGRESS; PR #6 remains draft.
