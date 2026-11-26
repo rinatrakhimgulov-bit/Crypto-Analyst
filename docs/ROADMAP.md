@@ -362,3 +362,10 @@ The B1-E candidate in draft PR #6 now separates desired closed-candle history fr
 Multiple forming candidates no longer publish an arbitrary forming candle. Missing target/timeframe, interval mismatch and missing normalized rows produce stable per-TF diagnostics. Integration fixtures run V5-shaped raw rows through the actual adapter normalizer and MTF assembler across 1H, 4H and 1D boundaries, plus short-response coverage failure.
 
 Verification in isolated V8: B1-E 31/31 PASS; B1 Quality 65/65 PASS; both inline scripts parse. This is not live Bybit or browser verification. Production provider-time spread policy remains uncalibrated. MTFDataEngine is not wired into UI/decision logic. PR #6 remains draft/unmerged; main unchanged; B1 remains IN PROGRESS.
+
+
+### B1-E finality-boundary refinement — 2026-11-26
+
+The MTF candidate now distinguishes an active forming candle from a just-closed candle still inside the 500 ms finality buffer. Only multiple active forming candidates are treated as ambiguous. Per-TF diagnostics expose pending-finality count. Raw-row reserve includes spread-derived rollover rows plus two rows for active-forming and pending-finality states.
+
+Latest isolated V8 verification: B1-E 32/32 PASS; B1 Quality 65/65 PASS; both inline scripts parse. This does not constitute live or browser verification. B1 remains IN PROGRESS; PR #6 draft/unmerged; main unchanged.
