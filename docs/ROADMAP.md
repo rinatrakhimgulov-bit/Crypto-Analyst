@@ -275,6 +275,6 @@ B1-A/B/C/D реализованы в отдельной ветке `impl/b1-qual
 - Future open timestamps beyond 2 seconds of provider time are rejected by the adapter.
 - Mandatory quality gate перед BasicAnalyticsEngine: только VALID допускает расчёт направленного решения; прочие статусы дают WAIT.
 - Stale-cache fallback преобразует старый LONG/SHORT в WAIT; старый график остаётся только справочным контекстом.
-- Embedded B1 quality suite: 32/32 passed; оба script blocks syntax-parse PASS; отдельная проверка gate на degraded dataset вернула WAIT.
+- Embedded B1 quality suite: 35/35 passed; оба script blocks syntax-parse PASS; отдельная проверка gate на degraded dataset вернула WAIT.
 
 **Ограничения:** PR остаётся draft. Не выполнены live Bybit, реальный Chrome/iPhone Safari и полный StageASelfTest 44/44 в браузерном harness. MTF common cutoff и второй provider ещё не реализованы. B1 не завершён.
