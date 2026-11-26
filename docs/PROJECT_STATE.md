@@ -345,3 +345,15 @@ PR #6 / branch `impl/b1-quality-contract-2026-11-26` обновлены посл
 - Новые regression tests расширили B1 suite с 35 до 46.
 
 Последняя проверка: 46/46 B1 tests PASS в isolated JS execution; два inline script blocks syntax-parse PASS; четыре direct integration probes вернули WAIT / INVALID при каждом из четырёх дефектных наборов. Не проверены live Bybit, Chrome/iPhone Safari runtime и полный StageASelfTest 44/44 в реальном браузере. Независимый повторный аудит после исправлений ожидается. PR draft, main не изменён, B1 не завершён.
+
+
+## B1 latest verification — 2026-11-26
+
+Latest candidate HTML blob: `c5165734f7cd4c2c2a3cdf702a1426b6fe9a2b1a`.
+- Strict adapter counters: all eight required values must be non-negative safe integers; malformed/missing values block.
+- Aggregate `duplicates` must equal `identicalDuplicates + conflictingDuplicates`.
+- `analysisAsOfMs` must agree with provider time within the allowed skew; candle finality uses the earlier cutoff and 500 ms buffer.
+- Coverage requires complete integer/aligned start, end and count with consistent arithmetic.
+- B1 suite: 49/49 PASS; both inline scripts parse; 4/4 direct gate probes return WAIT/INVALID for the four malformed cases.
+
+No live Bybit, browser/iPhone Safari or full StageASelfTest 44/44 run. Grok re-audit pending. PR #6 remains draft; main unchanged; B1 not complete.
