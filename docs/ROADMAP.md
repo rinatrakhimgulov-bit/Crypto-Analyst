@@ -314,3 +314,15 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. Added a dedicated 
 - `B1QualitySelfTest.runAll()`: **54/54 PASS**; both inline script blocks syntax-parse.
 - Four new end-to-end fixture tests now exercise actual `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: valid reversed rows and 60/1 closed/forming split; invalid row rejection; identical duplicate classification; conflicting duplicate classification.
 - Browser/Chrome/iPhone Safari runtime, live Bybit, StageASelfTest 44/44 and independent Grok re-audit remain pending. PR #6 remains draft; main unchanged.
+
+
+### B1 regression expansion: finality, forming characterization and recovery (2026-11-26)
+
+- Latest candidate HTML blob: `e92c44d1397a8499a5a5adac7c12294923e3f494`.
+- `B1QualitySelfTest.runAll()`: **65/65 PASS** in an isolated V8 execution harness using the actual extracted production implementations of `BybitAdapter`, `DataQualityEngine` and `BasicAnalyticsEngine`.
+- Added exact finality boundary cases F1a-F1d (T−501/T−500 VALID; T−499/T INVALID).
+- Added FM2-FM4 characterization tests. They explicitly document current behavior: forming-candle gap, duplicate timestamp and malformed OHLC are not currently validated by the Quality Gate. These tests do not change that policy.
+- Added a shuffled-timestamp Bybit V5-shaped fixture exercising `normalize() → preflight() → analyze()`, plus stale LONG and SHORT conversion to WAIT/STALE followed by fresh valid re-analysis.
+- Both inline script blocks syntax-parse successfully.
+- Verification remains isolated and deterministic: no browser DOM/runtime, no live Bybit HTTP request, no Chrome/iPhone Safari run, and no full `StageASelfTest` run. The stale recovery tests validate engine-level recovery, not the rendered UI badge.
+- PR #6 remains draft and unmerged; `main` is unchanged. These checks do not complete B1 or authorize merging yet.
