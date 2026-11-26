@@ -362,3 +362,12 @@ B1-E audit refinement: a candle whose open time is later than the common cutoff 
 | `B1QualitySelfTest` | Existing canonical data quality suite | 65/65 PASS |
 
 Latest HTML blob: `d9bb093001299ef8a835fc01dcaa6fb87e0425cd`. Both inline scripts parse. This is isolated V8 verification, not browser/live verification. MTFDataEngine is not yet wired into UI or directional decisions. PR #6 remains draft/unmerged; main unchanged.
+
+
+### B1-E post-boundary finality refinement — 2026-11-26
+
+- MTFDataEngine distinguishes active forming candles from candles pending the 500 ms finality buffer.
+- Per-timeframe diagnostics expose pendingFinalityCount.
+- Multiple active forming candidates remain blocking; the normal just-after-boundary state is no longer misclassified as multiple forming candles.
+- Raw-row overfetch reserve is now desired closed count + spread-derived rollover rows + 2 boundary/finality rows.
+- B1EMtfSelfTest: 32/32 PASS; B1QualitySelfTest: 65/65 PASS; both scripts parse.
