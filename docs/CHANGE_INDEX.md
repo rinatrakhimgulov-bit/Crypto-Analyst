@@ -344,3 +344,5 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. B1 suite 54/54 PAS
 - Added concurrent 1D/4H/1H fetch, common cutoff, candle reclassification, coverage recomputation, aggregate quality and request-generation cancellation.
 - Latest isolated checks: B1-E 23/23, B1 suite 65/65, both inline scripts parse.
 - Not connected to UI or trade decisions; no browser/live Bybit verification. PR remains draft.
+
+B1-E audit refinement: a candle whose open time is later than the common cutoff is now excluded from the as-of snapshot and counted in `excludedAfterCutoffCount`; its mere presence no longer invalidates a coherent snapshot. This handles ordinary response-time differences across an interval boundary. B1-E remains 23/23 PASS and B1 remains 65/65 PASS after this correction.
