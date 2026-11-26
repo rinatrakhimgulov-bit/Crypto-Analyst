@@ -96,6 +96,8 @@ Crypto Analyst развивается как независимая от кон�
 ### B2 — Market Structure Engine
 **Статус: НЕ НАЧАТ.**
 
+Предварительные source-audit заметки (не означают начало B2): `docs/research/B2_PYVSMC_CANDIDATE_AUDIT_2026-11-26.md`, `docs/research/B2_MARKET_STRUCTURE_CANDIDATES_2026-11-26.md`.
+
 - Подтверждённые swing high / swing low.
 - HH / HL / LH / LL.
 - Структурное направление.
