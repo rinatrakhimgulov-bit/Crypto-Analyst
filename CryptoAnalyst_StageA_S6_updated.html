@@ -2452,8 +2452,8 @@
         test('33 provider time flag without timestamp is invalid', () => {
           const s=make(base(),{providerTimeMs:null,timeSource:'PROVIDER'}); status(s,'INVALID');
         });
-        test('34 missing coverage metadata is degraded', () => {
-          const s=make(); s.coverage=null; status(s,'DEGRADED');
+        test('34 missing coverage metadata is critical', () => {
+          const s=make(); s.coverage=null; status(s,'INVALID');
         });
         test('35 invalid rows outrank insufficient history', () => {
           const s=make(base(20)); s.adapterQuality.invalidRows=1; status(s,'INVALID');
