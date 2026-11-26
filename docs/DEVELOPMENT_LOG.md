@@ -363,7 +363,7 @@ B1 находится в исследовании. Основной HTML не и
 
 ### Проверки
 
-- `B1QualitySelfTest.runAll()`: 32/32 PASS в изолированном JS execution.
+- `B1QualitySelfTest.runAll()`: 35/35 PASS в изолированном JS execution.
 - Два script blocks: syntax parse PASS.
 - Отдельный integration probe для DEGRADED dataset: WAIT, directionalAllowed=false.
 - Не запускались live Bybit, настоящий Chrome/iPhone Safari и полный StageASelfTest 44/44 в browser runtime.
