@@ -1,0 +1,4054 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0b0f17" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Crypto Analyst" />
+  <title>Crypto Analyst — Прототип (Этап 1)</title>
+  <script>
+    (function attachManifest() {
+      const manifest = {
+        name: 'Crypto Analyst',
+        short_name: 'Crypto Analyst',
+        start_url: '.',
+        display: 'standalone',
+        background_color: '#0b0f17',
+        theme_color: '#0b0f17'
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = URL.createObjectURL(blob);
+      document.head.appendChild(link);
+    })();
+  </script>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #121826;
+      --panel-2: #172033;
+      --border: #243049;
+      --text: #e6edf7;
+      --muted: #8fa1bf;
+      --accent: #38bdf8;
+      --green: #22c55e;
+      --red: #ef4444;
+      --amber: #f59e0b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      line-height: 1.45;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Верхняя панель */
+    .topbar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: 0.2px;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      font-weight: 600;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .seg {
+      display: inline-flex;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2px;
+    }
+
+    .seg button, .btn {
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .seg button.active {
+      background: var(--accent);
+      color: #061018;
+    }
+
+    .btn {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn:hover { border-color: var(--accent); }
+
+    .price-box {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .price {
+      font-size: 20px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meta {
+      font-size: 12px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Баннер устаревших данных */
+    .stale-banner {
+      display: none;
+      background: rgba(239, 68, 68, 0.14);
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      color: #fca5a5;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .stale-banner.visible {
+      display: block;
+    }
+
+    /* Основная сетка */
+    .grid-main {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 960px) {
+      .grid-main {
+        grid-template-columns: 2.15fr 1fr;
+        align-items: start;
+      }
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* График */
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 410px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0d1320;
+      border: 1px solid #1c263b;
+      touch-action: none;
+    }
+
+    @media (max-width: 600px) {
+      .chart-wrap { height: 320px; }
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .chart-legend {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+
+    /* Плитки состояния */
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    @media (min-width: 640px) {
+      .tiles { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .tile {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .tile-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .tile-val {
+      margin-top: 4px;
+      font-size: 15px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tile-sub {
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Правая колонка: решение и качество данных */
+    .side-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .decision-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+
+    .decision-WAIT {
+      background: rgba(245, 158, 11, 0.16);
+      color: var(--amber);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .decision-LONG {
+      background: rgba(34, 197, 94, 0.16);
+      color: var(--green);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+
+    .decision-SHORT {
+      background: rgba(239, 68, 68, 0.16);
+      color: var(--red);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .reasons {
+      margin: 8px 0 12px;
+      padding-left: 18px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .reasons li { margin-bottom: 5px; }
+
+    .kv-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12.5px;
+    }
+
+    .kv-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kv-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .kv-k { color: var(--muted); }
+    .kv-v { font-weight: 600; text-align: right; }
+
+    .status-ok { color: var(--green); }
+    .status-warn { color: var(--amber); }
+    .status-err { color: var(--red); }
+
+    .note-box {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      font-size: 12px;
+      color: #f3d28b;
+    }
+
+    .roadmap-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    @media (min-width: 768px) {
+      .roadmap-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .subcard {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 12.5px;
+    }
+
+    .subcard h4 {
+      margin: 0 0 8px;
+      font-size: 13px;
+    }
+
+    .subcard ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .subcard li { margin-bottom: 4px; color: var(--muted); }
+    .subcard li strong { color: var(--text); }
+
+    .disclaimer {
+      font-size: 11.5px;
+      color: var(--muted);
+      text-align: center;
+      padding: 4px 8px 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Верхняя панель -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-title">Crypto Analyst</span>
+        <span class="badge">ЭТАП 1 · ПРОТОТИП</span>
+      </div>
+
+      <div class="controls">
+        <div class="seg" id="symbolSeg">
+          <button type="button" data-symbol="BTCUSDT" class="active">BTCUSDT</button>
+          <button type="button" data-symbol="ETHUSDT">ETHUSDT</button>
+        </div>
+
+        <div class="seg" id="tfSeg">
+          <button type="button" data-tf="60">1H</button>
+          <button type="button" data-tf="240" class="active">4H</button>
+          <button type="button" data-tf="D">1D</button>
+        </div>
+
+        <button type="button" class="btn" id="refreshBtn">Обновить</button>
+      </div>
+
+      <div class="price-box">
+        <span class="price" id="livePrice">—</span>
+        <span class="meta" id="priceSourceLabel">Источник цены: —</span>
+        <span class="meta" id="lastUpdate">Обновление: —</span>
+      </div>
+    </header>
+
+    <!-- Предупреждение об устаревших данных при ошибке обновления -->
+    <div class="stale-banner" id="staleBanner"></div>
+
+    <!-- Основной блок: график + решение + контроль данных -->
+    <div class="grid-main">
+      <section class="card">
+        <div class="card-header">
+          <span class="card-title" id="chartTitle">График — BTCUSDT (4H)</span>
+          <span class="meta" id="chartHint">Перетаскивание — скролл · Колесо / жест — масштаб относительно курсора/жеста · Кнопка «Сброс»</span>
+          <button type="button" class="btn" id="resetViewBtn">Сброс вида</button>
+        </div>
+
+        <div class="chart-wrap">
+          <canvas id="chartCanvas"></canvas>
+        </div>
+
+        <div class="chart-legend">
+          <span><i class="dot" style="background:#22c55e"></i>Рост / <i class="dot" style="background:#ef4444"></i>Падение</span>
+          <span><i class="dot" style="background:#38bdf8"></i>EMA(20)</span>
+          <span><i class="dot" style="background:#a855f7"></i>EMA(50)</span>
+          <span><i class="dot" style="background:#f59e0b"></i>Локальные экстремумы (SH/SL)</span>
+          <span><i class="dot" style="background:#94a3b8"></i>Последняя свеча — формируется</span>
+        </div>
+
+        <div class="tiles">
+          <div class="tile">
+            <div class="tile-label">Направление (EMA20/50)</div>
+            <div class="tile-val" id="tileTrend">—</div>
+            <div class="tile-sub" id="tileTrendSub">—</div>
+          </div>
+          <div class="tile">
+            <div class="tile-label">Волатильность ATR(14)</div>
+            <div class="tile-val" id="tileAtr">—</div>
+            <div class="tile-sub" id="tileAtrSub">—</div>
+          </div>
+          <div class="tile">
+            <div class="tile-label">Объём к пред. 20</div>
+            <div class="tile-val" id="tileVol">—</div>
+            <div class="tile-sub" id="tileVolSub">—</div>
+          </div>
+          <div class="tile">
+            <div class="tile-label">Ближайшие экстремумы</div>
+            <div class="tile-val" id="tileLevels">—</div>
+            <div class="tile-sub" id="tileLevelsSub">—</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="side-stack">
+        <!-- Аналитическое решение -->
+        <section class="card">
+          <div class="card-header">
+            <span class="card-title">Аналитическое решение (базовое)</span>
+            <span class="decision-pill decision-WAIT" id="decisionBadge">WAIT</span>
+          </div>
+          <ul class="reasons" id="decisionReasons">
+            <li>Загрузка данных с Bybit...</li>
+          </ul>
+          <div class="kv-list" id="scenarioMeta"></div>
+          <div class="note-box">
+            <strong>Важно:</strong> это базовый эвристический разбор Этапа 1. Решение строится только по закрытым свечам при наличии EMA(20) и EMA(50); экстремумы SH/SL не являются полноценными зонами поддержки/сопротивления.
+          </div>
+        </section>
+
+        <!-- Контроль качества данных -->
+        <section class="card">
+          <div class="card-header">
+            <span class="card-title">Качество и статус данных</span>
+            <span class="meta" id="connStatus">Подключение...</span>
+          </div>
+          <div class="kv-list" id="dataQualityList"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Честный список реализованного и нереализованного -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-title">Статус возможностей прототипа</span>
+        <span class="meta">Без подмены заглушками</span>
+      </div>
+      <div class="roadmap-grid">
+        <div class="subcard">
+          <h4>Реализовано в Этапе 1</h4>
+          <ul>
+            <li><strong>Публичный Bybit V5 REST API:</strong> загрузка свечей и тикера для <code>BTCUSDT</code> и <code>ETHUSDT</code> (<code>Linear Perpetual</code>) с резервным доменом и явной диагностикой сбоя тикера.</li>
+            <li><strong>Контроль меток времени и пропусков:</strong> проверка UTC-привязки (включая полночь UTC для <code>1D</code>), разделение реальных пропусков свечей, аномальных интервалов и некорректных меток.</li>
+            <li><strong>Привязка пивотов по timestamp:</strong> каждый пивот <code>SH/SL</code> хранит <code>ts</code> и привязывается к свече по метке времени с учётом формирующейся свечи.</li>
+            <li><strong>Зум относительно курсора/жеста и чистая очистка UI:</strong> масштабирование по позиции курсора/двух касаний и централизованный сброс метрик через <code>resetMetricsUi()</code>.</li>
+          </ul>
+        </div>
+        <div class="subcard">
+          <h4>Не реализовано (Этапы 2 и 3)</h4>
+          <ul>
+            <li><strong>Потоковый WebSocket:</strong> пока используется периодический REST-опрос, а не постоянный WS-поток.</li>
+            <li><strong>Полноценные зоны уровней, структура и режимы:</strong> оценка ретестов/реакций/пробоев уровней, классификация <code>BOS / CHoCH</code>, рыночные режимы и мультитаймфреймовый движок (<code>1D + 4H + 1H</code>) — в Этапе 2.</li>
+            <li><strong>Библиотека моделей, пороги объёма и риск-калькулятор:</strong> проверка порогов на истории, модели, цели TP/SL с учётом комиссий/проскальзывания и алерты — в Этапах 2–3.</li>
+            <li><strong>Полноценный офлайн PWA и бэктест:</strong> отдельные PNG-иконки, Service Worker и исторический прогон стратегий — в Этапах 2–3.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="disclaimer">
+      Учебный/аналитический прототип. Не является индивидуальной инвестиционной рекомендацией или торговым сигналом.
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. СЛОЙ ЗАГРУЗКИ И НОРМАЛИЗАЦИИ ДАННЫХ (Bybit V5 Linear Perpetual)
+    // =========================================================================
+    const BybitAdapter = {
+      source: 'Bybit',
+      marketType: 'Linear Perpetual',
+      hosts: [
+        'https://api.bybit.com',
+        'https://api.bytick.com'
+      ],
+
+      intervalToMs(interval) {
+        if (interval === '60') return 60 * 60 * 1000;
+        if (interval === '240') return 4 * 60 * 60 * 1000;
+        if (interval === 'D') return 24 * 60 * 60 * 1000;
+        return null;
+      },
+
+      isAlignedToUtcGrid(openTs, interval) {
+        const stepMs = this.intervalToMs(interval);
+        if (!Number.isFinite(openTs) || openTs <= 0 || !stepMs) return false;
+        if (interval === 'D') {
+          const d = new Date(openTs);
+          return (
+            d.getUTCHours() === 0 &&
+            d.getUTCMinutes() === 0 &&
+            d.getUTCSeconds() === 0 &&
+            d.getUTCMilliseconds() === 0
+          );
+        }
+        return openTs % stepMs === 0;
+      },
+
+      async fetchJsonWithTimeout(url, externalSignal, timeoutMs = 9000) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(new Error('Таймаут запроса')), timeoutMs);
+
+        const onExternalAbort = () => controller.abort(externalSignal.reason || new Error('Запрос отменён'));
+        if (externalSignal) {
+          if (externalSignal.aborted) {
+            clearTimeout(timeoutId);
+            throw new DOMException('Aborted', 'AbortError');
+          }
+          externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+        }
+
+        try {
+          const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const json = await res.json();
+          if (json.retCode !== 0 || !json.result) {
+            throw new Error(`retCode=${json.retCode}: ${json.retMsg || 'ошибка API'}`);
+          }
+          return json;
+        } finally {
+          clearTimeout(timeoutId);
+          if (externalSignal) {
+            externalSignal.removeEventListener('abort', onExternalAbort);
+          }
+        }
+      },
+
+      async fetchTickerFromHost(baseHost, symbol, externalSignal) {
+        const hostLabel = new URL(baseHost).host;
+        try {
+          const tickerUrl = `${baseHost}/v5/market/tickers?category=linear&symbol=${encodeURIComponent(symbol)}`;
+          const tickerJson = await this.fetchJsonWithTimeout(tickerUrl, externalSignal, 9000);
+          if (!tickerJson.result || !Array.isArray(tickerJson.result.list) || tickerJson.result.list.length === 0) {
+            return {
+              available: false,
+              price: null,
+              timeMs: null,
+              hostUsed: hostLabel,
+              error: 'Пустой список тикеров'
+            };
+          }
+          const tItem = tickerJson.result.list[0];
+          const parsedLast = Number(tItem.lastPrice);
+          if (!Number.isFinite(parsedLast) || parsedLast <= 0) {
+            return {
+              available: false,
+              price: null,
+              timeMs: null,
+              hostUsed: hostLabel,
+              error: 'Некорректное значение lastPrice'
+            };
+          }
+          const tickerTimeMs = Number.isFinite(Number(tickerJson.time)) && Number(tickerJson.time) > 0
+            ? Number(tickerJson.time)
+            : null;
+          return {
+            available: true,
+            price: parsedLast,
+            timeMs: tickerTimeMs,
+            hostUsed: hostLabel,
+            error: null
+          };
+        } catch (err) {
+          if (externalSignal && externalSignal.aborted) {
+            throw new DOMException('Aborted', 'AbortError');
+          }
+          return {
+            available: false,
+            price: null,
+            timeMs: null,
+            hostUsed: hostLabel,
+            error: err && err.message ? err.message : 'Ошибка загрузки тикера'
+          };
+        }
+      },
+
+      async fetchMarketSnapshot(symbol, interval, externalSignal, limit = 160) {
+        const errors = [];
+
+        for (const baseHost of this.hosts) {
+          if (externalSignal && externalSignal.aborted) {
+            throw new DOMException('Aborted', 'AbortError');
+          }
+
+          const hostLabel = new URL(baseHost).host;
+          try {
+            const klineUrl = `${baseHost}/v5/market/kline?category=linear&symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=${limit}`;
+
+            const [klineJson, tickerStatus] = await Promise.all([
+              this.fetchJsonWithTimeout(klineUrl, externalSignal, 9000),
+              this.fetchTickerFromHost(baseHost, symbol, externalSignal)
+            ]);
+
+            if (!Array.isArray(klineJson.result.list)) {
+              throw new Error('Некорректный формат списка свечей');
+            }
+
+            const serverTimeMs = Number.isFinite(Number(klineJson.time)) && Number(klineJson.time) > 0
+              ? Number(klineJson.time)
+              : Date.now();
+            const clockSkewMs = serverTimeMs - Date.now();
+
+            return this.normalize(klineJson.result.list, {
+              symbol,
+              interval,
+              hostUsed: hostLabel,
+              serverTimeMs,
+              clockSkewMs,
+              tickerStatus
+            });
+          } catch (err) {
+            if (externalSignal && externalSignal.aborted) {
+              throw new DOMException('Aborted', 'AbortError');
+            }
+            const reason = err && err.message ? err.message : 'Ошибка сети';
+            errors.push(`${hostLabel}: ${reason}`);
+          }
+        }
+
+        throw new Error(`Нет доступа к Bybit API (${errors.join('; ')})`);
+      },
+
+      normalize(rawList, meta) {
+        const { symbol, interval, hostUsed, serverTimeMs, clockSkewMs, tickerStatus } = meta;
+        const stepMs = this.intervalToMs(interval);
+        const parsed = [];
+        let invalidRows = 0;
+        let invalidTimestamps = 0;
+
+        for (const row of rawList) {
+          const openTs = Number(row[0]);
+          const open = Number(row[1]);
+          const high = Number(row[2]);
+          const low = Number(row[3]);
+          const close = Number(row[4]);
+          const volume = Number(row[5]);
+
+          if (!Number.isFinite(openTs) || !Number.isInteger(openTs) || openTs <= 0 || openTs > serverTimeMs + 24 * 60 * 60 * 1000) {
+            invalidTimestamps++;
+            invalidRows++;
+            continue;
+          }
+
+          const validOhlcv =
+            Number.isFinite(open) && open > 0 &&
+            Number.isFinite(high) && high > 0 &&
+            Number.isFinite(low) && low > 0 &&
+            Number.isFinite(close) && close > 0 &&
+            Number.isFinite(volume) && volume >= 0 &&
+            high >= Math.max(open, close, low) &&
+            low <= Math.min(open, close, high);
+
+          if (!validOhlcv) {
+            invalidRows++;
+            continue;
+          }
+
+          const closeTs = stepMs ? openTs + stepMs : null;
+          parsed.push({ ts: openTs, closeTs, open, high, low, close, volume });
+        }
+
+        parsed.sort((a, b) => a.ts - b.ts);
+
+        const deduped = [];
+        let duplicates = 0;
+        for (const c of parsed) {
+          if (deduped.length && deduped[deduped.length - 1].ts === c.ts) {
+            duplicates++;
+            deduped[deduped.length - 1] = c;
+          } else {
+            deduped.push(c);
+          }
+        }
+
+        let gaps = 0;
+        let anomalousIntervals = 0;
+        let misalignedTimestamps = 0;
+
+        if (stepMs && deduped.length > 0) {
+          for (let i = 0; i < deduped.length; i++) {
+            if (!this.isAlignedToUtcGrid(deduped[i].ts, interval)) {
+              misalignedTimestamps++;
+            }
+            if (i > 0) {
+              const diff = deduped[i].ts - deduped[i - 1].ts;
+              if (diff <= 0) {
+                invalidTimestamps++;
+              } else if (diff > stepMs) {
+                if (diff % stepMs === 0) {
+                  gaps += (diff / stepMs) - 1;
+                } else {
+                  const approxMissing = Math.floor(diff / stepMs) - 1;
+                  if (approxMissing > 0) gaps += approxMissing;
+                  anomalousIntervals++;
+                }
+              } else if (diff < stepMs) {
+                anomalousIntervals++;
+              }
+            }
+          }
+        }
+
+        const finalityBufferMs = 500;
+        const closedCandles = [];
+        const openCandles = [];
+
+        for (const c of deduped) {
+          if (stepMs && (c.ts + stepMs + finalityBufferMs) <= serverTimeMs) {
+            closedCandles.push(c);
+          } else {
+            openCandles.push(c);
+          }
+        }
+
+        const formingCandle = openCandles.length ? openCandles[openCandles.length - 1] : null;
+        const lastClosedCandle = closedCandles.length ? closedCandles[closedCandles.length - 1] : null;
+
+        const lastClosedPrice = Number.isFinite(lastClosedCandle && lastClosedCandle.close) ? lastClosedCandle.close : null;
+        const formingClosePrice = Number.isFinite(formingCandle && formingCandle.close) ? formingCandle.close : null;
+        const tickerAvailable = Boolean(tickerStatus && tickerStatus.available && Number.isFinite(tickerStatus.price));
+        const tickerLastPrice = tickerAvailable ? tickerStatus.price : null;
+
+        let currentMarketPrice = null;
+        let currentPriceSource = 'Нет данных';
+        let priceWarning = null;
+
+        if (tickerAvailable) {
+          currentMarketPrice = tickerLastPrice;
+          currentPriceSource = `Bybit Ticker (${tickerStatus.hostUsed})`;
+        } else if (formingClosePrice !== null) {
+          currentMarketPrice = formingClosePrice;
+          currentPriceSource = 'Резерв: close формирующейся свечи';
+          priceWarning = `Ticker недоступен (${tickerStatus && tickerStatus.error ? tickerStatus.error : 'нет данных'}) — используется close формирующейся свечи.`;
+        } else if (lastClosedPrice !== null) {
+          currentMarketPrice = lastClosedPrice;
+          currentPriceSource = 'Резерв: close последней закрытой свечи';
+          priceWarning = `Ticker и формирующаяся свеча недоступны (${tickerStatus && tickerStatus.error ? tickerStatus.error : 'нет данных'}) — используется close последней закрытой свечи.`;
+        }
+
+        return {
+          symbol,
+          interval,
+          source: this.source,
+          marketType: this.marketType,
+          hostUsed,
+          fetchedAtLocalMs: Date.now(),
+          serverTimeMs,
+          clockSkewMs,
+          allCandles: deduped,
+          closedCandles,
+          formingCandle,
+          tickerStatus: tickerStatus || { available: false, price: null, timeMs: null, hostUsed, error: 'Неизвестный статус тикера' },
+          prices: {
+            lastClosedPrice,
+            formingClosePrice,
+            tickerLastPrice,
+            tickerTimeMs: tickerStatus ? tickerStatus.timeMs : null,
+            currentMarketPrice,
+            currentPriceSource,
+            priceWarning
+          },
+          quality: {
+            totalFetched: rawList.length,
+            closedCount: closedCandles.length,
+            hasForming: Boolean(formingCandle),
+            invalidRows,
+            invalidTimestamps,
+            duplicates,
+            gaps,
+            anomalousIntervals,
+            misalignedTimestamps,
+            lastClosedOpenTs: lastClosedCandle ? lastClosedCandle.ts : null,
+            lastClosedCloseTs: lastClosedCandle ? lastClosedCandle.closeTs : null,
+            formingOpenTs: formingCandle ? formingCandle.ts : null,
+            formingCloseTs: formingCandle ? formingCandle.closeTs : null
+          }
+        };
+      }
+    };
+
+    // =========================================================================
+    // 1.5. ПОТОКОВЫЙ КЛИЕНТ WEBSOCKET (ЭТАП А — НАДЁЖНОСТЬ СОЕДИНЕНИЯ; данные по-прежнему LOG-ONLY)
+    // =========================================================================
+    const BybitWsClient = {
+      url: 'wss://stream.bybit.com/v5/public/linear',
+
+      // ---- Настраиваемые пороги (менять через BybitWsClient.configure({...})) ----
+      pingIntervalMs: 20000,
+      pongTimeoutMs: 10000,
+      streamAliveMs: 10000,
+      stallMs: 30000,
+      degradedMisses: 3,
+      timerGapMs: 3000,
+      resumeGraceMs: 5000,
+      connectTimeoutMs: 15000,
+      stableResetMs: 30000,
+      lateWindowMs: 30000,
+      maxTimedOutPings: 50,
+      subAckTimeoutMs: 8000,
+      subRetryMax: 2,
+      reconnectBaseMs: 1000,
+      reconnectMaxMs: 30000,
+      supportedIntervals: new Set(['60', '240', 'D']),
+
+      // Минимально допустимые значения для configure(). Выбраны по тому, как параметр используется в коде:
+      //  - таймеры/интервалы (setTimeout/setInterval): 0 = мгновенное срабатывание или «шторм», поэтому минимум 1 мс;
+      //  - reconnectBaseMs: основание экспоненты (base * 2^n), 0 даёт нулевую задержку всегда;
+      //  - stableResetMs: 0 мгновенно сбрасывал бы backoff; timerGapMs: 0 делало бы каждый тик «паузой»;
+      //  - degradedMisses / maxTimedOutPings: счётчики, смысл имеют только при значении >= 1 (код сам требует >= 1);
+      //  - resumeGraceMs, lateWindowMs, subRetryMax: 0 — осмысленное значение (нет льготного периода / окна / повторов).
+      // Числа — не «магические пороги», а нижняя граница физического смысла параметра.
+      configMin: {
+        pingIntervalMs: 1, pongTimeoutMs: 1, streamAliveMs: 1, stallMs: 1, degradedMisses: 1,
+        timerGapMs: 1, resumeGraceMs: 0, connectTimeoutMs: 1, stableResetMs: 1, lateWindowMs: 0,
+        maxTimedOutPings: 1, subAckTimeoutMs: 1, subRetryMax: 0, reconnectBaseMs: 1, reconnectMaxMs: 1
+      },
+      // Верхняя граница числа отслеживаемых «брошенных» сокетов (защита от неограниченного роста, если onclose не приходит).
+      maxAbandonedTracked: 8,
+
+      hooks: { onStatus: null, onRecovered: null },
+
+      state: {
+        ws: null,
+        connGen: 0,
+        subGen: 0,
+        recoveryGen: 0,
+        activeSyncReqId: null,
+        symbol: 'BTCUSDT',
+        interval: '240',
+        topics: [],
+        activeTopicSet: new Set(),
+        confirmedTopics: new Set(),
+        pendingSubs: new Map(),       // req_id -> {reqId, op, topics, subGen, sentAt, retries}
+        reqSeq: 0,
+        status: 'idle',
+        health: 'ok',
+        manualClose: false,
+        stoppedByPagehide: false,
+        everOpened: false,
+        recovering: false,
+        resyncRequested: false,
+        reconnectTimer: null,
+        reconnectAttempt: 0,
+        connectTimer: null,
+        stableTimer: null,
+        watchdogTimer: null,
+        lastWatchdogAt: 0,
+        graceUntil: 0,
+        pingTimer: null,
+        pongTimer: null,
+        awaitingPong: false,
+        pingGraceUsed: false,
+        lastPingAt: null,
+        lastPingReqId: null,
+        lastPongAt: null,
+        lastRttMs: null,
+        openedAt: null,
+        lastMsgAt: null,
+        lastNonPongAt: null,
+        pongMissStreak: 0,
+        pingsSent: 0,
+        pongsReceived: 0,
+        missedPongs: 0,
+        latePongs: 0,
+        ambiguousPongs: 0,
+        pongsConfirmed: 0,
+        pongsByExclusion: 0,
+        pongEchoSeen: 0,
+        pongNoEcho: 0,
+        lastNoEchoPongAt: null,       // Date.now() прихода последнего pong без эха req_id (доказательство активности канала)
+        unattributedTimeouts: 0,      // таймауты активного ping, не засчитанные как пропуск из-за pong без эха после его отправки
+        timedOutPings: [],            // { reqId, timedOutAt }
+        timedOutPruned: 0,
+        timerGaps: 0,
+        suspectedPauses: 0,
+        stallsDetected: 0,
+        recoveries: 0,
+        abandonedSockets: 0,
+        subAcks: 0,
+        subFailures: 0,
+        subRetries: 0,
+        staleMessagesDropped: 0,
+        socketsCreated: 0,
+        activeSockets: 0,
+        maxConcurrentSockets: 0,
+        duplicateBlocked: 0,
+        abandoned: new Set(),
+        closeAccounted: new WeakSet(),
+        abandonedEvicted: 0,
+        abandonedPrunedClosed: 0,
+        invalidStreamMessages: 0,
+        deltasBeforeSnapshot: 0,
+        events: [],
+        tickerBySymbol: new Map()
+      },
+
+      configure(overrides) {
+        const allowed = [
+          'pingIntervalMs', 'pongTimeoutMs', 'streamAliveMs', 'stallMs', 'degradedMisses',
+          'timerGapMs', 'resumeGraceMs', 'connectTimeoutMs', 'stableResetMs', 'lateWindowMs',
+          'maxTimedOutPings', 'subAckTimeoutMs', 'subRetryMax', 'reconnectBaseMs', 'reconnectMaxMs'
+        ];
+        for (const [k, v] of Object.entries(overrides || {})) {
+          const minV = this.configMin[k];
+          if (!allowed.includes(k) || typeof v !== 'number' || !Number.isFinite(v) || v < minV) {
+            this._log('warn', `configure: параметр отклонён: ${k}=${v} (минимум ${minV})`);
+            continue;
+          }
+          this[k] = v;
+        }
+      },
+
+      _normalizeReqId(rawReqId) {
+        if (rawReqId === undefined || rawReqId === null) return null;
+        const str = String(rawReqId).trim();
+        return str.length > 0 ? str : null;
+      },
+
+      _pruneTimedOutPings(now) {
+        const s = this.state;
+        const beforeLen = s.timedOutPings.length;
+        const windowMs = Number.isFinite(this.lateWindowMs) && this.lateWindowMs >= 0 ? this.lateWindowMs : 30000;
+        const kept = s.timedOutPings.filter((item) => {
+          if (!item || !Number.isFinite(item.timedOutAt)) return false;
+          return (now - item.timedOutAt) <= windowMs;
+        });
+        const maxLen = Number.isFinite(this.maxTimedOutPings) && this.maxTimedOutPings >= 1
+          ? Math.floor(this.maxTimedOutPings)
+          : 50;
+        if (kept.length > maxLen) {
+          kept.splice(0, kept.length - maxLen);
+        }
+        const removed = beforeLen - kept.length;
+        if (removed > 0) {
+          s.timedOutPruned += removed;
+        }
+        s.timedOutPings = kept;
+      },
+
+      buildTopics(symbol, interval) {
+        const sym = String(symbol || 'BTCUSDT').toUpperCase();
+        const iv = this.supportedIntervals.has(interval) ? interval : '240';
+        return [`tickers.${sym}`, `kline.${iv}.${sym}`];
+      },
+
+      getStateSnapshot() {
+        const s = this.state;
+        return {
+          url: this.url,
+          status: s.status,
+          health: s.health,
+          recovering: s.recovering,
+          recoveryGen: s.recoveryGen,
+          activeSyncReqId: s.activeSyncReqId,
+          connGen: s.connGen,
+          subGen: s.subGen,
+          symbol: s.symbol,
+          interval: s.interval,
+          topics: s.topics.slice(),
+          confirmedTopics: Array.from(s.confirmedTopics),
+          reconnectAttempt: s.reconnectAttempt,
+          pingsSent: s.pingsSent,
+          pongsReceived: s.pongsReceived,
+          missedPongs: s.missedPongs,
+          pongMissStreak: s.pongMissStreak,
+          latePongs: s.latePongs,
+          ambiguousPongs: s.ambiguousPongs,
+          pongsConfirmed: s.pongsConfirmed,
+          pongsByExclusion: s.pongsByExclusion,
+          pongEchoSeen: s.pongEchoSeen,
+          pongNoEcho: s.pongNoEcho,
+          lastNoEchoPongAt: s.lastNoEchoPongAt,
+          unattributedTimeouts: s.unattributedTimeouts,
+          unansweredTimedOut: s.timedOutPings.length,
+          timedOutPruned: s.timedOutPruned,
+          lastRttMs: s.lastRttMs,
+          lastMsgAt: s.lastMsgAt,
+          timerGaps: s.timerGaps,
+          suspectedPauses: s.suspectedPauses,
+          stallsDetected: s.stallsDetected,
+          recoveries: s.recoveries,
+          abandonedSockets: s.abandonedSockets,
+          // сокеты, которые клиент бросил (_abandonSocket/stop), но событие close по ним ещё не пришло
+          abandonedAwaitingCloseEvent: s.abandoned.size,
+          abandonedEvicted: s.abandonedEvicted,
+          abandonedPrunedClosed: s.abandonedPrunedClosed,
+          // рабочий (текущий) сокет — отдельная метрика
+          workingSockets: s.ws ? 1 : 0,
+          invalidStreamMessages: s.invalidStreamMessages,
+          deltasBeforeSnapshot: s.deltasBeforeSnapshot,
+          subAcks: s.subAcks,
+          subFailures: s.subFailures,
+          subRetries: s.subRetries,
+          staleMessagesDropped: s.staleMessagesDropped,
+          socketsCreated: s.socketsCreated,
+          activeSockets: s.activeSockets,
+          maxConcurrentSockets: s.maxConcurrentSockets,
+          duplicateBlocked: s.duplicateBlocked
+        };
+      },
+
+      getUiStatus() {
+        const s = this.state;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return { code: 'offline', text: 'WS: нет сети', cls: 'status-err' };
+        if (s.status === 'idle' || s.status === 'closed') return { code: 'offline', text: 'WS: отключён', cls: 'status-err' };
+        if (s.status === 'connecting') return { code: 'connecting', text: 'WS: подключение…', cls: 'status-warn' };
+        if (s.status === 'reconnecting') return { code: 'reconnecting', text: `WS: переподключение (попытка ${Math.max(1, s.reconnectAttempt)})`, cls: 'status-warn' };
+        const allConfirmed = s.topics.length > 0 && s.topics.every((t) => s.confirmedTopics.has(t));
+        if (!allConfirmed) return { code: 'connecting', text: 'WS: подписка…', cls: 'status-warn' };
+        if (s.recovering) return { code: 'recovering', text: 'WS: подключён · ждём синхронизацию REST', cls: 'status-warn' };
+        if (s.health === 'warn') return { code: 'connected', text: 'WS: подключён · pong пропущен', cls: 'status-warn' };
+        if (s.health === 'degraded') return { code: 'connected', text: `WS: подключён · pong пропущен ×${s.pongMissStreak}`, cls: 'status-warn' };
+        if (s.health === 'suspect') return { code: 'connected', text: 'WS: подключён · нет сообщений, проверяем', cls: 'status-warn' };
+        return { code: 'connected', text: 'WS: подключён', cls: 'status-ok' };
+      },
+
+      _notify() {
+        const fn = this.hooks && this.hooks.onStatus;
+        if (typeof fn === 'function') {
+          try { fn(this.getUiStatus()); } catch (err) { console.error('[BybitWsClient] onStatus hook', err); }
+        }
+      },
+
+      _event(type, extra) {
+        const ev = Object.assign({ t: Date.now(), type }, extra || {});
+        this.state.events.push(ev);
+        while (this.state.events.length > 60) this.state.events.shift();
+      },
+
+      _log(level, message, extra) {
+        const prefix = `[BybitWsClient][conn=${this.state.connGen}/sub=${this.state.subGen}][${this.state.status}]`;
+        const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+        if (extra !== undefined) {
+          fn(prefix, message, extra);
+        } else {
+          fn(prefix, message);
+        }
+      },
+
+      _bumpConnGen() {
+        this.state.connGen += 1;
+        return this.state.connGen;
+      },
+
+      _bumpSubGen() {
+        this.state.subGen += 1;
+        return this.state.subGen;
+      },
+
+      _isCurrent(ws, cGen) {
+        return !!ws && cGen === this.state.connGen && this.state.ws === ws;
+      },
+
+      _setActiveTopics(topics) {
+        this.state.topics = topics.slice();
+        this.state.activeTopicSet = new Set(this.state.topics);
+        for (const t of Array.from(this.state.confirmedTopics)) {
+          if (!this.state.activeTopicSet.has(t)) this.state.confirmedTopics.delete(t);
+        }
+      },
+
+      _isTopicActive(topic) {
+        return typeof topic === 'string' && this.state.activeTopicSet.has(topic);
+      },
+
+      _clearReconnectTimer() {
+        if (this.state.reconnectTimer !== null) {
+          clearTimeout(this.state.reconnectTimer);
+          this.state.reconnectTimer = null;
+        }
+      },
+
+      _clearConnectTimer() {
+        if (this.state.connectTimer !== null) {
+          clearTimeout(this.state.connectTimer);
+          this.state.connectTimer = null;
+        }
+      },
+
+      _clearStableTimer() {
+        if (this.state.stableTimer !== null) {
+          clearTimeout(this.state.stableTimer);
+          this.state.stableTimer = null;
+        }
+      },
+
+      _stopHeartbeat() {
+        if (this.state.pingTimer !== null) {
+          clearInterval(this.state.pingTimer);
+          this.state.pingTimer = null;
+        }
+        if (this.state.pongTimer !== null) {
+          clearTimeout(this.state.pongTimer);
+          this.state.pongTimer = null;
+        }
+        this.state.awaitingPong = false;
+      },
+
+      _startWatchdog() {
+        if (this.state.watchdogTimer !== null) return;
+        this.state.lastWatchdogAt = Date.now();
+        this.state.watchdogTimer = setInterval(() => this._watchdogTick(), 1000);
+      },
+
+      _stopWatchdog() {
+        if (this.state.watchdogTimer !== null) {
+          clearInterval(this.state.watchdogTimer);
+          this.state.watchdogTimer = null;
+        }
+      },
+
+      _sendJson(ws, payload) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+        try {
+          ws.send(JSON.stringify(payload));
+          return true;
+        } catch (err) {
+          this._log('error', 'Ошибка отправки сообщения WS', err && err.message ? err.message : err);
+          return false;
+        }
+      },
+
+      // ---- Подписки с подтверждением ----
+      _sendSub(ws, op, topics, retries = 0) {
+        if (!topics || topics.length === 0) return;
+        const reqId = `ws-${op}-${++this.state.reqSeq}`;
+        if (!this._sendJson(ws, { req_id: reqId, op, args: topics })) return;
+        this.state.pendingSubs.set(reqId, { reqId, op, topics: topics.slice(), subGen: this.state.subGen, sentAt: Date.now(), retries });
+      },
+
+      _handleAck(msg) {
+        const s = this.state;
+        const reqId = this._normalizeReqId(msg && msg.req_id);
+        const op = msg && msg.op;
+
+        if (op !== 'subscribe' && op !== 'unsubscribe') {
+          return;
+        }
+
+        if (reqId === null) {
+          this._log('warn', `ACK ${op} без req_id отклонён: требуется точная корреляция по req_id`);
+          this._event('ack-missing-req-id', { op });
+          return;
+        }
+
+        if (!s.pendingSubs.has(reqId)) {
+          this._log('warn', `ACK ${op} с неизвестным req_id проигнорирован`, { reqId });
+          this._event('ack-unknown-req-id', { op, reqId });
+          return;
+        }
+
+        const entry = s.pendingSubs.get(reqId);
+        if (!entry || entry.op !== op) {
+          this._log('warn', `ACK ${op} не прошёл проверку операции (op)`, {
+            reqId,
+            expectedOp: entry ? entry.op : undefined,
+            gotOp: op
+          });
+          this._event('ack-op-mismatch', { op, reqId, expectedOp: entry ? entry.op : null });
+          return;
+        }
+
+        if (op === 'subscribe' && entry.subGen !== s.subGen) {
+          this._log('warn', `ACK subscribe от устаревшего поколения subGen проигнорирован`, {
+            reqId,
+            entrySubGen: entry.subGen,
+            currentSubGen: s.subGen
+          });
+          this._event('ack-stale-subgen', { op, reqId, entrySubGen: entry.subGen, currentSubGen: s.subGen });
+          return;
+        }
+
+        s.pendingSubs.delete(reqId);
+
+        if (msg.success === false) {
+          s.subFailures += 1;
+          this._log('error', `Подписка отклонена сервером: ${op}`, { ret_msg: msg.ret_msg, topics: entry.topics, reqId });
+          this._event('sub-failed', { op, ret_msg: msg.ret_msg, reqId });
+          if (op === 'subscribe' && entry.subGen === s.subGen && this._entryStillRelevant(entry)) {
+            this._recover('subscription rejected', false);
+          }
+          return;
+        }
+
+        if (op === 'subscribe') {
+          s.subAcks += 1;
+          for (const t of entry.topics) {
+            if (s.activeTopicSet.has(t)) {
+              s.confirmedTopics.add(t);
+            }
+          }
+          this._afterConfirm();
+        } else if (op === 'unsubscribe') {
+          s.subAcks += 1;
+          for (const t of entry.topics) {
+            if (!s.activeTopicSet.has(t)) {
+              s.confirmedTopics.delete(t);
+            }
+          }
+          this._notify();
+        }
+        this._log('log', `ACK ${op}`, { success: msg.success, ret_msg: msg.ret_msg, reqId });
+      },
+
+      _entryStillRelevant(entry) {
+        return entry && entry.subGen === this.state.subGen && entry.topics.some((t) => this.state.activeTopicSet.has(t));
+      },
+
+      _afterConfirm() {
+        const s = this.state;
+        const all = s.topics.length > 0 && s.topics.every((t) => s.confirmedTopics.has(t));
+        if (all && s.recovering && !s.resyncRequested) {
+          s.resyncRequested = true;
+          const syncReqId = `sync-${s.recoveryGen}-${++s.reqSeq}`;
+          s.activeSyncReqId = syncReqId;
+          this._event('resync-requested', { recoveryGen: s.recoveryGen, syncReqId });
+          const fn = this.hooks && this.hooks.onRecovered;
+          if (typeof fn === 'function') {
+            try { fn('reconnect', { recoveryGen: s.recoveryGen, syncReqId }); } catch (err) { console.error('[BybitWsClient] onRecovered hook', err); }
+          }
+        }
+        this._notify();
+      },
+
+      // Приложение сообщает, что REST-синхронизация после восстановления завершилась успешно
+      notifyRestSynced(syncToken) {
+        const s = this.state;
+        if (!s.recovering || !s.resyncRequested) return false;
+        if (syncToken && typeof syncToken === 'object') {
+          if (Number.isFinite(syncToken.recoveryGen) && syncToken.recoveryGen !== s.recoveryGen) {
+            this._log('warn', 'Отклонён notifyRestSynced от устаревшего recoveryGen', { got: syncToken.recoveryGen, current: s.recoveryGen });
+            return false;
+          }
+          if (syncToken.syncReqId && s.activeSyncReqId && syncToken.syncReqId !== s.activeSyncReqId) {
+            this._log('warn', 'Отклонён notifyRestSynced от устаревшего syncReqId', { got: syncToken.syncReqId, current: s.activeSyncReqId });
+            return false;
+          }
+        } else if (typeof syncToken === 'string' && s.activeSyncReqId && syncToken !== s.activeSyncReqId) {
+          this._log('warn', 'Отклонён notifyRestSynced по несовпадающему токену синхронизации');
+          return false;
+        }
+        s.recovering = false;
+        s.resyncRequested = false;
+        s.activeSyncReqId = null;
+        this._event('resynced', { recoveryGen: s.recoveryGen });
+        this._notify();
+        return true;
+      },
+
+      // ---- Heartbeat: пропуск pong сам по себе соединение не закрывает ----
+      _sendPing(ws, cGen) {
+        if (!this._isCurrent(ws, cGen) || ws.readyState !== WebSocket.OPEN) return;
+        if (this.state.awaitingPong) return;
+        const reqId = `ws-ping-${this.state.pingsSent + 1}`;
+        if (!this._sendJson(ws, { op: 'ping', req_id: reqId })) return;
+        const now = Date.now();
+        this.state.lastPingAt = now;
+        this.state.lastPingReqId = reqId;
+        this.state.awaitingPong = true;
+        this.state.pingGraceUsed = false;
+        this.state.pingsSent += 1;
+        this._armPongTimer(ws, cGen, now, reqId);
+      },
+
+      _armPongTimer(ws, cGen, armedAt, reqId) {
+        if (this.state.pongTimer !== null) clearTimeout(this.state.pongTimer);
+        this.state.pongTimer = setTimeout(() => this._onPongTimeout(ws, cGen, armedAt, reqId), this.pongTimeoutMs);
+      },
+
+      _onPongTimeout(ws, cGen, armedAt, pingReqId) {
+        if (!this._isCurrent(ws, cGen) || !this.state.awaitingPong) return;
+        const s = this.state;
+        const now = Date.now();
+        const lateMs = now - (armedAt + this.pongTimeoutMs);
+        if ((lateMs > this.timerGapMs || now < s.graceUntil) && !s.pingGraceUsed) {
+          s.pingGraceUsed = true;
+          s.suspectedPauses += 1;
+          s.graceUntil = Math.max(s.graceUntil, now + this.resumeGraceMs);
+          this._event('pong-timeout-forgiven', { lateMs });
+          this._log('warn', `Таймаут pong не засчитан (таймер опоздал на ${lateMs} мс или пауза страницы); ждём ещё ${this.pongTimeoutMs} мс`);
+          this._armPongTimer(ws, cGen, now, pingReqId || s.lastPingReqId);
+          return;
+        }
+        // S6: после отправки активного ping приходил pong без эха — канал жив, но к этому ping он не привязан.
+        // Такой timeout не считается пропуском (missedPongs/pongMissStreak/timedOutPings не меняются).
+        if (Number.isFinite(s.lastPingAt) && s.lastNoEchoPongAt !== null && s.lastNoEchoPongAt >= s.lastPingAt) {
+          s.unattributedTimeouts += 1;
+          s.awaitingPong = false;
+          s.pongTimer = null;
+          this._event('pong-timeout-unattributed', { lastPingAt: s.lastPingAt, lastNoEchoPongAt: s.lastNoEchoPongAt });
+          this._log('warn', 'Таймаут pong не засчитан как пропуск: после отправки ping приходил pong без req_id (канал активен, соответствие неопределённо)');
+          this._evaluateHealth(now);
+          return;
+        }
+        s.missedPongs += 1;
+        s.pongMissStreak += 1;
+        s.timedOutPings.push({ reqId: pingReqId || s.lastPingReqId || null, timedOutAt: now });
+        this._pruneTimedOutPings(now);
+        s.awaitingPong = false;
+        s.pongTimer = null;
+        this._event('pong-missed', { streak: s.pongMissStreak, lateMs, streamAliveMs: s.lastMsgAt ? now - s.lastMsgAt : null });
+        this._log('warn', `Не получен pong за ${this.pongTimeoutMs} мс (missed=${s.missedPongs}, подряд=${s.pongMissStreak}); сокет сохраняется, решение по общему молчанию потока`);
+        this._evaluateHealth(now);
+      },
+
+      _handlePong(msg, recvAt, cGen) {
+        if (cGen !== this.state.connGen) {
+          this.state.staleMessagesDropped += 1;
+          return;
+        }
+        const s = this.state;
+        s.pongsReceived += 1;
+        s.lastPongAt = recvAt;
+        const echoed = this._normalizeReqId(msg && msg.req_id);
+        this._pruneTimedOutPings(recvAt);
+
+        let kind; // confirmed | late | ambiguous
+        let matchedTimedOutIdx = -1;
+
+        if (echoed !== null) {
+          s.pongEchoSeen += 1;
+          if (s.awaitingPong && echoed === s.lastPingReqId) {
+            kind = 'confirmed';
+          } else {
+            matchedTimedOutIdx = s.timedOutPings.findIndex((item) => item.reqId === echoed);
+            kind = 'late';
+          }
+        } else {
+          s.pongNoEcho += 1;
+          s.lastNoEchoPongAt = recvAt;      // S6: любой pong без эха — доказательство активности канала (на ping не привязывается)
+          // S6: pong без req_id никогда не подтверждает конкретный ping (нет confirmed-by-exclusion)
+          if (s.awaitingPong) {
+            kind = 'ambiguous';
+          } else {
+            kind = 'late';
+          }
+        }
+
+        if (kind === 'confirmed') {
+          s.pongsConfirmed += 1;
+          if (Number.isFinite(s.lastPingAt)) s.lastRttMs = Math.max(0, recvAt - s.lastPingAt);
+          if (s.pongTimer !== null) { clearTimeout(s.pongTimer); s.pongTimer = null; }
+          s.awaitingPong = false;
+          s.lastPingReqId = null;
+          s.pongMissStreak = 0;
+          this._evaluateHealth(recvAt);
+        } else if (kind === 'late') {
+          s.latePongs += 1;
+          // S6: удаление из timedOutPings только при точном совпадении req_id. No-echo late pong записи не трогает.
+          if (echoed !== null && matchedTimedOutIdx >= 0) {
+            s.timedOutPings.splice(matchedTimedOutIdx, 1);
+          }
+          this._event('late-pong', { echoed, matched: echoed !== null && matchedTimedOutIdx >= 0 });
+        } else {
+          // S6: неоднозначный pong ничего не подтверждает и не отменяет ожидание текущего ping:
+          // pongTimer, awaitingPong и lastPingReqId сохраняются; RTT, счётчики подтверждений и серия пропусков не меняются.
+          // Он учитывается только как доказательство активности канала (lastNoEchoPongAt) при решении о timeout.
+          s.ambiguousPongs += 1;
+          this._event('ambiguous-pong', { candidatesTimedOut: s.timedOutPings.length });
+          this._log('warn', 'pong без req_id при активном ожидании: соответствие неопределённо; ожидание текущего ping сохранено, серия пропусков не сбрасывается');
+        }
+      },
+
+      _startHeartbeat(ws, cGen) {
+        this._stopHeartbeat();
+        this._sendPing(ws, cGen);
+        this.state.pingTimer = setInterval(() => {
+          this._sendPing(ws, cGen);
+        }, this.pingIntervalMs);
+      },
+
+      _evaluateHealth(now) {
+        const s = this.state;
+        if (s.status !== 'open' || !s.ws) return;
+        const base = s.lastMsgAt !== null ? s.lastMsgAt : s.openedAt;
+        const silenceMs = base ? now - base : 0;
+        const streamAlive = silenceMs <= this.streamAliveMs;
+        let health = 'ok';
+        if (s.pongMissStreak >= this.degradedMisses) health = 'degraded';
+        else if (s.pongMissStreak >= 1) health = 'warn';
+        if (!streamAlive && (s.awaitingPong || s.pongMissStreak > 0)) health = 'suspect';
+        if (health !== s.health) {
+          this._event('health', { from: s.health, to: health, silenceMs, streak: s.pongMissStreak });
+          this._log(health === 'ok' ? 'log' : 'warn', `Состояние heartbeat: ${s.health} → ${health}`, { silenceMs, streak: s.pongMissStreak });
+          s.health = health;
+          this._notify();
+        }
+        if (silenceMs > this.stallMs && now >= s.graceUntil) {
+          s.stallsDetected += 1;
+          this._event('stall', { silenceMs });
+          this._log('warn', `Ни pong, ни рыночных сообщений ${silenceMs} мс — соединение признано зависшим, восстановление`);
+          this._recover('stall', true);
+        }
+      },
+
+      _watchdogTick() {
+        const s = this.state;
+        const now = Date.now();
+        this._pruneTimedOutPings(now);
+        this._pruneAbandoned();
+        const gap = now - s.lastWatchdogAt;
+        s.lastWatchdogAt = now;
+        if (gap > this.timerGapMs) {
+          s.timerGaps += 1;
+          s.graceUntil = now + this.resumeGraceMs;
+          this._event('timer-gap', { gapMs: gap });
+          this._log('warn', `Пауза таймеров страницы ${gap} мс — решения о зависании отложены на ${this.resumeGraceMs} мс`);
+        }
+        if (!s.ws) return;
+        if (s.ws.readyState === WebSocket.OPEN && s.status === 'open') {
+          this._evaluateHealth(now);
+          for (const [reqId, entry] of Array.from(s.pendingSubs.entries())) {
+            if (now - entry.sentAt <= this.subAckTimeoutMs || now < s.graceUntil) continue;
+            s.pendingSubs.delete(reqId);
+            if (entry.op !== 'subscribe' || !this._entryStillRelevant(entry)) continue;
+            const stillMissing = entry.topics.filter((t) => s.activeTopicSet.has(t) && !s.confirmedTopics.has(t));
+            if (stillMissing.length === 0) continue;
+            if (entry.retries < this.subRetryMax) {
+              s.subRetries += 1;
+              this._log('warn', `Нет подтверждения подписки, повторная отправка (${entry.retries + 1}/${this.subRetryMax})`, stillMissing);
+              this._sendSub(s.ws, 'subscribe', stillMissing, entry.retries + 1);
+            } else {
+              s.subFailures += 1;
+              this._event('sub-unconfirmed', { topics: stillMissing });
+              this._log('error', 'Подписка не подтверждена после повторов — переподключение', stillMissing);
+              this._recover('subscription unconfirmed', false);
+              return;
+            }
+          }
+        }
+      },
+
+      // Единственное место, где закрытие сокета учитывается в activeSockets (идемпотентно: onclose и prune не задваиваются).
+      _accountClose(ws) {
+        const s = this.state;
+        if (!ws || s.closeAccounted.has(ws)) return;
+        s.closeAccounted.add(ws);
+        s.activeSockets = Math.max(0, s.activeSockets - 1);
+      },
+
+      // Ограничивает множество abandoned: убирает сокеты в CLOSED без onclose и режет по maxAbandonedTracked.
+      _pruneAbandoned() {
+        const s = this.state;
+        for (const ws of Array.from(s.abandoned)) {
+          if (ws.readyState === WebSocket.CLOSED) {
+            s.abandoned.delete(ws);
+            s.abandonedPrunedClosed += 1;
+            this._accountClose(ws);
+          }
+        }
+        while (s.abandoned.size > this.maxAbandonedTracked) {
+          const oldest = s.abandoned.values().next().value;
+          s.abandoned.delete(oldest);
+          s.abandonedEvicted += 1;
+          try { oldest.onopen = null; oldest.onmessage = null; oldest.onerror = null; } catch (_) {}
+          try { oldest.close(4000, 'evicted'); } catch (_) {}
+          this._log('warn', 'Список abandoned-сокетов переполнен: самый старый исключён из учёта');
+        }
+      },
+
+      _abandonSocket(ws, reason) {
+        if (!ws) return;
+        const s = this.state;
+        s.abandonedSockets += 1;
+        s.abandoned.add(ws);
+        this._pruneAbandoned();
+        this._event('socket-abandoned', { reason, readyState: ws.readyState });
+        try { ws.onopen = null; ws.onmessage = null; ws.onerror = null; } catch (_) {}
+        try { ws.close(4000, String(reason).slice(0, 100)); } catch (_) {}
+      },
+
+      _detachCurrent(reason) {
+        const s = this.state;
+        this._clearReconnectTimer();
+        this._clearConnectTimer();
+        this._clearStableTimer();
+        this._stopHeartbeat();
+        s.pendingSubs.clear();
+        s.confirmedTopics.clear();
+        const ws = s.ws;
+        s.ws = null;
+        s.health = 'ok';
+        this._abandonSocket(ws, reason);
+      },
+
+      _beginRecoveryCycle() {
+        const s = this.state;
+        if (!s.everOpened) return;
+        s.recoveryGen += 1;
+        s.recovering = true;
+        s.resyncRequested = false;
+        s.activeSyncReqId = null;
+      },
+
+      _recover(reason, immediate) {
+        const s = this.state;
+        if (s.manualClose) return;
+        s.recoveries += 1;
+        this._beginRecoveryCycle();
+        this._detachCurrent(reason);
+        const cGen = this._bumpConnGen();
+        s.status = 'reconnecting';
+        this._event('recover', { reason, immediate, attempt: s.reconnectAttempt, recoveryGen: s.recoveryGen });
+        this._log('warn', `Восстановление соединения: ${reason}`);
+        this._notify();
+        if (immediate && s.reconnectAttempt === 0) {
+          this._openSocket(cGen);
+        } else {
+          this._scheduleReconnect(cGen);
+        }
+      },
+
+      _scheduleReconnect(cGen) {
+        if (cGen !== this.state.connGen || this.state.manualClose) return;
+        this._clearReconnectTimer();
+        const exp = Math.min(this.reconnectMaxMs, this.reconnectBaseMs * (2 ** this.state.reconnectAttempt));
+        const jitter = Math.round(exp * 0.2 * Math.random());
+        const delayMs = Math.min(this.reconnectMaxMs, exp + jitter);
+        this.state.reconnectAttempt += 1;
+        this.state.status = 'reconnecting';
+        this._log('warn', `Переподключение через ${delayMs} мс (попытка #${this.state.reconnectAttempt})`);
+        this._notify();
+        this.state.reconnectTimer = setTimeout(() => {
+          this.state.reconnectTimer = null;
+          if (cGen !== this.state.connGen || this.state.manualClose) return;
+          this._openSocket(cGen);
+        }, delayMs);
+      },
+
+      _getTickerEntry(symbol) {
+        if (!this.state.tickerBySymbol.has(symbol)) {
+          this.state.tickerBySymbol.set(symbol, {
+            symbol,
+            state: null,
+            snapshotReceived: false,
+            ready: false,
+            csLast: null,
+            snapshots: 0,
+            deltas: 0,
+            csFwd: 0,
+            csDup: 0,
+            csBack: 0,
+            csInvalid: 0,
+            preservedMissingCount: 0
+          });
+        }
+        return this.state.tickerBySymbol.get(symbol);
+      },
+
+      // После нового сокета / stop / смены подписки накопленное состояние тикера больше не считается актуальным:
+      // Bybit пришлёт новый snapshot, а до него ready=false. Счётчики не трогаем.
+      _resetTickerReadiness(onlyInactive) {
+        const s = this.state;
+        for (const [sym, entry] of s.tickerBySymbol.entries()) {
+          if (onlyInactive && s.activeTopicSet.has(`tickers.${sym}`)) continue;
+          entry.state = null;
+          entry.snapshotReceived = false;
+          entry.ready = false;
+          entry.csLast = null;
+        }
+      },
+
+      // Известные поля ticker (linear): имя -> правило. Неизвестные поля допускаются (Bybit может добавлять поля).
+      //  price  : непустая числовая строка >= 0
+      //  num    : числовая строка >= 0 (пустая строка допустима: Bybit присылает '' для не применимых полей)
+      //  signed : как num, но может быть отрицательной
+      //  text   : строка
+      _tickerFieldRules: {
+        lastPrice: 'price', markPrice: 'price', indexPrice: 'price', bid1Price: 'price', ask1Price: 'price',
+        prevPrice24h: 'price', prevPrice1h: 'price', highPrice24h: 'price', lowPrice24h: 'price',
+        bid1Size: 'num', ask1Size: 'num', volume24h: 'num', turnover24h: 'num',
+        openInterest: 'num', openInterestValue: 'num', nextFundingTime: 'num',
+        price24hPcnt: 'signed', fundingRate: 'signed',
+        tickDirection: 'text'
+      },
+
+      // Возвращает null, если поле корректно, иначе строку с причиной. Неизвестные поля — корректны.
+      _validateTickerField(name, value) {
+        const rule = this._tickerFieldRules[name];
+        if (!rule) return null;
+        if (rule === 'text') return typeof value === 'string' ? null : 'не строка';
+        if (typeof value !== 'string') return 'не строка';
+        if (value === '') return rule === 'price' ? 'пустая строка' : null;
+        if (!/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(value)) return 'не число';
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 'не конечное число';
+        if (n < 0 && rule !== 'signed') return 'отрицательное значение';
+        return null;
+      },
+
+      // Полная проверка payload до любых изменений состояния. Возвращает { ok, reason }.
+      //  - data — обычный непустой объект;
+      //  - data.symbol: для snapshot обязателен, для delta необязателен; если есть — строго равен символу из топика;
+      //  - все известные поля проходят _validateTickerField;
+      //  - snapshot обязан содержать корректный lastPrice;
+      //  - cs, если присутствует, — конечное число.
+      _hasValidTickerPayload(topicSymbol, msg) {
+        const data = msg && msg.data;
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return { ok: false, reason: 'data не объект' };
+        if (msg.type !== 'snapshot' && msg.type !== 'delta') return { ok: false, reason: `неизвестный type: ${msg.type}` };
+        if (Object.keys(data).length === 0) return { ok: false, reason: 'пустой data' };
+        if ('symbol' in data) {
+          if (typeof data.symbol !== 'string' || data.symbol !== topicSymbol) {
+            return { ok: false, reason: `symbol ${String(data.symbol)} не совпадает с топиком ${topicSymbol}` };
+          }
+        } else if (msg.type === 'snapshot') {
+          return { ok: false, reason: 'snapshot без symbol' };
+        }
+        for (const [k, v] of Object.entries(data)) {
+          const why = this._validateTickerField(k, v);
+          if (why) return { ok: false, reason: `поле ${k}: ${why}` };
+        }
+        if (msg.type === 'snapshot' && !('lastPrice' in data)) return { ok: false, reason: 'snapshot без lastPrice' };
+        if (msg.cs !== undefined && !(typeof msg.cs === 'number' && Number.isFinite(msg.cs))) {
+          return { ok: false, reason: 'cs не конечное число', csInvalid: true };
+        }
+        return { ok: true, reason: null };
+      },
+
+      _handleTickerMessage(msg, recvAt, cGen) {
+        if (cGen !== this.state.connGen || !this._isTopicActive(msg.topic)) {
+          this.state.staleMessagesDropped += 1;
+          return;
+        }
+        const sym = msg.topic.slice('tickers.'.length);
+
+        // 1) Валидация ДО любого изменения состояния
+        const check = this._hasValidTickerPayload(sym, msg);
+        if (!check.ok) {
+          this.state.invalidStreamMessages += 1;
+          if (check.csInvalid && this.state.tickerBySymbol.has(sym)) this.state.tickerBySymbol.get(sym).csInvalid += 1;
+          this._log('warn', `Ticker ${sym}: сообщение отклонено — ${check.reason}`);
+          return;
+        }
+        const data = msg.data;
+        const entry = this._getTickerEntry(sym);
+        const hasCs = typeof msg.cs === 'number';
+
+        // 2) Delta до первого snapshot не применяется: без базового snapshot состояние было бы неполным
+        if (msg.type === 'delta' && !entry.snapshotReceived) {
+          entry.deltas += 1;
+          this.state.deltasBeforeSnapshot += 1;
+          this._log('warn', `Ticker ${sym}: delta до snapshot — не применяется`);
+          return;
+        }
+
+        // 3) Порядок cs проверяется ДО изменения состояния: дубликат и старое сообщение состояние не перезаписывают
+        if (hasCs && entry.csLast !== null) {
+          if (msg.cs < entry.csLast) {
+            entry.csBack += 1;
+            this.state.invalidStreamMessages += 1;
+            this._log('warn', `Ticker ${sym}: cs назад (${msg.cs} < ${entry.csLast}) — сообщение отброшено`);
+            return;
+          }
+          if (msg.cs === entry.csLast) {
+            entry.csDup += 1;
+            this._log('warn', `Ticker ${sym}: дубликат cs (${msg.cs}) — сообщение отброшено`);
+            return;
+          }
+          entry.csFwd += 1;
+        }
+
+        // 4) Применение
+        if (msg.type === 'snapshot') {
+          entry.snapshots += 1;
+          entry.state = Object.assign({}, data);
+          entry.snapshotReceived = true;
+          entry.ready = true;
+        } else {
+          entry.deltas += 1;
+          const missingKeys = Object.keys(entry.state).filter((k) => !(k in data));
+          Object.assign(entry.state, data);
+          if (missingKeys.length > 0) entry.preservedMissingCount += 1;
+        }
+        if (hasCs) entry.csLast = msg.cs;
+
+        this._log('log', `Ticker ${sym} (${msg.type})`, {
+          lastPrice: entry.state ? entry.state.lastPrice : undefined,
+          cs: msg.cs,
+          recvAt
+        });
+      },
+
+      _handleKlineMessage(msg, recvAt, cGen) {
+        if (cGen !== this.state.connGen || !this._isTopicActive(msg.topic)) {
+          this.state.staleMessagesDropped += 1;
+          return;
+        }
+        const items = Array.isArray(msg.data) ? msg.data : [];
+        const lastItem = items.length ? items[items.length - 1] : null;
+        this._log('log', `Kline ${msg.topic} (${msg.type || 'unknown'})`, {
+          count: items.length,
+          start: lastItem ? lastItem.start : undefined,
+          close: lastItem ? lastItem.close : undefined,
+          confirm: lastItem ? lastItem.confirm : undefined,
+          recvAt
+        });
+      },
+
+      _handleMessage(event, cGen) {
+        if (cGen !== this.state.connGen) {
+          this.state.staleMessagesDropped += 1;
+          return;
+        }
+        const s = this.state;
+        const recvAt = Date.now();
+        s.lastMsgAt = recvAt;
+        let msg;
+        try {
+          msg = JSON.parse(event.data);
+        } catch (err) {
+          this._log('warn', 'Некорректный JSON во входящем кадре WS');
+          return;
+        }
+        if (!msg || typeof msg !== 'object') return;
+
+        if (msg.op === 'pong' || (msg.op === 'ping' && msg.ret_msg === 'pong')) {
+          this._handlePong(msg, recvAt, cGen);
+          return;
+        }
+        s.lastNonPongAt = recvAt;
+        if (s.health === 'suspect') this._evaluateHealth(recvAt);
+        if (msg.op === 'subscribe' || msg.op === 'unsubscribe') {
+          this._handleAck(msg);
+          return;
+        }
+        if (typeof msg.topic === 'string') {
+          if (msg.topic.startsWith('tickers.')) {
+            this._handleTickerMessage(msg, recvAt, cGen);
+            return;
+          }
+          if (msg.topic.startsWith('kline.')) {
+            this._handleKlineMessage(msg, recvAt, cGen);
+            return;
+          }
+        }
+      },
+
+      _openSocket(cGen) {
+        const s = this.state;
+        if (cGen !== s.connGen || s.manualClose) return;
+        if (s.ws && (s.ws.readyState === WebSocket.CONNECTING || s.ws.readyState === WebSocket.OPEN)) {
+          s.duplicateBlocked += 1;
+          this._log('warn', 'Попытка создать дублирующее WebSocket-соединение отклонена');
+          return;
+        }
+        if (s.ws) {
+          const leftover = s.ws;
+          s.ws = null;
+          this._abandonSocket(leftover, 'leftover');
+        }
+
+        s.status = (s.reconnectAttempt > 0 || s.recovering) ? 'reconnecting' : 'connecting';
+        this._setActiveTopics(this.buildTopics(s.symbol, s.interval));
+        this._startWatchdog();
+
+        let ws;
+        try {
+          ws = new WebSocket(this.url);
+        } catch (err) {
+          this._log('error', 'Не удалось создать экземпляр WebSocket', err && err.message ? err.message : err);
+          this._scheduleReconnect(cGen);
+          return;
+        }
+
+        this._resetTickerReadiness();
+        s.ws = ws;
+        s.socketsCreated += 1;
+        s.activeSockets += 1;
+        s.maxConcurrentSockets = Math.max(s.maxConcurrentSockets, s.activeSockets);
+        this._log('log', 'Открытие соединения', { topics: s.topics });
+        this._notify();
+
+        this._clearConnectTimer();
+        s.connectTimer = setTimeout(() => {
+          s.connectTimer = null;
+          if (!this._isCurrent(ws, cGen) || ws.readyState !== WebSocket.CONNECTING) return;
+          this._event('connect-timeout');
+          this._log('warn', `Соединение не открылось за ${this.connectTimeoutMs} мс`);
+          this._recover('connect timeout', false);
+        }, this.connectTimeoutMs);
+
+        ws.onopen = () => {
+          if (!this._isCurrent(ws, cGen)) return;
+          const now = Date.now();
+          this._clearConnectTimer();
+          s.status = 'open';
+          s.openedAt = now;
+          s.lastMsgAt = null;
+          s.lastNonPongAt = null;
+          s.pongMissStreak = 0;
+          s.lastPingReqId = null;
+          s.lastNoEchoPongAt = null;
+          s.timedOutPings = [];
+          s.health = 'ok';
+          s.everOpened = true;
+          s.confirmedTopics.clear();
+          s.pendingSubs.clear();
+          this._clearReconnectTimer();
+          this._clearStableTimer();
+          s.stableTimer = setTimeout(() => {
+            s.stableTimer = null;
+            if (this._isCurrent(ws, cGen)) s.reconnectAttempt = 0;
+          }, this.stableResetMs);
+          this._sendSub(ws, 'subscribe', s.topics.slice());
+          this._log('log', 'Отправлена подписка (ждём подтверждение)', { topics: s.topics });
+          this._startHeartbeat(ws, cGen);
+          this._notify();
+        };
+
+        ws.onmessage = (ev) => {
+          if (cGen !== s.connGen || s.ws !== ws) return;
+          this._handleMessage(ev, cGen);
+        };
+
+        ws.onerror = () => {
+          if (cGen !== s.connGen || s.ws !== ws) return;
+          this._log('warn', 'Событие ошибки WebSocket');
+        };
+
+        ws.onclose = (ev) => {
+          this._accountClose(ws);
+          s.abandoned.delete(ws);
+          if (s.ws !== ws) {
+            this._log('log', 'Закрыт старый WebSocket-экземпляр (игнорируется для текущего соединения)');
+            return;
+          }
+          s.ws = null;
+          this._clearConnectTimer();
+          this._clearStableTimer();
+          this._stopHeartbeat();
+          s.pendingSubs.clear();
+          s.confirmedTopics.clear();
+          s.health = 'ok';
+          const code = ev && typeof ev.code === 'number' ? ev.code : 1006;
+          const reason = ev && ev.reason ? ev.reason : '';
+          this._log('log', 'Соединение закрыто', { code, reason, wasClean: Boolean(ev && ev.wasClean) });
+          this._event('close', { code, reason });
+
+          if (cGen !== s.connGen || s.manualClose) {
+            if (s.manualClose) s.status = 'closed';
+            this._notify();
+            return;
+          }
+          this._beginRecoveryCycle();
+          this._scheduleReconnect(cGen);
+        };
+      },
+
+      start(symbol, interval) {
+        const s = this.state;
+        s.manualClose = false;
+        s.stoppedByPagehide = false;
+        s.symbol = String(symbol || s.symbol || 'BTCUSDT').toUpperCase();
+        s.interval = this.supportedIntervals.has(interval) ? interval : (s.interval || '240');
+        s.reconnectAttempt = 0;
+        this._bumpSubGen();
+        this._detachCurrent('start');
+        const cGen = this._bumpConnGen();
+        this._openSocket(cGen);
+      },
+
+      setSubscription(symbol, interval) {
+        const s = this.state;
+        const nextSymbol = String(symbol || s.symbol).toUpperCase();
+        const nextInterval = this.supportedIntervals.has(interval) ? interval : s.interval;
+        const prevTopics = s.topics.slice();
+        const nextTopics = this.buildTopics(nextSymbol, nextInterval);
+
+        s.symbol = nextSymbol;
+        s.interval = nextInterval;
+        this._setActiveTopics(nextTopics);
+        this._resetTickerReadiness(true);
+        s.manualClose = false;
+        const nextSubGen = this._bumpSubGen();
+
+        for (const [pendingReqId, item] of Array.from(s.pendingSubs.entries())) {
+          if (!item) {
+            s.pendingSubs.delete(pendingReqId);
+            continue;
+          }
+          if (item.op === 'subscribe') {
+            const hasRelevantTopic = Array.isArray(item.topics) && item.topics.some((t) => s.activeTopicSet.has(t));
+            if (item.subGen !== nextSubGen || !hasRelevantTopic) {
+              s.pendingSubs.delete(pendingReqId);
+            }
+          }
+        }
+
+        if (s.recovering) {
+          s.activeSyncReqId = null;
+          s.resyncRequested = false;
+        }
+
+        const ws = s.ws;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          const prevSet = new Set(prevTopics);
+          const nextSet = new Set(nextTopics);
+          const toUnsub = prevTopics.filter((t) => !nextSet.has(t));
+          const pendingSubTopics = new Set();
+          for (const item of s.pendingSubs.values()) {
+            if (item && item.op === 'subscribe' && item.subGen === nextSubGen && Array.isArray(item.topics)) {
+              for (const t of item.topics) pendingSubTopics.add(t);
+            }
+          }
+          const toSub = nextTopics.filter((t) => !prevSet.has(t) || (!s.confirmedTopics.has(t) && !pendingSubTopics.has(t)));
+          if (toUnsub.length > 0) this._sendSub(ws, 'unsubscribe', toUnsub);
+          if (toSub.length > 0) this._sendSub(ws, 'subscribe', toSub);
+          this._log('log', 'Обновлены подписки', { unsubscribed: toUnsub, subscribed: toSub, active: nextTopics });
+          this._notify();
+          return;
+        }
+
+        if (ws && ws.readyState === WebSocket.CONNECTING) {
+          this._log('log', 'Соединение в состоянии CONNECTING — подписки будут отправлены после открытия', { active: nextTopics });
+          return;
+        }
+
+        if (ws) {
+          this._recover('subscription change on dead socket', true);
+          return;
+        }
+
+        if (s.reconnectTimer !== null) {
+          this._log('log', 'Переподключение запланировано — новые подписки применятся при открытии', { active: nextTopics });
+          return;
+        }
+
+        const cGen = this._bumpConnGen();
+        this._openSocket(cGen);
+      },
+
+      reconnectNow() {
+        this.state.manualClose = false;
+        this.state.reconnectAttempt = 0;
+        this._recover('manual reconnect', true);
+      },
+
+      stop(manualClose = true, code = 1000, reason = 'client stop') {
+        const s = this.state;
+        s.manualClose = Boolean(manualClose);
+        this._bumpConnGen();
+        this._bumpSubGen();
+        this._clearReconnectTimer();
+        this._clearConnectTimer();
+        this._clearStableTimer();
+        this._stopHeartbeat();
+        this._stopWatchdog();
+        s.pendingSubs.clear();
+        s.confirmedTopics.clear();
+        const ws = s.ws;
+        s.ws = null;
+        s.status = 'closed';
+        s.health = 'ok';
+        this._resetTickerReadiness();
+        if (ws) {
+          s.abandoned.add(ws);
+          this._pruneAbandoned();
+          try { ws.onopen = null; ws.onmessage = null; ws.onerror = null; } catch (_) {}
+          try { ws.close(code, reason); } catch (_) {}
+        }
+        this._notify();
+      },
+
+      _onResume(reason) {
+        const s = this.state;
+        if (s.manualClose || s.status === 'idle' || s.status === 'closed') return;
+        const now = Date.now();
+        s.graceUntil = now + this.resumeGraceMs;
+        s.lastWatchdogAt = now;
+        this._event('resume', { reason, readyState: s.ws ? s.ws.readyState : null });
+        const ws = s.ws;
+        if (!ws || ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) {
+          s.reconnectAttempt = 0;
+          this._recover(`resume (${reason})`, true);
+        } else if (ws.readyState === WebSocket.OPEN) {
+          this._sendPing(ws, s.connGen);
+        }
+        this._notify();
+      },
+
+      attachLifecycle() {
+        if (this._lifecycleAttached) return;
+        this._lifecycleAttached = true;
+        window.addEventListener('pagehide', (ev) => {
+          this.state.stoppedByPagehide = true;
+          this._event('pagehide', { persisted: !!(ev && ev.persisted) });
+          this.stop(true, 1000, 'pagehide');
+        });
+        window.addEventListener('pageshow', (ev) => {
+          const s = this.state;
+          if (!s.stoppedByPagehide) return;
+          this._event('pageshow-restart', { persisted: !!(ev && ev.persisted) });
+          this._beginRecoveryCycle();
+          this.start(s.symbol, s.interval);
+        });
+        document.addEventListener('visibilitychange', () => {
+          this._event('visibility', { state: document.visibilityState });
+          if (document.visibilityState === 'visible') this._onResume('visible');
+        });
+        window.addEventListener('online', () => {
+          this._event('online');
+          const s = this.state;
+          if (s.ws && s.ws.readyState === WebSocket.OPEN) this._onResume('online');
+          else if (!s.manualClose && s.status !== 'idle' && s.status !== 'closed') { s.reconnectAttempt = 0; this._recover('online', true); }
+          this._notify();
+        });
+        window.addEventListener('offline', () => {
+          this._event('offline');
+          this._notify();
+        });
+      }
+    };
+
+    // =========================================================================
+    // 2. БАЗОВОЕ АНАЛИТИЧЕСКОЕ ЯДРО (ЭТАП 1)
+    // =========================================================================
+    const BasicAnalyticsEngine = {
+      volConfirmationThreshold: 1.0,
+
+      calcEMA(values, period) {
+        if (!values || values.length < period) return [];
+        const k = 2 / (period + 1);
+        const out = new Array(values.length).fill(null);
+        let sum = 0;
+        for (let i = 0; i < period; i++) sum += values[i];
+        let ema = sum / period;
+        out[period - 1] = ema;
+        for (let i = period; i < values.length; i++) {
+          ema = values[i] * k + ema * (1 - k);
+          out[i] = ema;
+        }
+        return out;
+      },
+
+      calcATR(candles, period = 14) {
+        if (!candles || candles.length < period + 1) return [];
+        const tr = [null];
+        for (let i = 1; i < candles.length; i++) {
+          const cur = candles[i];
+          const prevClose = candles[i - 1].close;
+          const val = Math.max(
+            cur.high - cur.low,
+            Math.abs(cur.high - prevClose),
+            Math.abs(cur.low - prevClose)
+          );
+          tr.push(val);
+        }
+        const atr = new Array(candles.length).fill(null);
+        let sum = 0;
+        for (let i = 1; i <= period; i++) sum += tr[i];
+        let curAtr = sum / period;
+        atr[period] = curAtr;
+        for (let i = period + 1; i < candles.length; i++) {
+          curAtr = (curAtr * (period - 1) + tr[i]) / period;
+          atr[i] = curAtr;
+        }
+        return atr;
+      },
+
+      findSwings(candles, left = 3, right = 3) {
+        const highs = [];
+        const lows = [];
+        const n = candles.length;
+        for (let i = left; i < n - right; i++) {
+          let isHigh = true;
+          let isLow = true;
+          for (let j = i - left; j <= i + right; j++) {
+            if (j === i) continue;
+            if (candles[j].high >= candles[i].high) isHigh = false;
+            if (candles[j].low <= candles[i].low) isLow = false;
+          }
+          if (isHigh) {
+            highs.push({ index: i, ts: candles[i].ts, price: candles[i].high, type: 'SH' });
+          }
+          if (isLow) {
+            lows.push({ index: i, ts: candles[i].ts, price: candles[i].low, type: 'SL' });
+          }
+        }
+        return { highs, lows };
+      },
+
+      analyze(dataset) {
+        const candles = dataset.closedCandles;
+        const {
+          lastClosedPrice,
+          formingClosePrice,
+          tickerLastPrice,
+          currentMarketPrice,
+          currentPriceSource,
+          priceWarning
+        } = dataset.prices;
+
+        if (!candles || candles.length < 2 || !Number.isFinite(lastClosedPrice)) {
+          return {
+            decision: 'WAIT',
+            reasons: ['Недостаточно закрытых свечей для расчёта базовых индикаторов (нужно минимум 50 свечей для EMA50).'],
+            ema20: [],
+            ema50: [],
+            atr14: [],
+            swings: { highs: [], lows: [] },
+            levels: { resistance: null, support: null },
+            metrics: {
+              lastClosedPrice,
+              formingClosePrice,
+              tickerLastPrice,
+              currentMarketPrice,
+              currentPriceSource,
+              priceWarning
+            }
+          };
+        }
+
+        const closes = candles.map(c => c.close);
+        const ema20 = this.calcEMA(closes, 20);
+        const ema50 = this.calcEMA(closes, 50);
+        const atr14 = this.calcATR(candles, 14);
+        const swings = this.findSwings(candles, 3, 3);
+
+        const lastIdx = candles.length - 1;
+        const lastClosed = candles[lastIdx];
+        const lastEma20 = ema20[lastIdx];
+        const prevEma20 = lastIdx >= 1 ? ema20[lastIdx - 1] : undefined;
+        const lastEma50 = ema50[lastIdx];
+        const lastAtr = atr14[lastIdx];
+        const atrPct = Number.isFinite(lastAtr) ? (lastAtr / lastClosedPrice) * 100 : null;
+
+        const prevVolSlice = candles.slice(-21, -1).map(c => c.volume);
+        const avgPrevVol20 = prevVolSlice.length > 0
+          ? prevVolSlice.reduce((a, b) => a + b, 0) / prevVolSlice.length
+          : null;
+        const volRatio = (Number.isFinite(avgPrevVol20) && avgPrevVol20 > 0)
+          ? lastClosed.volume / avgPrevVol20
+          : null;
+
+        const resCandidates = swings.highs.map(h => h.price).filter(p => p > lastClosedPrice).sort((a, b) => a - b);
+        const supCandidates = swings.lows.map(l => l.price).filter(p => p < lastClosedPrice).sort((a, b) => b - a);
+        const nearestResistance = resCandidates.length ? resCandidates[0] : null;
+        const nearestSupport = supCandidates.length ? supCandidates[0] : null;
+
+        let decision = 'WAIT';
+        const reasons = [];
+
+        const indicatorsReady =
+          Number.isFinite(lastEma20) &&
+          Number.isFinite(prevEma20) &&
+          Number.isFinite(lastEma50) &&
+          Number.isFinite(lastAtr);
+
+        if (!indicatorsReady) {
+          decision = 'WAIT';
+          const missing = [];
+          if (!Number.isFinite(lastEma20) || !Number.isFinite(prevEma20)) {
+            missing.push(`EMA(20) (нужно минимум 21 закрытая свеча, сейчас ${candles.length})`);
+          }
+          if (!Number.isFinite(lastEma50)) {
+            missing.push(`EMA(50) (нужно минимум 50 закрытых свечей, сейчас ${candles.length})`);
+          }
+          if (!Number.isFinite(lastAtr)) {
+            missing.push(`ATR(14) (нужно минимум 15 закрытых свечей, сейчас ${candles.length})`);
+          }
+          reasons.push(`Не рассчитаны обязательные индикаторы: ${missing.join('; ')}.`);
+          reasons.push('При неполном наборе индикаторов система принудительно остаётся в режиме WAIT.');
+        } else {
+          const closedAbove20 = lastClosedPrice > lastEma20;
+          const closedBelow20 = lastClosedPrice < lastEma20;
+          const ema20Rising = lastEma20 > prevEma20;
+          const ema20Falling = lastEma20 < prevEma20;
+          const ema50Bullish = lastEma20 > lastEma50;
+          const ema50Bearish = lastEma20 < lastEma50;
+          const volConfirmed = Number.isFinite(volRatio) && volRatio >= this.volConfirmationThreshold;
+
+          if (closedAbove20 && ema20Rising && ema50Bullish && volConfirmed) {
+            decision = 'LONG';
+            reasons.push(`Цена последней закрытой свечи (${fmtPrice(lastClosedPrice)}) выше EMA(20) (${fmtPrice(lastEma20)}), наклон EMA(20) направлен вверх.`);
+            reasons.push(`EMA(20) (${fmtPrice(lastEma20)}) расположена выше EMA(50) (${fmtPrice(lastEma50)}).`);
+            reasons.push(`Объём последней закрытой свечи составляет ×${volRatio.toFixed(2)} к среднему за предыдущие ${prevVolSlice.length} свечей (порог ×${this.volConfirmationThreshold.toFixed(2)}).`);
+            if (nearestResistance) reasons.push(`Ближайший локальный пик SH выше закрытия: ${fmtPrice(nearestResistance)} (без оценки зон/ретестов).`);
+          } else if (closedBelow20 && ema20Falling && ema50Bearish && volConfirmed) {
+            decision = 'SHORT';
+            reasons.push(`Цена последней закрытой свечи (${fmtPrice(lastClosedPrice)}) ниже EMA(20) (${fmtPrice(lastEma20)}), наклон EMA(20) направлен вниз.`);
+            reasons.push(`EMA(20) (${fmtPrice(lastEma20)}) расположена ниже EMA(50) (${fmtPrice(lastEma50)}).`);
+            reasons.push(`Объём последней закрытой свечи составляет ×${volRatio.toFixed(2)} к среднему за предыдущие ${prevVolSlice.length} свечей (порог ×${this.volConfirmationThreshold.toFixed(2)}).`);
+            if (nearestSupport) reasons.push(`Ближайшая локальная впадина SL ниже закрытия: ${fmtPrice(nearestSupport)} (без оценки зон/ретестов).`);
+          } else {
+            decision = 'WAIT';
+            const posText = closedAbove20 ? 'выше EMA(20)' : closedBelow20 ? 'ниже EMA(20)' : 'на уровне EMA(20)';
+            const slopeText = ema20Rising ? 'растёт' : ema20Falling ? 'снижается' : 'плоская';
+            reasons.push(`Цена последней закрытой свечи (${fmtPrice(lastClosedPrice)}) ${posText}, EMA(20) ${slopeText}.`);
+
+            if ((closedAbove20 && !ema50Bullish) || (closedBelow20 && !ema50Bearish)) {
+              reasons.push(`EMA(20) (${fmtPrice(lastEma20)}) и EMA(50) (${fmtPrice(lastEma50)}) не согласованы по направлению.`);
+            }
+            if (!Number.isFinite(volRatio)) {
+              reasons.push('Недостаточно предыдущих закрытых свечей для оценки объёмного коэффициента.');
+            } else if (volRatio < this.volConfirmationThreshold) {
+              reasons.push(`Объём последней закрытой свечи ниже порога подтверждения: ×${volRatio.toFixed(2)} к среднему за предыдущие ${prevVolSlice.length} свечей (порог ×${this.volConfirmationThreshold.toFixed(2)}).`);
+            }
+            reasons.push('При отсутствии полного согласования условий по закрытым свечам система остаётся в режиме WAIT.');
+          }
+        }
+
+        const distEma20Pct = Number.isFinite(lastEma20) ? ((lastClosedPrice - lastEma20) / lastEma20) * 100 : null;
+
+        return {
+          decision,
+          reasons,
+          ema20,
+          ema50,
+          atr14,
+          swings,
+          levels: { resistance: nearestResistance, support: nearestSupport },
+          metrics: {
+            lastClosedPrice,
+            formingClosePrice,
+            tickerLastPrice,
+            currentMarketPrice,
+            currentPriceSource,
+            priceWarning,
+            lastEma20,
+            lastEma50,
+            distEma20Pct,
+            lastAtr,
+            atrPct,
+            volRatio,
+            volBaselineCount: prevVolSlice.length,
+            lastClosedTs: lastClosed.ts
+          }
+        };
+      }
+    };
+
+    // =========================================================================
+    // 3. ВИЗУАЛИЗАЦИЯ НА CANVAS (Свечи, EMA, уровни, зум по курсору/жесту)
+    // =========================================================================
+    class CandleChart {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.candles = [];
+        this.closedCount = 0;
+        this.analysis = null;
+        this.marketPrice = null;
+        this.visibleCount = 80;
+        this.offsetFromEnd = 0;
+        this.isDragging = false;
+        this.dragStartX = 0;
+        this.dragStartOffset = 0;
+        this.lastTouchDist = null;
+        this.lastTouchMidX = null;
+
+        this.bindEvents();
+      }
+
+      setData(candles, closedCount, analysis, marketPrice) {
+        this.candles = candles || [];
+        this.closedCount = typeof closedCount === 'number' ? closedCount : this.candles.length;
+        this.analysis = analysis;
+        this.marketPrice = typeof marketPrice === 'number' ? marketPrice : null;
+        this.clampOffset();
+        this.render();
+      }
+
+      resetView() {
+        this.visibleCount = 80;
+        this.offsetFromEnd = 0;
+        this.render();
+      }
+
+      getPlotMetrics() {
+        const w = this.canvas.clientWidth || 1;
+        const h = this.canvas.clientHeight || 1;
+        const padLeft = 10;
+        const padRight = 68;
+        const padTop = 16;
+        const padBottom = 26;
+        const plotW = Math.max(50, w - padLeft - padRight);
+        const plotH = Math.max(50, h - padTop - padBottom);
+        return { w, h, padLeft, padRight, padTop, padBottom, plotW, plotH };
+      }
+
+      clampOffset() {
+        if (!this.candles.length) {
+          this.offsetFromEnd = 0;
+          return;
+        }
+        const maxOffset = Math.max(0, this.candles.length - Math.min(10, this.candles.length));
+        this.offsetFromEnd = Math.min(maxOffset, Math.max(0, this.offsetFromEnd));
+      }
+
+      zoomAt(factor, anchorClientX) {
+        if (!this.candles.length) return;
+        const rect = this.canvas.getBoundingClientRect();
+        const { padLeft, plotW } = this.getPlotMetrics();
+        const relX = Number.isFinite(anchorClientX)
+          ? Math.min(1, Math.max(0, (anchorClientX - rect.left - padLeft) / plotW))
+          : 1;
+
+        const oldVisible = Math.min(this.candles.length, Math.max(20, Math.min(200, this.visibleCount)));
+        const newVisible = Math.min(200, Math.max(20, Math.round(oldVisible * factor)));
+        if (newVisible === oldVisible) return;
+
+        const oldRightIdx = this.candles.length - this.offsetFromEnd;
+        const oldLeftIdx = oldRightIdx - oldVisible;
+        const anchorGlobalIdx = oldLeftIdx + relX * oldVisible;
+
+        const newLeftIdx = anchorGlobalIdx - relX * newVisible;
+        const newRightIdx = newLeftIdx + newVisible;
+        this.visibleCount = newVisible;
+        this.offsetFromEnd = Math.round(this.candles.length - newRightIdx);
+        this.clampOffset();
+        this.render();
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.render());
+
+        this.canvas.addEventListener('mousedown', (e) => {
+          this.isDragging = true;
+          this.dragStartX = e.clientX;
+          this.dragStartOffset = this.offsetFromEnd;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!this.isDragging) return;
+          const dx = e.clientX - this.dragStartX;
+          const { plotW } = this.getPlotMetrics();
+          const pxPerCandle = Math.max(4, plotW / this.visibleCount);
+          const deltaCandles = Math.round(dx / pxPerCandle);
+          this.offsetFromEnd = this.dragStartOffset + deltaCandles;
+          this.clampOffset();
+          this.render();
+        });
+
+        window.addEventListener('mouseup', () => {
+          this.isDragging = false;
+        });
+
+        this.canvas.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const factor = e.deltaY < 0 ? 0.85 : 1.18;
+          this.zoomAt(factor, e.clientX);
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 1) {
+            this.isDragging = true;
+            this.lastTouchDist = null;
+            this.lastTouchMidX = null;
+            this.dragStartX = e.touches[0].clientX;
+            this.dragStartOffset = this.offsetFromEnd;
+          } else if (e.touches.length === 2) {
+            this.isDragging = false;
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            this.lastTouchDist = Math.hypot(dx, dy);
+            this.lastTouchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+          }
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+          if (e.touches.length === 1 && this.isDragging) {
+            const dx = e.touches[0].clientX - this.dragStartX;
+            const { plotW } = this.getPlotMetrics();
+            const pxPerCandle = Math.max(4, plotW / this.visibleCount);
+            const deltaCandles = Math.round(dx / pxPerCandle);
+            this.offsetFromEnd = this.dragStartOffset + deltaCandles;
+            this.clampOffset();
+            this.render();
+          } else if (e.touches.length === 2 && this.lastTouchDist) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const dist = Math.hypot(dx, dy);
+            const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            if (dist > 0) {
+              const factor = this.lastTouchDist / dist;
+              this.zoomAt(factor, Number.isFinite(midX) ? midX : this.lastTouchMidX);
+              this.lastTouchDist = dist;
+              this.lastTouchMidX = midX;
+            }
+          }
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchend', (e) => {
+          if (e.touches.length === 0) {
+            this.isDragging = false;
+            this.lastTouchDist = null;
+            this.lastTouchMidX = null;
+          } else if (e.touches.length === 1) {
+            this.lastTouchDist = null;
+            this.lastTouchMidX = null;
+            this.isDragging = true;
+            this.dragStartX = e.touches[0].clientX;
+            this.dragStartOffset = this.offsetFromEnd;
+          }
+        });
+      }
+
+      render() {
+        const dpr = window.devicePixelRatio || 1;
+        const { w, h, padLeft, padRight, padTop, plotW, plotH } = this.getPlotMetrics();
+        if (!w || !h) return;
+
+        this.canvas.width = Math.round(w * dpr);
+        this.canvas.height = Math.round(h * dpr);
+        const ctx = this.ctx;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        ctx.clearRect(0, 0, w, h);
+
+        if (!this.candles.length) {
+          ctx.fillStyle = '#8fa1bf';
+          ctx.font = '13px sans-serif';
+          ctx.fillText('Нет данных для отображения', 16, 28);
+          return;
+        }
+
+        const endIdx = Math.max(1, this.candles.length - this.offsetFromEnd);
+        const startIdx = Math.max(0, endIdx - this.visibleCount);
+        const slice = this.candles.slice(startIdx, endIdx);
+
+        const tsToGlobalIdx = new Map();
+        for (let g = 0; g < this.candles.length; g++) {
+          tsToGlobalIdx.set(this.candles[g].ts, g);
+        }
+
+        let minP = Infinity;
+        let maxP = -Infinity;
+        for (const c of slice) {
+          if (c.low < minP) minP = c.low;
+          if (c.high > maxP) maxP = c.high;
+        }
+
+        const levels = this.analysis && this.analysis.levels ? this.analysis.levels : {};
+        for (const lvl of [levels.resistance, levels.support]) {
+          if (typeof lvl === 'number' && lvl >= minP * 0.985 && lvl <= maxP * 1.015) {
+            minP = Math.min(minP, lvl);
+            maxP = Math.max(maxP, lvl);
+          }
+        }
+
+        const span = Math.max(1e-9, maxP - minP);
+        minP -= span * 0.06;
+        maxP += span * 0.06;
+
+        const yForPrice = (p) => padTop + (1 - (p - minP) / (maxP - minP)) * plotH;
+        const stepX = plotW / slice.length;
+        const bodyW = Math.max(2, Math.min(18, stepX * 0.65));
+
+        ctx.strokeStyle = 'rgba(143, 161, 191, 0.10)';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = '#8fa1bf';
+        ctx.font = '11px monospace';
+        const rows = 5;
+        for (let r = 0; r <= rows; r++) {
+          const ratio = r / rows;
+          const y = padTop + ratio * plotH;
+          const priceVal = maxP - ratio * (maxP - minP);
+          ctx.beginPath();
+          ctx.moveTo(padLeft, y);
+          ctx.lineTo(padLeft + plotW, y);
+          ctx.stroke();
+          ctx.fillText(fmtPrice(priceVal), padLeft + plotW + 6, y + 4);
+        }
+
+        const drawLevelLine = (price, color, label) => {
+          if (typeof price !== 'number' || price < minP || price > maxP) return;
+          const y = yForPrice(price);
+          ctx.save();
+          ctx.setLineDash([5, 4]);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(padLeft, y);
+          ctx.lineTo(padLeft + plotW, y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = color;
+          ctx.font = '11px sans-serif';
+          ctx.fillText(`${label} ${fmtPrice(price)}`, padLeft + 6, y - 4);
+          ctx.restore();
+        };
+
+        drawLevelLine(levels.resistance, 'rgba(245, 158, 11, 0.85)', 'SH');
+        drawLevelLine(levels.support, 'rgba(56, 189, 248, 0.85)', 'SL');
+
+        for (let i = 0; i < slice.length; i++) {
+          const globalIdx = startIdx + i;
+          const c = slice[i];
+          const isForming = globalIdx >= this.closedCount;
+          const cx = padLeft + (i + 0.5) * stepX;
+          const isBull = c.close >= c.open;
+
+          const yHigh = yForPrice(c.high);
+          const yLow = yForPrice(c.low);
+          const yOpen = yForPrice(c.open);
+          const yClose = yForPrice(c.close);
+
+          const wickColor = isForming ? '#94a3b8' : (isBull ? '#22c55e' : '#ef4444');
+          const bodyColor = isForming ? 'rgba(148, 163, 184, 0.25)' : (isBull ? '#22c55e' : '#ef4444');
+
+          ctx.strokeStyle = wickColor;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(cx, yHigh);
+          ctx.lineTo(cx, yLow);
+          ctx.stroke();
+
+          const top = Math.min(yOpen, yClose);
+          const height = Math.max(1.5, Math.abs(yClose - yOpen));
+          ctx.fillStyle = bodyColor;
+          ctx.strokeStyle = wickColor;
+          ctx.fillRect(cx - bodyW / 2, top, bodyW, height);
+          if (isForming) {
+            ctx.strokeRect(cx - bodyW / 2, top, bodyW, height);
+          }
+
+          if (i === 0 || i === Math.floor(slice.length / 2) || i === slice.length - 1) {
+            ctx.fillStyle = '#8fa1bf';
+            ctx.font = '10px monospace';
+            const d = new Date(c.ts);
+            const label = `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+            ctx.fillText(label, Math.max(padLeft, cx - 28), h - 8);
+          }
+        }
+
+        const closedCandlesRef = (this.analysis && Array.isArray(this.analysis.closedCandlesRef))
+          ? this.analysis.closedCandlesRef
+          : [];
+        const tsToClosedIdx = new Map();
+        for (let idx = 0; idx < closedCandlesRef.length; idx++) {
+          tsToClosedIdx.set(closedCandlesRef[idx].ts, idx);
+        }
+
+        const drawLineSeries = (arr, color) => {
+          if (!arr || !arr.length || !tsToClosedIdx.size) return;
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          let started = false;
+          for (let i = 0; i < slice.length; i++) {
+            const c = slice[i];
+            const closedIdx = tsToClosedIdx.get(c.ts);
+            if (closedIdx === undefined) continue;
+            const val = arr[closedIdx];
+            if (!Number.isFinite(val)) continue;
+            const cx = padLeft + (i + 0.5) * stepX;
+            const cy = yForPrice(val);
+            if (!started) {
+              ctx.moveTo(cx, cy);
+              started = true;
+            } else {
+              ctx.lineTo(cx, cy);
+            }
+          }
+          ctx.stroke();
+          ctx.restore();
+        };
+
+        if (this.analysis) {
+          drawLineSeries(this.analysis.ema20, '#38bdf8');
+          drawLineSeries(this.analysis.ema50, '#a855f7');
+
+          const swings = this.analysis.swings || { highs: [], lows: [] };
+          ctx.font = '10px sans-serif';
+          for (const hPt of swings.highs) {
+            if (!Number.isFinite(hPt.ts)) continue;
+            const gIdx = tsToGlobalIdx.get(hPt.ts);
+            if (gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx) {
+              const i = gIdx - startIdx;
+              const cx = padLeft + (i + 0.5) * stepX;
+              const cy = yForPrice(hPt.price) - 6;
+              ctx.fillStyle = '#f59e0b';
+              ctx.fillText('SH', cx - 6, cy);
+            }
+          }
+          for (const lPt of swings.lows) {
+            if (!Number.isFinite(lPt.ts)) continue;
+            const gIdx = tsToGlobalIdx.get(lPt.ts);
+            if (gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx) {
+              const i = gIdx - startIdx;
+              const cx = padLeft + (i + 0.5) * stepX;
+              const cy = yForPrice(lPt.price) + 13;
+              ctx.fillStyle = '#38bdf8';
+              ctx.fillText('SL', cx - 5, cy);
+            }
+          }
+        }
+
+        const refPrice = Number.isFinite(this.marketPrice)
+          ? this.marketPrice
+          : (this.candles.length ? this.candles[this.candles.length - 1].close : null);
+
+        if (Number.isFinite(refPrice) && refPrice >= minP && refPrice <= maxP) {
+          const yCur = yForPrice(refPrice);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(230, 237, 247, 0.45)';
+          ctx.setLineDash([2, 3]);
+          ctx.beginPath();
+          ctx.moveTo(padLeft, yCur);
+          ctx.lineTo(padLeft + plotW, yCur);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(padLeft + plotW + 2, yCur - 9, padRight - 4, 18);
+          ctx.fillStyle = '#e6edf7';
+          ctx.font = 'bold 11px monospace';
+          ctx.fillText(fmtPrice(refPrice), padLeft + plotW + 6, yCur + 4);
+          ctx.restore();
+        }
+      }
+    }
+
+    // =========================================================================
+    // 4. УПРАВЛЕНИЕ СОСТОЯНИЕМ И РЕНДЕРИНГ UI
+    // =========================================================================
+    function fmtPrice(p) {
+      if (!Number.isFinite(p)) return '—';
+      return p >= 1000 ? p.toFixed(1) : p >= 10 ? p.toFixed(2) : p.toFixed(4);
+    }
+
+    function fmtUtc(ts) {
+      if (!Number.isFinite(ts)) return '—';
+      const d = new Date(ts);
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
+    }
+
+    function makeKey(symbol, interval) {
+      return `${symbol}:${interval}`;
+    }
+
+    function setStatusText(el, text, cls) {
+      el.textContent = text;
+      el.className = cls ? `meta ${cls}` : 'meta';
+    }
+
+    const connView = { restText: 'Подключение...', restCls: 'status-warn' };
+    function renderConnStatus() {
+      const el = document.getElementById('connStatus');
+      const ws = BybitWsClient.getUiStatus();
+      el.className = 'meta';
+      el.textContent = '';
+      const restSpan = document.createElement('span');
+      restSpan.className = connView.restCls || '';
+      restSpan.textContent = `REST: ${connView.restText}`;
+      const sep = document.createElement('span');
+      sep.textContent = ' · ';
+      const wsSpan = document.createElement('span');
+      wsSpan.className = ws.cls;
+      wsSpan.textContent = ws.text;
+      el.append(restSpan, sep, wsSpan);
+    }
+    function setRestStatus(text, cls) {
+      connView.restText = text;
+      connView.restCls = cls || '';
+      renderConnStatus();
+    }
+
+    function renderKvRows(container, rows) {
+      container.textContent = '';
+      for (const r of rows) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'kv-row';
+
+        const kEl = document.createElement('span');
+        kEl.className = 'kv-k';
+        kEl.textContent = r.k;
+
+        const vEl = document.createElement('span');
+        vEl.className = r.cls ? `kv-v ${r.cls}` : 'kv-v';
+        vEl.textContent = r.v;
+
+        rowEl.appendChild(kEl);
+        rowEl.appendChild(vEl);
+        container.appendChild(rowEl);
+      }
+    }
+
+    function renderReasonList(container, items) {
+      container.textContent = '';
+      for (const item of items) {
+        const li = document.createElement('li');
+        li.textContent = item;
+        container.appendChild(li);
+      }
+    }
+
+    function resetMetricsUi() {
+      document.getElementById('livePrice').textContent = '—';
+      document.getElementById('priceSourceLabel').textContent = 'Источник цены: —';
+      document.getElementById('priceSourceLabel').className = 'meta';
+      document.getElementById('tileTrend').textContent = '—';
+      document.getElementById('tileTrendSub').textContent = '—';
+      document.getElementById('tileAtr').textContent = '—';
+      document.getElementById('tileAtrSub').textContent = '—';
+      document.getElementById('tileVol').textContent = '—';
+      document.getElementById('tileVolSub').textContent = '—';
+      document.getElementById('tileLevels').textContent = '—';
+      document.getElementById('tileLevelsSub').textContent = '—';
+      document.getElementById('decisionBadge').className = 'decision-pill decision-WAIT';
+      document.getElementById('decisionBadge').textContent = 'WAIT';
+      document.getElementById('scenarioMeta').textContent = '';
+      document.getElementById('dataQualityList').textContent = '';
+    }
+
+    const state = {
+      symbol: 'BTCUSDT',
+      interval: '240',
+      activeController: null,
+      requestSeq: 0,
+      pendingSyncToken: null,
+      snapshotsByKey: new Map(),
+      timerId: null,
+      selfTestRunning: false
+    };
+
+    // Единственное место создания 30-секундного REST-polling. Идемпотентна: повторный вызов
+    // не создаёт второй интервал (сначала снимает существующий).
+    const POLL_INTERVAL_MS = 30000;
+    function startPeriodicPoll() {
+      if (state.timerId !== null) clearInterval(state.timerId);
+      state.timerId = setInterval(() => loadAndAnalyze(false), POLL_INTERVAL_MS);
+    }
+    function stopPeriodicPoll() {
+      if (state.timerId !== null) clearInterval(state.timerId);
+      state.timerId = null;
+    }
+
+    const chart = new CandleChart(document.getElementById('chartCanvas'));
+
+    function tfLabel(interval) {
+      if (interval === '60') return '1H';
+      if (interval === '240') return '4H';
+      if (interval === 'D') return '1D';
+      return interval;
+    }
+
+    function setStaleBanner(message) {
+      const banner = document.getElementById('staleBanner');
+      if (message) {
+        banner.textContent = message;
+        banner.classList.add('visible');
+      } else {
+        banner.textContent = '';
+        banner.classList.remove('visible');
+      }
+    }
+
+    function clearDisplayForNewInstrument(symbol, interval, hasCachedSnapshot) {
+      const tfText = tfLabel(interval);
+      setStaleBanner(null);
+      resetMetricsUi();
+      document.getElementById('chartTitle').textContent = `График — ${symbol} (${tfText})`;
+      document.getElementById('lastUpdate').textContent = 'Загрузка...';
+      setRestStatus(hasCachedSnapshot ? `обновление ${symbol} (${tfText})...` : `загрузка ${symbol} (${tfText})...`, 'status-warn');
+      renderReasonList(document.getElementById('decisionReasons'), [
+        hasCachedSnapshot
+          ? `Загрузка свежих данных для ${symbol} (${tfText})...`
+          : `Загрузка данных для ${symbol} (${tfText})...`
+      ]);
+      chart.setData([], 0, null, null);
+    }
+
+    function renderSuccess(dataset, analysis) {
+      const tfText = tfLabel(dataset.interval);
+      document.getElementById('chartTitle').textContent = `График — ${dataset.symbol} (${tfText})`;
+      setStaleBanner(null);
+
+      const m = analysis.metrics || {};
+      const pInfo = dataset.prices || {};
+
+      document.getElementById('livePrice').textContent = fmtPrice(pInfo.currentMarketPrice);
+      const srcEl = document.getElementById('priceSourceLabel');
+      srcEl.textContent = `Источник цены: ${pInfo.currentPriceSource}`;
+      srcEl.className = pInfo.priceWarning ? 'meta status-warn' : 'meta status-ok';
+
+      document.getElementById('lastUpdate').textContent = `Обновлено: ${new Date(dataset.fetchedAtLocalMs).toLocaleTimeString('ru-RU')}`;
+      setRestStatus(`OK · ${dataset.hostUsed}`, 'status-ok');
+
+      const posEma = Number.isFinite(m.distEma20Pct)
+        ? `${m.distEma20Pct >= 0 ? '+' : ''}${m.distEma20Pct.toFixed(2)}% к EMA20 (по закр.)`
+        : '—';
+      document.getElementById('tileTrend').textContent = analysis.decision === 'LONG' ? 'Восходящий (баз.)'
+        : analysis.decision === 'SHORT' ? 'Нисходящий (баз.)'
+        : 'Ожидание (WAIT)';
+      document.getElementById('tileTrendSub').textContent = `EMA20: ${fmtPrice(m.lastEma20)} · ${posEma}`;
+
+      document.getElementById('tileAtr').textContent = Number.isFinite(m.atrPct) ? `${m.atrPct.toFixed(2)}%` : '—';
+      document.getElementById('tileAtrSub').textContent = `ATR(14): ${fmtPrice(m.lastAtr)} (${tfText})`;
+
+      document.getElementById('tileVol').textContent = Number.isFinite(m.volRatio) ? `×${m.volRatio.toFixed(2)}` : '—';
+      document.getElementById('tileVolSub').textContent = m.volBaselineCount
+        ? `Закр. свеча к пред. ${m.volBaselineCount}`
+        : 'Недостаточно свечей';
+
+      const rTxt = Number.isFinite(analysis.levels.resistance) ? fmtPrice(analysis.levels.resistance) : '—';
+      const sTxt = Number.isFinite(analysis.levels.support) ? fmtPrice(analysis.levels.support) : '—';
+      document.getElementById('tileLevels').textContent = `SH ${rTxt} / SL ${sTxt}`;
+      document.getElementById('tileLevelsSub').textContent = 'Локальные экстремумы (без оценки зон)';
+
+      const badge = document.getElementById('decisionBadge');
+      badge.className = `decision-pill decision-${analysis.decision}`;
+      badge.textContent = analysis.decision;
+
+      const reasonsToShow = Array.isArray(analysis.reasons) ? analysis.reasons.slice() : [];
+      if (pInfo.priceWarning) {
+        reasonsToShow.push(`Предупреждение по цене: ${pInfo.priceWarning}`);
+      }
+      renderReasonList(document.getElementById('decisionReasons'), reasonsToShow);
+
+      const tickerStateText = dataset.tickerStatus && dataset.tickerStatus.available
+        ? `${fmtPrice(pInfo.tickerLastPrice)} (доступен)`
+        : `Недоступен (${dataset.tickerStatus && dataset.tickerStatus.error ? dataset.tickerStatus.error : 'ошибка'})`;
+
+      renderKvRows(document.getElementById('scenarioMeta'), [
+        { k: 'Текущая цена и источник', v: `${fmtPrice(pInfo.currentMarketPrice)} · ${pInfo.currentPriceSource}`, cls: pInfo.priceWarning ? 'status-warn' : 'status-ok' },
+        { k: 'Bybit Ticker (/v5/market/tickers)', v: tickerStateText, cls: dataset.tickerStatus && dataset.tickerStatus.available ? 'status-ok' : 'status-warn' },
+        { k: 'Цена последней закрытой свечи', v: fmtPrice(pInfo.lastClosedPrice) },
+        { k: 'Close незакрытой свечи', v: fmtPrice(pInfo.formingClosePrice), cls: 'status-warn' },
+        { k: 'EMA(20) / EMA(50) (по закр.)', v: `${fmtPrice(m.lastEma20)} / ${fmtPrice(m.lastEma50)}` },
+        { k: 'Ближайшие экстремумы SH / SL', v: `${rTxt} / ${sTxt}` }
+      ]);
+
+      const q = dataset.quality;
+      const hasIssues = (
+        q.gaps > 0 ||
+        q.duplicates > 0 ||
+        q.invalidRows > 0 ||
+        q.invalidTimestamps > 0 ||
+        q.anomalousIntervals > 0 ||
+        q.misalignedTimestamps > 0
+      );
+      const issuesClass = hasIssues ? 'status-warn' : 'status-ok';
+
+      renderKvRows(document.getElementById('dataQualityList'), [
+        { k: 'Источник / Рынок', v: `${dataset.source} · ${dataset.marketType}` },
+        { k: 'Закрытых свечей в расчёте', v: `${q.closedCount} (всего ${q.totalFetched})` },
+        { k: 'Последняя закрытая (закр. UTC)', v: fmtUtc(q.lastClosedCloseTs) },
+        { k: 'Текущая свеча (старт → закр.)', v: q.hasForming ? `${fmtUtc(q.formingOpenTs)} → ${fmtUtc(q.formingCloseTs)}` : 'Нет открытой свечи', cls: 'status-warn' },
+        { k: 'Пропуски свечей / Аномал. инт.', v: `${q.gaps} / ${q.anomalousIntervals}`, cls: (q.gaps > 0 || q.anomalousIntervals > 0) ? 'status-warn' : 'status-ok' },
+        { k: 'Дубли / Битые / Сдвиг UTC / Метки', v: `${q.duplicates} / ${q.invalidRows} / ${q.misalignedTimestamps} / ${q.invalidTimestamps}`, cls: issuesClass }
+      ]);
+
+      chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis, pInfo.currentMarketPrice);
+    }
+
+    function renderError(symbol, interval, errorMsg) {
+      const tfText = tfLabel(interval);
+      document.getElementById('chartTitle').textContent = `График — ${symbol} (${tfText})`;
+      setRestStatus('ошибка связи', 'status-err');
+
+      const cached = state.snapshotsByKey.get(makeKey(symbol, interval));
+      if (cached) {
+        renderSuccess(cached.dataset, cached.analysis);
+        setRestStatus('ошибка связи · показан устаревший снимок', 'status-err');
+        const lastTime = new Date(cached.dataset.fetchedAtLocalMs).toLocaleTimeString('ru-RU');
+        document.getElementById('lastUpdate').textContent = `Устарело (от ${lastTime})`;
+        setStaleBanner(
+          `Внимание: не удалось обновить данные для ${symbol} (${tfText}) (${errorMsg}). Отображается последний сохранённый снимок для ${symbol} (${tfText}) от ${lastTime} — данные могут быть неактуальны.`
+        );
+      } else {
+        setStaleBanner(null);
+        resetMetricsUi();
+        document.getElementById('lastUpdate').textContent = 'Нет актуальных данных';
+        renderReasonList(document.getElementById('decisionReasons'), [
+          `Не удалось получить данные для ${symbol} (${tfText}): ${errorMsg}. Сохранённого снимка для этой пары и таймфрейма нет.`
+        ]);
+        renderKvRows(document.getElementById('dataQualityList'), [
+          { k: 'Инструмент', v: `${symbol} (${tfText})` },
+          { k: 'Источник', v: `${BybitAdapter.source} (${BybitAdapter.marketType})` },
+          { k: 'Сохранённый снимок', v: 'Отсутствует' },
+          { k: 'Причина ошибки', v: errorMsg, cls: 'status-err' }
+        ]);
+        chart.setData([], 0, null, null);
+      }
+    }
+
+    async function loadAndAnalyze(isInstrumentSwitch = false, syncMeta = null) {
+      if (state.activeController) {
+        state.activeController.abort(new Error('Заменён более новым запросом'));
+      }
+
+      const controller = new AbortController();
+      state.activeController = controller;
+      const reqId = ++state.requestSeq;
+      const reqSymbol = state.symbol;
+      const reqInterval = state.interval;
+      const hasCached = state.snapshotsByKey.has(makeKey(reqSymbol, reqInterval));
+
+      const wsState = BybitWsClient.state;
+      let resolvedSyncMeta = null;
+      if (syncMeta && typeof syncMeta === 'object' && syncMeta.syncReqId) {
+        resolvedSyncMeta = {
+          recoveryGen: syncMeta.recoveryGen,
+          syncReqId: syncMeta.syncReqId
+        };
+      } else if (
+        !isInstrumentSwitch &&
+        wsState &&
+        wsState.recovering &&
+        wsState.activeSyncReqId &&
+        wsState.symbol === reqSymbol &&
+        wsState.interval === reqInterval
+      ) {
+        resolvedSyncMeta = {
+          recoveryGen: wsState.recoveryGen,
+          syncReqId: wsState.activeSyncReqId
+        };
+      }
+
+      if (resolvedSyncMeta) {
+        state.pendingSyncToken = {
+          reqId,
+          recoveryGen: resolvedSyncMeta.recoveryGen,
+          syncReqId: resolvedSyncMeta.syncReqId
+        };
+      } else if (state.pendingSyncToken && state.pendingSyncToken.reqId !== reqId) {
+        state.pendingSyncToken = null;
+      }
+
+      if (isInstrumentSwitch) {
+        clearDisplayForNewInstrument(reqSymbol, reqInterval, hasCached);
+      } else {
+        setRestStatus('обновление...', 'status-warn');
+      }
+
+      try {
+        const dataset = await BybitAdapter.fetchMarketSnapshot(reqSymbol, reqInterval, controller.signal, 160);
+
+        if (reqId !== state.requestSeq || reqSymbol !== state.symbol || reqInterval !== state.interval) {
+          return;
+        }
+
+        const analysis = BasicAnalyticsEngine.analyze(dataset);
+        analysis.closedCandlesRef = dataset.closedCandles;
+        state.snapshotsByKey.set(makeKey(reqSymbol, reqInterval), {
+          symbol: reqSymbol,
+          interval: reqInterval,
+          dataset,
+          analysis
+        });
+        renderSuccess(dataset, analysis);
+
+        const syncToken = state.pendingSyncToken;
+        if (syncToken && syncToken.reqId === reqId) {
+          state.pendingSyncToken = null;
+          BybitWsClient.notifyRestSynced(syncToken);
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          return;
+        }
+        if (reqId !== state.requestSeq || reqSymbol !== state.symbol || reqInterval !== state.interval) {
+          return;
+        }
+        if (state.pendingSyncToken && state.pendingSyncToken.reqId === reqId) {
+          state.pendingSyncToken = null;
+        }
+        renderError(reqSymbol, reqInterval, err && err.message ? err.message : 'Ошибка загрузки');
+      } finally {
+        if (state.activeController === controller) {
+          state.activeController = null;
+        }
+      }
+    }
+
+    // =========================================================================
+    // 5. ДИАГНОСТИЧЕСКИЙ НАБОР MOCK-ТЕСТОВ STAGE A (запуск вручную: StageASelfTest.runAll())
+    //    Все WS- и REST-ответы здесь — СИМУЛЯЦИЯ (MockWebSocket, управляемый fetchMarketSnapshot).
+    //    Набор не обращается к Bybit и не запускается автоматически. Проверяется настоящий код
+    //    BybitWsClient и настоящий loadAndAnalyze(); подменяются только транспорт (WebSocket, fetchMarketSnapshot)
+    //    и время (fake clock). Тесты работают на ИЗОЛИРОВАННОМ состоянии клиента, оригинальное состояние восстанавливается.
+    // =========================================================================
+    const STAGE_A_PRISTINE = (() => {
+      const o = {};
+      for (const [k, v] of Object.entries(BybitWsClient.state)) {
+        if (v instanceof Map) o[k] = { t: 'map' };
+        else if (v instanceof Set) o[k] = { t: 'set' };
+        else if (typeof WeakSet !== 'undefined' && v instanceof WeakSet) o[k] = { t: 'weakset' };
+        else if (Array.isArray(v)) o[k] = { t: 'arr', v: v.slice() };
+        else o[k] = { t: 'val', v };
+      }
+      return o;
+    })();
+
+    window.StageASelfTest = {
+      async runAll(opts = {}) {
+        // Блокировка: второй (в том числе параллельный) вызов отклоняется, не затрагивая работающий прогон.
+        if (state.selfTestRunning) {
+          return { rejected: true, reason: 'StageASelfTest уже выполняется', results: [], totals: { total: 0, passed: 0, failed: 0 } };
+        }
+        state.selfTestRunning = true;
+
+        const results = [];
+        const cleanupErrors = [];
+        let setupError = null;
+        let loadAfterCleanup = false;
+        const post = {};
+
+        // ---- Сохранение исходного окружения (до любых изменений; сами сохранения не имеют побочных эффектов) ----
+        const OrigWS = window.WebSocket;
+        const origFetch = BybitAdapter.fetchMarketSnapshot;           // исходная ссылка, без bind
+        const origHooks = { onStatus: BybitWsClient.hooks.onStatus, onRecovered: BybitWsClient.hooks.onRecovered };
+        const CFG_KEYS = ['pingIntervalMs', 'pongTimeoutMs', 'streamAliveMs', 'stallMs', 'degradedMisses', 'timerGapMs', 'resumeGraceMs',
+          'connectTimeoutMs', 'stableResetMs', 'lateWindowMs', 'maxTimedOutPings', 'subAckTimeoutMs', 'subRetryMax',
+          'reconnectBaseMs', 'reconnectMaxMs', 'maxAbandonedTracked'];
+        const origCfg = {};
+        for (const k of CFG_KEYS) origCfg[k] = BybitWsClient[k];
+        const origClientState = BybitWsClient.state;
+        const origSnapshots = state.snapshotsByKey;
+        const origToken = state.pendingSyncToken;
+        const origSymbol = state.symbol;
+        const origInterval = state.interval;
+        const origWasRecovering = origClientState.recovering;
+        const origEverOpened = origClientState.everOpened;
+        const origDateNow = Date.now;
+        const origTimers = { setTimeout: window.setTimeout, clearTimeout: window.clearTimeout, setInterval: window.setInterval, clearInterval: window.clearInterval };
+        const origVisDesc = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+        const origOnLineDesc = Object.getOwnPropertyDescriptor(navigator, 'onLine');
+        let clockInstalled = false;
+        let envChanged = false;
+
+        // ---- Mock WebSocket ----
+        class MockWebSocket {
+          static CONNECTING = 0; static OPEN = 1; static CLOSING = 2; static CLOSED = 3;
+          constructor(url) {
+            this.url = url;
+            this.readyState = MockWebSocket.CONNECTING;
+            this.sent = [];
+            this.onopen = null; this.onmessage = null; this.onerror = null; this.onclose = null;
+            MockWebSocket.instances.push(this);
+          }
+          send(data) { this.sent.push(JSON.parse(data)); }
+          // closeMode: 'sync' — onclose сразу; 'manual' — CLOSING, onclose только по emitClose();
+          //            'silent' — CLOSED, onclose не придёт; 'hang' — CLOSING навсегда, onclose не придёт
+          close(code = 1000, reason = '') {
+            if (this.readyState === MockWebSocket.CLOSED) return;
+            const mode = MockWebSocket.closeMode;
+            if (mode === 'sync') { this.readyState = MockWebSocket.CLOSED; if (typeof this.onclose === 'function') this.onclose({ code, reason, wasClean: true }); }
+            else if (mode === 'silent') { this.readyState = MockWebSocket.CLOSED; }
+            else { this.readyState = MockWebSocket.CLOSING; }
+          }
+          emitClose(code = 1000) { this.readyState = MockWebSocket.CLOSED; if (typeof this.onclose === 'function') this.onclose({ code, reason: '', wasClean: true }); }
+          dropConnection() { this.readyState = MockWebSocket.CLOSED; if (typeof this.onclose === 'function') this.onclose({ code: 1006, reason: '', wasClean: false }); }
+          triggerOpen() { this.readyState = MockWebSocket.OPEN; if (typeof this.onopen === 'function') this.onopen(); }
+          triggerMessage(payload) { if (typeof this.onmessage === 'function') this.onmessage({ data: typeof payload === 'string' ? payload : JSON.stringify(payload) }); }
+        }
+        MockWebSocket.instances = [];
+        MockWebSocket.closeMode = 'sync';
+        const lastWs = () => MockWebSocket.instances[MockWebSocket.instances.length - 1];
+        const ackAll = (ws) => {
+          for (const m of ws.sent) {
+            if ((m.op === 'subscribe' || m.op === 'unsubscribe') && !m._acked) {
+              m._acked = true;
+              ws.triggerMessage({ op: m.op, req_id: m.req_id, success: true });
+            }
+          }
+        };
+
+        // ---- Fake clock (только на время прогона; восстанавливается в cleanup) ----
+        const clock = {
+          now: 0, seq: 0, timers: [],
+          reset() { this.timers = []; this.now = origDateNow.call(Date); },
+          install() {
+            const c = this;
+            Date.now = () => c.now;
+            window.setTimeout = (fn, ms = 0) => { const id = ++c.seq; c.timers.push({ id, at: c.now + Math.max(0, ms || 0), fn, every: null }); return id; };
+            window.setInterval = (fn, ms = 0) => { const id = ++c.seq; const e = Math.max(1, ms || 1); c.timers.push({ id, at: c.now + e, fn, every: e }); return id; };
+            window.clearTimeout = window.clearInterval = (id) => { c.timers = c.timers.filter((t) => t.id !== id); };
+            clockInstalled = true;
+          },
+          uninstall() {
+            Date.now = origDateNow;
+            window.setTimeout = origTimers.setTimeout; window.clearTimeout = origTimers.clearTimeout;
+            window.setInterval = origTimers.setInterval; window.clearInterval = origTimers.clearInterval;
+            clockInstalled = false;
+          },
+          // Имитация «замёрзших» таймеров (пауза страницы): время прыгает вперёд, просроченные таймеры срабатывают с опозданием
+          starve(ms) {
+            const newNow = this.now + ms;
+            for (const t of this.timers) if (t.at < newNow) t.at = newNow;
+            this.now = newNow;
+          },
+          advance(ms) {
+            const target = this.now + ms;
+            for (;;) {
+              let next = null;
+              for (const t of this.timers) if (t.at <= target && (!next || t.at < next.at || (t.at === next.at && t.id < next.id))) next = t;
+              if (!next) break;
+              this.now = next.at;
+              if (next.every) next.at += next.every; else this.timers = this.timers.filter((t) => t !== next);
+              try { next.fn(); } catch (e) { console.error('[StageASelfTest] fake timer', e); }
+            }
+            this.now = target;
+          }
+        };
+        const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
+
+        // ---- Управляемый REST mock (подменяет только BybitAdapter.fetchMarketSnapshot; loadAndAnalyze — настоящий) ----
+        const rest = { calls: [], script: [], ignoreAbort: false };
+        const makeDataset = (symbol, interval) => {
+          const step = BybitAdapter.intervalToMs(interval);
+          const nowMs = Date.now();
+          const lastOpen = Math.floor(nowMs / step) * step;
+          const rows = [];
+          for (let i = 159; i >= 0; i--) {
+            const ts = lastOpen - i * step;
+            const base = 60000 + 400 * Math.sin((159 - i) / 7) + (159 - i) * 3;
+            const o = base, c = base + 50 * Math.cos((159 - i) / 3);
+            rows.push([String(ts), o.toFixed(2), (Math.max(o, c) + 40).toFixed(2), (Math.min(o, c) - 40).toFixed(2), c.toFixed(2), '100']);
+          }
+          return BybitAdapter.normalize(rows, {
+            symbol, interval, hostUsed: 'selftest-mock (СИМУЛЯЦИЯ)', serverTimeMs: nowMs, clockSkewMs: 0,
+            tickerStatus: { available: false, price: null, timeMs: null, hostUsed: 'selftest-mock', error: 'симуляция StageASelfTest' }
+          });
+        };
+        const mockFetch = (symbol, interval, signal) => {
+          const call = { symbol, interval, signal, status: 'pending', token: state.pendingSyncToken ? Object.assign({}, state.pendingSyncToken) : null };
+          rest.calls.push(call);
+          const mode = rest.script.length ? rest.script.shift() : 'ok';
+          return new Promise((resolve, reject) => {
+            call.resolve = () => { if (call.status !== 'pending') return; call.status = 'resolved'; resolve(makeDataset(symbol, interval)); };
+            call.reject = (e) => { if (call.status !== 'pending') return; call.status = 'rejected'; reject(e); };
+            if (!rest.ignoreAbort && signal) {
+              signal.addEventListener('abort', () => { if (call.status === 'pending') { call.status = 'aborted'; reject(new DOMException('Aborted', 'AbortError')); } });
+            }
+            if (mode === 'ok') call.resolve();
+            else if (mode === 'err') call.reject(new Error('mock REST error'));
+            else if (mode === 'abort') call.reject(new DOMException('Aborted', 'AbortError'));
+            // 'defer' — ждём ручного call.resolve()/call.reject()
+          });
+        };
+
+        const spyOn = (obj, name, log) => {
+          const orig = obj[name];
+          obj[name] = function (...a) { log.push(a); return orig.apply(this, a); };
+          return () => { obj[name] = orig; };
+        };
+        const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+        const freshClientState = () => {
+          const st = {};
+          for (const [k, d] of Object.entries(STAGE_A_PRISTINE)) {
+            if (d.t === 'map') st[k] = new Map();
+            else if (d.t === 'set') st[k] = new Set();
+            else if (d.t === 'weakset') st[k] = new WeakSet();
+            else if (d.t === 'arr') st[k] = d.v.slice();
+            else st[k] = d.v;
+          }
+          return st;
+        };
+        const resetPerTest = () => {
+          try { BybitWsClient.stop(true); } catch (_) {}
+          clock.reset();
+          MockWebSocket.instances.length = 0;
+          MockWebSocket.closeMode = 'sync';
+          BybitWsClient.state = freshClientState();
+          BybitWsClient.hooks.onStatus = null;
+          BybitWsClient.hooks.onRecovered = origHooks.onRecovered;     // настоящий хук приложения → настоящий loadAndAnalyze
+          for (const k of CFG_KEYS) BybitWsClient[k] = origCfg[k];
+          BybitWsClient.configure({ pingIntervalMs: 20000, pongTimeoutMs: 5000, stallMs: 30000, reconnectBaseMs: 100, reconnectMaxMs: 1000, subAckTimeoutMs: 2000, subRetryMax: 2, timerGapMs: 3000, resumeGraceMs: 0 });
+          if (state.activeController) { try { state.activeController.abort(new Error('StageASelfTest')); } catch (_) {} state.activeController = null; }
+          state.pendingSyncToken = null;
+          state.snapshotsByKey = new Map();
+          state.symbol = 'BTCUSDT';
+          state.interval = '240';
+          rest.calls.length = 0; rest.script.length = 0; rest.ignoreAbort = false;
+        };
+        const record = async (name, fn) => {
+          const restoreList = [];
+          try {
+            resetPerTest();
+            await fn(restoreList);
+            results.push({ name, passed: true });
+          } catch (err) {
+            results.push({ name, passed: false, error: err && err.message ? err.message : String(err) });
+          } finally {
+            for (const r of restoreList.reverse()) { try { r(); } catch (_) {} }
+            try { BybitWsClient.stop(true); } catch (_) {}
+          }
+        };
+        // Реальный сценарий: соединение установлено и подтверждено → обрыв → переподключение → новый сокет открыт (ACK не отправлен)
+        const connectAndDrop = () => {
+          BybitWsClient.start('BTCUSDT', '240');
+          const ws1 = lastWs(); ws1.triggerOpen(); ackAll(ws1);
+          ws1.dropConnection();
+          clock.advance(BybitWsClient.reconnectMaxMs + 10);
+          const ws2 = lastWs();
+          assert(ws2 !== ws1, 'После обрыва должен создаться новый сокет');
+          ws2.triggerOpen();
+          return ws2;
+        };
+        const S = () => BybitWsClient.state;
+
+        try {
+          // ---- Подготовка окружения (всё под try/finally: любая ошибка здесь не оставит блокировку) ----
+          envChanged = true;
+          const realSockets = [origClientState.ws, ...Array.from(origClientState.abandoned)].filter(Boolean);
+          BybitWsClient.hooks.onStatus = null;
+          if (state.activeController) { state.activeController.abort(new Error('Запущен StageASelfTest')); state.activeController = null; }
+          stopPeriodicPoll();
+          BybitWsClient.stop(true);
+          // события close настоящих сокетов не должны попасть в изолированное тестовое состояние
+          for (const w of realSockets.concat(Array.from(origClientState.abandoned))) { try { w.onclose = null; } catch (_) {} }
+          if (opts.inject === 'setup') throw new Error('inject: ошибка подготовки');
+          window.WebSocket = MockWebSocket;
+          BybitAdapter.fetchMarketSnapshot = mockFetch;
+          clock.reset();
+          clock.install();
+
+          // ===================== 1–4: ACK =====================
+          await record('1. ACK с правильным req_id и op подтверждает подписку', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen();
+            const sub = ws.sent.find((m) => m.op === 'subscribe');
+            assert(sub && sub.req_id, 'Не найден исходящий subscribe');
+            const acksBefore = S().subAcks;
+            ws.triggerMessage({ op: 'subscribe', req_id: sub.req_id, success: true });
+            assert(!S().pendingSubs.has(sub.req_id), 'Запись должна удалиться из pendingSubs');
+            assert(S().confirmedTopics.has('tickers.BTCUSDT') && S().confirmedTopics.has('kline.240.BTCUSDT'), 'Оба топика должны подтвердиться');
+            assert(S().subAcks === acksBefore + 1, 'subAcks должен вырасти на 1');
+          });
+
+          await record('2. ACK с правильным req_id, но неправильным op игнорируется', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen();
+            const sub = ws.sent.find((m) => m.op === 'subscribe');
+            const acksBefore = S().subAcks;
+            ws.triggerMessage({ op: 'unsubscribe', req_id: sub.req_id, success: true });
+            assert(S().pendingSubs.has(sub.req_id), 'Запись не должна удаляться при неверном op');
+            assert(S().confirmedTopics.size === 0, 'Подписка не должна подтверждаться');
+            assert(S().subAcks === acksBefore, 'subAcks не должен расти');
+          });
+
+          const ackWithoutReqId = (multi) => {
+            const calls = [];
+            BybitWsClient.hooks.onRecovered = (...a) => calls.push(a);
+            // реальный путь: обрыв → recovery → новый сокет, чтобы проверить и отсутствие вызова recovery-обработчика
+            const ws2 = connectAndDrop();
+            if (multi) BybitWsClient._sendSub(ws2, 'subscribe', ['tickers.ETHUSDT']);
+            const pendingBefore = Array.from(S().pendingSubs.keys());
+            const confirmedBefore = Array.from(S().confirmedTopics);
+            const acksBefore = S().subAcks;
+            assert(pendingBefore.length === (multi ? 2 : 1), `Ожидалось pending=${multi ? 2 : 1}, получено ${pendingBefore.length}`);
+            ws2.triggerMessage({ op: 'subscribe', success: true });
+            ws2.triggerMessage({ op: 'unsubscribe', success: true });
+            assert(JSON.stringify(Array.from(S().pendingSubs.keys())) === JSON.stringify(pendingBefore), 'pendingSubs не должен измениться');
+            assert(JSON.stringify(Array.from(S().confirmedTopics)) === JSON.stringify(confirmedBefore), 'confirmedTopics не должен измениться');
+            assert(S().subAcks === acksBefore, 'subAcks не должен расти');
+            assert(calls.length === 0, 'Recovery-обработчик не должен вызываться');
+            assert(S().resyncRequested === false, 'resyncRequested не должен выставляться');
+          };
+          await record('3. ACK без req_id игнорируется (одна pending-запись)', () => ackWithoutReqId(false));
+          await record('4. ACK без req_id игнорируется (несколько pending-записей)', () => ackWithoutReqId(true));
+
+          await record('4b. ACK с неизвестным req_id игнорируется', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen();
+            const before = S().pendingSubs.size, acks = S().subAcks;
+            ws.triggerMessage({ op: 'subscribe', req_id: 'unknown-req', success: true });
+            assert(S().pendingSubs.size === before && S().subAcks === acks && S().confirmedTopics.size === 0, 'Неизвестный req_id не должен ничего менять');
+          });
+
+          await record('4c. ACK от устаревшего subGen игнорируется', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen();
+            const sub = ws.sent.find((m) => m.op === 'subscribe');
+            BybitWsClient.setSubscription('ETHUSDT', '60');      // subGen увеличивается, старый pending снимается
+            const acks = S().subAcks;
+            ws.triggerMessage({ op: 'subscribe', req_id: sub.req_id, success: true });
+            assert(S().subAcks === acks, 'ACK устаревшего subGen не должен засчитываться');
+            assert(!S().confirmedTopics.has('tickers.BTCUSDT'), 'Топик старой подписки не должен подтвердиться');
+          });
+
+          // ===================== 5–7: heartbeat (политика не менялась) =====================
+          await record('5. Pong с корректным req_id подтверждает heartbeat', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen();
+            const ping = ws.sent.find((m) => m.op === 'ping');
+            ws.triggerMessage({ op: 'ping', ret_msg: 'pong', req_id: ping.req_id, success: true });
+            assert(S().awaitingPong === false && S().pongsConfirmed === 1, 'pong должен быть подтверждён по req_id');
+          });
+
+          await record('6. Pong без req_id при чистой истории — ambiguous, не подтверждает ping', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen();
+            assert(S().awaitingPong === true && S().lastPingReqId !== null, 'После open ожидается pong на первый ping');
+            const beforeTimer = S().pongTimer;
+            const beforeReqId = S().lastPingReqId;
+            const beforeStreak = S().pongMissStreak;
+            ws.triggerMessage({ op: 'pong' });
+            assert(S().awaitingPong === true, 'awaitingPong не сбрасывается');
+            assert(S().pongTimer === beforeTimer && S().lastPingReqId === beforeReqId, 'pongTimer и lastPingReqId сохраняются');
+            assert(S().pongsConfirmed === 0 && S().pongsByExclusion === 0, 'Подтверждения нет (нет confirmed-by-exclusion)');
+            assert(S().ambiguousPongs === 1 && S().pongNoEcho === 1, 'Классифицирован как ambiguous no-echo');
+            assert(S().lastNoEchoPongAt === Date.now(), 'lastNoEchoPongAt обновлён');
+            assert(S().pongMissStreak === beforeStreak, 'Серия пропусков не меняется');
+          });
+
+          await record('7. Запоздавший pong с req_id: late, серия пропусков не сбрасывается', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen();
+            const ping1 = ws.sent.find((m) => m.op === 'ping');
+            clock.advance(BybitWsClient.pongTimeoutMs);
+            assert(S().missedPongs === 1 && S().pongMissStreak === 1 && S().timedOutPings.length === 1, 'Первый ping должен просрочиться');
+            ws.triggerMessage({ op: 'pong', req_id: ping1.req_id });
+            assert(S().latePongs === 1, 'Должен засчитаться latePong');
+            assert(S().pongMissStreak === 1, 'Запоздавший pong не должен сбрасывать серию пропусков');
+            assert(S().pongsConfirmed === 0, 'Запоздавший pong не подтверждает heartbeat');
+            assert(S().timedOutPings.length === 0, 'Совпавший просроченный ping должен сниматься');
+          });
+
+          // ===================== S6: heartbeat без эха req_id (сценарии времени: ping в t=0, 20, 40…; таймаут pong 5 с) =====================
+          const hbStart = () => { BybitWsClient.start('BTCUSDT', '240'); const ws = lastWs(); ws.triggerOpen(); ackAll(ws); return { ws, t0: Date.now() }; };
+          const at = (h, sec) => { const d = h.t0 + Math.round(sec * 1000) - Date.now(); assert(d >= 0, `Время ${sec} с уже прошло`); clock.advance(d); };
+          const echoPong = (reqId) => ({ op: 'ping', ret_msg: 'pong', success: true, req_id: reqId });
+          const eventTypes = () => S().events.map((e) => e.type);
+
+          await record('7b. S6: ambiguous pong не подтверждает ping и сохраняет ожидание, pongTimer и lastPingReqId', () => {
+            const h = hbStart();
+            at(h, 6);
+            assert(S().missedPongs === 1 && S().pongMissStreak === 1 && S().timedOutPings.length === 1, 'ping-1 должен быть пропущен');
+            at(h, 21);
+            assert(S().awaitingPong === true && S().lastPingReqId === 'ws-ping-2', 'ping-2 должен ожидать pong');
+            const b = { gen: S().connGen, sockets: MockWebSocket.instances.length, conf: S().pongsConfirmed, excl: S().pongsByExclusion, rtt: S().lastRttMs, streak: S().pongMissStreak, missed: S().missedPongs, timedOut: S().timedOutPings.length };
+            h.ws.triggerMessage({ op: 'pong' });
+            assert(S().ambiguousPongs === 1, 'ambiguousPongs=1');
+            assert(S().awaitingPong === true && S().pongTimer !== null && S().lastPingReqId === 'ws-ping-2', 'Ожидание, pongTimer и lastPingReqId должны сохраниться');
+            assert(S().pongsConfirmed === b.conf && S().pongsByExclusion === b.excl && S().lastRttMs === b.rtt, 'Подтверждения и RTT не меняются');
+            assert(S().pongMissStreak === b.streak && S().missedPongs === b.missed && S().timedOutPings.length === b.timedOut, 'Серия пропусков и timedOutPings не меняются');
+            assert(S().lastNoEchoPongAt === Date.now(), 'lastNoEchoPongAt = время прихода');
+            clock.advance(500);
+            assert(S().connGen === b.gen && MockWebSocket.instances.length === b.sockets, 'Переподключения нет');
+          });
+
+          await record('7c. S6: timeout после ambiguous pong — неатрибутированный, не пропуск', () => {
+            const h = hbStart();
+            at(h, 6); at(h, 21);
+            h.ws.triggerMessage({ op: 'pong' });
+            at(h, 26);
+            assert(S().unattributedTimeouts === 1, 'unattributedTimeouts=1');
+            assert(S().awaitingPong === false && S().pongTimer === null, 'Ожидание снято штатно');
+            assert(S().missedPongs === 1 && S().pongMissStreak === 1 && S().timedOutPings.length === 1, 'missedPongs/серия/timedOutPings не меняются');
+            assert(eventTypes().includes('pong-timeout-unattributed'), 'Событие записано');
+          });
+
+          await record('7d. S6: pong без эха ДО отправки текущего ping не его доказательство', () => {
+            const h = hbStart();
+            at(h, 6);                                   // ping-1 пропущен
+            h.ws.triggerMessage({ op: 'pong' });        // t=6: ping не ожидается → late
+            assert(S().latePongs === 1 && S().awaitingPong === false, 'pong вне ожидания — late');
+            at(h, 26);                                  // ping-2 (t=20) остался без ответа
+            assert(S().unattributedTimeouts === 0, 'Старый pong не доказательство для ping-2');
+            assert(S().missedPongs === 2 && S().pongMissStreak === 2, 'Настоящий пропуск ping-2 засчитан');
+          });
+
+          await record('7d-reg. S6: late no-echo не удаляет timedOutPings; точный req_id и окно очищают', () => {
+            const h = hbStart();
+            at(h, 6); // ping-1 просрочен
+            assert(S().timedOutPings.length === 1, 'Есть одна запись timedOutPings');
+            const savedReqId = S().timedOutPings[0].reqId;
+            assert(savedReqId === 'ws-ping-1', `Ожидался reqId ws-ping-1, получено ${savedReqId}`);
+            const lateBefore = S().latePongs;
+            // late no-echo не должен трогать timedOutPings и matched должен быть false
+            h.ws.triggerMessage({ op: 'pong' });
+            assert(S().latePongs === lateBefore + 1, 'latePongs увеличен');
+            assert(S().timedOutPings.length === 1 && S().timedOutPings[0].reqId === savedReqId, 'Запись timedOutPings сохранена после no-echo late');
+            const lateEvents = S().events.filter((e) => e.type === 'late-pong');
+            const lastLate = lateEvents[lateEvents.length - 1];
+            assert(lastLate && lastLate.matched === false, 'matched для no-echo late должен быть false');
+            // точное совпадение req_id удаляет именно эту запись
+            h.ws.triggerMessage({ op: 'pong', req_id: savedReqId });
+            assert(S().timedOutPings.length === 0, 'Точный req_id удалил запись из timedOutPings');
+            // штатная очистка по окну: новый пропуск + advance beyond lateWindowMs
+            at(h, 26); // ping-2 просрочен
+            assert(S().timedOutPings.length === 1, 'Новая запись после второго пропуска');
+            const prunedBefore = S().timedOutPruned;
+            clock.advance(BybitWsClient.lateWindowMs + 100);
+            BybitWsClient._pruneTimedOutPings(Date.now());
+            assert(S().timedOutPings.length === 0, 'Очистка по истечении lateWindowMs удалила запись');
+            assert(S().timedOutPruned > prunedBefore, 'timedOutPruned увеличился');
+          });
+
+          await record('7e. S6: запоздалый pong не отменяет уже зафиксированный пропуск и не доказательство для следующего ping', () => {
+            const h = hbStart();
+            at(h, 26);
+            assert(S().missedPongs === 2 && S().pongMissStreak === 2, 'Два пропуска');
+            at(h, 27);
+            h.ws.triggerMessage({ op: 'pong' });
+            assert(S().missedPongs === 2 && S().pongMissStreak === 2, 'Пропуск не отменён задним числом');
+            assert(S().lastMsgAt === Date.now() && S().lastNoEchoPongAt === Date.now(), 'Активность канала учтена (lastMsgAt, lastNoEchoPongAt)');
+            at(h, 46);                                   // ping-3 (t=40) без pong
+            assert(S().unattributedTimeouts === 0 && S().missedPongs === 3 && S().pongMissStreak === 3, 'pong из t=27 не доказательство для ping-3');
+          });
+
+          await record('7f. S6: несколько pong без эха подряд — все ambiguous, одно неатрибутированное решение', () => {
+            const h = hbStart();
+            at(h, 6); at(h, 21);
+            h.ws.triggerMessage({ op: 'pong' });
+            at(h, 21.01); h.ws.triggerMessage({ op: 'pong' });
+            at(h, 21.02); h.ws.triggerMessage({ op: 'pong' });
+            assert(S().ambiguousPongs === 3 && S().awaitingPong === true && S().latePongs === 0, 'Три ambiguous, ожидание сохранено');
+            at(h, 26);
+            assert(S().unattributedTimeouts === 1 && S().missedPongs === 1 && S().pongMissStreak === 1, 'Одно неатрибутированное решение, серия не растёт');
+          });
+
+          await record('7g. S6: точное эхо после серии pong без эха; эхо после неатрибутированного timeout', () => {
+            const h = hbStart();
+            at(h, 6); at(h, 21);
+            h.ws.triggerMessage({ op: 'pong' }); h.ws.triggerMessage({ op: 'pong' });
+            h.ws.triggerMessage(echoPong('ws-ping-2'));
+            assert(S().pongsConfirmed === 1 && S().pongMissStreak === 0 && S().awaitingPong === false && S().pongTimer === null, 'Точное эхо подтверждает активный ping, серия 0');
+          });
+          await record('7g′. S6: эхо активного ping после неатрибутированного timeout — late, задним числом ничего не меняется', () => {
+            const h = hbStart();
+            at(h, 6); at(h, 21);
+            h.ws.triggerMessage({ op: 'pong' });
+            at(h, 26);
+            const b = { missed: S().missedPongs, streak: S().pongMissStreak, un: S().unattributedTimeouts, conf: S().pongsConfirmed };
+            h.ws.triggerMessage(echoPong('ws-ping-2'));
+            assert(S().latePongs >= 1 && S().pongsConfirmed === b.conf && S().missedPongs === b.missed && S().pongMissStreak === b.streak && S().unattributedTimeouts === b.un, 'Позднее эхо — late без изменения пропусков');
+          });
+
+          await record('7h. S6: смешанный режим — после pong с эхом pong без эха всё равно доказательство жизни', () => {
+            const h = hbStart();
+            at(h, 0.3); h.ws.triggerMessage(echoPong('ws-ping-1'));
+            assert(S().pongsConfirmed === 1 && S().pongEchoSeen === 1, 'Эхо принято');
+            at(h, 26);                                   // ping-2 без ответа → пропуск
+            assert(S().missedPongs === 1 && S().timedOutPings.length === 1, 'ping-2 пропущен');
+            at(h, 30); h.ws.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', data: { symbol: 'BTCUSDT', lastPrice: '1' } });  // поток жив: без этого сработал бы stall (тишина > 30 с)
+            at(h, 41); h.ws.triggerMessage({ op: 'pong' });  // ping-3, pong без эха
+            assert(S().ambiguousPongs === 1, 'Без эха при просроченном ping-2 — ambiguous');
+            at(h, 46);
+            assert(S().unattributedTimeouts === 1 && S().missedPongs === 1, 'Эхо раньше не блокирует учёт pong без эха');
+          });
+
+          await record('7i. S6: 10 ping, первый потерян, остальные получают pong без эха — пропуски не копятся', () => {
+            const h = hbStart();
+            let maxStreak = 0; const healths = new Set();
+            const sample = () => { maxStreak = Math.max(maxStreak, S().pongMissStreak); healths.add(S().health); };
+            at(h, 6); sample();
+            assert(S().missedPongs === 1 && S().pongMissStreak === 1 && S().health === 'warn', 'Первый настоящий пропуск: missed=1 streak=1 health=warn');
+            for (let k = 2; k <= 10; k++) {
+              at(h, 20 * (k - 1) + 0.3); h.ws.triggerMessage({ op: 'pong' }); sample();
+              at(h, 20 * (k - 1) + 6); sample();
+            }
+            assert(maxStreak <= 1, `Серия пропусков не должна превышать 1, получено ${maxStreak}`);
+            assert(!healths.has('degraded'), 'degraded не должен возникать');
+            assert(S().missedPongs === 1 && S().pongMissStreak === 1 && S().health === 'warn', `Итог: missed=1 streak=1 health=warn, получено ${S().missedPongs}/${S().pongMissStreak}/${S().health}`);
+            assert(S().unattributedTimeouts === 9, `Ожидалось 9 unattributedTimeouts, получено ${S().unattributedTimeouts}`);
+            assert(S().connGen === 1 || MockWebSocket.instances.length === 1, 'Переподключений нет');
+          });
+
+          await record('7j. S6: полное отсутствие pong — накопление пропусков и degraded', () => {
+            BybitWsClient.configure({ stallMs: 120000, streamAliveMs: 120000, pingIntervalMs: 10000, pongTimeoutMs: 2000 });
+            const h = hbStart();
+            at(h, 2.5); assert(S().pongMissStreak === 1 && S().health === 'warn', `1 пропуск → warn, получено ${S().pongMissStreak}/${S().health}`);
+            at(h, 12.5); assert(S().pongMissStreak === 2 && S().health === 'warn', '2 пропуска → warn');
+            at(h, 22.5); assert(S().pongMissStreak === 3 && S().health === 'degraded', `3 пропуска → degraded, получено ${S().pongMissStreak}/${S().health}`);
+            assert(S().missedPongs === 3 && S().unattributedTimeouts === 0, 'Все три — настоящие пропуски');
+          });
+
+          await record('7k. S6: тишина потока — штатный watchdog и reconnect сохранились', () => {
+            const h = hbStart();
+            at(h, 35);
+            assert(S().stallsDetected === 1 && S().recoveries === 1, `Ожидался stall и recovery, получено ${S().stallsDetected}/${S().recoveries}`);
+            assert(MockWebSocket.instances.length >= 2 && lastWs() !== h.ws, 'Создан новый сокет');
+            assert(S().unattributedTimeouts === 0, 'Неатрибутированных таймаутов нет');
+          });
+
+          await record('7l. S6: lastNoEchoPongAt сбрасывается при новом соединении (счётчик сохраняется)', () => {
+            const h = hbStart();
+            at(h, 6); at(h, 21); h.ws.triggerMessage({ op: 'pong' }); at(h, 26);
+            assert(S().lastNoEchoPongAt !== null && S().unattributedTimeouts === 1, 'Перед обрывом поле заполнено');
+            h.ws.dropConnection(); clock.advance(BybitWsClient.reconnectMaxMs + 10);
+            const ws2 = lastWs(); assert(ws2 !== h.ws, 'Новый сокет');
+            ws2.triggerOpen();
+            assert(S().lastNoEchoPongAt === null, 'lastNoEchoPongAt сброшен при открытии');
+            assert(S().unattributedTimeouts === 1, 'Счётчик unattributedTimeouts не сбрасывается');
+          });
+
+          await record('7m. S6: grace-пауза без доказательства — прощение, затем настоящий пропуск, suspectedPauses сохранён', () => {
+            const h = hbStart();
+            at(h, 2); clock.starve(7000);                // таймеры «замёрзли» (пауза страницы): pong-таймер сработает с опозданием 4 с
+            clock.advance(0);
+            assert(S().suspectedPauses === 1 && S().missedPongs === 0 && S().awaitingPong === true, 'Первое срабатывание прощено (grace)');
+            clock.advance(5000);
+            assert(S().missedPongs === 1 && S().unattributedTimeouts === 0 && S().suspectedPauses === 1, 'После grace — настоящий пропуск');
+          });
+
+          await record('7n. S6: grace-пауза с доказательством — прощение, затем неатрибутированный timeout', () => {
+            const h = hbStart();
+            at(h, 6); at(h, 21); h.ws.triggerMessage({ op: 'pong' });
+            at(h, 22); clock.starve(7000); clock.advance(0);
+            assert(S().suspectedPauses === 1 && S().unattributedTimeouts === 0 && S().missedPongs === 1 && S().awaitingPong === true, 'Сначала grace, решения ещё нет');
+            clock.advance(5000);
+            assert(S().unattributedTimeouts === 1 && S().missedPongs === 1 && S().suspectedPauses === 1, 'Затем неатрибутированный timeout');
+          });
+
+          await record('7p. S6: пустой req_id, пробелы и формат с args — это pong без эха (ambiguous)', () => {
+            const h = hbStart();
+            assert(S().awaitingPong === true, 'Ожидается pong после open');
+            h.ws.triggerMessage({ op: 'ping', ret_msg: 'pong', success: true, req_id: '' });
+            assert(S().pongsByExclusion === 0 && S().pongsConfirmed === 0 && S().ambiguousPongs === 1 && S().pongNoEcho === 1, 'Пустой req_id → ambiguous, без confirmed-by-exclusion');
+            assert(S().awaitingPong === true, 'Ожидание сохраняется');
+            at(h, 20.5); h.ws.triggerMessage({ op: 'ping', ret_msg: 'pong', success: true, req_id: '   ' });
+            assert(S().pongsByExclusion === 0 && S().ambiguousPongs === 2 && S().pongNoEcho === 2, 'Пробелы → ambiguous');
+            at(h, 40.5); h.ws.triggerMessage({ op: 'pong', args: ['1675418560633'], conn_id: 'x' });
+            assert(S().pongsByExclusion === 0 && S().ambiguousPongs === 3 && S().pongNoEcho === 3 && S().pongsConfirmed === 0, 'Формат с args → ambiguous');
+            assert(S().lastNoEchoPongAt === Date.now(), 'lastNoEchoPongAt обновлён');
+          });
+
+          // ===================== 8–10: REST recovery через настоящий loadAndAnalyze =====================
+          await record('8a. Успешный актуальный REST-ответ завершает recovery через notifyRestSynced', async () => {
+            const notify = []; const un = [spyOn(BybitWsClient, 'notifyRestSynced', notify)]; 
+            rest.script.push('defer');
+            const ws2 = connectAndDrop(); ackAll(ws2);
+            await flush();
+            assert(rest.calls.length === 1, `Ожидался 1 REST-вызов, получено ${rest.calls.length}`);
+            const call = rest.calls[0];
+            assert(S().recovering && S().resyncRequested && S().activeSyncReqId, 'Recovery должен быть активен');
+            assert(call.token && call.token.recoveryGen === S().recoveryGen && call.token.syncReqId === S().activeSyncReqId, 'pendingSyncToken должен связывать REST-запрос с текущей sync-задачей');
+            assert(state.pendingSyncToken && state.pendingSyncToken.reqId === state.requestSeq, 'pendingSyncToken.reqId = текущий reqId');
+            assert(notify.length === 0, 'До ответа REST notifyRestSynced не вызывается');
+            call.resolve(); await flush();
+            assert(notify.length === 1, 'Успешный актуальный ответ должен вызвать notifyRestSynced ровно 1 раз');
+            assert(S().recovering === false && S().resyncRequested === false && S().activeSyncReqId === null, 'Recovery должен завершиться');
+            assert(state.pendingSyncToken === null, 'pendingSyncToken очищается');
+            un.forEach((u) => u());
+          });
+
+          await record('8b. REST-ошибка не завершает recovery; ручное обновление наследует ту же sync-задачу', async () => {
+            const notify = []; const un = spyOn(BybitWsClient, 'notifyRestSynced', notify);
+            try {
+              rest.script.push('err');
+              const ws2 = connectAndDrop(); ackAll(ws2); await flush();
+              const gen = S().recoveryGen, sid = S().activeSyncReqId;
+              assert(rest.calls.length === 1 && rest.calls[0].status === 'rejected', 'Первый REST-вызов должен завершиться ошибкой');
+              assert(S().recovering && S().resyncRequested && S().activeSyncReqId === sid, 'Ошибка REST не должна завершать recovery или сбрасывать activeSyncReqId');
+              assert(state.pendingSyncToken === null, 'pendingSyncToken после ошибки очищается');
+              assert(notify.length === 0, 'notifyRestSynced не вызывался');
+              await loadAndAnalyze(false);                                      // ручное обновление / polling
+              const call2 = rest.calls[1];
+              assert(call2 && call2.token && call2.token.recoveryGen === gen && call2.token.syncReqId === sid, 'Повтор должен унаследовать тот же recoveryGen и syncReqId');
+              assert(notify.length === 1 && S().recovering === false, 'Следующий успешный ответ завершает ранее начатый recovery');
+            } finally { un(); }
+          });
+
+          await record('8c. Отменённый и устаревший ответы не завершают recovery; завершает только актуальный', async () => {
+            const notify = []; const un = spyOn(BybitWsClient, 'notifyRestSynced', notify);
+            try {
+              rest.script.push('defer', 'defer', 'defer');
+              rest.ignoreAbort = true;               // старые запросы «не замечают» abort и могут вернуть успех
+              const ws2 = connectAndDrop(); ackAll(ws2); await flush();
+              const sid = S().activeSyncReqId;
+              loadAndAnalyze(false);                  // polling во время recovery: abort запроса 1, новый токен
+              loadAndAnalyze(false);                  // ручное обновление: abort запроса 2
+              await flush();
+              assert(rest.calls.length === 3, `Ожидалось 3 REST-вызова, получено ${rest.calls.length}`);
+              assert(rest.calls[1].token && rest.calls[1].token.syncReqId === sid && rest.calls[2].token && rest.calls[2].token.syncReqId === sid, 'Polling и ручное обновление наследуют активную sync-задачу');
+              assert(rest.calls[0].signal.aborted && rest.calls[1].signal.aborted, 'Предыдущие запросы должны быть отменены');
+              rest.calls[0].resolve(); await flush();                    // устаревший ответ с успехом
+              rest.calls[1].resolve(); await flush();
+              assert(notify.length === 0 && S().recovering === true, 'Устаревшие ответы не завершают recovery');
+              rest.calls[2].resolve(); await flush();
+              assert(notify.length === 1 && S().recovering === false, 'Актуальный успешный ответ завершает recovery');
+            } finally { un(); }
+          });
+
+          await record('8d. AbortError не завершает recovery и не очищает активную sync-задачу', async () => {
+            const notify = []; const un = spyOn(BybitWsClient, 'notifyRestSynced', notify);
+            try {
+              rest.script.push('abort');
+              const ws2 = connectAndDrop(); ackAll(ws2); await flush();
+              assert(notify.length === 0 && S().recovering && S().resyncRequested && S().activeSyncReqId, 'AbortError не должен завершать recovery');
+            } finally { un(); }
+          });
+
+          await record('9. Смена инструмента/таймфрейма во время REST recovery: старый ответ не завершает recovery', async () => {
+            const notify = []; const un = spyOn(BybitWsClient, 'notifyRestSynced', notify);
+            try {
+              rest.script.push('defer');               // вызов 1 (BTCUSDT 240) — ждёт
+              const ws2 = connectAndDrop(); ackAll(ws2); await flush();
+              const gen = S().recoveryGen, sid1 = S().activeSyncReqId;
+              // как делает кнопка таймфрейма в UI
+              state.interval = '60';
+              BybitWsClient.setSubscription(state.symbol, state.interval);
+              rest.script.push('ok');                    // вызов 2 (смена инструмента, токен не наследуется)
+              await loadAndAnalyze(true);
+              assert(rest.calls[1].token === null, 'Смена инструмента не наследует sync-задачу');
+              rest.calls[0].resolve(); await flush();    // старый ответ (240) приходит после смены
+              assert(notify.length === 0 && S().recovering === true, 'Ответ для старого таймфрейма не завершает recovery');
+              assert(S().activeSyncReqId === null, 'Смена подписки во время recovery сбрасывает sync-задачу (старый syncReqId недействителен)');
+              rest.script.push('defer');
+              ackAll(ws2); await flush();                // ACK новых топиков → новая sync-задача в том же recoveryGen
+              assert(S().recoveryGen === gen && S().activeSyncReqId && S().activeSyncReqId !== sid1, 'Новая sync-задача: тот же recoveryGen, новый syncReqId');
+              assert(rest.calls.length === 3 && rest.calls[2].interval === '60' && rest.calls[2].token && rest.calls[2].token.syncReqId === S().activeSyncReqId, 'REST по новой задаче: таймфрейм 60 и токен новой sync-задачи');
+              assert(notify.length === 0 && S().recovering === true, 'До ответа по новой задаче recovery активен');
+              rest.calls[2].resolve(); await flush();
+              assert(notify.length === 1 && S().recovering === false, 'Актуальный ответ для нового таймфрейма завершает recovery');
+            } finally { un(); }
+          });
+
+          await record('10. notifyRestSynced проверяет и recoveryGen, и syncReqId', async () => {
+            rest.script.push('defer', 'defer');
+            const ws2 = connectAndDrop(); ackAll(ws2); await flush();
+            const gen = S().recoveryGen, id1 = S().activeSyncReqId;
+            BybitWsClient.setSubscription('BTCUSDT', '60'); ackAll(ws2); await flush();  // тот же recoveryGen, новая sync-задача
+            const id2 = S().activeSyncReqId;
+            assert(S().recoveryGen === gen && id2 && id2 !== id1, `Нужен тот же recoveryGen и новый syncReqId; gen=${gen}/${S().recoveryGen} id1=${id1} id2=${id2} recovering=${S().recovering} ev=${S().events.slice(-8).map(e=>e.type).join('>')} resync=${S().resyncRequested} confirmed=${Array.from(S().confirmedTopics)} pending=${S().pendingSubs.size} sent=${JSON.stringify(ws2.sent.map(m=>m.op))}`);
+            assert(BybitWsClient.notifyRestSynced({ recoveryGen: gen, syncReqId: id1 }) === false, 'Тот же recoveryGen, но старый syncReqId — отклоняется');
+            assert(S().recovering === true && S().activeSyncReqId === id2, 'После отклонения recovery остаётся активным');
+            assert(BybitWsClient.notifyRestSynced({ recoveryGen: gen - 1, syncReqId: id2 }) === false, 'Старый recoveryGen — отклоняется');
+            assert(S().recovering === true, 'Recovery остаётся активным');
+            assert(BybitWsClient.notifyRestSynced({ recoveryGen: gen, syncReqId: id2 }) === true, 'Актуальные recoveryGen и syncReqId — принимаются');
+            assert(S().recovering === false, 'Recovery завершён');
+            // новый цикл: старый токен не годится
+            BybitWsClient._recover('cycle', true);
+            assert(BybitWsClient.notifyRestSynced({ recoveryGen: gen, syncReqId: id2 }) === false, 'Токен прошлого цикла отклоняется');
+          });
+
+          // ===================== 11–13 =====================
+          await record('11. Повторный start()/stop(): workingSockets и abandonedAwaitingCloseEvent — разные метрики', () => {
+            MockWebSocket.closeMode = 'manual';
+            BybitWsClient.start('BTCUSDT', '240');
+            const first = lastWs();
+            BybitWsClient.start('BTCUSDT', '240');
+            const second = lastWs();
+            second.triggerOpen();
+            const snap = BybitWsClient.getStateSnapshot();
+            assert(snap.workingSockets === 1, `workingSockets должен быть 1, получено ${snap.workingSockets}`);
+            assert(snap.abandonedAwaitingCloseEvent === 1, `abandonedAwaitingCloseEvent должен быть 1 (первый сокет ждёт close), получено ${snap.abandonedAwaitingCloseEvent}`);
+            assert(snap.activeSockets === 2, `activeSockets должен быть 2, получено ${snap.activeSockets}`);
+            first.emitClose();
+            const snap2 = BybitWsClient.getStateSnapshot();
+            assert(snap2.abandonedAwaitingCloseEvent === 0 && snap2.workingSockets === 1 && snap2.activeSockets === 1, 'После close старого сокета: awaiting=0, working=1, active=1');
+          });
+
+          await record('12. Смена символа и таймфрейма во время CONNECTING', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs();
+            assert(ws.readyState === MockWebSocket.CONNECTING, 'Сокет должен быть в CONNECTING');
+            BybitWsClient.setSubscription('ETHUSDT', '60');
+            ws.triggerOpen();
+            const sub = ws.sent.find((m) => m.op === 'subscribe');
+            assert(sub.args.includes('tickers.ETHUSDT') && sub.args.includes('kline.60.ETHUSDT') && !sub.args.includes('tickers.BTCUSDT'), 'Должны отправиться актуальные топики ETHUSDT 60');
+          });
+
+          await record('13. Сообщение старого connGen отклоняется и не меняет lastMsgAt нового соединения', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const first = lastWs(); const firstGen = S().connGen; first.triggerOpen();
+            const dropped0 = S().staleMessagesDropped;
+            first.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', data: { symbol: 'BTCUSDT', lastPrice: '95000' } });
+            assert(S().lastMsgAt !== null && S().staleMessagesDropped === dropped0, 'Валидное сообщение текущего соединения принимается');
+            BybitWsClient.start('BTCUSDT', '240');
+            const second = lastWs(); second.triggerOpen();
+            clock.advance(500);
+            const lastAt = S().lastMsgAt, dropped1 = S().staleMessagesDropped;
+            BybitWsClient._handleMessage({ data: JSON.stringify({ topic: 'tickers.BTCUSDT', type: 'snapshot', data: { symbol: 'BTCUSDT', lastPrice: '96000' } }) }, firstGen);
+            assert(S().staleMessagesDropped === dropped1 + 1, 'staleMessagesDropped +1');
+            assert(S().lastMsgAt === lastAt, 'lastMsgAt нового соединения не меняется');
+          });
+
+          // ===================== 14: ticker =====================
+          await record('14a. UNIT: _hasValidTickerPayload / _validateTickerField (изолированно, без lifecycle)', () => {
+            const v = (type, data, extra) => BybitWsClient._hasValidTickerPayload('BTCUSDT', Object.assign({ type, data }, extra || {})).ok;
+            assert(v('snapshot', { symbol: 'BTCUSDT', lastPrice: '64200', bid1Price: '64100', extraUnknown: 'x' }) === true, 'Валидный snapshot с неизвестным полем должен приниматься');
+            assert(v('delta', { bid1Price: '64110' }) === true, 'Delta без symbol допустима');
+            assert(v('snapshot', { symbol: 'ETHUSDT', lastPrice: '1' }) === false, 'Чужой symbol отклоняется');
+            assert(v('snapshot', { lastPrice: '1' }) === false, 'Snapshot без symbol отклоняется');
+            assert(v('snapshot', { symbol: 'BTCUSDT' }) === false, 'Snapshot без lastPrice отклоняется');
+            assert(v('snapshot', { symbol: 'BTCUSDT', lastPrice: 'abc' }) === false, 'Нечисловое lastPrice отклоняется');
+            assert(v('snapshot', { symbol: 'BTCUSDT', lastPrice: 64200 }) === false, 'Число вместо строки отклоняется');
+            assert(v('snapshot', { symbol: 'BTCUSDT', lastPrice: '-1' }) === false, 'Отрицательная цена отклоняется');
+            assert(v('delta', { bid1Price: '' }) === false, 'Пустая цена отклоняется');
+            assert(v('delta', {}) === false, 'Пустой data отклоняется');
+            assert(v('delta', [1]) === false, 'Массив вместо объекта отклоняется');
+            assert(v('snapshot', { symbol: 'BTCUSDT', lastPrice: '1' }, { cs: 'x' }) === false, 'Нечисловой cs отклоняется');
+            assert(v('weird', { symbol: 'BTCUSDT', lastPrice: '1' }) === false, 'Неизвестный type отклоняется');
+            assert(BybitWsClient._validateTickerField('fundingRate', '-0.0001') === null, 'Отрицательный fundingRate допустим');
+            assert(BybitWsClient._validateTickerField('bid1Size', '-1') !== null, 'Отрицательный размер недопустим');
+            assert(BybitWsClient._validateTickerField('someNewField', {}) === null, 'Неизвестное поле не проверяется');
+          });
+
+          await record('14b. INTEGRATION: поток ticker через настоящий onmessage (ACK, symbol, snapshot/ready, delta, cs)', () => {
+            const calls = [];
+            BybitWsClient.hooks.onRecovered = (...a) => calls.push(a);
+            const ws2 = connectAndDrop();             // реальный путь: обрыв → recovery → новый сокет, ACK ещё не получен
+            const snapMsg = { topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 100, data: { symbol: 'BTCUSDT', lastPrice: '64200', bid1Price: '64100' } };
+            ws2.triggerMessage(snapMsg);
+            assert(S().confirmedTopics.size === 0 && calls.length === 0, 'Потоковое сообщение не подтверждает подписку и не запускает resync');
+            // Новый сокет: готовность сброшена; ниже — чистый старт потока на этом же соединении
+            const entry = S().tickerBySymbol.get('BTCUSDT');
+            assert(entry && entry.snapshotReceived === true && entry.ready === true, 'Valid snapshot должен установить snapshotReceived/ready');
+            // reconnect → ready сбрасывается
+            ws2.dropConnection(); clock.advance(BybitWsClient.reconnectMaxMs + 10);
+            const ws3 = lastWs(); ws3.triggerOpen();
+            assert(entry.ready === false && entry.snapshotReceived === false && entry.state === null, 'После нового сокета ready/snapshotReceived сбрасываются');
+            // delta до snapshot
+            const inv0 = S().invalidStreamMessages;
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 10, data: { bid1Price: '64120.5', extraUnknownField: 'ok' } });
+            assert(entry.snapshotReceived === false && entry.ready === false && entry.state === null, 'Delta до snapshot не делает тикер готовым и не создаёт state');
+            assert(S().deltasBeforeSnapshot === 1 && S().invalidStreamMessages === inv0, 'Delta до snapshot учитывается отдельно, не как invalid');
+            // чужой symbol
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 100, data: { symbol: 'ETHUSDT', lastPrice: '3500' } });
+            assert(S().invalidStreamMessages === inv0 + 1 && entry.state === null && !S().tickerBySymbol.has('ETHUSDT'), 'Несовпадающий symbol отклоняется без изменения состояния');
+            // невалидное поле
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 100, data: { symbol: 'BTCUSDT', lastPrice: 'bad' } });
+            assert(S().invalidStreamMessages === inv0 + 2 && entry.state === null, 'Невалидное поле отклоняется без изменения состояния');
+            // валидный snapshot
+            ws3.triggerMessage(snapMsg);
+            assert(entry.snapshotReceived && entry.ready && entry.state.lastPrice === '64200' && entry.state.bid1Price === '64100', 'Snapshot применён');
+            // дубликат cs
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 100, data: { bid1Price: '1' } });
+            assert(entry.csDup === 1 && entry.state.bid1Price === '64100', 'Дубликат cs не перезаписывает данные, csDup=1');
+            // cs назад
+            const inv1 = S().invalidStreamMessages;
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 50, data: { bid1Price: '2' } });
+            assert(entry.csBack === 1 && S().invalidStreamMessages === inv1 + 1, 'Старый cs: csBack и invalidStreamMessages увеличены');
+            assert(entry.state.bid1Price === '64100', "Старый cs не перезаписывает bid1Price (остаётся '64100')");
+            // нормальная delta вперёд
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 101, data: { bid1Price: '64110' } });
+            assert(entry.csFwd === 1 && entry.state.bid1Price === '64110' && entry.state.lastPrice === '64200', 'Delta вперёд применена, прочие поля сохранены');
+            // ACK по реальному пути завершает цепочку recovery → resync
+            ackAll(ws3);
+            assert(calls.length === 1 && S().resyncRequested === true, 'ACK по req_id запускает recovery-обработчик ровно один раз');
+          });
+
+          await record('14c. configure(): индивидуальные минимумы', () => {
+            const c = BybitWsClient;
+            const keep = { b: c.reconnectBaseMs, p: c.pongTimeoutMs, k: c.connectTimeoutMs, ping: c.pingIntervalMs };
+            c.configure({ reconnectBaseMs: 0, pongTimeoutMs: 0, connectTimeoutMs: 0, pingIntervalMs: 0, stableResetMs: 0, subAckTimeoutMs: 0, timerGapMs: 0, degradedMisses: 0, maxTimedOutPings: 0 });
+            assert(c.reconnectBaseMs === keep.b && c.pongTimeoutMs === keep.p && c.connectTimeoutMs === keep.k && c.pingIntervalMs === keep.ping, '0 отклоняется для reconnectBaseMs/pongTimeoutMs/connectTimeoutMs/pingIntervalMs');
+            c.configure({ resumeGraceMs: 0, lateWindowMs: 0, subRetryMax: 0 });
+            assert(c.resumeGraceMs === 0 && c.lateWindowMs === 0 && c.subRetryMax === 0, 'resumeGraceMs/lateWindowMs/subRetryMax = 0 допустимы');
+            c.configure({ reconnectBaseMs: 1, pongTimeoutMs: 1, connectTimeoutMs: 1 });
+            assert(c.reconnectBaseMs === 1 && c.pongTimeoutMs === 1 && c.connectTimeoutMs === 1, 'Минимум 1 мс принимается');
+            c.configure({ reconnectBaseMs: -5, pongTimeoutMs: NaN, connectTimeoutMs: '100' });
+            assert(c.reconnectBaseMs === 1 && c.pongTimeoutMs === 1 && c.connectTimeoutMs === 1, 'Отрицательные, NaN и нечисловые значения отклоняются');
+            c.configure({ unknownKey: 5 });
+            assert(!('unknownKey' in c), 'Неизвестный ключ отклоняется');
+          });
+
+          // ===================== 15: ACK retries и abandoned sockets (детерминированно, fake clock) =====================
+          await record('15a. ACK retries исчерпаны → reconnect → ACK → вызов recovery-обработчика (fake clock)', () => {
+            const calls = [];
+            BybitWsClient.hooks.onRecovered = (...a) => calls.push(a);
+            BybitWsClient.configure({ subAckTimeoutMs: 2000 });
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws1 = lastWs(); ws1.triggerOpen();
+            const retries0 = S().subRetries;
+            clock.advance(2000 + 1000);   // retry 1
+            clock.advance(2000 + 1000);   // retry 2
+            assert(S().subRetries === retries0 + 2 && ws1.readyState === MockWebSocket.OPEN, 'Два повтора подписки без закрытия сокета');
+            clock.advance(2000 + 1000);   // лимит исчерпан
+            assert(ws1.readyState === MockWebSocket.CLOSED && S().subFailures === 1, 'После исчерпания повторов старый сокет закрыт');
+            clock.advance(BybitWsClient.reconnectMaxMs + 10);
+            const ws2 = lastWs(); assert(ws2 !== ws1, 'Создан новый сокет');
+            ws2.triggerOpen(); ackAll(ws2);
+            assert(calls.length === 1 && S().recovering && S().resyncRequested, 'После ACK на новом соединении вызван обработчик синхронизации, recovery ждёт REST');
+          });
+
+          await record('15b. Abandoned socket С событием onclose: метрики до/после', () => {
+            MockWebSocket.closeMode = 'manual';
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws1 = lastWs(); ws1.triggerOpen();
+            const before = BybitWsClient.getStateSnapshot();
+            BybitWsClient._recover('test', true);
+            const mid = BybitWsClient.getStateSnapshot();
+            assert(before.workingSockets === 1 && before.abandonedAwaitingCloseEvent === 0 && before.activeSockets === 1, `до: working=1 awaiting=0 active=1, получено ${before.workingSockets}/${before.abandonedAwaitingCloseEvent}/${before.activeSockets}`);
+            assert(mid.workingSockets === 1 && mid.abandonedAwaitingCloseEvent === 1 && mid.activeSockets === 2, `в середине: working=1 awaiting=1 active=2, получено ${mid.workingSockets}/${mid.abandonedAwaitingCloseEvent}/${mid.activeSockets}`);
+            ws1.emitClose();
+            const after = BybitWsClient.getStateSnapshot();
+            assert(after.workingSockets === 1 && after.abandonedAwaitingCloseEvent === 0 && after.activeSockets === 1, `после onclose: working=1 awaiting=0 active=1, получено ${after.workingSockets}/${after.abandonedAwaitingCloseEvent}/${after.activeSockets}`);
+          });
+
+          await record('15c. Abandoned socket БЕЗ события onclose: убирается по readyState=CLOSED, поздний onclose не задваивает счёт', () => {
+            MockWebSocket.closeMode = 'silent';
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws1 = lastWs(); ws1.triggerOpen();
+            BybitWsClient._recover('test', true);
+            const mid = BybitWsClient.getStateSnapshot();
+            assert(mid.abandonedAwaitingCloseEvent === 1 && mid.activeSockets === 2, `в середине: awaiting=1 active=2, получено ${mid.abandonedAwaitingCloseEvent}/${mid.activeSockets}`);
+            clock.advance(1000);      // тик watchdog → _pruneAbandoned
+            const after = BybitWsClient.getStateSnapshot();
+            assert(after.abandonedAwaitingCloseEvent === 0 && after.activeSockets === 1 && after.abandonedPrunedClosed === 1, `после prune: awaiting=0 active=1 pruned=1, получено ${after.abandonedAwaitingCloseEvent}/${after.activeSockets}/${after.abandonedPrunedClosed}`);
+            ws1.emitClose();          // onclose всё-таки пришёл поздно
+            assert(BybitWsClient.getStateSnapshot().activeSockets === 1, 'Поздний onclose не должен повторно уменьшать activeSockets');
+          });
+
+          await record('15d. Сокеты, зависшие в CLOSING без onclose: учёт ограничен maxAbandonedTracked', () => {
+            MockWebSocket.closeMode = 'hang';
+            BybitWsClient.start('BTCUSDT', '240');
+            lastWs().triggerOpen();
+            const cap = BybitWsClient.maxAbandonedTracked;
+            for (let i = 0; i < cap + 4; i++) BybitWsClient._recover('hang', true);
+            const snap = BybitWsClient.getStateSnapshot();
+            assert(snap.abandonedAwaitingCloseEvent === cap, `awaiting должен быть ограничен ${cap}, получено ${snap.abandonedAwaitingCloseEvent}`);
+            assert(snap.abandonedEvicted === 4, `evicted должен быть 4 (12 брошенных − лимит 8), получено ${snap.abandonedEvicted}`);
+            assert(snap.workingSockets === 1, 'Рабочий сокет один');
+          });
+
+          // ===================== 16: lifecycle (настоящие listeners приложения) =====================
+          await record('16a. Lifecycle: visibilitychange → ping и grace; descriptor visibilityState восстанавливается', () => {
+            assert(BybitWsClient._lifecycleAttached === true, 'Lifecycle listeners приложения должны быть подключены');
+            BybitWsClient.configure({ resumeGraceMs: 2500 });
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen();
+            ackAll(ws);
+            clock.advance(100);
+            const pingsBefore = S().pingsSent, t0 = Date.now();
+            try {
+              Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+              document.dispatchEvent(new Event('visibilitychange'));
+              assert(S().graceUntil >= t0 + 2000, 'graceUntil должен выставиться');
+              assert(S().pingsSent >= pingsBefore, 'pingsSent не должен уменьшаться');
+            } finally {
+              if (origVisDesc) Object.defineProperty(document, 'visibilityState', origVisDesc);
+              else delete document.visibilityState;
+            }
+            const nowDesc = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+            assert(JSON.stringify(nowDesc) === JSON.stringify(origVisDesc), 'Descriptor document.visibilityState восстановлен');
+          });
+
+          await record('16b. Lifecycle: offline → статус offline; navigator.onLine и onStatus восстанавливаются', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            const statusCalls = [];
+            const prevHook = BybitWsClient.hooks.onStatus;
+            BybitWsClient.hooks.onStatus = (st) => statusCalls.push(st);
+            try {
+              Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+              window.dispatchEvent(new Event('offline'));
+              const ui = BybitWsClient.getUiStatus();
+              assert(ui.code === 'offline' && ui.cls === 'status-err', 'UI-статус offline/err');
+              assert(statusCalls.length >= 1, 'onStatus должен вызываться');
+              assert(S().status === 'open', 'offline сам по себе не меняет статус сокета и не даёт ложного recovery');
+            } finally {
+              if (origOnLineDesc) Object.defineProperty(navigator, 'onLine', origOnLineDesc);
+              else delete navigator.onLine;
+              BybitWsClient.hooks.onStatus = prevHook;
+            }
+            assert(JSON.stringify(Object.getOwnPropertyDescriptor(navigator, 'onLine')) === JSON.stringify(origOnLineDesc), 'Descriptor navigator.onLine восстановлен');
+            assert(BybitWsClient.hooks.onStatus === prevHook, 'Hook onStatus восстановлен');
+          });
+
+          await record('16c. Lifecycle: online после обрыва инициирует переподключение без ложного open', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws1 = lastWs(); ws1.triggerOpen();
+            const g = S().connGen;
+            window.dispatchEvent(new Event('online'));
+            // open-сокет: online трактуется как resume (проверка здоровья), не как обрыв; обрываем и повторяем
+            ws1.dropConnection();
+            window.dispatchEvent(new Event('online'));
+            clock.advance(BybitWsClient.reconnectMaxMs + 10);
+            const ws2 = lastWs();
+            assert(ws2 !== ws1, 'После online/обрыва создан новый сокет');
+            assert(S().connGen > g, 'connGen вырос');
+            assert(S().status === 'connecting' || S().status === 'reconnecting', 'До открытия нового сокета нет ложного open');
+          });
+
+          if (opts.inject === 'test') throw new Error('inject: исключение вне record()');
+        } catch (err) {
+          setupError = err && err.message ? err.message : String(err);
+        } finally {
+          // ---- Полный cleanup: каждый шаг независим; ошибка одного не блокирует остальные ----
+          const step = (name, fn) => { try { fn(); } catch (e) { cleanupErrors.push(`${name}: ${e && e.message ? e.message : e}`); } };
+          step('stop mock client', () => { BybitWsClient.hooks.onStatus = null; BybitWsClient.stop(true); });
+          step('clock', () => { if (clockInstalled || Date.now !== origDateNow) clock.uninstall(); });
+          step('window.WebSocket', () => { window.WebSocket = OrigWS; });
+          step('fetchMarketSnapshot', () => { BybitAdapter.fetchMarketSnapshot = origFetch; });
+          step('config', () => { for (const k of CFG_KEYS) BybitWsClient[k] = origCfg[k]; });
+          step('hooks', () => { BybitWsClient.hooks.onStatus = origHooks.onStatus; BybitWsClient.hooks.onRecovered = origHooks.onRecovered; });
+          step('descriptors', () => {
+            if (JSON.stringify(Object.getOwnPropertyDescriptor(document, 'visibilityState')) !== JSON.stringify(origVisDesc)) {
+              if (origVisDesc) Object.defineProperty(document, 'visibilityState', origVisDesc); else delete document.visibilityState;
+            }
+            if (JSON.stringify(Object.getOwnPropertyDescriptor(navigator, 'onLine')) !== JSON.stringify(origOnLineDesc)) {
+              if (origOnLineDesc) Object.defineProperty(navigator, 'onLine', origOnLineDesc); else delete navigator.onLine;
+            }
+          });
+          step('app state', () => {
+            if (state.activeController) { try { state.activeController.abort(new Error('StageASelfTest cleanup')); } catch (_) {} state.activeController = null; }
+            state.snapshotsByKey = origSnapshots;
+            state.pendingSyncToken = origToken;
+            state.symbol = origSymbol;
+            state.interval = origInterval;
+          });
+          step('client state', () => {
+            BybitWsClient.state = origClientState;
+            // Оригинальное состояние было остановлено в начале; незавершённая sync-задача больше не актуальна
+            origClientState.resyncRequested = false;
+            origClientState.activeSyncReqId = null;
+            origClientState.reconnectAttempt = 0;
+          });
+          if (envChanged) {
+            step('restart WS (once)', () => {
+              if (origEverOpened && !origWasRecovering) BybitWsClient._beginRecoveryCycle();   // как при pageshow: после перерыва нужен REST-sync
+              BybitWsClient.start(state.symbol, state.interval);
+            });
+            step('restart polling (once)', () => { startPeriodicPoll(); });
+            step('render status', () => { renderConnStatus(); });
+            loadAfterCleanup = true;
+          }
+          step('post-checks', () => {
+            post.timerRunning = state.timerId !== null;
+            post.selfTestRunningDuringCleanup = state.selfTestRunning;
+            post.symbol = state.symbol; post.interval = state.interval;
+            post.symbolRestored = state.symbol === origSymbol && state.interval === origInterval;
+            post.webSocketRestored = window.WebSocket === OrigWS;
+            post.fetchRestored = BybitAdapter.fetchMarketSnapshot === origFetch;
+            post.hooksRestored = BybitWsClient.hooks.onStatus === origHooks.onStatus && BybitWsClient.hooks.onRecovered === origHooks.onRecovered;
+            post.configRestored = CFG_KEYS.every((k) => BybitWsClient[k] === origCfg[k]);
+            post.snapshotsRestored = state.snapshotsByKey === origSnapshots;
+            post.clockRestored = Date.now === origDateNow && window.setTimeout === origTimers.setTimeout;
+            post.visibilityRestored = JSON.stringify(Object.getOwnPropertyDescriptor(document, 'visibilityState')) === JSON.stringify(origVisDesc);
+            post.onLineRestored = JSON.stringify(Object.getOwnPropertyDescriptor(navigator, 'onLine')) === JSON.stringify(origOnLineDesc);
+            const snap = BybitWsClient.getStateSnapshot();
+            post.wsStatus = snap.status; post.workingSockets = snap.workingSockets;
+            post.abandonedAwaitingCloseEvent = snap.abandonedAwaitingCloseEvent; post.activeSockets = snap.activeSockets;
+            post.recovering = snap.recovering;
+          });
+          if (opts.inject === 'cleanup') cleanupErrors.push('inject: ошибка cleanup (имитация)');
+          // Блокировка снимается ПОСЛЕ завершения cleanup и всегда
+          state.selfTestRunning = false;
+        }
+
+        // Обновление данных приложения — только после полного cleanup и без ожидания (не блокирует отчёт)
+        if (loadAfterCleanup) { try { loadAndAnalyze(true); } catch (e) { cleanupErrors.push(`loadAndAnalyze: ${e && e.message ? e.message : e}`); } }
+
+        const passed = results.filter((r) => r.passed).length;
+        const report = { rejected: false, results, totals: { total: results.length, passed, failed: results.length - passed }, setupError, cleanupErrors, post };
+        try { console.table(results); } catch (_) {}
+        return report;
+      }
+    };
+
+    document.querySelectorAll('#symbolSeg button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const nextSymbol = btn.dataset.symbol;
+        if (nextSymbol === state.symbol) return;
+        document.querySelectorAll('#symbolSeg button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.symbol = nextSymbol;
+        BybitWsClient.setSubscription(state.symbol, state.interval);
+        chart.resetView();
+        loadAndAnalyze(true);
+      });
+    });
+
+    document.querySelectorAll('#tfSeg button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const nextTf = btn.dataset.tf;
+        if (nextTf === state.interval) return;
+        document.querySelectorAll('#tfSeg button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.interval = nextTf;
+        BybitWsClient.setSubscription(state.symbol, state.interval);
+        chart.resetView();
+        loadAndAnalyze(true);
+      });
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', () => loadAndAnalyze(false));
+    document.getElementById('resetViewBtn').addEventListener('click', () => chart.resetView());
+    BybitWsClient.hooks.onStatus = () => renderConnStatus();
+    BybitWsClient.hooks.onRecovered = (_reason, syncMeta) => loadAndAnalyze(false, syncMeta);
+    BybitWsClient.attachLifecycle();
+
+    loadAndAnalyze(true);
+    startPeriodicPoll();
+    BybitWsClient.start(state.symbol, state.interval);
+  </script>
+</body>
+</html>
