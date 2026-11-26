@@ -2473,8 +2473,8 @@
         test('40 incomplete coverage object is critical', () => { const s=make(); s.coverage={}; status(s,'INVALID'); });
         test('41 null coverage field is critical', () => { const s=make(); s.coverage={expectedClosedStartMs:now-60*step,expectedClosedEndMs:now-step,expectedClosedCount:null}; status(s,'INVALID'); });
         test('42 inconsistent coverage arithmetic is critical', () => { const s=make(); s.coverage.expectedClosedCount=59; status(s,'INVALID'); });
-        test('43 candle not closed at provider time is critical', () => { const a=base(); a[59].closeTimeMs=now+1000; status(make(a,{providerTimeMs:now+1200,analysisAsOfMs:now+1200}),'INVALID'); });
-        test('44 candle inside finality buffer is critical', () => { const a=base(); a[59].closeTimeMs=now+500; status(make(a,{providerTimeMs:now+800,analysisAsOfMs:now+800}),'INVALID'); });
+        test('43 candle not closed at provider time is critical', () => { status(make(base(),{providerTimeMs:now+200,analysisAsOfMs:now+200}),'INVALID'); });
+        test('44 candle inside finality buffer is critical', () => { status(make(base(),{providerTimeMs:now+499,analysisAsOfMs:now+499}),'INVALID'); });
         test('45 createSnapshot preserves malformed adapter counter', () => {
           const snap=DataQualityEngine.createSnapshot({source:'Bybit',symbol:'BTCUSDT',interval:'60',
             serverTimeMs:now+5000,providerTimeMs:now+5000,timeSource:'PROVIDER',fetchedAtLocalMs:now,
@@ -2498,8 +2498,7 @@
           const s=make(base(),{analysisAsOfMs:now+10000,providerTimeMs:now+5000}); status(s,'INVALID');
         });
         test('49 candle finality uses the earlier trusted cutoff', () => {
-          const a=base(); a[59].closeTimeMs=now+1000;
-          status(make(a,{analysisAsOfMs:now+5000,providerTimeMs:now+1200}),'INVALID');
+          status(make(base(),{analysisAsOfMs:now+5000,providerTimeMs:now+1200}),'INVALID');
         });
         const passed = tests.filter(t=>t.passed).length;
         return { total: tests.length, passed, failed: tests.length-passed, tests };
