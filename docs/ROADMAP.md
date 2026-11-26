@@ -326,3 +326,12 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. Added a dedicated 
 - Both inline script blocks syntax-parse successfully.
 - Verification remains isolated and deterministic: no browser DOM/runtime, no live Bybit HTTP request, no Chrome/iPhone Safari run, and no full `StageASelfTest` run. The stale recovery tests validate engine-level recovery, not the rendered UI badge.
 - PR #6 remains draft and unmerged; `main` is unchanged. These checks do not complete B1 or authorize merging yet.
+
+### Независимый аудит B1 candidate — 2026-11-26 (Grok)
+
+- Проверен HTML blob `e92c44d1397a8499a5a5adac7c12294923e3f494`; head PR на момент аудита: `d67749b255957175efb4576dc55f60c057bb510f`.
+- Независимый запуск `B1QualitySelfTest.runAll()`: **65/65 PASS**.
+- Вердикт: **APPROVE**. Новых CRITICAL/HIGH дефектов не выявлено.
+- LOW: F1-тесты не проверяют конкретный reason code; forming candle остаётся вне Quality Gate (поведение явно зафиксировано characterization-тестами); stale recovery проверен на уровне engine, не через UI.
+- Эти замечания не блокируют unit/static approval. Браузерный `StageASelfTest` 44/44, реальный Chrome/iPhone Safari, live Bybit и UI stale-badge остаются невыполненными.
+- PR #6 остаётся draft и не слит. B1 остаётся IN PROGRESS; этот аудит не подтверждает полный runtime и не закрывает B1-E common MTF cutoff или B1-F второй provider.
