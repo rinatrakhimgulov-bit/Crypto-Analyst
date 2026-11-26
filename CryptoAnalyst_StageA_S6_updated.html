@@ -2504,6 +2504,48 @@
         test('50 candle finality also enforces earlier analysis cutoff', () => {
           status(make(base(),{analysisAsOfMs:now+200,providerTimeMs:now+1800}),'INVALID');
         });
+        const adapterFixture = (mutateRows = null) => {
+          const fixedNow = now;
+          const rows = [];
+          for (let i = 0; i <= 60; i++) {
+            const ts = fixedNow - (60 - i) * step;
+            const p = 100 + i;
+            rows.push([String(ts),String(p),String(p+2),String(p-1),String(p+1),'10','1000']);
+          }
+          if (typeof mutateRows === 'function') mutateRows(rows);
+          const dataset = BybitAdapter.normalize(rows.reverse(), {
+            symbol:'BTCUSDT', interval:'60', hostUsed:'fixture',
+            serverTimeMs:fixedNow+5000, providerTimeMs:fixedNow+5000,
+            timeSource:'PROVIDER', clockSkewMs:0, requestedLimit:61,
+            tickerStatus:{available:false,price:null,timeMs:null,hostUsed:'fixture',error:'fixture'}
+          });
+          dataset.fetchedAtLocalMs = fixedNow;
+          return dataset;
+        };
+        test('51 adapter fixture sorts rows and separates 60 closed + 1 forming candle', () => {
+          const d=adapterFixture();
+          const p=DataQualityEngine.preflight(d,now);
+          expect(d.closedCandles.length===60 && !!d.formingCandle,'closed/forming split');
+          expect(p.allowed && p.qualityReport.status==='VALID','normalized adapter fixture must pass');
+        });
+        test('52 adapter invalid row counter blocks otherwise complete snapshot', () => {
+          const d=adapterFixture(rows=>rows.push(['bad-ts','100','102','99','101','10','1000']));
+          const p=DataQualityEngine.preflight(d,now);
+          expect(d.closedCandles.length===60,'valid candles retained');
+          expect(p.qualityReport.status==='INVALID' && !p.allowed,'invalid adapter row must block');
+        });
+        test('53 identical duplicate from adapter is classified and blocks direction as DEGRADED', () => {
+          const d=adapterFixture(rows=>rows.push(rows[10].slice()));
+          const p=DataQualityEngine.preflight(d,now);
+          expect(d.quality.duplicates===1 && d.quality.identicalDuplicates===1,'duplicate classification');
+          expect(p.qualityReport.status==='DEGRADED' && !p.allowed,'identical duplicate must block direction');
+        });
+        test('54 conflicting duplicate from adapter is classified and blocks as INVALID', () => {
+          const d=adapterFixture(rows=>{const duplicate=rows[10].slice(); duplicate[4]=String(Number(duplicate[4])+0.5); rows.push(duplicate);});
+          const p=DataQualityEngine.preflight(d,now);
+          expect(d.quality.duplicates===1 && d.quality.conflictingDuplicates===1,'conflict classification');
+          expect(p.qualityReport.status==='INVALID' && !p.allowed,'conflicting duplicate must block');
+        });
         const passed = tests.filter(t=>t.passed).length;
         return { total: tests.length, passed, failed: tests.length-passed, tests };
       }
