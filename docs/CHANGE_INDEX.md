@@ -371,3 +371,10 @@ Latest HTML blob: `d9bb093001299ef8a835fc01dcaa6fb87e0425cd`. Both inline script
 - Multiple active forming candidates remain blocking; the normal just-after-boundary state is no longer misclassified as multiple forming candles.
 - Raw-row overfetch reserve is now desired closed count + spread-derived rollover rows + 2 boundary/finality rows.
 - B1EMtfSelfTest: 32/32 PASS; B1QualitySelfTest: 65/65 PASS; both scripts parse.
+
+
+### Final B1-E immutability update — 2026-11-26
+
+The assembled MTF result and failure results are now deeply frozen, including nested per-timeframe diagnostics, canonical candle arrays, candle objects and quality reports. The provider-time-spread failure path was adjusted to preserve the immutable result contract.
+
+Latest HTML blob: 842c361a8386c358a68f22407814c376fd3bde1b. Final isolated V8 verification: B1-E 33/33 PASS; B1 Quality 65/65 PASS; both inline JavaScript blocks parse. This remains a candidate only: no live Bybit, browser/UI, Chrome/iPhone Safari or full StageASelfTest verification. MTFDataEngine is not connected to the UI/decision pipeline. PR #6 remains draft and unmerged; main unchanged.
