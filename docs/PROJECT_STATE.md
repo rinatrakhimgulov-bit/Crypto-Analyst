@@ -395,3 +395,11 @@ Grok независимо скачал полный HTML candidate (blob `e92c44
 Остались только LOW-наблюдения: F1 boundary tests не assert'ят `UNCONFIRMED_CLOSED_CANDLES`; forming candle сознательно остаётся вне Quality Gate и это отражено characterization-тестами; stale LONG/SHORT recovery проверен на уровне `staleDecision` + повторного анализа, но не через полный `renderError`/UI путь.
 
 Это подтверждает изолированную логику B1-A/B, но не браузерную/live интеграцию. Не выполнены: полный `StageASelfTest` 44/44 в браузере, Chrome/iPhone Safari runtime, live Bybit HTTP и проверка отображения stale badge. PR #6 остаётся draft, main не изменён. B1 остаётся IN PROGRESS.
+
+## B1-E source audit — common-cutoff MTF (2026-11-26)
+
+Source inspection confirms that the current runtime fetches one selected timeframe per `loadAndAnalyze()` and immediately analyzes it. There is no coordinated 1D/4H/1H assembler. The adapter classifies closed/forming candles against each response's own `serverTimeMs`; the canonical snapshot currently maps that to `analysisAsOfMs`, while validation expects close agreement with `providerTimeMs`. This means a common cutoff cannot safely be introduced by simply overwriting `serverTimeMs`.
+
+Created `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md`. It defines concurrent collection, trusted common cutoff = minimum provider time, preservation of per-response provider provenance, candle reclassification with the existing 500 ms finality buffer, coverage recomputation, per-TF plus aggregate quality, stale-cache isolation, request-generation handling and 23 deterministic acceptance tests. The provider-time spread threshold must be based on measured live API behavior rather than guessed.
+
+**Status: design/specification only.** No B1-E production code has been added. Current selected-timeframe chart flow remains unchanged. B1-E is not implemented; B1 remains IN PROGRESS.
