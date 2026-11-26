@@ -328,3 +328,11 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. B1 suite 54/54 PAS
 - Grok verdict: **APPROVE**; новых CRITICAL/HIGH дефектов не обнаружено.
 - LOW: отсутствует assert конкретного finality reason code; forming candle не валидируется (известное ограничение, зафиксированное characterization-тестами); stale recovery проверен без полного UI/renderError цикла.
 - Browser `StageASelfTest` 44/44, Chrome/iPhone Safari, live Bybit и UI badge verification остаются pending. PR #6 остаётся draft, main не изменён.
+
+## B1-E MTF common-cutoff specification — 2026-11-26
+
+- Added `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md`.
+- Source audit confirmed no coordinated 1D/4H/1H assembler in the current runtime.
+- Documented why a common cutoff requires explicit provider-time and candle-reclassification semantics.
+- Added 23 deterministic acceptance tests and stale/concurrency/coverage requirements.
+- Documentation only; no production code changed. B1-E is not implemented.
