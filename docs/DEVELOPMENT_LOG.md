@@ -343,3 +343,35 @@ B1 находится в исследовании. Основной HTML не и
 Предложен минимальный план B1: сохранить текущий JS adapter как первый provider, добавить canonical mapping + pure validator + mandatory gate + stale suppression, затем common cutoff и только потом второй provider. Предварительная рекомендация: не мигрировать на Python backend до доказанной необходимости.
 
 Подробности: `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`. Код приложения не изменён.
+
+
+## 14. B1-A/B/C/D — canonical data contract, validator and quality gate
+
+**Дата:** 2026-11-26. Ветка: `impl/b1-quality-contract-2026-11-26`. Draft PR #6; в `main` не влито.
+
+### Реализовано в candidate branch
+
+- Добавлен `DataQualityEngine` с canonical contract v1.0.0: Candle mapping, Snapshot, QualityReport, preflight.
+- Bybit adapter теперь сохраняет `providerTimeMs` и `timeSource`; local Date.now fallback явно помечается как `LOCAL_FALLBACK`.
+- Duplicate rows классифицируются как identical или conflicting; конфликтующая строка не перезаписывает предыдущую молча.
+- Добавлен expected closed-candle coverage для запрошенного окна.
+- Validator проверяет OHLCV finite values/invariants, volume, UTC alignment, порядок, gaps, future timestamps, freshness, достаточность истории и coverage.
+- Future open timestamp более чем на 2 секунды впереди provider time отклоняется.
+- `BasicAnalyticsEngine.analyze()` запускает quality preflight; только VALID допускает обычный анализ. DEGRADED/INVALID/STALE/INSUFFICIENT дают WAIT с причинами.
+- `renderError()` больше не показывает cached LONG/SHORT как текущий вывод: stale decision переводится в WAIT, график сохраняется как справочный контекст.
+- Панель качества показывает статус B1 Quality Gate.
+
+### Проверки
+
+- `B1QualitySelfTest.runAll()`: 32/32 PASS в изолированном JS execution.
+- Два script blocks: syntax parse PASS.
+- Отдельный integration probe для DEGRADED dataset: WAIT, directionalAllowed=false.
+- Не запускались live Bybit, настоящий Chrome/iPhone Safari и полный StageASelfTest 44/44 в browser runtime.
+
+### Оставшиеся части B1
+
+- B1-E: общий analysis cutoff и сборка синхронизированного 1D/4H/1H snapshot.
+- B1-F: сравнение второго provider.
+- Независимый review и browser/runtime verification до merge.
+
+B1 остаётся IN PROGRESS. Draft PR #6: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6.
