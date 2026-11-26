@@ -78,7 +78,7 @@ Crypto Analyst развивается как независимая от кон�
 Критерий завершения: аудит покрывает полный путь данных и все используемые в UI аналитические выводы; спорные выводы имеют воспроизводимые доказательства.
 
 ### B1 — Надёжный аналитический набор данных
-**Статус: В ИССЛЕДОВАНИИ (rinng/CCXT проверены; draft data contract подготовлен; реализация не начата).**
+**Статус: В РЕАЛИЗАЦИИ (B1-A/B/C/D внесены в draft PR #6; ожидают независимой проверки и runtime-валидации).**
 
 - Единый контракт dataset, независимый от конкретной биржи/поставщика данных (draft: `docs/specs/B1_DATA_CONTRACT_DRAFT.md`).
 - Адаптеры источников с обязательными метаданными provenance, временем биржи/получения и правилами преобразования.
@@ -86,10 +86,10 @@ Crypto Analyst развивается как независимая от кон�
 - Разделение закрытых и формирующихся свечей.
 - Проверка пропусков, дубликатов, сортировки, временных границ, аномалий и свежести.
 - Явный quality status и причины проблем.
-- Запрет LONG/SHORT при критических дефектах данных; WAIT с понятной причиной.
+- Запрет LONG/SHORT при статусах качества, отличных от VALID; WAIT с machine-readable причинами (реализовано в draft PR #6).
 - Тесты на фиксированных известных наборах и граничных случаях.
-- Устранение D0-01: INVALID quality не может пропустить LONG/SHORT.
-- Устранение D0-02: stale cache не может отображать старый LONG/SHORT как актуальный сигнал.
+- Устранение D0-01: INVALID/DEGRADED/STALE/INSUFFICIENT quality не может пропустить LONG/SHORT (внесено в draft PR #6; требуется runtime-подтверждение).
+- Устранение D0-02: stale cache не может отображать старый LONG/SHORT как актуальный сигнал (внесено в draft PR #6; требуется runtime-подтверждение).
 
 Критерий завершения: аналитика получает согласованный и проверяемый набор данных, а дефекты качества невозможно незаметно превратить в торговый сигнал.
 
@@ -261,3 +261,20 @@ Crypto Analyst развивается как независимая от кон�
 Начать с B0: провести полный аудит текущего аналитического конвейера без изменения исходника. На выходе получить проверяемую карту фактической реализации и точную спецификацию B1.
 
 **Не переходить к реализации B1, пока B0 не завершён, не проверен и не принят.**
+
+
+## Актуализация B1 — 2026-11-26 (draft PR #6)
+
+B1-A/B/C/D реализованы в отдельной ветке `impl/b1-quality-contract-2026-11-26`, PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6.
+
+- Provider-neutral canonical snapshot/candle contract v1.0.0.
+- Provider-time provenance; local fallback не считается доверенным временем.
+- Duplicate classification: identical vs conflicting.
+- Expected closed-candle coverage for requested kline window.
+- Deterministic OHLCV/time/order/gap/freshness/history/coverage validator.
+- Future open timestamps beyond 2 seconds of provider time are rejected by the adapter.
+- Mandatory quality gate перед BasicAnalyticsEngine: только VALID допускает расчёт направленного решения; прочие статусы дают WAIT.
+- Stale-cache fallback преобразует старый LONG/SHORT в WAIT; старый график остаётся только справочным контекстом.
+- Embedded B1 quality suite: 32/32 passed; оба script blocks syntax-parse PASS; отдельная проверка gate на degraded dataset вернула WAIT.
+
+**Ограничения:** PR остаётся draft. Не выполнены live Bybit, реальный Chrome/iPhone Safari и полный StageASelfTest 44/44 в браузерном harness. MTF common cutoff и второй provider ещё не реализованы. B1 не завершён.
