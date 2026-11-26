@@ -346,3 +346,19 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. B1 suite 54/54 PAS
 - Not connected to UI or trade decisions; no browser/live Bybit verification. PR remains draft.
 
 B1-E audit refinement: a candle whose open time is later than the common cutoff is now excluded from the as-of snapshot and counted in `excludedAfterCutoffCount`; its mere presence no longer invalidates a coherent snapshot. This handles ordinary response-time differences across an interval boundary. B1-E remains 23/23 PASS and B1 remains 65/65 PASS after this correction.
+
+
+## 17. B1-E common-cutoff implementation candidate update — 2026-11-26
+
+| Element | Purpose | Status |
+|---|---|---|
+| `MTFDataEngine.fetchAndAssemble()` | Concurrent 1D/4H/1H requests with explicit spread-based raw-row overfetch | IMPLEMENTED IN PR #6 BRANCH |
+| `MTFDataEngine.assemble()` | Common cutoff, candle reclassification, explicit closed-history window and per-TF quality | IMPLEMENTED IN PR #6 BRANCH |
+| `mtfExpectedClosedCount` | Explicit desired number of closed candles, independent of provider raw-row limit | IMPLEMENTED IN PR #6 BRANCH |
+| `mtfRequestedRawLimit` | Records the actual per-TF raw-row request limit | IMPLEMENTED IN PR #6 BRANCH |
+| Forming-candle ambiguity guard | Blocks directional permission and does not publish an arbitrary forming candle when multiple candidates exist | IMPLEMENTED IN PR #6 BRANCH |
+| Per-timeframe diagnostics | Stable failure shape for missing timeframe, mismatch, missing target and missing normalized candles | IMPLEMENTED IN PR #6 BRANCH |
+| `B1EMtfSelfTest` | V5-shaped adapter integration, 1H/4H/1D boundary rollover, short-response and ambiguity tests | 31/31 PASS |
+| `B1QualitySelfTest` | Existing canonical data quality suite | 65/65 PASS |
+
+Latest HTML blob: `d9bb093001299ef8a835fc01dcaa6fb87e0425cd`. Both inline scripts parse. This is isolated V8 verification, not browser/live verification. MTFDataEngine is not yet wired into UI or directional decisions. PR #6 remains draft/unmerged; main unchanged.
