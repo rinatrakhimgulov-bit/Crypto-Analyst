@@ -1218,18 +1218,26 @@ Do not mark B1 DONE. Do not merge PR #6 until the remaining review and runtime c
 
 # FINAL CURRENT B1 CANDIDATE UPDATE — 2026-11-26
 
-- Latest candidate HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`.
+- Latest candidate HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
 - Strict eight-counter validation; duplicate aggregate consistency; provider-time/analysis-time consistency; closed-candle finality against earlier cutoff + 500 ms; strict coverage metadata validation.
-- B1 suite is now 50/50 PASS in isolated JavaScript execution. Both inline script blocks syntax-parse. Four direct BasicAnalyticsEngine probes all return WAIT / INVALID / directionalAllowed=false for malformed counters, negative counters, unclosed candles and missing coverage.
+- B1 suite is now 54/54 PASS in isolated JavaScript execution. Both inline script blocks syntax-parse. Four direct BasicAnalyticsEngine probes all return WAIT / INVALID / directionalAllowed=false for malformed counters, negative counters, unclosed candles and missing coverage.
 - No real browser/iPhone Safari runtime, live Bybit request or full StageASelfTest 44/44 browser harness has been run.
 - Grok re-audit after this patch is pending. PR #6 is still draft, main unchanged, B1 not DONE. B1-E MTF common cutoff and B1-F second provider remain outstanding.
 
 
 ### Latest candidate verification refresh (2026-11-26)
 
-- HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`.
-- `B1QualitySelfTest.runAll()`: 50/50 PASS in isolated JavaScript execution.
+- HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
+- `B1QualitySelfTest.runAll()`: 54/54 PASS in isolated JavaScript execution.
 - Both inline script blocks syntax-parse successfully.
 - Synthetic `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: 60 closed candles + 1 forming candle, status VALID.
 - Four direct quality-gate probes block malformed counters, negative counters, unclosed candles and missing coverage with WAIT / INVALID.
 - These are isolated JavaScript/fixture checks, not a live Bybit request or real browser runtime. Full StageASelfTest 44-case browser harness and independent Grok re-audit remain pending. PR #6 remains draft and unmerged; main is unchanged.
+
+
+### B1 adapter integration regression refresh (2026-11-26)
+
+- Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
+- `B1QualitySelfTest.runAll()`: **54/54 PASS**; both inline script blocks syntax-parse.
+- Four new end-to-end fixture tests now exercise actual `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: valid reversed rows and 60/1 closed/forming split; invalid row rejection; identical duplicate classification; conflicting duplicate classification.
+- Browser/Chrome/iPhone Safari runtime, live Bybit, StageASelfTest 44/44 and independent Grok re-audit remain pending. PR #6 remains draft; main unchanged.
