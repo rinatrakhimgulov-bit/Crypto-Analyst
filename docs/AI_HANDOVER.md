@@ -1142,3 +1142,10 @@ B1 research update — 26.11.2026:
 * Изучен `CCXT`: MIT, unified OHLCV transport и Bybit adapter. Рассматривать только как транспортный слой, не как canonical data contract или quality engine.
 * Подробности и точные source blob SHA: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`.
 * Следующий шаг B1: зафиксировать контракт Candle/Snapshot/QualityReport, quality states, freshness/closed-candle policy и тестовую матрицу. D0-01 и D0-02 должны быть устранены до допуска LONG/SHORT.
+
+
+B1 draft spec — 26.11.2026:
+
+* `docs/specs/B1_DATA_CONTRACT_DRAFT.md` содержит проект provider-neutral Candle/Snapshot/QualityReport, quality states, MTF cutoff, closed/forming policy, stale-cache gate и acceptance test matrix.
+* Это draft, не принятая реализация. Не менять HTML до review контракта и тестовых fixtures.
+* Выбор JS/TS vs Python backend и CCXT vs отдельный adapter остаётся открытым.
