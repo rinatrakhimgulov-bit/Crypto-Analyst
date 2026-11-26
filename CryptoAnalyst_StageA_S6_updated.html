@@ -2166,7 +2166,8 @@
           symbol: String(dataset.symbol || ''),
           timeframe,
           analysisAsOfMs: Number(dataset.serverTimeMs),
-          providerTimeMs: Number.isFinite(Number(dataset.providerTimeMs)) ? Number(dataset.providerTimeMs) : null,
+          providerTimeMs: dataset.providerTimeMs !== null && dataset.providerTimeMs !== undefined && Number.isFinite(Number(dataset.providerTimeMs))
+            ? Number(dataset.providerTimeMs) : null,
           timeSource: dataset.timeSource || (Number.isFinite(Number(dataset.providerTimeMs)) ? 'PROVIDER' : 'UNKNOWN'),
           receivedAtMs: Number(dataset.fetchedAtLocalMs),
           candles: closed.map(c => toCanonicalCandle(c, timeframe, 'TIME_DERIVED')),
@@ -2341,6 +2342,28 @@
         test('23 invalid adapter rows block', () => { const s=make(); s.adapterQuality.invalidRows=1; status(s,'INVALID'); });
         test('24 adapter gap degrades', () => { const s=make(); s.adapterQuality.gaps=1; status(s,'DEGRADED'); });
         test('25 exact duplicate timestamps rejected', () => { const a=base(); a[30]={...a[29]}; status(make(a),'INVALID'); });
+        test('26 canonical mapping preserves provider and symbol', () => {
+          const snap=DataQualityEngine.createSnapshot({source:'Bybit',marketType:'Linear',symbol:'BTCUSDT',interval:'60',
+            serverTimeMs:now+5000,providerTimeMs:now+5000,timeSource:'PROVIDER',fetchedAtLocalMs:now,
+            closedCandles:[{ts:now-step,closeTs:now,open:100,high:102,low:99,close:101,volume:10}],quality:{}});
+          expect(snap.provider==='Bybit' && snap.symbol==='BTCUSDT' && snap.timeframe==='60','provider mapping');
+        });
+        test('27 canonical mapping keeps missing provider time null', () => {
+          const snap=DataQualityEngine.createSnapshot({source:'Bybit',symbol:'BTCUSDT',interval:'60',
+            serverTimeMs:now,providerTimeMs:null,timeSource:'LOCAL_FALLBACK',fetchedAtLocalMs:now,closedCandles:[],quality:{}});
+          expect(snap.providerTimeMs===null && snap.timeSource==='LOCAL_FALLBACK','fallback provenance');
+        });
+        test('28 forming candle is separated from closed history', () => {
+          const snap=DataQualityEngine.createSnapshot({source:'Bybit',symbol:'BTCUSDT',interval:'60',
+            serverTimeMs:now,providerTimeMs:now,timeSource:'PROVIDER',fetchedAtLocalMs:now,
+            closedCandles:[{ts:now-step,closeTs:now,open:100,high:102,low:99,close:101,volume:10}],
+            formingCandle:{ts:now,closeTs:now+step,open:101,high:103,low:100,close:102,volume:5},quality:{}});
+          expect(snap.candles.length===1 && snap.formingCandle.closedState==='FORMING','forming separation');
+        });
+        test('29 duplicate conflict metadata blocks directional validation', () => {
+          const s=make(); s.adapterQuality.conflictingDuplicates=1;
+          expect(DataQualityEngine.validate(s,now).directionalAllowed===false,'conflict must block');
+        });
         const passed = tests.filter(t=>t.passed).length;
         return { total: tests.length, passed, failed: tests.length-passed, tests };
       }
