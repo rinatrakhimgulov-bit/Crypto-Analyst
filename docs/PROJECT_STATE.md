@@ -387,3 +387,11 @@ No live Bybit, browser/iPhone Safari or full StageASelfTest 44/44 run. Grok re-a
 - Both inline script blocks syntax-parse successfully.
 - Verification remains isolated and deterministic: no browser DOM/runtime, no live Bybit HTTP request, no Chrome/iPhone Safari run, and no full `StageASelfTest` run. The stale recovery tests validate engine-level recovery, not the rendered UI badge.
 - PR #6 remains draft and unmerged; `main` is unchanged. These checks do not complete B1 or authorize merging yet.
+
+## Независимый аудит PR #6 — 2026-11-26
+
+Grok независимо скачал полный HTML candidate (blob `e92c44d1397a8499a5a5adac7c12294923e3f494`) и самостоятельно запустил `B1QualitySelfTest.runAll()`: **65/65 PASS**. Вердикт **APPROVE**, новых CRITICAL/HIGH дефектов не найдено.
+
+Остались только LOW-наблюдения: F1 boundary tests не assert'ят `UNCONFIRMED_CLOSED_CANDLES`; forming candle сознательно остаётся вне Quality Gate и это отражено characterization-тестами; stale LONG/SHORT recovery проверен на уровне `staleDecision` + повторного анализа, но не через полный `renderError`/UI путь.
+
+Это подтверждает изолированную логику B1-A/B, но не браузерную/live интеграцию. Не выполнены: полный `StageASelfTest` 44/44 в браузере, Chrome/iPhone Safari runtime, live Bybit HTTP и проверка отображения stale badge. PR #6 остаётся draft, main не изменён. B1 остаётся IN PROGRESS.
