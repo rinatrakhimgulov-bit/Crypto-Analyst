@@ -310,3 +310,12 @@ B0 — DONE (audit only). B1 — READY TO START. Внешние библиоте
 Подробности: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`.
 
 B1 находится в исследовании. Основной HTML не изменён.
+
+
+## 11. B1 — draft Data Contract подготовлен
+
+**Дата:** 2026-11-26. Тип: спецификация; код приложения не изменён.
+
+Подготовлен `docs/specs/B1_DATA_CONTRACT_DRAFT.md`. Документ описывает provider-neutral Candle/Snapshot/QualityReport, UTC timestamp semantics, source provenance, volume units, common MTF cutoff, closed/forming state, quality statuses, mandatory quality gate, stale-cache policy, resampling completeness rules и deterministic test matrix из 25 случаев.
+
+Спецификация остаётся draft. Решения по runtime, второму provider adapter и точным freshness thresholds не приняты. B1 implementation не начата.
