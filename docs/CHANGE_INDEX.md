@@ -237,3 +237,26 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 ## 14. B1 current adapter mapping — 2026-11-26
 
 `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps Stage A `BybitAdapter` to the proposed provider-neutral contract and records 11 implementation gaps. Proposed minimal path: retain JS for B1 first pass; canonical mapping, pure validator, mandatory quality gate, stale-cache suppression, then MTF cutoff and second provider. Specification only; no code changes.
+
+
+## 15. B1 implementation candidate — 2026-11-26 (draft PR #6)
+
+Файл: `CryptoAnalyst_StageA_S6_updated.html`  
+Ветка: `impl/b1-quality-contract-2026-11-26`.
+
+| Элемент | Назначение | Статус |
+|---|---|---|
+| `DataQualityEngine` | Provider-neutral contract v1.0.0, Candle/Snapshot mapping, validation | IMPLEMENTED IN BRANCH |
+| `DataQualityEngine.createSnapshot()` | Map adapter dataset to canonical snapshot | IMPLEMENTED IN BRANCH |
+| `DataQualityEngine.validate()` | Deterministic OHLCV/time/coverage/freshness/history validation | 32 TESTS PASS |
+| `DataQualityEngine.preflight()` | Build snapshot and quality report before analytics | IMPLEMENTED IN BRANCH |
+| `DataQualityEngine.staleDecision()` | Convert cached directional decision to WAIT | IMPLEMENTED IN BRANCH |
+| `window.B1QualitySelfTest.runAll()` | 32 deterministic quality-contract tests | 32/32 PASS |
+| `BybitAdapter.normalize()` | Preserve provider-time provenance, duplicate classification and coverage | IMPLEMENTED IN BRANCH |
+| `BasicAnalyticsEngine.analyze()` | Mandatory quality gate; only VALID reaches directional calculation | IMPLEMENTED IN BRANCH |
+| `renderError()` | Suppress cached LONG/SHORT after refresh failure | IMPLEMENTED IN BRANCH |
+| `renderSuccess()` | Display B1 Quality Gate status | IMPLEMENTED IN BRANCH |
+
+Verified source locations in the candidate branch: DataQualityEngine line 2124; preflight line 2295; staleDecision line 2301; BasicAnalyticsEngine line 2417; B1QualitySelfTest line 2320; BybitAdapter.normalize line 705; renderError line 3276; loadAndAnalyze line 3312.
+
+**Not implemented:** common-cutoff MTF snapshot assembly and second provider. Browser/live API verification remains pending. These statuses apply only to the draft branch, not `main`.
