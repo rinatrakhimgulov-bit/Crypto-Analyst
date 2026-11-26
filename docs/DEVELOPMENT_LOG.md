@@ -285,3 +285,28 @@ B0 — полный аудит существующего конвейера о�
 
 ### Решение
 B0 — DONE (audit only). B1 — READY TO START. Внешние библиотеки не интегрированы.
+
+
+## 10. B1 — исследование кандидатов для Data Layer
+
+**Дата:** 2026-11-26. Тип: исследование исходного кода; интеграции нет.
+
+### rinng
+
+Проверены Exchange Protocol, Binance/OKX adapters, canonical schemas, resampling, validation, pipeline runner и тесты adapters/store. Полезные идеи: provider protocol, UTC milliseconds, явные [start,end) интервалы, canonical OHLCV schema, exchange-specific pagination/timezone/error handling, backfill, polling overlap, raw/curated storage и mock tests.
+
+Обнаружены проблемы: `CandleReport.ok` не учитывает missing bars; `resample_ohlcv()` может отметить агрегат закрытым без проверки полноты внутренних 1m свечей; `pipeline.run.analyze()` не вызывает обязательную quality validation; отдельные тесты на `validate.py` и `resample.py` в дереве не найдены. Заявленные/имеющиеся тесты проекта нами не запускались.
+
+### CCXT
+
+Проверены MIT LICENSE, README и реализация Bybit `fetch_ohlcv()` в Python. CCXT предоставляет unified OHLCV API, market/timeframe mapping, pagination option и поддержку обычных/mark/index/premium candles. Но это транспортный слой, не quality engine; некоторые дополнительные OHLCV поля и exchange closed flag не входят в базовый унифицированный ряд.
+
+### Решение
+
+- rinng: KEEP/ADAPT как архитектурный источник, но не копировать data-quality/resample логику без исправлений.
+- CCXT: shortlist для source adapters, но не считать заменой собственного canonical contract и quality gate.
+- Собственный контракт Candle/Snapshot/QualityReport и обязательный preflight quality gate остаются необходимыми.
+
+Подробности: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`.
+
+B1 находится в исследовании. Основной HTML не изменён.
