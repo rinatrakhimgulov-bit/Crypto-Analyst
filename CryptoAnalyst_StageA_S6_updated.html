@@ -2474,6 +2474,7 @@
           });
           let pairs;
           try{pairs=await Promise.all(tasks);}catch(error){controller.abort(error);throw error;}
+          if (externalSignal && externalSignal.aborted) throw new DOMException('Aborted','AbortError');
           return assemble(Object.fromEntries(pairs),Date.now(),options);
         } finally {if(externalSignal)externalSignal.removeEventListener('abort',onExternalAbort);}
       }
@@ -2493,6 +2494,8 @@
             } catch (error) {
               if (requestGeneration !== generation) return { superseded: true, generation: requestGeneration };
               throw error;
+            } finally {
+              if (requestGeneration === generation && activeController === controller) activeController = null;
             }
           },
           cancel() {
