@@ -413,3 +413,24 @@ The provider-time spread tolerance is an explicit required option and has no pro
 Verification on the latest candidate HTML blob: B1-E suite **23/23 PASS** and existing B1 suite **65/65 PASS** in an isolated V8 harness using extracted production code; both inline scripts syntax-parse. The harness used test doubles for AbortController/DOMException/timer APIs. No browser, live Bybit, Chrome/iPhone Safari or full StageASelfTest browser verification has been performed. B1-E remains IN PROGRESS and B1 is not complete.
 
 B1-E audit refinement: a candle whose open time is later than the common cutoff is now excluded from the as-of snapshot and counted in `excludedAfterCutoffCount`; its mere presence no longer invalidates a coherent snapshot. This handles ordinary response-time differences across an interval boundary. B1-E remains 23/23 PASS and B1 remains 65/65 PASS after this correction.
+
+
+## B1-E implementation candidate update — 2026-11-26 (latest)
+
+**Branch:** `impl/b1-quality-contract-2026-11-26`  
+**Draft PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6  
+**Latest HTML blob:** `d9bb093001299ef8a835fc01dcaa6fb87e0425cd`  
+**Latest branch commit after spec update:** `4e7668f098427acbd033a0bb9acc41a9714353b6`
+
+B1-E has advanced from an isolated first-pass assembler to a corrected common-cutoff coverage candidate:
+- MTF request target is now an explicit desired closed-candle count, separate from raw API row limit.
+- Per-timeframe raw row request is expanded by `ceil(maxProviderTimeSpreadMs / stepMs) + 1` to cover possible interval rollover and the forming row.
+- Requests exceeding Bybit V5's 1000-row limit fail instead of silently reducing history.
+- Expected closed window is recalculated from the common cutoff and explicit target count; excess older rows are trimmed, while short history remains a blocking coverage finding.
+- Multiple forming candidates produce a critical ambiguity finding and no arbitrary forming candle is published.
+- Missing target, missing timeframe, interval mismatch and missing normalized candles return stable per-timeframe diagnostics.
+- Integration fixtures now run V5-shaped raw rows through the actual `BybitAdapter.normalize()` and `MTFDataEngine.assemble()` across 1H, 4H and 1D boundary rollovers.
+
+**Verification:** `B1EMtfSelfTest.runAll()` 31/31 PASS; `B1QualitySelfTest.runAll()` 65/65 PASS; both inline JavaScript blocks parse. Tests ran in an isolated V8 harness against extracted production implementations. Concurrency tests used test doubles for AbortController/DOMException/timers.
+
+**Not verified:** live Bybit requests, production provider-time spread calibration, browser DOM/UI, Chrome/iPhone Safari, full `StageASelfTest` 44/44, and actual network abort behavior. MTFDataEngine remains isolated and is not connected to the UI or directional decision pipeline. PR #6 remains draft and unmerged; `main` is unchanged. B1 is still IN PROGRESS.
