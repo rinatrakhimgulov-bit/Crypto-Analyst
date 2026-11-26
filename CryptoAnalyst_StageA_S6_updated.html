@@ -2490,6 +2490,7 @@
             closedCandles:[],coverage:{expectedClosedStartMs:now,expectedClosedEndMs:now,expectedClosedCount:1},
             quality:{invalidTimestamps:0,gaps:0,duplicates:0,identicalDuplicates:0,conflictingDuplicates:0,anomalousIntervals:0,misalignedTimestamps:0}});
           expect(snap.adapterQuality.invalidRows===null,'missing counter must not default to zero');
+          expect(DataQualityEngine.validate(snap,now).status==='INVALID','missing counter must block direction');
         });
         test('47 duplicate aggregate must equal classified duplicates', () => {
           const s=make(); s.adapterQuality.duplicates=1; status(s,'INVALID');
