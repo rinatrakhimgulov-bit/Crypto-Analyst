@@ -283,20 +283,28 @@ Candidate branch `impl/b1-quality-contract-2026-11-26`, draft PR #6:
 - Adapter counters validated strictly, including duplicate aggregate consistency.
 - Provider-time and analysis-time coherence enforced; closed-candle finality uses earlier cutoff + 500 ms.
 - Coverage metadata validated structurally and arithmetically.
-- `B1QualitySelfTest.runAll()`: 50/50 PASS; 2 script blocks syntax-parse PASS; 4/4 integration gate probes block malformed data.
+- `B1QualitySelfTest.runAll()`: 54/54 PASS; 2 script blocks syntax-parse PASS; 4/4 integration gate probes block malformed data.
 - Browser, live exchange and full StageASelfTest 44/44 remain outstanding. No main merge.
 
 
 ### Final B1 candidate verification refresh — 2026-11-26
 
-Latest HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`. B1 suite 50/50 PASS; two inline script blocks syntax-parse; synthetic adapter-to-preflight fixture returns 60 closed + 1 forming candle and VALID; 4/4 direct analytics gate probes block malformed data with WAIT/INVALID. These are isolated tests, not live exchange/browser verification. StageASelfTest and independent re-audit remain pending.
+Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. B1 suite 54/54 PASS; two inline script blocks syntax-parse; synthetic adapter-to-preflight fixture returns 60 closed + 1 forming candle and VALID; 4/4 direct analytics gate probes block malformed data with WAIT/INVALID. These are isolated tests, not live exchange/browser verification. StageASelfTest and independent re-audit remain pending.
 
 
 ### Latest candidate verification refresh (2026-11-26)
 
-- HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`.
-- `B1QualitySelfTest.runAll()`: 50/50 PASS in isolated JavaScript execution.
+- HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
+- `B1QualitySelfTest.runAll()`: 54/54 PASS in isolated JavaScript execution.
 - Both inline script blocks syntax-parse successfully.
 - Synthetic `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: 60 closed candles + 1 forming candle, status VALID.
 - Four direct quality-gate probes block malformed counters, negative counters, unclosed candles and missing coverage with WAIT / INVALID.
 - These are isolated JavaScript/fixture checks, not a live Bybit request or real browser runtime. Full StageASelfTest 44-case browser harness and independent Grok re-audit remain pending. PR #6 remains draft and unmerged; main is unchanged.
+
+
+### B1 adapter integration regression refresh (2026-11-26)
+
+- Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
+- `B1QualitySelfTest.runAll()`: **54/54 PASS**; both inline script blocks syntax-parse.
+- Four new end-to-end fixture tests now exercise actual `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: valid reversed rows and 60/1 closed/forming split; invalid row rejection; identical duplicate classification; conflicting duplicate classification.
+- Browser/Chrome/iPhone Safari runtime, live Bybit, StageASelfTest 44/44 and independent Grok re-audit remain pending. PR #6 remains draft; main unchanged.
