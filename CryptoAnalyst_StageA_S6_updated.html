@@ -2416,8 +2416,10 @@
             statuses.push('INVALID'); continue;
           }
           const sourceCandles = dataset.allCandles;
-          if (sourceCandles.some(c=>Number(c.ts)>minProviderTime))
-            aggregateReasons.push({code:'MTF_CANDLES_AFTER_COMMON_CUTOFF',severity:'CRITICAL',timeframe:tf,message:'Ответ содержит свечи, открывшиеся позже общего временного среза.'});
+          // A response may legitimately include a candle opened after the common cutoff
+          // when its provider clock is slightly ahead. Exclude it from this historical
+          // as-of snapshot; the provider-time spread policy bounds how far ahead it can be.
+          const excludedAfterCutoffCount = sourceCandles.filter(c=>Number(c.ts)>minProviderTime).length;
           const closed = sourceCandles.filter(c=>Number.isFinite(Number(c.ts)) &&
             Number.isFinite(Number(c.closeTs)) && Number(c.closeTs)+FINALITY_BUFFER_MS<=minProviderTime &&
             Number(c.ts)<=minProviderTime);
@@ -2440,6 +2442,7 @@
           const canonical = DataQualityEngine.createSnapshot(rebased);
           const report = DataQualityEngine.validate(canonical,nowMs,{providerTimeToleranceMs:maxSpread});
           perTimeframe[tf] = {timeframe:tf,providerTimeMs:dataset.providerTimeMs,
+            excludedAfterCutoffCount,
             receivedAtMs:dataset.fetchedAtLocalMs,
             requestStartedAtMs:Number.isFinite(dataset.requestStartedAtMs)?dataset.requestStartedAtMs:null,
             requestCompletedAtMs:Number.isFinite(dataset.requestCompletedAtMs)?dataset.requestCompletedAtMs:null,
@@ -2543,7 +2546,7 @@
         test('09 finality T-500 ms remains closed',()=>{const c=baseNow+500,m=run(makeSet({D:c,'240':c,'60':c}),{maxProviderTimeSpreadMs:0});expect(m.timeframes['60'].snapshot.candles.length===60,'T-500 not closed');});
         test('10 finality T-499 ms moves latest candle out of closed set',()=>{const c=baseNow+499,m=run(makeSet({D:c,'240':c,'60':c}),{maxProviderTimeSpreadMs:0});expect(m.timeframes['60'].snapshot.candles.length===59&&!!m.timeframes['60'].snapshot.formingCandle,'T-499 remained closed');});
         test('11 later response candle set is reclassified against common cutoff',()=>{const m=run();expect(m.timeframes.D.snapshot.candles.every(c=>c.closeTimeMs+500<=m.analysisAsOfMs),'D candles beyond cutoff');});
-        test('12 candle opening after common cutoff blocks assembly',()=>{const a=makeSet();a.D.allCandles.push({ts:baseNow+2000,closeTs:baseNow+day+2000,open:1,high:2,low:1,close:2,volume:1});const m=run(a);expect(!m.directionalAllowed&&m.reasons.some(r=>r.code==='MTF_CANDLES_AFTER_COMMON_CUTOFF'),'future candle not detected');});
+        test('12 candle opening after common cutoff is excluded without invalidating a coherent snapshot',()=>{const a=makeSet();a.D.allCandles.push({ts:baseNow+2000,closeTs:baseNow+day+2000,open:1,high:2,low:1,close:2,volume:1});const m=run(a);expect(m.directionalAllowed,'legitimate later-open candle blocked MTF');expect(m.timeframes.D.excludedAfterCutoffCount===1,'excluded candle not counted');expect(m.timeframes.D.snapshot.candles.every(c=>c.openTimeMs<=m.analysisAsOfMs),'post-cutoff candle entered closed set');});
         test('13 adapter quality findings survive reclassification',()=>{const a=makeSet();a['240'].quality.gaps=1;const m=run(a);expect(!m.directionalAllowed&&m.reasons.some(r=>r.timeframe==='240'&&r.code==='CANDLE_GAPS'),'gap finding lost');});
         test('14 coverage recalculated at common cutoff for all TFs',()=>{const m=run();expect(['D','240','60'].every(tf=>m.timeframes[tf].snapshot.coverage.expectedClosedEndMs===Math.floor((m.analysisAsOfMs-500)/steps[tf])*steps[tf]-steps[tf]),'coverage not rebased');});
         test('15 missing leading candle reported by coverage',()=>{const a=makeSet();a.D.allCandles.shift();const m=run(a);expect(!m.directionalAllowed&&m.reasons.some(r=>r.timeframe==='D'&&r.code==='COVERAGE_START_MISSING'),'missing start not reported');});
