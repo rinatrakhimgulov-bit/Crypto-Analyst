@@ -1166,3 +1166,12 @@ B1 adapter mapping update — 26.11.2026:
 * `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps the exact Stage A `BybitAdapter` (lines 546–857) to the proposed canonical contract and lists 11 gaps.
 * Keep current JS adapter as first provider; do not rewrite or migrate to Python before proving need. Proposed B1 first pass: canonical mapping → pure validator → quality gate → stale-cache suppression → MTF cutoff → second provider.
 * This is a specification only; canonical HTML remains unchanged.
+
+
+## Current handover addendum — 2026-11-26
+
+- B1 remains the active implementation/review stage. PR #6 is a draft and must not be merged until its confirmed defects are fixed, regression tests added, runtime checks completed and independent review passes.
+- New B2/B4 candidate audit: `docs/research/B2_STRUCTURE_POI_SOURCE_AUDIT_2026-11-26.md`.
+- `market-structure-engine` is ADAPT / CONDITIONAL CANDIDATE, not approved for integration. Baseline must use confirmed-close mode; B1 must validate candles; candidate resampler must not be used until missing-bucket validation is fixed.
+- `poi-liquidity-detector` is ADAPT / HOLD. Fix kind-insensitive swing membership (`index` only), validate all options and require B1-approved candles before considering integration.
+- Candidate repository tests were inspected but not executed. No Crypto Analyst application source changed. B2 remains NOT STARTED.
