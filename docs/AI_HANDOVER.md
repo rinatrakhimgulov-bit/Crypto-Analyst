@@ -1199,3 +1199,18 @@ Implemented in the candidate branch:
 - Full StageASelfTest 44/44 in an actual browser harness.
 
 Do not mark B1 DONE. Do not merge PR #6 until the remaining review and runtime checks are complete. Keep `main` as source of truth; candidate branch changes are not yet part of main.
+
+
+# LATEST HANDOVER ADDENDUM — 2026-11-26 (supersedes earlier PR #6 verification counts)
+
+## PR #6 current candidate state
+
+- Branch: `impl/b1-quality-contract-2026-11-26`; draft PR #6 remains unmerged.
+- Main remains unchanged.
+- The three audit findings have been patched: strict adapter counter validation, closed-candle finality recheck against provider time + 500 ms, and structural/arithmetic validation of coverage metadata.
+- `B1QualitySelfTest.runAll()`: 46/46 PASS in isolated JavaScript execution.
+- Both inline script blocks pass syntax parsing.
+- Four direct BasicAnalyticsEngine integration probes returned WAIT / INVALID / directionalAllowed=false for malformed counter, negative counter, unclosed candle and missing coverage.
+- No real browser runtime, live Bybit request or full StageASelfTest 44/44 browser harness has been run.
+- Grok independent re-audit after this patch is still pending.
+- B1-E common cutoff MTF and B1-F second provider are outstanding. B1 is not DONE. Do not merge until independent review and required runtime verification are complete.
