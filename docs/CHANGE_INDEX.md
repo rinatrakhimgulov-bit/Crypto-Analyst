@@ -336,3 +336,11 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. B1 suite 54/54 PAS
 - Documented why a common cutoff requires explicit provider-time and candle-reclassification semantics.
 - Added 23 deterministic acceptance tests and stale/concurrency/coverage requirements.
 - Documentation only; no production code changed. B1-E is not implemented.
+
+## B1-E implementation candidate — 2026-11-26
+
+- Added isolated `MTFDataEngine` and `B1EMtfSelfTest` (23 tests) to the candidate HTML.
+- Added optional `providerTimeToleranceMs` override to DataQualityEngine; null preserves existing single-timeframe tolerance.
+- Added concurrent 1D/4H/1H fetch, common cutoff, candle reclassification, coverage recomputation, aggregate quality and request-generation cancellation.
+- Latest isolated checks: B1-E 23/23, B1 suite 65/65, both inline scripts parse.
+- Not connected to UI or trade decisions; no browser/live Bybit verification. PR remains draft.
