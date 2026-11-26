@@ -2432,7 +2432,7 @@
           // when its provider clock is slightly ahead. Exclude it from this historical
           // as-of snapshot; the provider-time spread policy bounds how far ahead it can be.
           const excludedAfterCutoffCount = sourceCandles.filter(c=>Number(c.ts)>minProviderTime).length;
-          const closed = sourceCandles.filter(c=>Number.isFinite(Number(c.ts)) &&
+          const closedCandidates = sourceCandles.filter(c=>Number.isFinite(Number(c.ts)) &&
             Number.isFinite(Number(c.closeTs)) && Number(c.closeTs)+FINALITY_BUFFER_MS<=minProviderTime &&
             Number(c.ts)<=minProviderTime);
           const formingCandidates = sourceCandles.filter(c=>Number.isFinite(Number(c.ts)) &&
@@ -2452,6 +2452,8 @@
           // fetchAndAssemble over-fetches enough raw rows to cover provider-time spread plus the cutoff's forming row.
           const expectedStart = requestedClosedCount>0 ? lastExpectedOpen-(requestedClosedCount-1)*stepMs : null;
           const expectedCount = requestedClosedCount;
+          // Extra raw rows protect the target window; keep exactly the newest requested closed candles.
+          const closed = requestedClosedCount>0 ? closedCandidates.slice(-requestedClosedCount) : closedCandidates;
           const rebased = Object.assign({},dataset,{
             serverTimeMs:minProviderTime,closedCandles:closed,formingCandle:forming,
             coverage:{requestedLimit:dataset.mtfRequestedRawLimit || originalCoverage.requestedLimit,
@@ -2660,8 +2662,10 @@
             'short V5 response not diagnosed');
         });
         test('28 multiple forming candidates do not publish an arbitrary forming candle',()=>{
-          const a=makeSet(),extra={ts:baseNow-steps['60']+1000,closeTs:baseNow+1000,open:10,high:12,low:9,close:11,volume:1};
-          a['60'].allCandles.push(extra);
+          const a=makeSet();
+          const extra1={ts:baseNow+100,closeTs:baseNow+steps['60']+100,open:10,high:12,low:9,close:11,volume:1};
+          const extra2={ts:baseNow+200,closeTs:baseNow+steps['60']+200,open:11,high:13,low:10,close:12,volume:1};
+          a['60'].allCandles.push(extra1,extra2);
           const m=run(a);
           expect(!m.directionalAllowed,'ambiguous forming set allowed direction');
           expect(m.timeframes['60'].snapshot.formingCandle===null,'ambiguous forming candle was published');
