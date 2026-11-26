@@ -285,6 +285,6 @@ B1-A/B/C/D реализованы в отдельной ветке `impl/b1-qual
 В candidate branch PR #6 исправлены три дефекта, подтверждённые независимым аудитом:
 - Счётчики адаптера больше не приводятся к нулю через coercion. Все восемь обязательных счётчиков проверяются как неотрицательные safe integers; отсутствующее или malformed значение даёт CRITICAL.
 - Validator повторно проверяет закрытость каждой canonical candle по provider time и finality buffer 500 ms.
-- Coverage требует три целых поля, UTC alignment и согласованную арифметику start/end/count. Отсутствующее или противоречивое coverage даёт CRITICAL.
+- Coverage требует три целых поля, UTC alignment и согласованную арифметику start/end/count. Отсутствующее или противоречивое coverage даёт CRITICAL. Дополнительно проверяются равенство aggregate duplicates сумме identical/conflicting и согласованность analysis time с provider time.
 
-Проверки candidate branch: B1 suite 46/46 PASS в isolated JavaScript execution; оба inline script blocks syntax-parse PASS; 4/4 direct integration probes подтвердили WAIT/INVALID при malformed counter, negative counter, unclosed candle и missing coverage. Реальный браузер, live Bybit и полный StageASelfTest 44/44 пока не выполнены. PR #6 остаётся draft, B1 остаётся IN PROGRESS.
+Проверки candidate branch: B1 suite 49/49 PASS в isolated JavaScript execution; оба inline script blocks syntax-parse PASS; 4/4 direct integration probes подтвердили WAIT/INVALID при malformed counter, negative counter, unclosed candle и missing coverage. Реальный браузер, live Bybit и полный StageASelfTest 44/44 пока не выполнены. PR #6 остаётся draft, B1 остаётся IN PROGRESS.
