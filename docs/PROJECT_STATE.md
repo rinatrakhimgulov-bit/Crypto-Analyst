@@ -349,7 +349,7 @@ PR #6 / branch `impl/b1-quality-contract-2026-11-26` обновлены посл
 
 ## B1 latest verification — 2026-11-26
 
-Latest candidate HTML blob: `c5165734f7cd4c2c2a3cdf702a1426b6fe9a2b1a`.
+Latest candidate HTML blob: `76ad147ba105d97fb642b0e5c5e002cb79e1d685`.
 - Strict adapter counters: all eight required values must be non-negative safe integers; malformed/missing values block.
 - Aggregate `duplicates` must equal `identicalDuplicates + conflictingDuplicates`.
 - `analysisAsOfMs` must agree with provider time within the allowed skew; candle finality uses the earlier cutoff and 500 ms buffer.
