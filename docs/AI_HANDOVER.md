@@ -1223,3 +1223,13 @@ Do not mark B1 DONE. Do not merge PR #6 until the remaining review and runtime c
 - B1 suite is now 50/50 PASS in isolated JavaScript execution. Both inline script blocks syntax-parse. Four direct BasicAnalyticsEngine probes all return WAIT / INVALID / directionalAllowed=false for malformed counters, negative counters, unclosed candles and missing coverage.
 - No real browser/iPhone Safari runtime, live Bybit request or full StageASelfTest 44/44 browser harness has been run.
 - Grok re-audit after this patch is pending. PR #6 is still draft, main unchanged, B1 not DONE. B1-E MTF common cutoff and B1-F second provider remain outstanding.
+
+
+### Latest candidate verification refresh (2026-11-26)
+
+- HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`.
+- `B1QualitySelfTest.runAll()`: 50/50 PASS in isolated JavaScript execution.
+- Both inline script blocks syntax-parse successfully.
+- Synthetic `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: 60 closed candles + 1 forming candle, status VALID.
+- Four direct quality-gate probes block malformed counters, negative counters, unclosed candles and missing coverage with WAIT / INVALID.
+- These are isolated JavaScript/fixture checks, not a live Bybit request or real browser runtime. Full StageASelfTest 44-case browser harness and independent Grok re-audit remain pending. PR #6 remains draft and unmerged; main is unchanged.
