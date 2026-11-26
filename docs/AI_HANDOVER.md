@@ -1159,3 +1159,10 @@ B1 draft spec — 26.11.2026:
 * `Forex-wws2277` и `ICT_V4` — license не указана и timing gaps; не интегрировать as-is.
 * `TradingAPP` SMC port указывает CC BY-NC-SA-4.0; не копировать в проект.
 * Это предварительный сбор материала для будущего B2; текущий этап остаётся B1.
+
+
+B1 adapter mapping update — 26.11.2026:
+
+* `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps the exact Stage A `BybitAdapter` (lines 546–857) to the proposed canonical contract and lists 11 gaps.
+* Keep current JS adapter as first provider; do not rewrite or migrate to Python before proving need. Proposed B1 first pass: canonical mapping → pure validator → quality gate → stale-cache suppression → MTF cutoff → second provider.
+* This is a specification only; canonical HTML remains unchanged.
