@@ -2546,6 +2546,67 @@
           expect(d.quality.duplicates===1 && d.quality.conflictingDuplicates===1,'conflict classification');
           expect(p.qualityReport.status==='INVALID' && !p.allowed,'conflicting duplicate must block');
         });
+
+        // Exact 500 ms finality boundary: the two lower values are accepted; the next millisecond is rejected.
+        const finalityCase = (delta) => {
+          const candles = base();
+          candles[candles.length - 1].closeTimeMs = now + 5000 - delta;
+          return make(candles);
+        };
+        test('55 finality boundary T-501 ms remains VALID and directional-eligible', () => {
+          const q=DataQualityEngine.validate(finalityCase(501),now);
+          expect(q.status==='VALID' && q.directionalAllowed===true,'T-501 must be VALID / true');
+        });
+        test('56 finality boundary T-500 ms remains VALID and directional-eligible', () => {
+          const q=DataQualityEngine.validate(finalityCase(500),now);
+          expect(q.status==='VALID' && q.directionalAllowed===true,'T-500 must be VALID / true');
+        });
+        test('57 finality boundary T-499 ms is INVALID and blocks direction', () => {
+          const q=DataQualityEngine.validate(finalityCase(499),now);
+          expect(q.status==='INVALID' && q.directionalAllowed===false,'T-499 must be INVALID / false');
+        });
+        test('58 finality boundary T is INVALID and blocks direction', () => {
+          const q=DataQualityEngine.validate(finalityCase(0),now);
+          expect(q.status==='INVALID' && q.directionalAllowed===false,'T must be INVALID / false');
+        });
+        // Characterization only: formingCandle is currently outside the Quality Gate.
+        const forming = (ts, high=102, low=99) => ({ts,open:100,high,low,close:101,volume:10});
+        test('59 forming candle at next interval is currently ignored by Quality Gate', () => {
+          const q=DataQualityEngine.validate(make(base(),{formingCandle:forming(now)}),now);
+          expect(q.status==='VALID' && q.directionalAllowed===true,'normal forming candle characterization');
+        });
+        test('60 forming candle with one-interval gap is currently ignored by Quality Gate', () => {
+          const q=DataQualityEngine.validate(make(base(),{formingCandle:forming(now+2*step)}),now);
+          expect(q.status==='VALID' && q.directionalAllowed===true,'forming gap characterization');
+        });
+        test('61 forming candle timestamp equal to last closed open is currently ignored', () => {
+          const q=DataQualityEngine.validate(make(base(),{formingCandle:forming(base()[59].openTimeMs)}),now);
+          expect(q.status==='VALID' && q.directionalAllowed===true,'forming duplicate timestamp characterization');
+        });
+        test('62 malformed forming OHLC is currently ignored by Quality Gate', () => {
+          const q=DataQualityEngine.validate(make(base(),{formingCandle:forming(now,98,102)}),now);
+          expect(q.status==='VALID' && q.directionalAllowed===true,'malformed forming OHLC characterization');
+        });
+        test('63 adapter fixture completes normalize -> preflight -> analyze', () => {
+          const d=adapterFixture();
+          const analysis=BasicAnalyticsEngine.analyze(d);
+          expect(d.closedCandles.length===60 && !!d.formingCandle,'normalized 60 closed + 1 forming candles');
+          expect(analysis.qualityReport.status==='VALID' && analysis.qualityReport.directionalAllowed===true,'full adapter-to-analysis path must pass Quality Gate');
+          expect(['LONG','SHORT','WAIT'].includes(analysis.decision),'analysis must return a recognized decision');
+        });
+        for (const priorDecision of ['LONG','SHORT']) {
+          test('64 stale '+priorDecision+' is blocked and fresh snapshot can be re-analyzed', () => {
+            const freshSource=adapterFixture();
+            const initial=BasicAnalyticsEngine.analyze(freshSource);
+            const cached=Object.assign({},initial,{decision:priorDecision});
+            const stale=DataQualityEngine.staleDecision(cached,'fixture refresh failure',now+6000);
+            expect(stale.decision==='WAIT' && stale.qualityReport.status==='STALE' && stale.qualityReport.directionalAllowed===false,'stale '+priorDecision+' must become WAIT / STALE / blocked');
+            const recoveredSource=adapterFixture();
+            const recovered=BasicAnalyticsEngine.analyze(recoveredSource);
+            expect(recovered!==stale && recovered.qualityReport.status==='VALID' && recovered.qualityReport.directionalAllowed===true,'fresh data must produce a new valid analysis');
+            expect(!recovered.reasons.some(x=>String(x).includes('fixture refresh failure')),'stale reason must not leak into fresh analysis');
+          });
+        }
         const passed = tests.filter(t=>t.passed).length;
         return { total: tests.length, passed, failed: tests.length-passed, tests };
       }
