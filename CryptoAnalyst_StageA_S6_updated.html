@@ -2374,14 +2374,20 @@
     const MTFDataEngine = (() => {
       const REQUIRED_TIMEFRAMES = Object.freeze(['D', '240', '60']);
       const FINALITY_BUFFER_MS = 500;
+      function deepFreeze(value) {
+        if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+        Object.freeze(value);
+        for (const key of Object.keys(value)) deepFreeze(value[key]);
+        return value;
+      }
       function fail(status, code, message, details = {}) {
         const reason = {code,severity:'CRITICAL',message,...details};
         const timeframes = Object.fromEntries(REQUIRED_TIMEFRAMES.map(tf => [tf, {
           timeframe:tf, status, snapshot:null,
           qualityReport:{contractVersion:'1.0.0',status,directionalAllowed:false,reasons:[Object.assign({},reason,{timeframe:tf})]}
         }]));
-        return { contractVersion:'1.0.0', status, directionalAllowed:false, analysisAsOfMs:null,
-          providerTimeSpreadMs:null, timeframes, reasons:[reason] };
+        return deepFreeze({ contractVersion:'1.0.0', status, directionalAllowed:false, analysisAsOfMs:null,
+          providerTimeSpreadMs:null, timeframes, reasons:[reason] });
       }
       function assemble(datasetsByTimeframe, nowMs = Date.now(), options = {}) {
         const maxSpread = options.maxProviderTimeSpreadMs;
@@ -2486,11 +2492,11 @@
         if (aggregateReasons.some(r=>r.severity==='CRITICAL' &&
           (!r.timeframe || ['MTF_CANDLES_AFTER_COMMON_CUTOFF','MTF_MULTIPLE_FORMING_CANDLES'].includes(r.code))))
           status='INVALID';
-        return {contractVersion:'1.0.0',symbol:datasets[0].symbol,provider:datasets[0].source,venue:datasets[0].marketType,
+        return deepFreeze({contractVersion:'1.0.0',symbol:datasets[0].symbol,provider:datasets[0].source,venue:datasets[0].marketType,
           requiredTimeframes:REQUIRED_TIMEFRAMES.slice(),analysisAsOfMs:minProviderTime,providerTimeSpreadMs,
           maxProviderTimeSpreadMs:maxSpread,timeframes:perTimeframe,status,
           directionalAllowed:status==='VALID' && REQUIRED_TIMEFRAMES.every(tf=>perTimeframe[tf] &&
-            perTimeframe[tf].qualityReport.directionalAllowed),reasons:aggregateReasons};
+            perTimeframe[tf].qualityReport.directionalAllowed),reasons:aggregateReasons});
       }
       async function fetchAndAssemble(adapter,symbol,externalSignal,options={}) {
         const maxSpread=options.maxProviderTimeSpreadMs;
@@ -2704,6 +2710,11 @@
           expect(m.directionalAllowed,'normal post-boundary snapshot was blocked');
           expect(m.timeframes['60'].pendingFinalityCount===1,'just-closed candle not tracked as pending finality');
           expect(m.timeframes['60'].snapshot.formingCandle.openTimeMs===boundary,'active forming candle not retained');
+        });
+        test('33 assembled MTF snapshots are deeply immutable',()=>{
+          const m=run();
+          expect(Object.isFrozen(m)&&Object.isFrozen(m.timeframes)&&Object.isFrozen(m.timeframes.D.snapshot),'MTF snapshot objects are mutable');
+          expect(Object.isFrozen(m.timeframes.D.snapshot.candles)&&Object.isFrozen(m.timeframes.D.snapshot.candles[0]),'MTF candle series is mutable');
         });
         return {total:tests.length,passed:tests.filter(t=>t.passed).length,failed:tests.filter(t=>!t.passed).length,tests};
       }
