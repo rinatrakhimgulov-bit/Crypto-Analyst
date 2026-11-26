@@ -303,7 +303,7 @@ PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6
 - отображение B1 Quality Gate в панели качества.
 
 Тестирование:
-- `window.B1QualitySelfTest.runAll()`: 32/32 PASS в изолированном JavaScript execution;
+- `window.B1QualitySelfTest.runAll()`: 35/35 PASS в изолированном JavaScript execution;
 - оба script blocks прошли syntax parse;
 - отдельная изолированная проверка интеграции показала WAIT при DEGRADED quality.
 
@@ -328,7 +328,7 @@ PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6
 - отображение B1 Quality Gate в панели качества.
 
 Тестирование:
-- `window.B1QualitySelfTest.runAll()`: 32/32 PASS в изолированном JavaScript execution;
+- `window.B1QualitySelfTest.runAll()`: 35/35 PASS в изолированном JavaScript execution;
 - оба script blocks прошли syntax parse;
 - отдельная изолированная проверка интеграции показала WAIT при DEGRADED quality.
 
