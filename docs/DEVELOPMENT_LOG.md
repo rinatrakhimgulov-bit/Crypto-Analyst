@@ -403,3 +403,8 @@ Additional audit hardening in PR #6:
 - Regression suite now contains 49 tests, all 49 PASS in isolated JS execution. Both inline scripts parse; 4/4 direct quality-gate probes block malformed datasets with WAIT/INVALID.
 
 Real browser, live Bybit and full StageASelfTest 44/44 remain untested. Independent Grok re-audit pending. PR #6 remains draft and unmerged.
+
+
+### Final B1 candidate verification refresh — 2026-11-26
+
+Latest HTML blob: `76ad147ba105d97fb642b0e5c5e002cb79e1d685`. B1 quality suite: 49/49 PASS; both inline scripts syntax-parse. Synthetic adapter integration: `BybitAdapter.normalize()` → `DataQualityEngine.preflight()` produced 60 closed candles + 1 forming candle with VALID quality. Four direct BasicAnalyticsEngine gate probes returned WAIT / INVALID / directionalAllowed=false for malformed counters, negative counters, unclosed candle and missing coverage. This is isolated fixture testing, not live Bybit or browser runtime. StageASelfTest 44/44 and independent Grok re-audit remain pending.
