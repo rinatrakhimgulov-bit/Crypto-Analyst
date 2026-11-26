@@ -403,3 +403,11 @@ Source inspection confirms that the current runtime fetches one selected timefra
 Created `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md`. It defines concurrent collection, trusted common cutoff = minimum provider time, preservation of per-response provider provenance, candle reclassification with the existing 500 ms finality buffer, coverage recomputation, per-TF plus aggregate quality, stale-cache isolation, request-generation handling and 23 deterministic acceptance tests. The provider-time spread threshold must be based on measured live API behavior rather than guessed.
 
 **Status: design/specification only.** No B1-E production code has been added. Current selected-timeframe chart flow remains unchanged. B1-E is not implemented; B1 remains IN PROGRESS.
+
+## B1-E implementation candidate status — 2026-11-26
+
+An isolated `MTFDataEngine` candidate has now been added to the PR #6 HTML branch. It concurrently requests 1D/4H/1H from the existing adapter, preserves per-response provider time and receive/request timestamps, chooses the minimum trusted provider time as the common cutoff, reclassifies closed/forming candles at the existing 500 ms finality boundary, recalculates coverage, validates each TF, and emits an aggregate quality result. A request coordinator prevents superseded generations from publishing late results; fetch failure aborts sibling requests.
+
+The provider-time spread tolerance is an explicit required option and has no production default. This is intentional: it must be calibrated from live API measurements, not guessed. The module is not connected to the existing UI, chart, or directional decision path. The current single-timeframe flow remains unchanged.
+
+Verification on the latest candidate HTML blob: B1-E suite **23/23 PASS** and existing B1 suite **65/65 PASS** in an isolated V8 harness using extracted production code; both inline scripts syntax-parse. The harness used test doubles for AbortController/DOMException/timer APIs. No browser, live Bybit, Chrome/iPhone Safari or full StageASelfTest browser verification has been performed. B1-E remains IN PROGRESS and B1 is not complete.
