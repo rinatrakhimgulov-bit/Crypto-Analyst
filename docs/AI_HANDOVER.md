@@ -1149,3 +1149,13 @@ B1 draft spec — 26.11.2026:
 * `docs/specs/B1_DATA_CONTRACT_DRAFT.md` содержит проект provider-neutral Candle/Snapshot/QualityReport, quality states, MTF cutoff, closed/forming policy, stale-cache gate и acceptance test matrix.
 * Это draft, не принятая реализация. Не менять HTML до review контракта и тестовых fixtures.
 * Выбор JS/TS vs Python backend и CCXT vs отдельный adapter остаётся открытым.
+
+
+## Дополнение 26.11.2026 — Market Structure candidate research
+
+* Дополнительный source audit: `docs/research/B2_MARKET_STRUCTURE_CANDIDATES_2026-11-26.md`.
+* `market-mechanics-bot` — сильный reference по causal swing confirmation (`confirmed_idx`), bar-by-bar BOS/CHoCH и body-close tests; license не указана, код напрямую не копировать. README честно сообщает, что проверенная FX-стратегия не показала устойчивого edge.
+* `pyvsmc` — MIT, но найден look-ahead timing risk; ADAPT/HOLD.
+* `Forex-wws2277` и `ICT_V4` — license не указана и timing gaps; не интегрировать as-is.
+* `TradingAPP` SMC port указывает CC BY-NC-SA-4.0; не копировать в проект.
+* Это предварительный сбор материала для будущего B2; текущий этап остаётся B1.
