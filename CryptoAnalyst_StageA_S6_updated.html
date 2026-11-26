@@ -2375,9 +2375,13 @@
       const REQUIRED_TIMEFRAMES = Object.freeze(['D', '240', '60']);
       const FINALITY_BUFFER_MS = 500;
       function fail(status, code, message, details = {}) {
+        const reason = {code,severity:'CRITICAL',message,...details};
+        const timeframes = Object.fromEntries(REQUIRED_TIMEFRAMES.map(tf => [tf, {
+          timeframe:tf, status, snapshot:null,
+          qualityReport:{contractVersion:'1.0.0',status,directionalAllowed:false,reasons:[Object.assign({},reason,{timeframe:tf})]}
+        }]));
         return { contractVersion:'1.0.0', status, directionalAllowed:false, analysisAsOfMs:null,
-          providerTimeSpreadMs:null, timeframes:{},
-          reasons:[{code,severity:'CRITICAL',message,...details}] };
+          providerTimeSpreadMs:null, timeframes, reasons:[reason] };
       }
       function assemble(datasetsByTimeframe, nowMs = Date.now(), options = {}) {
         const maxSpread = options.maxProviderTimeSpreadMs;
@@ -2408,12 +2412,20 @@
         for (const tf of REQUIRED_TIMEFRAMES) {
           const dataset = datasetsByTimeframe[tf], stepMs = DataQualityEngine.intervalToMs(tf);
           if (!stepMs || dataset.interval!==tf) {
-            aggregateReasons.push({code:'MTF_TIMEFRAME_ID_MISMATCH',severity:'CRITICAL',timeframe:tf,message:'Идентификатор таймфрейма в ответе не совпадает с запрошенным.'});
-            statuses.push('INVALID'); continue;
+            const reason={code:'MTF_TIMEFRAME_ID_MISMATCH',severity:'CRITICAL',timeframe:tf,message:'Идентификатор таймфрейма в ответе не совпадает с запрошенным.'};
+            aggregateReasons.push(reason); statuses.push('INVALID');
+            perTimeframe[tf]={timeframe:tf,providerTimeMs:Number.isFinite(dataset.providerTimeMs)?dataset.providerTimeMs:null,
+              excludedAfterCutoffCount:0,receivedAtMs:dataset.fetchedAtLocalMs??null,snapshot:null,
+              qualityReport:{contractVersion:'1.0.0',status:'INVALID',directionalAllowed:false,reasons:[reason]}};
+            continue;
           }
           if (!Array.isArray(dataset.allCandles) || !dataset.allCandles.length) {
-            aggregateReasons.push({code:'MTF_ALL_CANDLES_MISSING',severity:'CRITICAL',timeframe:tf,message:'Адаптер не сохранил полный нормализованный ряд для повторной классификации.'});
-            statuses.push('INVALID'); continue;
+            const reason={code:'MTF_ALL_CANDLES_MISSING',severity:'CRITICAL',timeframe:tf,message:'Адаптер не сохранил полный нормализованный ряд для повторной классификации.'};
+            aggregateReasons.push(reason); statuses.push('INVALID');
+            perTimeframe[tf]={timeframe:tf,providerTimeMs:Number.isFinite(dataset.providerTimeMs)?dataset.providerTimeMs:null,
+              excludedAfterCutoffCount:0,receivedAtMs:dataset.fetchedAtLocalMs??null,snapshot:null,
+              qualityReport:{contractVersion:'1.0.0',status:'INVALID',directionalAllowed:false,reasons:[reason]}};
+            continue;
           }
           const sourceCandles = dataset.allCandles;
           // A response may legitimately include a candle opened after the common cutoff
@@ -2428,16 +2440,24 @@
             Number(c.closeTs)+FINALITY_BUFFER_MS>minProviderTime);
           if (formingCandidates.length>1)
             aggregateReasons.push({code:'MTF_MULTIPLE_FORMING_CANDLES',severity:'CRITICAL',timeframe:tf,message:'На общем срезе обнаружено больше одной незакрытой свечи.'});
-          const forming = formingCandidates.length ? formingCandidates[formingCandidates.length-1] : null;
+          // Never publish an arbitrary forming candle when the as-of partition is ambiguous.
+          const forming = formingCandidates.length===1 ? formingCandidates[0] : null;
           const originalCoverage = dataset.coverage || {};
-          const expectedStart = originalCoverage.expectedClosedStartMs;
+          const requestedClosedCount = Number.isSafeInteger(dataset.mtfExpectedClosedCount) && dataset.mtfExpectedClosedCount>0
+            ? dataset.mtfExpectedClosedCount
+            : (Number.isSafeInteger(originalCoverage.expectedClosedCount) && originalCoverage.expectedClosedCount>0
+              ? originalCoverage.expectedClosedCount : 0);
           const lastExpectedOpen = Math.floor((minProviderTime-FINALITY_BUFFER_MS)/stepMs)*stepMs-stepMs;
-          const expectedCount = Number.isSafeInteger(expectedStart) && lastExpectedOpen>=expectedStart
-            ? Math.floor((lastExpectedOpen-expectedStart)/stepMs)+1 : 0;
+          // The target window is anchored to the common cutoff, not to the later response's raw API window.
+          // fetchAndAssemble over-fetches enough raw rows to cover provider-time spread plus the cutoff's forming row.
+          const expectedStart = requestedClosedCount>0 ? lastExpectedOpen-(requestedClosedCount-1)*stepMs : null;
+          const expectedCount = requestedClosedCount;
           const rebased = Object.assign({},dataset,{
             serverTimeMs:minProviderTime,closedCandles:closed,formingCandle:forming,
-            coverage:{requestedLimit:originalCoverage.requestedLimit,expectedClosedStartMs:expectedStart,
-              expectedClosedEndMs:expectedCount>0?lastExpectedOpen:expectedStart,expectedClosedCount:expectedCount}
+            coverage:{requestedLimit:dataset.mtfRequestedRawLimit || originalCoverage.requestedLimit,
+              expectedClosedStartMs:expectedStart,
+              expectedClosedEndMs:expectedCount>0?lastExpectedOpen:(lastExpectedOpen-stepMs),
+              expectedClosedCount:expectedCount}
           });
           const canonical = DataQualityEngine.createSnapshot(rebased);
           const report = DataQualityEngine.validate(canonical,nowMs,{providerTimeToleranceMs:maxSpread});
@@ -2463,6 +2483,9 @@
             perTimeframe[tf].qualityReport.directionalAllowed),reasons:aggregateReasons};
       }
       async function fetchAndAssemble(adapter,symbol,externalSignal,options={}) {
+        const maxSpread=options.maxProviderTimeSpreadMs;
+        if(!Number.isFinite(maxSpread)||maxSpread<0) throw new RangeError('Для MTF-запроса требуется измеренная maxProviderTimeSpreadMs.');
+        const desiredClosedCount=Number.isInteger(options.limit)&&options.limit>0?options.limit:160;
         const controller=new AbortController();
         const onExternalAbort=()=>controller.abort(externalSignal.reason||new Error('MTF request aborted'));
         if(externalSignal){if(externalSignal.aborted)throw new DOMException('Aborted','AbortError');
@@ -2470,8 +2493,14 @@
         try {
           const tasks=REQUIRED_TIMEFRAMES.map(async tf=>{
             const requestStartedAtMs=Date.now();
-            const dataset=await adapter.fetchMarketSnapshot(symbol,tf,controller.signal,
-              Number.isInteger(options.limit)&&options.limit>0?options.limit:160);
+            const stepMs=DataQualityEngine.intervalToMs(tf);
+            const spreadRows=Math.ceil(maxSpread/stepMs);
+            // Bybit limit counts raw rows. Reserve rows for provider-time skew and one forming candle.
+            const rawLimit=desiredClosedCount+spreadRows+1;
+            if(rawLimit>1000) throw new RangeError('MTF raw kline limit exceeds Bybit V5 maximum of 1000.');
+            const dataset=await adapter.fetchMarketSnapshot(symbol,tf,controller.signal,rawLimit);
+            dataset.mtfExpectedClosedCount=desiredClosedCount;
+            dataset.mtfRequestedRawLimit=rawLimit;
             dataset.requestStartedAtMs=requestStartedAtMs;dataset.requestCompletedAtMs=Date.now();
             return [tf,dataset];
           });
@@ -2573,6 +2602,71 @@
         });
         await test('22 one fetch failure aborts sibling requests',async()=>{const seen=[],fake={fetchMarketSnapshot:(symbol,tf,signal)=>new Promise((resolve,reject)=>{seen.push({tf,signal});if(tf==='240')setTimeout(()=>reject(new Error('fixture failure')),0);else signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')),{once:true});})};let failed=false;try{await MTFDataEngine.fetchAndAssemble(fake,'BTCUSDT',null,{maxProviderTimeSpreadMs:3000});}catch(_){failed=true;}expect(failed&&seen.length===3&&seen.every(x=>x.signal.aborted),'sibling requests not aborted');});
         test('23 repeated fixture assembly is deterministic',()=>{const a=run(),b=run(),stable=m=>JSON.stringify({cutoff:m.analysisAsOfMs,status:m.status,candles:Object.fromEntries(['D','240','60'].map(tf=>[tf,m.timeframes[tf].snapshot.candles]))});expect(stable(a)===stable(b),'non-deterministic fixture result');});
+        const makeRawV5Dataset=(tf,providerTime,desiredCount,spreadMs,shortBy=0)=>{
+          const step=steps[tf],latestOpen=Math.floor(providerTime/step)*step;
+          const rawLimit=desiredCount+Math.ceil(spreadMs/step)+1;
+          const rows=Array.from({length:rawLimit-shortBy},(_,i)=>{
+            const ts=latestOpen-i*step,p=1000+i;
+            return [String(ts),String(p),String(p+2),String(p-1),String(p+1),String(10),String(100)];
+          });
+          const dataset=BybitAdapter.normalize(rows,{symbol:'BTCUSDT',interval:tf,hostUsed:'api.bybit.com',
+            serverTimeMs:providerTime,providerTimeMs:providerTime,timeSource:'PROVIDER',clockSkewMs:0,
+            requestedLimit:rawLimit,tickerStatus:{available:true,price:1001,timeMs:providerTime,hostUsed:'api.bybit.com'}});
+          dataset.fetchedAtLocalMs=nowMs;
+          dataset.mtfExpectedClosedCount=desiredCount;
+          dataset.mtfRequestedRawLimit=rawLimit;
+          return dataset;
+        };
+        test('24 real V5-shaped rows survive normalize and 1H boundary common-cutoff assembly',()=>{
+          const boundary=baseNow+steps['60'],cutoff=boundary-200,spread=400,n=60;
+          const set={D:makeRawV5Dataset('D',cutoff,n,spread),
+            '240':makeRawV5Dataset('240',boundary+100,n,spread),
+            '60':makeRawV5Dataset('60',boundary+200,n,spread)};
+          const m=run(set,{maxProviderTimeSpreadMs:spread});
+          expect(m.directionalAllowed,'V5 1H boundary fixture blocked');
+          expect(m.analysisAsOfMs===cutoff,'wrong common cutoff');
+          expect(m.timeframes['60'].excludedAfterCutoffCount===1,'new 1H candle not excluded');
+          expect(m.timeframes['60'].snapshot.candles.length===n,'1H closed history shortened');
+          expect(m.timeframes['60'].snapshot.coverage.expectedClosedCount===n,'1H expected coverage mismatch');
+        });
+        test('25 real V5-shaped rows survive normalize and 4H boundary common-cutoff assembly',()=>{
+          const boundary=baseNow+steps['240'],cutoff=boundary-200,spread=400,n=60;
+          const set={D:makeRawV5Dataset('D',cutoff,n,spread),
+            '240':makeRawV5Dataset('240',boundary+100,n,spread),
+            '60':makeRawV5Dataset('60',boundary+200,n,spread)};
+          const m=run(set,{maxProviderTimeSpreadMs:spread});
+          expect(m.directionalAllowed,'V5 4H boundary fixture blocked');
+          expect(m.timeframes['240'].excludedAfterCutoffCount===1,'new 4H candle not excluded');
+          expect(m.timeframes['240'].snapshot.candles.length===n,'4H closed history shortened');
+        });
+        test('26 real V5-shaped rows survive normalize and 1D boundary common-cutoff assembly',()=>{
+          const boundary=baseNow+steps.D,cutoff=boundary-200,spread=400,n=60;
+          const set={D:makeRawV5Dataset('D',boundary+200,n,spread),
+            '240':makeRawV5Dataset('240',cutoff,n,spread),
+            '60':makeRawV5Dataset('60',boundary+100,n,spread)};
+          const m=run(set,{maxProviderTimeSpreadMs:spread});
+          expect(m.directionalAllowed,'V5 1D boundary fixture blocked');
+          expect(m.timeframes.D.excludedAfterCutoffCount===1,'new 1D candle not excluded');
+          expect(m.timeframes.D.snapshot.candles.length===n,'1D closed history shortened');
+        });
+        test('27 short raw V5 response is detected as incomplete common-cutoff coverage',()=>{
+          const boundary=baseNow+steps['60'],cutoff=boundary-200,spread=400,n=60;
+          const set={D:makeRawV5Dataset('D',cutoff,n,spread),
+            '240':makeRawV5Dataset('240',boundary+100,n,spread),
+            '60':makeRawV5Dataset('60',boundary+200,n,spread,1)};
+          const m=run(set,{maxProviderTimeSpreadMs:spread});
+          expect(!m.directionalAllowed,'short V5 response incorrectly qualified');
+          expect(m.reasons.some(r=>r.timeframe==='60'&&['COVERAGE_START_MISSING','COVERAGE_COUNT_MISMATCH'].includes(r.code)),
+            'short V5 response not diagnosed');
+        });
+        test('28 multiple forming candidates do not publish an arbitrary forming candle',()=>{
+          const a=makeSet(),extra={ts:baseNow-steps['60']+1000,closeTs:baseNow+1000,open:10,high:12,low:9,close:11,volume:1};
+          a['60'].allCandles.push(extra);
+          const m=run(a);
+          expect(!m.directionalAllowed,'ambiguous forming set allowed direction');
+          expect(m.timeframes['60'].snapshot.formingCandle===null,'ambiguous forming candle was published');
+          expect(m.reasons.some(r=>r.code==='MTF_MULTIPLE_FORMING_CANDLES'),'ambiguity reason missing');
+        });
         return {total:tests.length,passed:tests.filter(t=>t.passed).length,failed:tests.filter(t=>!t.passed).length,tests};
       }
     };
