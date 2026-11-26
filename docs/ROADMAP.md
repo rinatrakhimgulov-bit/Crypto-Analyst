@@ -335,3 +335,10 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. Added a dedicated 
 - LOW: F1-тесты не проверяют конкретный reason code; forming candle остаётся вне Quality Gate (поведение явно зафиксировано characterization-тестами); stale recovery проверен на уровне engine, не через UI.
 - Эти замечания не блокируют unit/static approval. Браузерный `StageASelfTest` 44/44, реальный Chrome/iPhone Safari, live Bybit и UI stale-badge остаются невыполненными.
 - PR #6 остаётся draft и не слит. B1 остаётся IN PROGRESS; этот аудит не подтверждает полный runtime и не закрывает B1-E common MTF cutoff или B1-F второй provider.
+
+### B1-E source audit and implementation specification — 2026-11-26
+
+- Audited the current candidate runtime: `loadAndAnalyze()` fetches and analyzes one selected timeframe; no coordinated 1D/4H/1H assembler exists.
+- Found an important integration constraint: each adapter response is currently split into closed/forming using its own `serverTimeMs`; canonical `analysisAsOfMs` is copied from that value, and validator currently requires close agreement with provider time. A common cutoff therefore needs explicit contract/validator semantics, not just overwriting timestamps.
+- Added `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md` with common-cutoff selection, candle reclassification, coverage recalculation, aggregate quality, stale/concurrency policy and 23 deterministic acceptance tests.
+- Status: specification only. No application code changed for B1-E. Provider-time spread policy remains pending live latency measurement. B1-E is NOT IMPLEMENTED.
