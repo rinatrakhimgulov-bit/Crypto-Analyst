@@ -2427,6 +2427,14 @@
               qualityReport:{contractVersion:'1.0.0',status:'INVALID',directionalAllowed:false,reasons:[reason]}};
             continue;
           }
+          if (!Number.isSafeInteger(dataset.mtfExpectedClosedCount) || dataset.mtfExpectedClosedCount<1) {
+            const reason={code:'MTF_CLOSED_TARGET_MISSING',severity:'CRITICAL',timeframe:tf,message:'Не задано целевое число закрытых свечей для общего временного среза.'};
+            aggregateReasons.push(reason); statuses.push('INVALID');
+            perTimeframe[tf]={timeframe:tf,providerTimeMs:dataset.providerTimeMs,
+              excludedAfterCutoffCount:0,receivedAtMs:dataset.fetchedAtLocalMs??null,snapshot:null,
+              qualityReport:{contractVersion:'1.0.0',status:'INVALID',directionalAllowed:false,reasons:[reason]}};
+            continue;
+          }
           const sourceCandles = dataset.allCandles;
           // A response may legitimately include a candle opened after the common cutoff
           // when its provider clock is slightly ahead. Exclude it from this historical
@@ -2443,10 +2451,7 @@
           // Never publish an arbitrary forming candle when the as-of partition is ambiguous.
           const forming = formingCandidates.length===1 ? formingCandidates[0] : null;
           const originalCoverage = dataset.coverage || {};
-          const requestedClosedCount = Number.isSafeInteger(dataset.mtfExpectedClosedCount) && dataset.mtfExpectedClosedCount>0
-            ? dataset.mtfExpectedClosedCount
-            : (Number.isSafeInteger(originalCoverage.expectedClosedCount) && originalCoverage.expectedClosedCount>0
-              ? originalCoverage.expectedClosedCount : 0);
+          const requestedClosedCount = dataset.mtfExpectedClosedCount;
           const lastExpectedOpen = Math.floor((minProviderTime-FINALITY_BUFFER_MS)/stepMs)*stepMs-stepMs;
           // The target window is anchored to the common cutoff, not to the later response's raw API window.
           // fetchAndAssemble over-fetches enough raw rows to cover provider-time spread plus the cutoff's forming row.
@@ -2559,6 +2564,7 @@
             providerTimeMs:providerTime,serverTimeMs:providerTime,timeSource:'PROVIDER',fetchedAtLocalMs:baseNow+4000,
             allCandles,closedCandles:allCandles.slice(0,expectedCount),
             formingCandle:expectedCount<allCandles.length?allCandles[expectedCount]:null,
+            mtfExpectedClosedCount:60,
             coverage:{requestedLimit:60,expectedClosedStartMs:expectedStart,expectedClosedEndMs:expectedEnd,expectedClosedCount:expectedCount},
             quality:{invalidRows:0,invalidTimestamps:0,gaps:0,duplicates:0,identicalDuplicates:0,
               conflictingDuplicates:0,anomalousIntervals:0,misalignedTimestamps:0}},overrides);
@@ -2670,6 +2676,21 @@
           expect(!m.directionalAllowed,'ambiguous forming set allowed direction');
           expect(m.timeframes['60'].snapshot.formingCandle===null,'ambiguous forming candle was published');
           expect(m.reasons.some(r=>r.code==='MTF_MULTIPLE_FORMING_CANDLES'),'ambiguity reason missing');
+        });
+        test('29 missing closed-candle target blocks direction with per-TF diagnostics',()=>{
+          const a=makeSet();delete a.D.mtfExpectedClosedCount;
+          const m=run(a);
+          expect(!m.directionalAllowed&&m.reasons.some(r=>r.code==='MTF_CLOSED_TARGET_MISSING'),'missing target accepted');
+          expect(m.timeframes.D.qualityReport.status==='INVALID'&&m.timeframes.D.snapshot===null,'missing target diagnostic unstable');
+        });
+        test('30 missing timeframe still returns stable diagnostics for all required TFs',()=>{
+          const a=makeSet();delete a.D;const m=run(a);
+          expect(['D','240','60'].every(tf=>m.timeframes[tf]&&m.timeframes[tf].qualityReport),'per-TF diagnostic structure incomplete');
+        });
+        test('31 missing normalized candles returns stable per-TF diagnostic',()=>{
+          const a=makeSet();a['240'].allCandles=[];
+          const m=run(a);
+          expect(m.timeframes['240'].qualityReport.status==='INVALID'&&m.timeframes['240'].snapshot===null,'missing candles diagnostic incomplete');
         });
         return {total:tests.length,passed:tests.filter(t=>t.passed).length,failed:tests.filter(t=>!t.passed).length,tests};
       }
