@@ -438,3 +438,11 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. B1 quality suite: 
 - Both inline script blocks syntax-parse successfully.
 - Verification remains isolated and deterministic: no browser DOM/runtime, no live Bybit HTTP request, no Chrome/iPhone Safari run, and no full `StageASelfTest` run. The stale recovery tests validate engine-level recovery, not the rendered UI badge.
 - PR #6 remains draft and unmerged; `main` is unchanged. These checks do not complete B1 or authorize merging yet.
+
+## 17. Независимый аудит B1-A/B — 2026-11-26
+
+Grok проверил полный candidate HTML blob `e92c44d1397a8499a5a5adac7c12294923e3f494` и подтвердил его SHA. Самостоятельно исполнил `B1QualitySelfTest.runAll()`: **65/65 PASS**. Вердикт: **APPROVE**, новых CRITICAL/HIGH дефектов нет.
+
+LOW-наблюдения: F1 boundary tests проверяют status и directionalAllowed, но не конкретный reason code; forming candle остаётся вне Quality Gate, что честно зафиксировано characterization tests; stale recovery не включает реальный UI/renderError путь. Эти пункты не блокируют unit/static approval.
+
+Ограничения остаются: полный browser `StageASelfTest` 44/44, Chrome/iPhone Safari, live Bybit request и UI stale-badge не проверялись. PR #6 остаётся draft и unmerged; main не изменён; B1 не завершён.
