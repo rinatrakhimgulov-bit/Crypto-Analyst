@@ -287,7 +287,7 @@ B1-A/B/C/D реализованы в отдельной ветке `impl/b1-qual
 - Validator повторно проверяет закрытость каждой canonical candle по provider time и finality buffer 500 ms.
 - Coverage требует три целых поля, UTC alignment и согласованную арифметику start/end/count. Отсутствующее или противоречивое coverage даёт CRITICAL. Дополнительно проверяются равенство aggregate duplicates сумме identical/conflicting и согласованность analysis time с provider time.
 
-Проверки candidate branch: B1 suite 50/50 PASS в isolated JavaScript execution; оба inline script blocks syntax-parse PASS; 4/4 direct integration probes подтвердили WAIT/INVALID при malformed counter, negative counter, unclosed candle и missing coverage. Реальный браузер, live Bybit и полный StageASelfTest 44/44 пока не выполнены. PR #6 остаётся draft, B1 остаётся IN PROGRESS.
+Проверки candidate branch: B1 suite 54/54 PASS в isolated JavaScript execution; оба inline script blocks syntax-parse PASS; 4/4 direct integration probes подтвердили WAIT/INVALID при malformed counter, negative counter, unclosed candle и missing coverage. Реальный браузер, live Bybit и полный StageASelfTest 44/44 пока не выполнены. PR #6 остаётся draft, B1 остаётся IN PROGRESS.
 
 
 Дополнительная runtime-проверка в isolated JS: синтетический набор прошёл полный путь `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: 60 закрытых свечей + 1 формирующаяся свеча, Quality VALID. Это проверка адаптерной логики на фикстуре, не live Bybit.
@@ -295,14 +295,22 @@ B1-A/B/C/D реализованы в отдельной ветке `impl/b1-qual
 
 ### B1 finality regression test update — 2026-11-26
 
-Latest HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`. Added a dedicated regression test proving candle finality is checked against the earlier analysis-time cutoff as well as provider time. B1 suite now passes 50/50; both inline scripts parse. Browser/live exchange checks and independent Grok re-audit remain pending.
+Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. Added a dedicated regression test proving candle finality is checked against the earlier analysis-time cutoff as well as provider time. B1 suite now passes 54/54; both inline scripts parse. Browser/live exchange checks and independent Grok re-audit remain pending.
 
 
 ### Latest candidate verification refresh (2026-11-26)
 
-- HTML blob: `4c6b1e02f16edb879913ded39c0312dc068cef82`.
-- `B1QualitySelfTest.runAll()`: 50/50 PASS in isolated JavaScript execution.
+- HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
+- `B1QualitySelfTest.runAll()`: 54/54 PASS in isolated JavaScript execution.
 - Both inline script blocks syntax-parse successfully.
 - Synthetic `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: 60 closed candles + 1 forming candle, status VALID.
 - Four direct quality-gate probes block malformed counters, negative counters, unclosed candles and missing coverage with WAIT / INVALID.
 - These are isolated JavaScript/fixture checks, not a live Bybit request or real browser runtime. Full StageASelfTest 44-case browser harness and independent Grok re-audit remain pending. PR #6 remains draft and unmerged; main is unchanged.
+
+
+### B1 adapter integration regression refresh (2026-11-26)
+
+- Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
+- `B1QualitySelfTest.runAll()`: **54/54 PASS**; both inline script blocks syntax-parse.
+- Four new end-to-end fixture tests now exercise actual `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: valid reversed rows and 60/1 closed/forming split; invalid row rejection; identical duplicate classification; conflicting duplicate classification.
+- Browser/Chrome/iPhone Safari runtime, live Bybit, StageASelfTest 44/44 and independent Grok re-audit remain pending. PR #6 remains draft; main unchanged.
