@@ -2210,6 +2210,11 @@
         }
         if (snapshot && snapshot.timeSource !== 'PROVIDER') {
           add('PROVIDER_TIME_UNTRUSTED', 'MAJOR', 'Время провайдера отсутствует или заменено локальными часами.');
+        } else if (snapshot && !Number.isFinite(snapshot.providerTimeMs)) {
+          add('PROVIDER_TIME_MISSING', 'CRITICAL', 'Время помечено как provider time, но provider timestamp отсутствует.');
+        }
+        if (snapshot && stepMs && !snapshot.coverage) {
+          add('COVERAGE_UNVERIFIED', 'MAJOR', 'Ожидаемое покрытие свечей не передано и не может быть проверено.');
         }
         if (snapshot && snapshot.adapterQuality) {
           const q = snapshot.adapterQuality;
@@ -2275,11 +2280,14 @@
         }
         if (candles.length < cfg.minimumClosedCandles) add('INSUFFICIENT_HISTORY', 'CRITICAL', 'Недостаточно закрытых свечей для базового набора индикаторов.');
 
-        const critical = reasons.some(r => r.severity === 'CRITICAL');
+        const stale = reasons.some(r => r.code === 'SNAPSHOT_STALE');
+        const insufficient = reasons.some(r => r.code === 'INSUFFICIENT_HISTORY');
+        const invalidCritical = reasons.some(r => r.severity === 'CRITICAL' &&
+          r.code !== 'SNAPSHOT_STALE' && r.code !== 'INSUFFICIENT_HISTORY');
         const major = reasons.some(r => r.severity === 'MAJOR');
-        const status = critical
-          ? (reasons.some(r => r.code === 'SNAPSHOT_STALE') ? 'STALE'
-            : reasons.some(r => r.code === 'INSUFFICIENT_HISTORY') ? 'INSUFFICIENT' : 'INVALID')
+        const status = stale ? 'STALE'
+          : invalidCritical ? 'INVALID'
+          : insufficient ? 'INSUFFICIENT'
           : major ? 'DEGRADED' : 'VALID';
         return {
           contractVersion: CONTRACT_VERSION,
@@ -2405,6 +2413,15 @@
           const prior={decision:'LONG',reasons:['old signal'],qualityReport:{status:'VALID',directionalAllowed:true}};
           const stale=DataQualityEngine.staleDecision(prior,'refresh failed',now);
           expect(stale.decision==='WAIT' && stale.qualityReport.status==='STALE' && stale.qualityReport.directionalAllowed===false,'stale suppression');
+        });
+        test('33 provider time flag without timestamp is invalid', () => {
+          const s=make(base(),{providerTimeMs:null,timeSource:'PROVIDER'}); status(s,'INVALID');
+        });
+        test('34 missing coverage metadata is degraded', () => {
+          const s=make(); s.coverage=null; status(s,'DEGRADED');
+        });
+        test('35 invalid rows outrank insufficient history', () => {
+          const s=make(base(20)); s.adapterQuality.invalidRows=1; status(s,'INVALID');
         });
         const passed = tests.filter(t=>t.passed).length;
         return { total: tests.length, passed, failed: tests.length-passed, tests };
