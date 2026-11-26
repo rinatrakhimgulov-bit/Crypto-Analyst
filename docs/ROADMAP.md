@@ -351,3 +351,5 @@ Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. Added a dedicated 
 - Verification in isolated V8 harness using extracted production code: B1-E 23/23 PASS; existing B1 quality suite 65/65 PASS; both inline scripts syntax-parse PASS.
 - Harness supplied test doubles for AbortController/DOMException/timer APIs because the isolated runner has no browser globals. This is not browser verification.
 - No UI or existing selected-timeframe chart flow is connected to MTF yet. No live Bybit request, Chrome/iPhone Safari runtime or full StageASelfTest browser run. B1-E remains IN PROGRESS; PR #6 remains draft.
+
+B1-E audit refinement: a candle whose open time is later than the common cutoff is now excluded from the as-of snapshot and counted in `excludedAfterCutoffCount`; its mere presence no longer invalidates a coherent snapshot. This handles ordinary response-time differences across an interval boundary. B1-E remains 23/23 PASS and B1 remains 65/65 PASS after this correction.
