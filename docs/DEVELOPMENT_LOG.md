@@ -502,3 +502,17 @@ Independent review identified that retaining each response's original `expectedC
 - No browser DOM/UI, Chrome/iPhone Safari, full `StageASelfTest` 44/44, or actual HTTP abort verification.
 - MTFDataEngine remains isolated and is not connected to UI or directional decision logic.
 - PR #6 remains draft and unmerged. `main` unchanged. B1 remains IN PROGRESS; no production readiness claim.
+
+
+### Follow-up: post-boundary pending-finality classification — 2026-11-26
+
+A further edge case was found during review of the 500 ms finality buffer. Immediately after an interval boundary, the prior candle may have a close time at or before the common cutoff but still be inside the finality buffer, while the new interval candle is actively forming. Treating both as forming would incorrectly label this ordinary short transition as ambiguous.
+
+Correction:
+- Active forming now requires closeTimeMs > analysisAsOfMs.
+- Pending finality is tracked separately when closeTimeMs <= analysisAsOfMs and closeTimeMs + 500 > analysisAsOfMs.
+- Only multiple active forming candidates block as ambiguous; no arbitrary forming candle is published in that case.
+- Raw-row reserve increased to desired closed count + ceil(maxProviderTimeSpreadMs / stepMs) + 2.
+- Added test 32 for the normal post-boundary state.
+
+Latest suites: B1-E 32/32 PASS, B1 Quality 65/65 PASS; both inline scripts parse. Browser/live checks remain pending.
