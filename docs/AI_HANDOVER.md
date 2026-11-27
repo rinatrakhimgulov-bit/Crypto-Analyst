@@ -1290,11 +1290,20 @@ Draft PR #20: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/20 (ba
 B2-A through B2-G candidate modules are implemented on the research branch. B2-B 2.2.0 preserves immutable sequence history at availability time; B2-C 2.1.0 replays events from that history. Same-candle dual pivots are explicitly ambiguous and excluded from the active structure sequence. B2-E/B2-G validate event source pivots against sequence history. B2-D may retain ambiguous raw pivots as tagged S/R evidence.
 
 Verification:
-- Integrated B2-A–B2-G CI run 46031937203 passed 181/181 deterministic tests.
-- Historical replay run 46032038435 passed on BTCUSDT/ETHUSDT 1H/4H/1D archive data through 2025-12-05.
-- 18/18 prefix-invariance checks passed; 30 sampled B2-A–B2-E windows and two synchronized MTF B2-F/B2-G projections completed.
+- Integrated B2-A–B2-G CI run 46033092111 passed 183/183 deterministic tests.
+- Historical replay run 46033092259 passed on BTCUSDT/ETHUSDT 1H/4H/1D archive data through 2025-12-05.
+- 18/18 prefix cutoffs passed (72 comparisons across B2-A pivots, B2-B history, B2-C history and B2-C events) passed; 30 sampled B2-A–B2-E windows and two synchronized MTF B2-F/B2-G projections completed.
 - Full metrics and limitations are in `docs/audits/B2_PRELIMINARY_HISTORICAL_REPLAY_2026-11-27.md`; CI artifact: `b2-historical-replay-report`.
 
 Critical limits: historical replay used a synthetic B1-valid wrapper and synthetic zero MTF provider-time spread. Zone/retest parameters and 2/2 pivot strength are exploratory, not production-calibrated. The archive is third-party and ends 2025-12-05. No profitability claim is supported.
 
 Next gates before integration: exact-source independent audit; review/calibrate pivot strength, zone span and retest parameters; complete live Bybit concurrent 1D/4H/1H provider-time calibration; verify the current candidate on iPhone/Safari. B1 remains NOT ACCEPTED. No app HTML or `main` changes. Do not merge PR #20 without explicit owner approval.
+
+
+## Latest B2-G status and replay update (2026-11-27)
+
+Latest integrated CI: run 46033092111, 183/183 tests passed. Latest historical replay: run 46033092259 passed with 18 cutoffs and 72 prefix comparisons. B2-G now exposes separate pivot and status visibility times for superseded/ambiguous pivots and rejects impossible staggered same-source dual-pivot confirmation times.
+
+Expanded replay shows strong sensitivity to pivot strength and zone span. Repeated sweep events are common on 1H/4H and need a defined re-sweep/aggregation policy. Do not select production settings based only on event counts.
+
+B1 remains NOT ACCEPTED. No app HTML or main-branch changes. Exact-source independent audit, live Bybit MTF provider-time calibration and iPhone/Safari acceptance remain mandatory before integration.
