@@ -13,8 +13,8 @@ const SNAPSHOT_ID = 'fixture:BTCUSDT:1h:b2e';
 
 const POLICY = Object.freeze({
   version: 'b2e-retest-engine-v1',
-  b2b_engine_version: '2.0.0-b2b',
-  b2b_policy_version: 'b2b-swing-sequence-v1',
+  b2b_engine_version: '2.1.0-b2b',
+  b2b_policy_version: 'b2b-swing-sequence-v2',
   b2c_engine_version: '2.0.0-b2c',
   b2c_policy_version: 'b2c-state-v1',
   b2d_engine_version: '2.0.0-b2d',
@@ -25,6 +25,7 @@ const POLICY = Object.freeze({
   b1_quality_policy_version: 'b1-quality-v1',
   finality_safety_lag_ms: LAG,
   price_equality_policy: 'EXACT_PRICE_V1',
+  b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
   retest_policy: {
     version: 'retest-policy-v1',
     touch_method: 'RANGE_INTERSECTION_V1',
@@ -188,7 +189,7 @@ function fixture(options = {}) {
     engine_version: '2.0.0-b2c', policy_version: 'b2c-state-v1', status: 'VALID',
     admission: {
       status: 'ADMITTED', snapshot_id: SNAPSHOT_ID,
-      b2b_engine_version: '2.0.0-b2b', b2b_policy_version: 'b2b-swing-sequence-v1',
+      b2b_engine_version: '2.1.0-b2b', b2b_policy_version: 'b2b-swing-sequence-v2',
       b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-v1'
     },
     snapshot_id: SNAPSHOT_ID, symbol: 'BTCUSDT', timeframe: '1h',
@@ -521,7 +522,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
   const b2b = analyzeB2B({
     b2a_result: b2a,
     policy: {
-      version: 'b2b-swing-sequence-v1', b2a_engine_version: '2.0.0-b2a',
+      version: 'b2b-swing-sequence-v2', b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1', b1_validator_version: '1.1.0',
       b1_quality_policy_version: 'b1-quality-v1', price_equality_policy: 'EXACT_PRICE_V1'
     }
@@ -529,8 +530,8 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
   assert.equal(b2b.status, 'VALID', JSON.stringify(b2b.admission.reasons));
   const b2c = analyzeB2C({
     policy: {
-      version: 'b2c-state-v1', b2b_engine_version: '2.0.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v1', b2a_engine_version: '2.0.0-b2a',
+      version: 'b2c-state-v1', b2b_engine_version: '2.1.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v2', b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1', b1_contract_version: '1.1.0',
       b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-v1',
       finality_safety_lag_ms: LAG, price_equality_policy: 'EXACT_PRICE_V1',
@@ -544,8 +545,8 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
   const b2d = analyzeB2D({
     policy: {
       version: 'b2d-zone-engine-v1', b2c_engine_version: '2.0.0-b2c',
-      b2c_policy_version: 'b2c-state-v1', b2b_engine_version: '2.0.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v1', b2a_engine_version: '2.0.0-b2a',
+      b2c_policy_version: 'b2c-state-v1', b2b_engine_version: '2.1.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v2', b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1', b1_contract_version: '1.1.0',
       b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-v1',
       finality_safety_lag_ms: LAG, price_equality_policy: 'EXACT_PRICE_V1'
@@ -560,8 +561,8 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
   assert.equal(b2d.status, 'VALID', JSON.stringify(b2d.admission.reasons));
   const b2e = analyze({
     policy: {
-      version: 'b2e-retest-engine-v1', b2b_engine_version: '2.0.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v1', b2c_engine_version: '2.0.0-b2c',
+      version: 'b2e-retest-engine-v1', b2b_engine_version: '2.1.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v2', b2c_engine_version: '2.0.0-b2c',
       b2c_policy_version: 'b2c-state-v1', b2d_engine_version: '2.0.0-b2d',
       b2d_policy_version: 'b2d-zone-engine-v1', b2d_zone_policy_version: 'b2d-absolute-span-v1',
       b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
