@@ -76,7 +76,7 @@ async function main() {
         const stepX = metrics.plotW / (endIdx - startIdx);
         zoneDraw.expectedX = metrics.padLeft + (visibleIdx - startIdx) * stepX;
         ctx.fillRect = function(x, y, w, height) {
-          if (String(this.fillStyle).includes('0.075')) {
+          if (String(this.fillStyle).includes('0.055')) {
             zoneDraw.count++;
             zoneDraw.x = x;
           }
@@ -119,12 +119,62 @@ async function main() {
         cardVisible: Boolean(card && card.getBoundingClientRect().height > 0),
         cardWidth: card?.getBoundingClientRect().width ?? 0,
         chartWidth: chart?.getBoundingClientRect().width ?? 0,
+        chartHeight: chart?.getBoundingClientRect().height ?? 0,
         viewportWidth: window.innerWidth,
         noHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth + 1
       };
     });
-    if (!layout.cardVisible || layout.cardWidth < 250 || layout.chartWidth < 250 || !layout.noHorizontalOverflow) {
-      throw new Error('B2 mobile layout assertions failed: ' + JSON.stringify(layout));
+    if (!layout.cardVisible || layout.cardWidth < 250 || layout.chartWidth < 250 || !layout.noHorizontalOverflow || layout.chartHeight < 440) {
+      throw new Error('B2/B3 mobile layout assertions failed: ' + JSON.stringify(layout));
+    }
+    const displayChecks = await page.evaluate(async () => {
+      const chart = window.__CryptoAnalystTestHooks.chart;
+      const modes = [...document.querySelectorAll('[data-chart-mode]')];
+      const layers = [...document.querySelectorAll('[data-chart-layer]')];
+      const initial = {
+        mode: chart.displayMode,
+        zones: chart.displayLayers.zones,
+        pivots: chart.displayLayers.pivots,
+        events: chart.displayLayers.events,
+        retests: chart.displayLayers.retests,
+        activeMode: document.querySelector('[data-chart-mode="clean"]')?.getAttribute('aria-pressed')
+      };
+      document.querySelector('[data-chart-mode="structure"]').click();
+      const structure = {
+        mode: chart.displayMode,
+        events: chart.displayLayers.events,
+        retests: chart.displayLayers.retests,
+        activeMode: document.querySelector('[data-chart-mode="structure"]')?.getAttribute('aria-pressed')
+      };
+      document.querySelector('[data-chart-layer="events"]').click();
+      const custom = {
+        mode: chart.displayMode,
+        events: chart.displayLayers.events,
+        eventsPressed: document.querySelector('[data-chart-layer="events"]')?.getAttribute('aria-pressed')
+      };
+      document.querySelector('[data-chart-mode="full"]').click();
+      const full = {
+        mode: chart.displayMode,
+        legacyLevels: chart.displayLayers.legacyLevels,
+        events: chart.displayLayers.events,
+        retests: chart.displayLayers.retests
+      };
+      document.querySelector('[data-chart-mode="clean"]').click();
+      const cleanHeight = document.getElementById('chartCanvas').getBoundingClientRect().height;
+      return { initial, structure, custom, full, cleanHeight, layerButtons: layers.length, modeButtons: modes.length };
+    });
+    if (displayChecks.initial.mode !== 'clean' || displayChecks.initial.zones !== true ||
+        displayChecks.initial.pivots !== true || displayChecks.initial.events !== false ||
+        displayChecks.initial.activeMode !== 'true' ||
+        displayChecks.structure.mode !== 'structure' || displayChecks.structure.events !== true ||
+        displayChecks.structure.retests !== true || displayChecks.structure.activeMode !== 'true' ||
+        displayChecks.custom.mode !== 'custom' || displayChecks.custom.events !== false ||
+        displayChecks.custom.eventsPressed !== 'false' ||
+        displayChecks.full.mode !== 'full' || displayChecks.full.legacyLevels !== true ||
+        displayChecks.full.events !== true || displayChecks.full.retests !== true ||
+        displayChecks.layerButtons !== 6 || displayChecks.modeButtons !== 3 ||
+        displayChecks.cleanHeight < 440) {
+      throw new Error('B3 chart display control assertions failed: ' + JSON.stringify(displayChecks));
     }
     if (pageErrors.length) throw new Error('Browser page errors: ' + pageErrors.join(' | '));
     console.log(JSON.stringify({ b2: result, mobileLayout: layout, pageErrors }, null, 2));
