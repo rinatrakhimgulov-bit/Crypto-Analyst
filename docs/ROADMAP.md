@@ -380,3 +380,9 @@ Run `45966700299` supersedes earlier totals: Stage A 44/44, B1 contract 32/32, B
 Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20, gate/UI/chart/probe smoke passed, zero browser page errors. Live Bybit remains blocked by runner HTTP 403 from both public hosts. Exact current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`.
 
 B1 remains in review. Independent exact-artifact review, live 1D/4H/1H capture and measured spread policy, transport-level abort verification, latest Safari quality-panel check and owner approval remain mandatory. No merge to main; B2 remains gated.
+
+
+
+## Latest candidate refresh — 2026-11-27
+
+Current PR #8 head: `f6cc90e51096e30bd524a6e883f3ca0ad1273d79` (draft, not merged). HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes); browser harness blob `a23585f9688b9a04336c7f99da7a972513882f8e` (29,130 bytes). Branch 101 ahead / 0 behind main. Latest CI run `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; gate/UI/chart assertions passed, zero page errors; 161/161 tests. B1-C now verifies canonical/legacy candle series and last-closed price equivalence, and preserves INSUFFICIENT for an empty matching series. Live Bybit remains blocked by HTTP 403 from both hosts on GitHub Actions. B1 acceptance gates remain open.
