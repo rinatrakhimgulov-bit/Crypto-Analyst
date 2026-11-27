@@ -496,3 +496,17 @@ Current open candidate heads and their individual CI results:
 **Combined integrated verification:** [119/119 tests passed](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280701) on B2-E integrated head `b7fccbc232c8a2de573cbfb053ef06b10b2cf834`. The combined workflow runs all five test files in one checkout, in dependency order B2-A → B2-B → B2-C → B2-D → B2-E.
 
 All PRs #8–#17 remain draft/unmerged. Main remains `8acb6fddaf454e9f2a4bdf3564ad70408d1a5456`. No B2 candidate is imported into application HTML or connected to LONG/SHORT. B1 remains NOT ACCEPTED. Deterministic CI does not replace independent review, live Bybit validation or owner acceptance.
+
+
+## Latest Stage 2 status — 2026-11-27
+
+B2-E candidate hardening completed:
+- Rejects a gap-through close beyond the failure boundary before any later retest can be considered.
+- Requires the breakout candle to clear the full historical zone outer boundary, not merely one pivot inside that zone.
+- Candidate branch synchronized with current B2-A/B/C/D modules and test suites; full B2-A result is passed into B2-C in the integrated fixture.
+- B2-E 24/24 tests passed in run 46017280509 on head b7fccbc232c8a2de573cbfb053ef06b10b2cf834.
+- Integrated B2 research suite 119/119 passed in run 46017280701.
+
+B2-E v1 produces one lifecycle per breakout event; it does not persist zone-role state across later breakouts or invalidate a prior successful role reversal. Same-candle range-touch plus close beyond the success boundary is accepted as an OHLC bar-level convention, not intrabar tick-path evidence. Thresholds remain uncalibrated synthetic inputs.
+
+PR #18 was closed as a duplicate design draft. PR #17 is the active B2-E candidate. All B2 PRs #12/#13/#15/#16/#17 remain draft/unmerged; B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no app HTML integration.
