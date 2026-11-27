@@ -546,6 +546,6 @@ An isolated B2-A candidate has now been created on branch feature/b2a-causal-swi
 
 The engine requires a VALID B1 quality report whose snapshot_id, symbol, timeframe, analysis_as_of_ms and B1 policy version exactly match the canonical snapshot and explicit B2 policy. It rejects non-VALID/mismatched input, invalid provenance, out-of-order/duplicate/misaligned candles, non-closed candles, and forming/unknown overlap. It emits only confirmed raw pivots, with rightmost plateau representative and causal timestamps. No swing sequence, BOS/CHoCH, zones, retests, chart integration or LONG/SHORT connection is included.
 
-Local deterministic harness verification in the development environment: 10/10 B2-A tests passed. This is not yet a reported GitHub Actions run. The PR remains draft/unmerged; no application HTML or main branch changed.
+Local deterministic harness verification in the development environment: 11/11 B2-A tests passed. This is not yet a reported GitHub Actions run. The PR remains draft/unmerged; no application HTML or main branch changed.
 
 B1 release acceptance is still a separate gate for production integration. This isolated B2-A candidate is research/verification code only; it does not activate B2 in the running app.
