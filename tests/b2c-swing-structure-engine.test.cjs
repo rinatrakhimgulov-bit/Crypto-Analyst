@@ -11,8 +11,8 @@ const SNAPSHOT_ID = 'fixture:BTCUSDT:1h:b2c';
 
 const POLICY = Object.freeze({
   version: 'b2c-state-v1',
-  b2b_engine_version: '2.0.0-b2b',
-  b2b_policy_version: 'b2b-swing-sequence-v1',
+  b2b_engine_version: '2.1.0-b2b',
+  b2b_policy_version: 'b2b-swing-sequence-v2',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
   b1_contract_version: '1.1.0',
@@ -20,7 +20,8 @@ const POLICY = Object.freeze({
   b1_quality_policy_version: 'b1-quality-v1',
   finality_safety_lag_ms: LAG,
   price_equality_policy: 'EXACT_PRICE_V1',
-  break_buffer_policy: 'ZERO_BUFFER_V1'
+  break_buffer_policy: 'ZERO_BUFFER_V1',
+  b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1'
 });
 
 function candle(index, close = 100, high = Math.max(100, close), low = Math.min(100, close), open = 100) {
@@ -84,10 +85,18 @@ function labelSequence(pivots) {
 }
 
 function deriveFixtureSequence(pivots) {
+  const sourceTypes = new Map();
+  for (const p of pivots) {
+    if (!sourceTypes.has(p.source_time_ms)) sourceTypes.set(p.source_time_ms, new Set());
+    sourceTypes.get(p.source_time_ms).add(p.type);
+  }
+  const ambiguous = new Set([...sourceTypes.entries()].filter(([, types]) => types.has('SWING_HIGH') && types.has('SWING_LOW')).map(([time]) => time));
   const active = [];
   for (const p of pivots) {
-    p.sequence_status = 'PENDING';
+    p.sequence_status = ambiguous.has(p.source_time_ms) ? 'AMBIGUOUS_FOR_SEQUENCE' : 'PENDING';
+    p.exclusion_reason = ambiguous.has(p.source_time_ms) ? 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE' : null;
     p.superseded_by = null;
+    if (p.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE') continue;
     const last = active.length ? active[active.length - 1] : null;
     if (last && last.type === p.type) {
       const moreExtreme = p.type === 'SWING_HIGH' ? p.price > last.price : p.price < last.price;
@@ -165,14 +174,15 @@ function fixture(pivots, overrides = {}, options = {}) {
     unclassified_candles_by_timeframe: { '1h': [] }
   };
   const b2b = {
-    engine_version: '2.0.0-b2b',
-    policy_version: 'b2b-swing-sequence-v1',
+    engine_version: '2.1.0-b2b',
+    policy_version: 'b2b-swing-sequence-v2',
     status: 'VALID',
     admission: {
       status: 'ADMITTED',
       snapshot_id: SNAPSHOT_ID,
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
+      same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2a_quality_report: {
         snapshot_id: SNAPSHOT_ID,
         validator_version: '1.1.0',
@@ -184,7 +194,7 @@ function fixture(pivots, overrides = {}, options = {}) {
     symbol: 'BTCUSDT',
     timeframe: '1h',
     analysis_as_of_ms: asOf,
-    sequence_order_basis: 'B2A_AVAILABLE_AT_ORDER_STABLE',
+    sequence_order_basis: 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS',
     comparison_policy: 'EXACT_PRICE_V1',
     raw_pivots: pivots,
     sequence
@@ -231,6 +241,17 @@ const initialBull = [
   makePivot('l90', 'SWING_LOW', 90, 0, 1),
   makePivot('h100', 'SWING_HIGH', 100, 1, 2)
 ];
+
+run('same-candle dual pivots remain raw evidence but cannot become structure levels', () => {
+  const pivots = [makePivot('dual-high', 'SWING_HIGH', 110, 2, 4), makePivot('dual-low', 'SWING_LOW', 90, 2, 4)];
+  const result = analyze(fixture(pivots, {}, { count: 8 }));
+  assert.equal(result.status, 'VALID', JSON.stringify(result.admission.reasons));
+  assert.equal(result.structure_state, 'UNESTABLISHED');
+  assert.equal(result.events.length, 0);
+  assert.equal(result.raw_pivots.length, 2);
+  assert.ok(result.raw_pivots.every(p => p.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE'));
+  assert.equal(result.pivots.length, 0);
+});
 
 run('initial bullish break is named once and initializes protected low', () => {
   const input = fixture(initialBull, { 3: { close: 105, high: 106, low: 95, open: 100 } });
@@ -714,7 +735,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C chain emits a causal initial br
   const b2b = analyzeB2B({
     b2a_result: b2a,
     policy: {
-      version: 'b2b-swing-sequence-v1',
+      version: 'b2b-swing-sequence-v2',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
       b1_validator_version: '1.1.0',
@@ -726,8 +747,8 @@ run('full B1 snapshot → B2-A → B2-B → B2-C chain emits a causal initial br
   const b2c = analyze({
     policy: {
       version: 'b2c-state-v1',
-      b2b_engine_version: '2.0.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v1',
+      b2b_engine_version: '2.1.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v2',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
       b1_contract_version: '1.1.0',
