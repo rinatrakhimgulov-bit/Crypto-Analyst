@@ -7782,7 +7782,7 @@
     const chart = new CandleChart(document.getElementById('chartCanvas'));
     if (new URLSearchParams(window.location.search).get('test') === '1') {
       window.__CryptoAnalystTestHooks = Object.freeze({
-        chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient, runB2Analysis
+        chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient, runB2Analysis, renderB2Panel
       });
     }
 
