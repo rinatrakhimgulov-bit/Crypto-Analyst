@@ -486,3 +486,9 @@ Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`; browser har
 Added an explicit required `closedCandleCount` contract to `fetchAndAssemble()`; omission now throws before any adapter/network request. Added a regression proving pending-finality candles remain visible only as context and cannot enter the closed-only analysis slice. The MTF result now exposes `pending_finality_context` separately from `forming_context` and `analysis_candles`.
 
 Latest completed CI run `45966502044`: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 18/18, gate/UI/chart checks passed, zero browser page errors; 158/158 named self-tests. Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`, 299,978 bytes. Live Bybit remains blocked by HTTP 403 from both hosts on GitHub Actions. This is not live exchange verification.
+
+
+
+## Full-suite verification supersession — 2026-11-27
+
+The newest completed run `45966700299` supersedes the earlier 158-test report: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, MTF 18/18; gate/UI/chart assertions passed, zero browser page errors; 159/159 named tests. The gate suite includes rejection of a VALID-looking report with mismatched `snapshot_id`. Candidate HTML blob remains `1cb41cfbc03534441774eeeaac08f36082f19ab9`. Live Bybit remains blocked by runner HTTP 403.
