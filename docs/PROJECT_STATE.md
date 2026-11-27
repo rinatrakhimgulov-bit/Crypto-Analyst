@@ -283,3 +283,31 @@ B0 acceptance: StageASelfTest 44/44 в изолированном harness; EMA/A
 ## B1 current adapter mapping — 2026-11-26
 
 Подготовлен `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`: сопоставление BybitAdapter с canonical Candle/Snapshot/QualityReport и 11 конкретных разрывов (canonical contract, duplicates, future timestamps, provider-time fallback, closed-state, quality gate, coverage, pagination, MTF cutoff, stale cache). Предложен минимальный план B1 без переписывания приложения и предварительная рекомендация сохранить JavaScript на первом проходе; Python backend оставить открытой опцией при доказанной необходимости. Это спецификация, не реализация.
+
+
+## Current stage decision — 2026-11-27 (latest; supersedes older priority text)
+
+The owner approved pausing Stage 1 visual/live-chart polish and prioritizing the fundamental analytical stage.
+
+### Stage 1 status
+- Stage 1 is **FROZEN FOR FEATURE WORK**, not abandoned.
+- Deferred: smooth forming-candle animation, precise live-price comparison against Bybit, remaining real iPhone/Safari live-feed diagnostics and visual polish.
+- These items must be revisited later. Do not spend the current development cycle on chart cosmetics.
+- Data integrity is not deferred: analytical modules must consume validated, closed-only B1 data and fail closed on non-VALID input.
+
+### B1 status
+- B1 remains **NOT ACCEPTED** and has not been merged into `main`.
+- PR #8 (B1 canonical/quality/MTF candidate) and PR #9 (B1-D live ticker/kline candidate) remain draft/unmerged; real Bybit verification and other acceptance gates remain open.
+- No B2 candidate may be connected to the running application or directional LONG/SHORT path until B1 acceptance and explicit owner approval.
+
+### Stage 2 / B2 status
+- Stage 2 / Market Structure is the active research-development priority.
+- B2 design policy is frozen in `docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md` and the internal review `docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md`.
+- B2-A isolated raw causal swing engine: PR #12, draft/unmerged. Expanded deterministic suite **20/20 passed** in GitHub Actions run [46010999225](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46010999225), tested code commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
+- B2-B isolated swing-sequence engine: PR #13, draft/unmerged, based on the B2-A candidate branch. Deterministic suite **19/19 passed** in run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46011622297), tested code commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
+- Both candidates are research-only. Neither is imported by the application HTML. No B2-C BOS/CHoCH, protected-swing state, zones, retests, MTF decision path, chart integration or LONG/SHORT connection is implemented.
+- The next B2 increment is an independent exact-source review of B2-A/B2-B, followed by B2-C as a separate isolated candidate. Production integration remains blocked by B1 acceptance.
+
+### Source-of-truth protection
+- `main` and the canonical HTML remain unchanged by the Stage 2 candidate work.
+- PRs #8–#13 are not to be merged automatically. Explicit owner acceptance is required for any merge or production integration.
