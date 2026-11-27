@@ -1792,7 +1792,6 @@
           expect(!result.directional_allowed && result.reasons.some(r => r.code === 'MTF_PROVIDER_TIME_UNTRUSTED'), 'local time fallback was accepted');
         });
         test('05 provider time spread beyond policy fails closed', () => {
-          const result = run(set({ '1h': { } }).replace ? set() : set());
           const changed = set();
           changed['1h'].providerServerTimeMs = cutoff + 1000;
           const blocked = run(changed);
@@ -1823,7 +1822,7 @@
             '1h': make('1h', exactCutoff)
           };
           const result = B1MtfEngine.assemble(data, exactCutoff + 1000, { maxProviderTimeSpreadMs: 0, closedCandleCount: count });
-          expect(result.timeframes['1h'].analysis_candles.some(c => c.close_time_ms + FINALITY <= exactCutoff), 'finality boundary candle missing');
+          expect(result.timeframes['1h'].analysis_candles.some(c => c.close_time_ms + B1_QUALITY_POLICY.finality_safety_lag_ms <= exactCutoff), 'finality boundary candle missing');
         });
         test('10 result and nested candles are deeply immutable', () => {
           const result = run();
@@ -1999,7 +1998,7 @@
             forming_candle_by_timeframe:{'1h':opts.forming===undefined?null:stampEvidence([opts.forming])[0]},
             unclassified_candles_by_timeframe:{'1h':stampEvidence(opts.unknown||[])},
             quality_by_timeframe:{'1h':{status:'UNASSESSED'}},aggregate_quality:{status:'UNASSESSED',reasons:[]},
-            source_diagnostics:{requested_count:1,response_shortfall:0,raw_row_count:1,invalid_row_count:0,duplicate_count:0,identical_duplicate_count:0,conflicting_duplicate_count:0,conflicting_duplicate_timestamps:[],raw_out_of_order_count:0,raw_order_expected:'descending'}
+            source_diagnostics:{requested_count:1,response_shortfall:0,raw_row_count:1,invalid_row_count:0,duplicate_count:0,identical_duplicate_count:0,conflicting_duplicate_count:0,conflicting_duplicate_timestamps:[],raw_out_of_order_count:0,raw_order_expected:'descending',excluded_after_cutoff_count:0}
           };
         };
         const run=(snap,pol=policy,at=now)=>B1QualityValidator.validate(snap,pol,at).report;
@@ -2091,7 +2090,7 @@
           analysis_as_of_ms:dailyNow,provider_metadata:{provider_id:'bybit-v5-rest',venue:'bybit',provider_symbol:'BTCUSDT',host:'api.bybit.com',time_source:'provider'},provider_server_time_ms:dailyNow,received_at_ms:dailyNow-100,
           candles_by_timeframe:{'1d':[dailyClosed]},forming_candle_by_timeframe:{'1d':dailyForming},
           unclassified_candles_by_timeframe:{'1d':[]},
-          source_diagnostics:{requested_count:2,response_shortfall:0,raw_row_count:2,invalid_row_count:0,duplicate_count:0,identical_duplicate_count:0,conflicting_duplicate_count:0,conflicting_duplicate_timestamps:[],raw_out_of_order_count:0,raw_order_expected:'descending'}
+          source_diagnostics:{requested_count:2,response_shortfall:0,raw_row_count:2,invalid_row_count:0,duplicate_count:0,identical_duplicate_count:0,conflicting_duplicate_count:0,conflicting_duplicate_timestamps:[],raw_out_of_order_count:0,raw_order_expected:'descending',excluded_after_cutoff_count:0}
         };
         const dailyPolicy={...policy,minimum_required_count_by_timeframe:{...policy.minimum_required_count_by_timeframe,'1d':1}};
         const dailyReport=B1QualityValidator.validate(dailySnapshot,dailyPolicy,dailyNow).report;
@@ -2195,7 +2194,7 @@
           analysis_as_of_ms:fourHourNow,provider_metadata:{provider_id:'bybit-v5-rest',venue:'bybit',provider_symbol:'BTCUSDT',host:'api.bybit.com',time_source:'provider'},provider_server_time_ms:fourHourNow,received_at_ms:fourHourNow-100,
           candles_by_timeframe:{'4h':[fourHourCandle]},forming_candle_by_timeframe:{'4h':null},
           unclassified_candles_by_timeframe:{'4h':[]},
-          source_diagnostics:{requested_count:1,response_shortfall:0,raw_row_count:1,invalid_row_count:0,duplicate_count:0,identical_duplicate_count:0,conflicting_duplicate_count:0,conflicting_duplicate_timestamps:[],raw_out_of_order_count:0,raw_order_expected:'descending'}
+          source_diagnostics:{requested_count:1,response_shortfall:0,raw_row_count:1,invalid_row_count:0,duplicate_count:0,identical_duplicate_count:0,conflicting_duplicate_count:0,conflicting_duplicate_timestamps:[],raw_out_of_order_count:0,raw_order_expected:'descending',excluded_after_cutoff_count:0}
         };
         const fourHourReport=B1QualityValidator.validate(fourHourSnapshot,policy,fourHourNow).report;
         assert('4h aligned closed candle passes the same quality contract',fourHourReport.status==='VALID'&&fourHourReport.valid_count===1);
