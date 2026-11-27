@@ -101,3 +101,8 @@ Promote the existing Bybit V5 public linear WebSocket client from connection-hea
 - Acceptance remains pending real iPhone/Safari verification and independent review. No merge; main unchanged.
 
 - Follow-up live-UI correction: the validated ticker stream now updates the visible forming candle's close/high/low as a visual fallback when kline updates are delayed; volume, finality, closed-candle count, and analytical inputs remain unchanged. Regression coverage added to the Stage A browser suite.
+
+
+- Follow-up visual correction: forming candles now use direction-aware live colors (green when last trade is at/above the candle open, red when below) instead of the previous neutral muted fill. The same validated ticker-driven OHLC update still changes close/high/low only; it does not change volume, closed-candle count, or analytical inputs.
+- Regression test asserts both bullish and bearish forming-candle styles. Commit: `b145ff2a65e3b2efe4401742cce138e140496888`; HTML blob: `eb568f04f6b0f35796ef5494c6c85006db5e6cf4`.
+- CI run 45986211284 completed its test step successfully: Stage A 50/50, contract 32/32, quality 72/72, MTF 20/20 (174/174 total), no page errors. Live Bybit REST verification remains blocked by HTTP 403 from both public REST hosts on GitHub Actions; this is not evidence of a Bybit outage and does not verify live Safari delivery.
