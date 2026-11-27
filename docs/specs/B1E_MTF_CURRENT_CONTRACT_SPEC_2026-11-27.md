@@ -115,3 +115,12 @@ The current completed GitHub Actions run is `45965680821` (not the earlier pre-h
 Exact current candidate HTML blob: `3f1a739b90e3a187292b29cd9f0ca5c1beafbd5c`, 295,555 bytes, branch `integration/b1-mtf-architecture-2026-11-27`. The current branch is 48 commits ahead and 0 behind main; main remains unchanged.
 
 The CI live Bybit check is blocked by HTTP 403 from both public REST hosts. No live MTF capture, measured production spread tolerance, or real browser network-stack abort behavior is established by this run.
+
+
+## Verification refresh — 2026-11-27
+
+The MTF suite was expanded with explicit assertions that forming/pending-finality candles never enter the closed-only analysis slice, provider-time spread one millisecond above policy fails closed, multiple post-cutoff rows fail closed, and missing spread policy fails closed. Async tests cover sibling abort and superseded generation.
+
+Latest run: GitHub Actions `45966127523` passed Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 16/16, UI/gate/chart checks, zero browser page errors. Live Bybit remained blocked by HTTP 403 from both public REST hosts.
+
+Exact current HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`.
