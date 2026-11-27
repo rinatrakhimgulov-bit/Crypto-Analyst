@@ -1236,3 +1236,9 @@ Current exact HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 byt
 Recent hardening: canonical snapshot ID is mandatory and carried by quality reports; B1-C and B1-E reject reports not bound to the exact snapshot. MTF requires explicit closed history count, exposes pending-finality context separately, and keeps it out of closed-only analysis candles. The browser harness tests snapshot mismatch. MTF suite 18/18.
 
 The exact-artifact independent review prompt is `docs/audits/PROMPT_B1_CURRENT_CONTRACT_INDEPENDENT_REVIEW_2026-11-27.md`. It must be handed to an actual independent reviewer; a prepared prompt is not an audit result. Remaining gates: independent review of this exact blob, real concurrent Bybit capture and spread calibration, transport-level abort verification, latest iPhone Safari quality-panel check, owner acceptance. Main unchanged; B1 not accepted; B2 not started.
+
+
+
+## Latest B1-E test refresh — 2026-11-27
+
+Current integration HTML blob: `1cb41cfbc03534441741774eeeaac08f36082f19ab9` (299,978 bytes). Latest CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64, MTF 18/18; gate/UI/chart checks passed, zero page errors; 158/158 total named tests. Added fail-before-network behavior for missing closed-candle count and explicit pending-finality context separation. Branch 66 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 on GitHub runners. Independent review, live concurrent capture/spread calibration, transport abort verification, Safari panel check and owner acceptance remain open. Main unchanged.
