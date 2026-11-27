@@ -420,3 +420,22 @@ GitHub Actions run [46014759139](https://github.com/rinatrakhimgulov-bit/Crypto-
 - The absolute zone-span parameter has not been calibrated against live BTC/ETH data.
 - No B2-E retest/failure lifecycle, MTF, chart overlays or LONG/SHORT connection.
 - B1 remains NOT ACCEPTED; production integration is blocked until B1 acceptance and explicit owner approval.
+
+
+## Stage 2 audit hardening and B2-D — 2026-11-27
+
+Internal review identified and fixed four issues across isolated candidate branches:
+- B2-A now rejects candle gaps before pivot detection.
+- B2-C BOS continuation requires HH in UP / LL in DOWN; LH/HL are not valid continuation break levels.
+- B2-C re-arms a previously consumed pivot when it becomes the protected reversal level in the new state, enabling valid opposite CHoCH.
+- B2-C now consumes the exact B2-A result and verifies B2-B raw pivot set completeness, not just sequence self-consistency.
+
+Current CI:
+- B2-A 21/21, run 46014698432, head bb13960e647d399b6b05ee12c21f5a2fdeb8265d.
+- B2-B 20/20, run 46015818149, head b209293212ac1bd910939eed465f140514b9e959.
+- B2-C 33/33, run 46015831238, head e9590ddb65c9f3a09a28279efdb064b6caa6a4a2.
+- B2-D 21/21, run 46015873986, head 9012e514a29b755ac9208f1f495c3f560638b0a1.
+
+B2-D builds support/resistance clusters from all confirmed raw pivots, keeps superseded-pivot status visible, exposes freshness age without classifying freshness, and uses an explicit absolute-price-span policy scoped to instrument/timeframe. Zone identity is membership-derived, not guaranteed stable across snapshots.
+
+PRs #12, #13, #15, #16 remain draft/unmerged. B1 remains NOT ACCEPTED. No production app integration or main branch changes.
