@@ -103,7 +103,7 @@
       analysisAsOfMs: snapshot && snapshot.analysis_as_of_ms
     };
     if (!['1h', '4h', '1d'].includes(timeframe) || !isObject(snapshot) || !isObject(report) ||
-        !isObject(b2a) || !isObject(b2c) || !isObject(b2d) || !isObject(b2e) || !isObject(b2f)) {
+        !isObject(b2a) || !isObject(b2c) || !isObject(b2d) || !isObject(b2e)) {
       return blocked('B2G_INPUT_MISSING_OR_INVALID', meta);
     }
     const error = policyError(policy);
@@ -181,22 +181,24 @@
         b2e.admission.b1_validator_version !== policy.b1_validator_version ||
         b2e.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
         !Array.isArray(b2e.lifecycles)) return blocked('B2E_RESULT_MISMATCH', meta);
-    if (b2f.status !== 'VALID' || b2f.engine_version !== policy.b2f_engine_version ||
-        b2f.policy_version !== policy.b2f_policy_version ||
-        b2f.symbol !== symbol || b2f.analysis_as_of_ms !== asOf ||
-        !isObject(b2f.admission) || b2f.admission.status !== 'ADMITTED' ||
-        b2f.admission.b1_contract_version !== policy.b1_contract_version ||
-        b2f.admission.b1_validator_version !== policy.b1_validator_version ||
-        b2f.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
-        b2f.admission.b2c_engine_version !== policy.b2c_engine_version ||
-        b2f.admission.b2c_policy_version !== policy.b2c_policy_version ||
-        b2f.market_type !== snapshot.market_type ||
-        !isObject(b2f.admission.snapshot_ids) ||
-        b2f.admission.snapshot_ids[timeframe] !== snapshot.snapshot_id ||
-        !isObject(b2f.timeframes) || !isObject(b2f.timeframes[timeframe]) ||
-        b2f.timeframes[timeframe].snapshot_id !== snapshot.snapshot_id ||
-        b2f.timeframes[timeframe].structure_state !== b2c.structure_state) {
-      return blocked('B2F_RESULT_MISMATCH', meta);
+    if (b2f !== null && b2f !== undefined) {
+      if (!isObject(b2f) || b2f.status !== 'VALID' || b2f.engine_version !== policy.b2f_engine_version ||
+          b2f.policy_version !== policy.b2f_policy_version ||
+          b2f.symbol !== symbol || b2f.analysis_as_of_ms !== asOf ||
+          !isObject(b2f.admission) || b2f.admission.status !== 'ADMITTED' ||
+          b2f.admission.b1_contract_version !== policy.b1_contract_version ||
+          b2f.admission.b1_validator_version !== policy.b1_validator_version ||
+          b2f.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
+          b2f.admission.b2c_engine_version !== policy.b2c_engine_version ||
+          b2f.admission.b2c_policy_version !== policy.b2c_policy_version ||
+          b2f.market_type !== snapshot.market_type ||
+          !isObject(b2f.admission.snapshot_ids) ||
+          b2f.admission.snapshot_ids[timeframe] !== snapshot.snapshot_id ||
+          !isObject(b2f.timeframes) || !isObject(b2f.timeframes[timeframe]) ||
+          b2f.timeframes[timeframe].snapshot_id !== snapshot.snapshot_id ||
+          b2f.timeframes[timeframe].structure_state !== b2c.structure_state) {
+        return blocked('B2F_RESULT_MISMATCH', meta);
+      }
     }
 
     const b2aById = new Map();
@@ -534,14 +536,14 @@
       zones: sortByTimeAndId(zones, 'visible_from_ms', 'id'),
       candidate_levels: sortByTimeAndId(candidateLevels, 'visible_at_ms', 'id'),
       retest_lifecycles: sortByTimeAndId(retestLifecycles, 'visible_at_ms', 'id'),
-      mtf_context: {
+      mtf_context: b2f ? {
         structure_pattern: b2f.structure_pattern,
         alignment_status: b2f.alignment_status,
         alignment_context: b2f.alignment_context,
         hierarchical_interpretation: b2f.hierarchical_interpretation,
         lower_timeframe_consensus: b2f.lower_timeframe_consensus,
         visible_at_ms: b2f.analysis_as_of_ms
-      },
+      } : null,
       diagnostics: {
         swing_marker_count: swingMarkers.length,
         superseded_pivot_count: supersededPivots.length,
