@@ -97,6 +97,7 @@ async function main() {
         };
       });
       const base = {
+        canonicalSnapshot: { snapshot_id: 'gate-test-snapshot' },
         closedCandles: candles,
         prices: {
           lastClosedPrice: candles[candles.length - 1].close,
@@ -111,7 +112,7 @@ async function main() {
           ...base,
           qualityReport: {
             status, validator_version: B1QualityValidator.VERSION,
-            policy_version: B1_QUALITY_POLICY.version,
+            policy_version: B1_QUALITY_POLICY.version, snapshot_id: 'gate-test-snapshot',
             reasons: [{ code: 'GATE_TEST_' + status }]
           }
         });
@@ -127,7 +128,7 @@ async function main() {
       const valid = BasicAnalyticsEngine.analyze({
         ...base, qualityReport: {
           status: 'VALID', validator_version: B1QualityValidator.VERSION,
-          policy_version: B1_QUALITY_POLICY.version, reasons: []
+          policy_version: B1_QUALITY_POLICY.version, snapshot_id: 'gate-test-snapshot', reasons: []
         }
       });
       const longCandles = Array.from({ length: 260 }, (_, i) => {
@@ -149,19 +150,25 @@ async function main() {
         },
         qualityReport: {
           status: 'VALID', validator_version: B1QualityValidator.VERSION,
-          policy_version: B1_QUALITY_POLICY.version, reasons: []
+          policy_version: B1_QUALITY_POLICY.version, snapshot_id: 'gate-test-snapshot', reasons: []
         }
       });
       const mismatched = BasicAnalyticsEngine.analyze({
         ...base, qualityReport: {
           status: 'VALID', validator_version: 'old-validator',
-          policy_version: B1_QUALITY_POLICY.version, reasons: []
+          policy_version: B1_QUALITY_POLICY.version, snapshot_id: 'gate-test-snapshot', reasons: []
         }
       });
       const policyMismatched = BasicAnalyticsEngine.analyze({
         ...base, qualityReport: {
           status: 'VALID', validator_version: B1QualityValidator.VERSION,
-          policy_version: 'old-policy', reasons: []
+          policy_version: 'old-policy', snapshot_id: 'gate-test-snapshot', reasons: []
+        }
+      });
+      const snapshotMismatched = BasicAnalyticsEngine.analyze({
+        ...base, qualityReport: {
+          status: 'VALID', validator_version: B1QualityValidator.VERSION,
+          policy_version: B1_QUALITY_POLICY.version, snapshot_id: 'different-snapshot', reasons: []
         }
       });
       const now = Date.now();
@@ -185,19 +192,19 @@ async function main() {
       });
       const normalizedSnapshot = B1DataContract.toSnapshot(normalized);
       const normalizedReport = B1QualityValidator.validate(normalizedSnapshot, B1_QUALITY_POLICY, Date.now()).report;
-      const normalizedAnalysis = BasicAnalyticsEngine.analyze({ ...normalized, qualityReport: normalizedReport });
+      const normalizedAnalysis = BasicAnalyticsEngine.analyze({ ...normalized, canonicalSnapshot: normalizedSnapshot, qualityReport: normalizedReport });
 
       const badSnapshot = structuredClone(normalizedSnapshot);
       badSnapshot.candles_by_timeframe['1h'][0].volume_base = -1;
       const invalidReport = B1QualityValidator.validate(badSnapshot, B1_QUALITY_POLICY, Date.now()).report;
-      const invalidAnalysis = BasicAnalyticsEngine.analyze({ ...normalized, qualityReport: invalidReport });
+      const invalidAnalysis = BasicAnalyticsEngine.analyze({ ...normalized, canonicalSnapshot: badSnapshot, qualityReport: invalidReport });
 
       const staleReport = B1QualityValidator.validate(normalizedSnapshot, B1_QUALITY_POLICY, Date.now() + 121000).report;
-      const staleAnalysis = BasicAnalyticsEngine.analyze({ ...normalized, qualityReport: staleReport });
+      const staleAnalysis = BasicAnalyticsEngine.analyze({ ...normalized, canonicalSnapshot: normalizedSnapshot, qualityReport: staleReport });
 
       // Exercise the real DOM renderer with an invalid report. The panel must explain
       // why the quality gate blocked directional analysis, not merely show INVALID.
-      renderSuccess({ ...normalized, qualityReport: invalidReport }, invalidAnalysis);
+      renderSuccess({ ...normalized, canonicalSnapshot: badSnapshot, qualityReport: invalidReport }, invalidAnalysis);
       const qualityPanelText = document.getElementById('dataQualityList').textContent;
       const decisionBadgeText = document.getElementById('decisionBadge').textContent;
       const uiGate = {
@@ -223,6 +230,12 @@ async function main() {
           lastValueFinite: Number.isFinite(ema200Probe.ema200[259])
         },
         mismatched: { decision: mismatched.decision, blocked: mismatched.qualityGate && mismatched.qualityGate.blocked, status: mismatched.qualityGate && mismatched.qualityGate.status, reasonCodes: mismatched.qualityGate && mismatched.qualityGate.reasonCodes },
+        snapshotMismatched: {
+          decision: snapshotMismatched.decision,
+          blocked: snapshotMismatched.qualityGate && snapshotMismatched.qualityGate.blocked,
+          status: snapshotMismatched.qualityGate && snapshotMismatched.qualityGate.status,
+          reasonCodes: snapshotMismatched.qualityGate && snapshotMismatched.qualityGate.reasonCodes
+        },
         policyMismatched: {
           decision: policyMismatched.decision,
           blocked: policyMismatched.qualityGate && policyMismatched.qualityGate.blocked,
@@ -265,7 +278,10 @@ async function main() {
       ...(gate.mismatched.decision !== 'WAIT' || gate.mismatched.blocked !== true ||
           gate.mismatched.status !== 'INVALID' || !gate.mismatched.reasonCodes.includes('QUALITY_REPORT_VERSION_MISMATCH')
           ? [{ case: 'validator-version-mismatch', ...gate.mismatched }] : []),
-      ...(gate.policyMismatched.decision !== 'WAIT' || gate.policyMismatched.blocked !== true ||
+      ...(gate.snapshotMismatched.decision !== 'WAIT' || gate.snapshotMismatched.blocked !== true ||
+          !gate.snapshotMismatched.reasonCodes.includes('QUALITY_REPORT_SNAPSHOT_MISMATCH')
+        ? [{ case: 'snapshot-mismatched-report', ...gate.snapshotMismatched }] : []),
+      ...(gate.policyMismatched.decision !== 'WAIT' ||
           gate.policyMismatched.status !== 'INVALID' || !gate.policyMismatched.reasonCodes.includes('QUALITY_REPORT_VERSION_MISMATCH')
           ? [{ case: 'policy-version-mismatch', ...gate.policyMismatched }] : []),
       ...(gate.normalized.status !== 'VALID' || gate.normalized.validCount < 100 ||
