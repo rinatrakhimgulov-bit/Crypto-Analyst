@@ -485,3 +485,33 @@ After the documentation sync, PR #8 head is `5e94c29d1f5734e8b46200c04b6da51996c
 - Latest CI run 45981507604 passed: Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; 174/174 deterministic tests. Browser-level live-handler-to-UI checks, desktop/mobile chart checks, transport cancellation/timeout checks and zero-page-error assertion passed.
 - Real exchange connectivity is still NOT VERIFIED. GitHub Actions REST requests to both public Bybit hosts are blocked with HTTP 403; CI reports SKIPPED_PROVIDER_BLOCKED. The new browser test uses controlled events and does not prove a real Bybit WebSocket session. A real iPhone/Safari run must confirm live lastPrice and forming-candle updates, symbol/timeframe switching and reconnect/fallback behavior.
 - main remains unchanged. Do not merge PR #8 or #9 automatically. B1-D automated implementation is complete; live browser acceptance and independent review remain open. B2 remains gated.
+
+
+## Current verified status — 2026-11-27 (supersedes older status text above)
+
+### Source of truth and branch status
+- `main` remains unchanged.
+- PR #8 (`integration/b1-mtf-architecture-2026-11-27`) is the B1 canonical contract / quality / MTF candidate; draft and unmerged.
+- PR #9 (`feature/b1-d-live-market-data-2026-11-27`) is the B1-D live Bybit ticker/kline candidate stacked on PR #8; draft and unmerged.
+- Latest PR #9 diagnostic patch commit: `0b4fdc9a4e6e837d144690854e4a87a4dcae6cbd`.
+- Latest fetched HTML blob on that branch: `bb31ad9a7bc1f2ae0d4d55fc6fe423543b230baa`.
+- PR #10 (`research/b2-market-structure-spec-2026-11-27`) is a documentation-only B2 design-review branch stacked on PR #9; draft and unmerged.
+
+### B1 candidate status
+- Candidate implementation includes provider-neutral canonical data, quality validation/gating, synchronized MTF assembly, and live Bybit WS ticker/kline chart updates.
+- Latest recorded CI run for the diagnostic patch: `45987648219`; 174/174 deterministic tests passed and browser pageErrors were 0.
+- GitHub Actions could not perform live Bybit REST verification because its runner received HTTP 403. This does not establish an exchange outage.
+- User-provided iPhone diagnostics on 2026-11-27 show WS lastPrice freshness age 0.0s, a REST/WS price delta of 5.7 USDT at the captured instant, forming-candle OHLC, and `ticker→свеча UPDATED`. This supports that the handler applied a ticker update; it does not prove complete live-feed acceptance.
+- User reports that price changes and candle color changes, but smooth visible OHLC animation is absent. This is explicitly deferred as non-critical; do not spend the next implementation cycle polishing animation.
+- B1 is **NOT ACCEPTED**. Remaining gates: independent review of exact candidate source; real concurrent Bybit 1D/4H/1H captures with measured provider-time spread and documented fail-closed policy; real iPhone/Safari switch/reconnect/background/fallback verification; explicit owner acceptance.
+- No B1 candidate has been merged into `main`.
+
+### B2 Market Structure
+- Existing design baseline: `docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md`.
+- Internal design review: `docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md`.
+- Review identified unresolved implementation rules for plateau confirmation, same-side pivot replacement, protected swings, initial trend semantics, break buffer, event ordering, and S/R/retest policies.
+- B2 production code and UI integration have **NOT STARTED**. B2 remains blocked from implementation/live integration until B1 acceptance.
+- The next permitted B2 step after B1 acceptance is B2-A: pure causal swing detection with explicit pivot/confirmation/availability timestamps, prefix-invariance, and batch/online equivalence tests.
+
+### Current operating rule
+Do not merge PR #8, #9, or #10 automatically. Keep `main` untouched. Treat all branch candidates as unaccepted until their stated gates are closed.
