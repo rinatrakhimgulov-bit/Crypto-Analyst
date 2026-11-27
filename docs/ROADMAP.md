@@ -264,7 +264,7 @@ Crypto Analyst развивается как независимая от кон�
 
 
 ### C1 — Chart visualization completion
-**Статус: В РАБОТЕ (candidate branch; CI and iPhone Safari checks pending).**
+**Статус: НА ПРОВЕРКЕ (candidate branch; CI passed, iPhone Safari retest pending).**
 
 - Preserve existing EMA20/EMA50 and SH/SL overlays.
 - Add EMA200 with sufficient closed-candle warm-up history.
