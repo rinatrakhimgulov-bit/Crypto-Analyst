@@ -6,6 +6,7 @@ const { chromium } = require('playwright');
 const HTML = path.resolve('CryptoAnalyst_StageA_S6_updated.html');
 const PROBE_HTML = path.resolve('tools/b1_live_probe.html');
 const PORT = 4173;
+const transportProbe = { started: 0, closed: 0 };
 
 async function getBybitKlines(symbol, interval) {
   const failures = [];
@@ -49,6 +50,20 @@ async function main() {
   if (!fs.existsSync(PROBE_HTML)) throw new Error(`Missing live probe HTML: ${PROBE_HTML}`);
   const server = http.createServer((req, res) => {
     const pathname = new URL(req.url, `http://127.0.0.1:${PORT}`).pathname;
+    if (pathname === '/slow' || pathname.startsWith('/v5/market/')) {
+      transportProbe.started++;
+      const timer = setTimeout(() => {
+        if (!res.destroyed) {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ retCode: 0, result: { list: [] }, time: Date.now() }));
+        }
+      }, 2000);
+      res.on('close', () => {
+        clearTimeout(timer);
+        if (res.destroyed) transportProbe.closed++;
+      });
+      return;
+    }
     const file = pathname === '/tools/b1_live_probe.html' ? PROBE_HTML : HTML;
     if (!fs.existsSync(file)) { res.writeHead(404); res.end('Not found'); return; }
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
@@ -89,6 +104,48 @@ async function main() {
         const failed = (result.results || []).filter(x => !x.passed);
         throw new Error(`${name}: ${JSON.stringify(result.totals)}; failed: ${JSON.stringify(failed)}`);
       }
+    }
+
+    // Exercise the real browser fetch stack and the real Bybit adapter's abort wiring
+    // against a deliberately delayed local HTTP endpoint (no external network involved).
+    const transportAbort = await page.evaluate(async () => {
+      const originalHosts = BybitAdapter.hosts;
+      BybitAdapter.hosts = [window.location.origin];
+      const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+      try {
+        const controller = new AbortController();
+        const startedAt = performance.now();
+        const pending = BybitAdapter.fetchMarketSnapshot('BTCUSDT', '60', controller.signal, 100)
+          .then(() => ({ resolved: true }))
+          .catch(error => ({ resolved: false, name: error.name, message: error.message }));
+        await delay(75);
+        controller.abort(new Error('synthetic browser transport cancellation'));
+        const outcome = await pending;
+        const elapsedMs = performance.now() - startedAt;
+
+        const timeoutStartedAt = performance.now();
+        let timeoutOutcome;
+        try {
+          await BybitAdapter.fetchJsonWithTimeout(window.location.origin + '/slow', null, 75);
+          timeoutOutcome = { aborted: false };
+        } catch (error) {
+          timeoutOutcome = { aborted: error.name === 'AbortError', name: error.name };
+        }
+        const timeoutElapsedMs = performance.now() - timeoutStartedAt;
+        return { adapterAbort: outcome, adapterElapsedMs: elapsedMs, timeout: timeoutOutcome, timeoutElapsedMs };
+      } finally {
+        BybitAdapter.hosts = originalHosts;
+      }
+    });
+    if (transportAbort.adapterAbort.resolved !== false ||
+        transportAbort.adapterAbort.name !== 'AbortError' ||
+        transportAbort.adapterElapsedMs > 1500 ||
+        transportAbort.timeout.aborted !== true ||
+        transportAbort.timeoutElapsedMs > 1500) {
+      throw new Error(`Browser transport cancellation checks failed: ${JSON.stringify(transportAbort)}`);
+    }
+    if (transportProbe.started < 3 || transportProbe.closed < 3) {
+      throw new Error(`Browser transport requests were not all aborted at the HTTP layer: ${JSON.stringify(transportProbe)}`);
     }
 
     const gate = await page.evaluate(() => {
@@ -555,6 +612,7 @@ async function main() {
       b1Gate: gate,
       chartVisual,
       mobileChartVisual,
+      transportAbort: { ...transportAbort, server: transportProbe },
       cleanup: post, browserFetchProbe, liveBybit, pageErrors
     }, null, 2));
   } finally {
