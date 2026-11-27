@@ -565,3 +565,17 @@ Exact candidate artifacts: HTML blob 39e42c223419bd8a599f6c513ef6e269df120fcc (3
 
 ### Result
 B2 design review is recorded with blockers. Production implementation remains NOT STARTED and is gated on B1 acceptance.
+
+## B2 design policy freeze — 2026-11-27
+
+### Work completed
+- Added Section 15 to the B2 specification, freezing v1 rules for exact price equality, plateau confirmation, raw/sequence pivot handling, initial trend state, protected swings, strict close-based breaks, event order and consumed-level lifecycle.
+- Explicitly limited the first implementation proposal to B2-A/B/C. Support/resistance zones, retests and chart integration remain separate later increments.
+- Added a resolution pass to the internal design review mapping all seven blockers (R1–R7) to the frozen specification.
+
+### Result and limits
+- The seven previously identified design ambiguities are resolved at specification level.
+- This remains an internal design review, not an independent external audit. The policy choices still require deterministic fixtures and historical replay before chart-facing use.
+- No application code, HTML, UI, analytical decision path, or main branch changed.
+- B1 acceptance gates remain open; B2 implementation remains blocked until explicit B1 acceptance.
+- Changes are on research/b2-market-structure-spec-2026-11-27, in documentation-only PR #10 (draft, unmerged).
