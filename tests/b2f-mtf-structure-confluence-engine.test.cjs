@@ -14,7 +14,7 @@ const POLICY = {
   b1_mtf_contract_version: '1.0.0',
   b1_contract_version: '1.1.0',
   b1_validator_version: '1.1.0',
-  b1_quality_policy_version: 'b1-quality-v1',
+  b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
   b2b_engine_version: '2.0.0-b2b',
   b2b_policy_version: 'b2b-swing-sequence-v1',
   b2c_engine_version: '2.0.0-b2c',
@@ -105,7 +105,7 @@ function makeInput(states = { '1d': 'UP', '4h': 'UP', '1h': 'UP' }, options = {}
     };
     const report = {
       validator_version: '1.1.0',
-      policy_version: 'b1-quality-v1',
+      policy_version: 'b1-quality-policy-2026-11-27-v1',
       snapshot_id: snapshotId,
       status: 'VALID',
       reasons: [],
@@ -144,7 +144,7 @@ function makeInput(states = { '1d': 'UP', '4h': 'UP', '1h': 'UP' }, options = {}
         b2b_engine_version: '2.0.0-b2b',
         b2b_policy_version: 'b2b-swing-sequence-v1',
         b1_validator_version: '1.1.0',
-        b1_quality_policy_version: 'b1-quality-v1'
+        b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1'
       },
       snapshot_id: snapshotId,
       symbol: 'BTC/USDT',
@@ -348,7 +348,7 @@ run('full B1-E three-timeframe snapshot plus actual B2-A/B/C engines yields UP|U
       unclassified_candles_by_timeframe: { [tf]: [] }
     };
     const report = {
-      validator_version: '1.1.0', policy_version: 'b1-quality-v1',
+      validator_version: '1.1.0', policy_version: 'b1-quality-policy-2026-11-27-v1',
       snapshot_id: snapshotId, status: 'VALID', reasons: [],
       symbol: 'BTC/USDT', timeframe: tf, analysis_as_of_ms: cutoff,
       received_at_ms: cutoff + 100, valid_count: count, closed_count: count,
@@ -359,7 +359,7 @@ run('full B1-E three-timeframe snapshot plus actual B2-A/B/C engines yields UP|U
       snapshot, quality_report: report, timeframe: tf, analysis_as_of_ms: cutoff,
       policy: {
         version: 'b2a-causal-swing-v1', b1_contract_version: '1.1.0',
-        b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-v1',
+        b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
         left_strength: 2, right_strength: 2, finality_safety_lag_ms: LAG,
         price_equality_policy: 'EXACT_PRICE_V1'
       }
@@ -370,7 +370,7 @@ run('full B1-E three-timeframe snapshot plus actual B2-A/B/C engines yields UP|U
       policy: {
         version: 'b2b-swing-sequence-v1', b2a_engine_version: '2.0.0-b2a',
         b2a_policy_version: 'b2a-causal-swing-v1', b1_validator_version: '1.1.0',
-        b1_quality_policy_version: 'b1-quality-v1', price_equality_policy: 'EXACT_PRICE_V1'
+        b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1', price_equality_policy: 'EXACT_PRICE_V1'
       }
     });
     assert.equal(b2b.status, 'VALID', JSON.stringify(b2b.admission.reasons));
@@ -379,7 +379,7 @@ run('full B1-E three-timeframe snapshot plus actual B2-A/B/C engines yields UP|U
         version: 'b2c-state-v1', b2b_engine_version: '2.0.0-b2b',
         b2b_policy_version: 'b2b-swing-sequence-v1', b2a_engine_version: '2.0.0-b2a',
         b2a_policy_version: 'b2a-causal-swing-v1', b1_contract_version: '1.1.0',
-        b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-v1',
+        b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
         finality_safety_lag_ms: LAG, price_equality_policy: 'EXACT_PRICE_V1',
         break_buffer_policy: 'ZERO_BUFFER_V1'
       },
