@@ -25,9 +25,12 @@ echo
 echo "Pinned candidate commit:"
 git rev-parse HEAD
 echo
-echo "Installing candidate dependencies plus dashboard server..."
-python -m pip install --upgrade pip
-python -m pip install -e . "fastapi>=0.110" "uvicorn[standard]>=0.27"
+echo "Installing candidate dependencies plus dashboard server in a clean environment..."
+mkdir -p "$ROOT/.cloud-test/probe-home"
+env -i PATH="$PATH" HOME="$ROOT/.cloud-test/probe-home" LANG="${LANG:-C.UTF-8}" \
+  python -m pip install --upgrade pip
+env -i PATH="$PATH" HOME="$ROOT/.cloud-test/probe-home" LANG="${LANG:-C.UTF-8}" \
+  python -m pip install -e . "fastapi>=0.110" "uvicorn[standard]>=0.27"
 
 cd "$ROOT"
 export ORDERFLOW_REPO="$WORK"
@@ -41,7 +44,6 @@ echo "Press Ctrl+C to stop."
 echo
 
 # Run the third-party application with no inherited GitHub tokens or user CLI auth.
-mkdir -p "$ROOT/.cloud-test/probe-home"
 env -i \
   PATH="$PATH" \
   HOME="$ROOT/.cloud-test/probe-home" \
