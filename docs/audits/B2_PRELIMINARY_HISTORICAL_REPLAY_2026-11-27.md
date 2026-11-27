@@ -66,7 +66,9 @@ The current B2-A output sorts pivots sharing the same availability and source ti
 
 **Required correction before integration:** preserve both raw pivot observations, but do not admit either member of a same-source-candle high/low pair into the alternating B2-B sequence. Mark the pair explicitly as ambiguous for sequence purposes, preserve the reason in raw evidence, and ensure B2-C cannot use either ambiguous pivot as a BOS/CHoCH source level. B2-D may still retain their high/low prices as separate S/R evidence only if the policy explicitly allows same-candle dual-role evidence; otherwise exclude them there too. Add end-to-end regressions through B2-B, B2-C, B2-D, B2-E and B2-G.
 
-The current implementation does not yet implement this correction. Do not integrate the current B2-B sequence behavior until it is fixed and tested.
+**Correction implemented on the B2-G candidate branch** (commit `541498ca3ca755fdb49198dcddc5cfd8058a5082`): B2-B is now engine `2.1.0-b2b` / policy `b2b-swing-sequence-v2`; same-source high/low pairs are retained as `AMBIGUOUS_FOR_SEQUENCE` with an explicit exclusion reason and omitted from the active sequence. B2-C independently reconstructs and validates this status and cannot use either member as a structure level. B2-D/B2-E/B2-F bind to the new B2-B identity. B2-G exposes these observations in a separate `ambiguous_pivots` collection, never as active swing markers.
+
+**Verification:** GitHub Actions integrated B2-A→B2-G suite `46030400410` passed 180/180 tests: B2-A 21, B2-B 21, B2-C 34, B2-D 21, B2-E 24, B2-F 30, B2-G 29. Standalone B2-G run `46030400495` also passed. This closes the deterministic regression for the identified defect, but does not replace the pending full historical module replay or independent audit.
 
 ## Remaining audit work
 
