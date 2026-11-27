@@ -79,3 +79,16 @@ A direct attempt to access Bybit REST endpoints through the available web retrie
 3. Derive and document a conservative, fail-closed spread policy from measurements.
 4. Verify the browser regression suite and transport abort behavior.
 5. Before directional integration, add forming-candle validation or a tested non-consumption invariant.
+
+
+## Live capture utility hardening — 2026-11-27
+
+After the independent audit, the separate read-only probe `tools/b1_live_probe.html` was reviewed and hardened before requesting real measurements:
+
+- Added a 15-second timeout for each host attempt; timed-out primary attempts are recorded and the backup host is tried.
+- User cancellation now aborts active requests and interrupts the delay between samples.
+- Separates response-header arrival from complete response-body receipt; records both header latency and total response duration.
+- Records request start time per host attempt, avoiding inflated latency when fallback is used.
+- Capture schema advanced to `crypto-analyst-b1-live-capture-v2`.
+
+This is source-level hardening only. The probe has not yet been executed in a real browser/network session; the actual capture remains outstanding.
