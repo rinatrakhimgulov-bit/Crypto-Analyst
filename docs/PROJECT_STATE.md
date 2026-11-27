@@ -1,10 +1,10 @@
 
 # Crypto Analyst — Project State
 
-**Дата актуализации:** 2026-11-26  
+**Дата актуализации:** 2026-11-27  
 **Основная ветка:** `main`  
 **Основной исходный файл:** `CryptoAnalyst_StageA_S6_updated.html`  
-**Текущий этап:** Stage A / S6; B0 аудит завершён. B1 — исследование data layer и review draft-контракта. Основной HTML не изменён.
+**Текущий этап:** B2-A–B2-G research candidate implemented and historically replayed. B1 remains NOT ACCEPTED. Main HTML and `main` are unchanged; no production integration.
 
 ---
 
@@ -485,3 +485,218 @@ After the documentation sync, PR #8 head is `5e94c29d1f5734e8b46200c04b6da51996c
 - Latest CI run 45981507604 passed: Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; 174/174 deterministic tests. Browser-level live-handler-to-UI checks, desktop/mobile chart checks, transport cancellation/timeout checks and zero-page-error assertion passed.
 - Real exchange connectivity is still NOT VERIFIED. GitHub Actions REST requests to both public Bybit hosts are blocked with HTTP 403; CI reports SKIPPED_PROVIDER_BLOCKED. The new browser test uses controlled events and does not prove a real Bybit WebSocket session. A real iPhone/Safari run must confirm live lastPrice and forming-candle updates, symbol/timeframe switching and reconnect/fallback behavior.
 - main remains unchanged. Do not merge PR #8 or #9 automatically. B1-D automated implementation is complete; live browser acceptance and independent review remain open. B2 remains gated.
+
+
+## Current verified status — 2026-11-27 (supersedes older status text above)
+
+### Source of truth and branch status
+- `main` remains unchanged.
+- PR #8 (`integration/b1-mtf-architecture-2026-11-27`) is the B1 canonical contract / quality / MTF candidate; draft and unmerged.
+- PR #9 (`feature/b1-d-live-market-data-2026-11-27`) is the B1-D live Bybit ticker/kline candidate stacked on PR #8; draft and unmerged.
+- Latest PR #9 diagnostic patch commit: `0b4fdc9a4e6e837d144690854e4a87a4dcae6cbd`.
+- Latest fetched HTML blob on that branch: `bb31ad9a7bc1f2ae0d4d55fc6fe423543b230baa`.
+- PR #10 (`research/b2-market-structure-spec-2026-11-27`) is a documentation-only B2 design-review branch stacked on PR #9; draft and unmerged.
+
+### B1 candidate status
+- Candidate implementation includes provider-neutral canonical data, quality validation/gating, synchronized MTF assembly, and live Bybit WS ticker/kline chart updates.
+- Latest recorded CI run for the diagnostic patch: `45987648219`; 174/174 deterministic tests passed and browser pageErrors were 0.
+- GitHub Actions could not perform live Bybit REST verification because its runner received HTTP 403. This does not establish an exchange outage.
+- User-provided iPhone diagnostics on 2026-11-27 show WS lastPrice freshness age 0.0s, a REST/WS price delta of 5.7 USDT at the captured instant, forming-candle OHLC, and `ticker→свеча UPDATED`. This supports that the handler applied a ticker update; it does not prove complete live-feed acceptance.
+- User reports that price changes and candle color changes, but smooth visible OHLC animation is absent. This is explicitly deferred as non-critical; do not spend the next implementation cycle polishing animation.
+- B1 is **NOT ACCEPTED**. Remaining gates: independent review of exact candidate source; real concurrent Bybit 1D/4H/1H captures with measured provider-time spread and documented fail-closed policy; real iPhone/Safari switch/reconnect/background/fallback verification; explicit owner acceptance.
+- No B1 candidate has been merged into `main`.
+
+### B2 Market Structure
+- Existing design baseline: `docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md`.
+- Internal design review: `docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md`.
+- Review identified unresolved implementation rules for plateau confirmation, same-side pivot replacement, protected swings, initial trend semantics, break buffer, event ordering, and S/R/retest policies.
+- B2 production code and UI integration have **NOT STARTED**. B2 remains blocked from implementation/live integration until B1 acceptance.
+- The next permitted B2 step after B1 acceptance is B2-A: pure causal swing detection with explicit pivot/confirmation/availability timestamps, prefix-invariance, and batch/online equivalence tests.
+
+### Current operating rule
+Do not merge PR #8, #9, or #10 automatically. Keep `main` untouched. Treat all branch candidates as unaccepted until their stated gates are closed.
+
+## B2 design policy freeze — 2026-11-27 (latest; supersedes prior B2 blocker status)
+
+The B2 specification now has Section 15, "Frozen implementation policy — v1", resolving the seven design ambiguities recorded in the internal review:
+- plateau detection uses a maximal contiguous equal-price run, rightmost representative, and right-strength candles counted after the plateau ends;
+- exact-price equality is explicitly versioned as EXACT_PRICE_V1; no guessed tick/ATR/percentage tolerance;
+- raw pivots remain immutable; same-side sequence replacement is deterministic and symmetric;
+- initial trend state, initial break naming, protected swing initialization/advancement, and provenance are explicit;
+- break policy is ZERO_BUFFER_V1, strict close beyond level; equality is not a break;
+- fixed per-candle event order prevents same-candle hindsight; consumed levels cannot emit duplicate break events;
+- S/R zones and retest/failure logic are explicitly deferred beyond B2-A/B/C.
+
+The design review has a resolution pass mapping R1–R7 to the new policy. This is an internal design closure, NOT an independent external audit and not empirical validation. Exact equality and zero buffer are baseline choices to be examined in replay fixtures.
+
+Current status remains unchanged at the release boundary:
+- B1 is NOT ACCEPTED. Its exact-source independent review, real concurrent Bybit 1D/4H/1H capture and spread calibration, actual iPhone/Safari lifecycle verification, and explicit owner acceptance remain open.
+- B2 production implementation remains NOT STARTED and blocked by B1 acceptance. After B1 acceptance, B2-A/B/C can be proposed as separate increments; no B2-D/E/F scope is bundled.
+- PR #10 remains documentation-only, draft and unmerged. main and the application HTML are unchanged.
+
+## B2-A isolated implementation candidate — 2026-11-27 (latest)
+
+The user explicitly directed work to move beyond repeated B1 UI checks. Do not ask the user to repeat timeframe-switching or live-price checks already completed. Candle animation polish is deferred to the chart UI stage.
+
+An isolated B2-A candidate has now been created on branch feature/b2a-causal-swing-engine-2026-11-27:
+- src/analysis/b2-causal-swing-engine.js — pure, provider-neutral causal raw swing-high/swing-low detector.
+- tests/b2a-causal-swing-engine.test.cjs — deterministic regression fixtures.
+- .github/workflows/b2a-causal-pivots.yml — dedicated Node test workflow.
+- B2 spec clarification: pivot confirmedAt is the right-window candle close boundary; availableAt includes the explicit B1 finality safety lag and must be <= analysis_as_of_ms.
+
+The engine requires a VALID B1 quality report whose snapshot_id, symbol, timeframe, analysis_as_of_ms and B1 policy version exactly match the canonical snapshot and explicit B2 policy. It rejects non-VALID/mismatched input, invalid provenance, out-of-order/duplicate/misaligned candles, non-closed candles, and forming/unknown overlap. It emits only confirmed raw pivots, with rightmost plateau representative and causal timestamps. No swing sequence, BOS/CHoCH, zones, retests, chart integration or LONG/SHORT connection is included.
+
+Local deterministic harness verification in the development environment: 11/11 B2-A tests passed. This is not yet a reported GitHub Actions run. The PR remains draft/unmerged; no application HTML or main branch changed.
+
+B1 release acceptance is still a separate gate for production integration. This isolated B2-A candidate is research/verification code only; it does not activate B2 in the running app.
+
+
+## B2-A version-binding hardening and CI verification — 2026-11-27
+
+The isolated B2-A candidate now requires exact B1 version identity, not merely non-empty strings:
+- policy declares `b1_contract_version`, `b1_validator_version`, and `b1_quality_policy_version`;
+- canonical snapshot `contract_version` must match the declared B1 contract version;
+- quality report `validator_version` and `policy_version` must match the declared accepted B1 versions exactly;
+- missing or mismatched versions fail closed.
+
+The B2-A input remains one canonical timeframe snapshot per invocation. This is intentional and matches the B2 design contract; it does not mean the engine accepts an unsynchronized outer MTF object. MTF synthesis remains gated on B1 acceptance.
+
+Regression suite: 13/13. GitHub Actions run [46005202794](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46005202794) completed successfully on commit `f41c85a3d09cbbec602fe1eaef8902b5f52de685`. Candidate remains isolated, draft and unmerged. No application HTML or `main` changes.
+
+
+## Stage transition decision — 2026-11-27 (latest)
+
+The owner approved deferring Stage 1 visual/live-chart polish and prioritizing the fundamental analytical stage.
+
+- Stage 1 is **FROZEN FOR FEATURE WORK**, not abandoned. The live chart animation, exact live-price comparison, and remaining iPhone/Safari market-data diagnostics are deferred for a later return.
+- Data-integrity safeguards are not deferred: analytical modules must continue to require validated, closed-only B1 input and fail closed on non-VALID data.
+- Stage 2 / B2 Market Structure is the active research-development priority.
+- B1 remains **NOT ACCEPTED**. B2 candidates may be developed and tested in isolated research branches only; they must not be wired into the live app or directional LONG/SHORT path until B1 acceptance and explicit owner approval.
+- B2-A remains isolated in PR #12, draft and unmerged. Its 13-test baseline was expanded with seven edge-case regressions. GitHub Actions run 46010999225 passed **20/20** on commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
+- The expanded B2-A suite now explicitly checks longer plateaus, equal highs in non-contiguous left/right windows, incomplete right confirmation, deep immutability, duplicate timestamps, and out-of-order candles.
+- No application HTML, main branch, live decision path, or production analytics was changed by this test expansion.
+
+Next B2 work must remain staged: independently review B2-A's exact source and tests; only after that, develop B2-B swing-sequence labels as an isolated consumer of immutable B2-A pivots. BOS/CHoCH, zones, retests, MTF decision integration and UI remain later increments.
+
+
+## B2-B isolated swing-sequence candidate — 2026-11-27
+
+- New pure module: `src/analysis/b2b-swing-sequence-engine.js`.
+- Consumes only a VALID B2-A result and requires exact B2-A engine/policy identity plus the exact B1 validator and quality-policy identities carried by B2-A admission.
+- Retains every raw pivot. Produces a separate alternating sequence in B2-A `available_at_ms` order; it rejects non-monotonic availability rather than sorting by visual source time.
+- Implements symmetric same-side replacement: higher highs and lower lows replace the active same-side sequence pivot; less-extreme/equal pivots remain in raw evidence as `SUPERSEDED_FOR_SEQUENCE`.
+- Emits `INITIAL_HIGH`, `INITIAL_LOW`, `HH`, `LH`, `EQH`, `HL`, `LL`, `EQL`, comparison pivot IDs, price delta and relative delta percentage.
+- Output is deeply immutable without freezing nested objects owned by the upstream B2-A input.
+- GitHub Actions run 46011622297 passed **19/19** deterministic B2-B tests on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
+- PR #13 is draft and unmerged, based on the B2-A candidate branch. This code is research-only; it is not wired into the app or LONG/SHORT path. B1 remains NOT ACCEPTED.
+
+Next: independent review of exact B2-A/B2-B source and tests; then B2-C protected swings and BOS/CHoCH only as a separate isolated increment, still gated from production by B1 acceptance.
+
+
+---
+
+## 18. Current verified state — B2-A through B2-G (2026-11-27)
+
+**Candidate branch:** `feature/b2g-chart-projection-contract-2026-11-27`  
+**Draft PR:** #20, base `feature/b2f-mtf-structure-confluence-2026-11-27`  
+**Scope:** isolated analytical modules and research harness only. No application HTML or `main` changes.
+
+### Implemented candidate modules
+
+- B2-A: causal swing pivot detection, exact-price plateau policy, rightmost plateau representative, availability timestamps and fail-closed B1 admission.
+- B2-B 2.2.0: alternating swing sequence, explicit same-candle dual-pivot exclusion, immutable sequence history at availability time, final active sequence kept separately.
+- B2-C 2.1.0: HH/HL/LH/LL state, BOS/CHoCH/sweep event replay from causal sequence history, final active pivots separated from historical event pivots.
+- B2-D: support/resistance zones and candidate levels, with ambiguous dual pivots allowed only as explicitly tagged raw S/R evidence.
+- B2-E: breakout/retest lifecycle; source pivot provenance validated against accepted-at-availability history.
+- B2-F: 1D/4H/1H structure confluence against an MTF snapshot contract.
+- B2-G: causal chart-neutral projection DTOs; active, superseded and ambiguous pivots are distinct; event sources are checked against sequence history.
+
+### Verified test and historical replay evidence
+
+- Integrated GitHub Actions run `46031937203`: **181/181** deterministic tests passed (B2-A 21, B2-B 21, B2-C 35, B2-D 21, B2-E 24, B2-F 30, B2-G 29).
+- Historical replay run `46032038435`: full B2-A/B/C on BTCUSDT and ETHUSDT 1H/4H/1D archive series; 30 sampled 160-candle B2-A–B2-E windows; synchronized MTF B2-F/B2-G execution for both symbols.
+- Prefix invariance: 18/18 checks passed across the six symbol/timeframe series, comparing B2-A pivot availability and B2-C event history at three historical cutoffs.
+- The historical report is recorded in `docs/audits/B2_PRELIMINARY_HISTORICAL_REPLAY_2026-11-27.md`; CI artifact name: `b2-historical-replay-report`.
+
+### Critical limitations
+
+- Archive ends 2025-12-05; it is not current 2026 market data.
+- Historical replay used a synthetic B1-valid wrapper, not the production B1 REST/WS adapters.
+- MTF provider-time spread was synthetic zero; live Bybit spread calibration is still open.
+- Zone/retest tolerances and 2/2 pivot strength are exploratory settings, not calibrated production parameters.
+- Exact-source independent audit and iPhone/Safari acceptance remain outstanding.
+- B1 remains NOT ACCEPTED. B2 is not approved for production or app integration.
+- Do not merge PR #20 or change `main` without explicit owner approval.
+
+### Next gates before app integration
+
+1. Independent exact-source review of the current B2-A–B2-G branch and historical harness.
+2. Review and calibrate pivot strength, zone span and retest parameters on additional/out-of-sample data.
+3. Complete B1 live concurrent Bybit 1D/4H/1H capture and provider-time spread policy.
+4. Verify the current candidate on iPhone/Safari, including symbol/timeframe switches, reconnect and stale/fallback handling.
+5. Prepare a separate integration candidate only after all gates pass.
+
+
+
+## 19. B2 application integration candidate — 2026-11-27
+
+**Integration branch:** `integration/b2-market-structure-ui-2026-11-27`  
+**Base for the integration candidate:** B1-D candidate `feature/b1-d-live-market-data-2026-11-27` (not `main`).  
+**Draft integration PR:** [#21](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/21), head `e77e8be826c0e8a4641739752f94472e6ae7c1a5` at the time of latest full verification.
+
+### App changes
+
+- Inlined B2-A through B2-G browser-compatible modules into the single-file HTML prototype, preserving the existing single-file delivery model.
+- Added a B2 Market Structure panel with structure state, active/ambiguous pivots, last BOS/CHoCH event, confirmed/candidate S/R counts, retest lifecycle summary and explicit MTF-disabled status.
+- Added chart overlays for causal swing markers, structure events and confirmed S/R zones.
+- Confirmed zones are rendered only from the first chart candle at or after `visible_from_ms`; they are not backdated onto candles that predate confirmation.
+- B2 remains display-only. It does not modify the existing LONG/SHORT/WAIT decision path.
+- B2-F MTF is deliberately not called by the app until live provider-time spread is measured and calibrated. B2-G emits an explicit null MTF context for this single-timeframe view.
+- Zone span and retest tolerances are explicitly exploratory display parameters, not calibrated trading settings.
+
+### Verified CI
+
+- B2 application integration run [46034275312](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034275312): all seven B2 module suites and the browser/mobile integration job passed.
+- Browser fixture: 220 closed synthetic 1H candles; B1 quality VALID; B2 output VALID; 33 swing markers, 65 structure events, 2 confirmed zones and 2 retest lifecycles; MTF context null as intended; projection attached to chart; B1 STALE input correctly blocked at B1 admission.
+- Mobile viewport check at 390×844: B2 panel visible, card width 366 px, chart width 334 px, no horizontal overflow; zero browser page errors.
+- B1 browser/data verification run [46034276646](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034276646) passed. Live Bybit REST check was explicitly SKIPPED_PROVIDER_BLOCKED because both public REST hosts returned HTTP 403 from the GitHub runner. This is not a live Bybit success.
+- B2 research suite run [46034274801](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034274801) passed all seven module test steps.
+
+### Remaining gates before owner iPhone review / production acceptance
+
+1. Re-run the exact latest integration commit through CI after the final chart availability-time overlay regression.
+2. Provide an iPhone/Safari preview of this branch and verify the actual Bybit feed, chart overlays, symbol/timeframe switching and reconnect/fallback behavior.
+3. Calibrate MTF provider-time spread from concurrent live Bybit 1D/4H/1H captures before enabling B2-F in the app.
+4. Review/calibrate 2/2 pivot strength, S/R zone span and retest tolerances on current and out-of-sample market data.
+5. Keep B2 display-only until a separate validation supports any later connection to directional decisions.
+
+No merge to `main` has been made. The integration branch and any PR remain unmerged pending owner review.
+
+
+## 2026-11-27 — B2 application integration preview
+
+A separate integration-preview branch now embeds B2-A through B2-G into the single-file HTML prototype. This is a research/visualization preview, not production acceptance.
+
+- Branch: `integration/b2-market-structure-ui-2026-11-27`.
+- B2-A/B/C/D/E run against the existing B1 canonical snapshot and quality report for the selected chart timeframe.
+- B2-G creates the chart projection. The UI renders causal swing labels, structure events, and confirmed support/resistance zones; a separate panel summarizes structure, events, zones, and retest lifecycle.
+- B2-F remains embedded as a research module but is not invoked in the live UI. The B2-G projection contract now permits an explicit null MTF result and returns `mtf_context: null`; this is not MTF approval and does not create directional permission.
+- Zone span (0.1% of median close) and retest tolerance/buffers (0.05%) are provisional visualization parameters only. They are not optimized or validated trading parameters.
+- B2 output does not feed the Stage A LONG/SHORT/WAIT decision. The panel explicitly identifies the B2 layer as research-only.
+
+### Verified integration evidence
+
+- B2 research suite run `46034125614`: 182/182 deterministic tests passed (B2-A 21, B2-B 21, B2-C 35, B2-D 21, B2-E 24, B2-F 30, B2-G 30).
+- B2 app integration run `46034125941`: passed. Browser fixture used 220 closed synthetic candles and produced 33 active swing markers, 65 structure events, 2 confirmed zones and 2 retest lifecycles. Invalid/stale B1 quality blocked B2 at the B1 admission gate.
+- Mobile viewport check at 390×844: B2 card visible, chart width 334 px, no horizontal overflow.
+- B1 browser suite run `46034125888`: passed with zero browser page errors. Live Bybit capture was explicitly skipped because the GitHub runner was denied by the provider (HTTP 403); this is not a live-market pass.
+- Historical replay remains separate: run `46032038435`, six BTC/ETH timeframe series, 18/18 prefix-invariance checks. Archive ends 2025-12-05 and the replay uses a synthetic B1-valid wrapper.
+
+### Remaining acceptance gates
+
+1. Owner visual/functional verification on iPhone Safari.
+2. Live concurrent Bybit 1D/4H/1H provider-time capture and measured spread policy before enabling B2-F.
+3. Independent exact-source review of the final integrated HTML and modules.
+4. Calibration/out-of-sample review of pivot, zone and retest parameters before any trading-decision use.
+
+`main` remains unchanged. No PR has been merged. This preview must not be treated as an approved trading signal source.

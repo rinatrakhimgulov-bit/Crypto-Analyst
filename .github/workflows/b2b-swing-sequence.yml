@@ -1,0 +1,27 @@
+name: B2-B causal swing sequence tests
+
+on:
+  push:
+    branches:
+      - feature/b2b-swing-sequence-2026-11-27
+  pull_request:
+    branches:
+      - feature/b2a-causal-swing-engine-2026-11-27
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  b2b-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run deterministic B2-B tests
+        run: node tests/b2b-swing-sequence-engine.test.cjs

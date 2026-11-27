@@ -506,6 +506,20 @@
           </div>
           <div class="kv-list" id="dataQualityList"></div>
         </section>
+
+        <!-- B2 Market Structure research layer -->
+        <section class="card" id="b2StructureCard">
+          <div class="card-header">
+            <span class="card-title">Рыночная структура B2</span>
+            <span class="meta status-warn" id="b2Status">Ожидание данных</span>
+          </div>
+          <div class="kv-list" id="b2StructureList">
+            <div class="kv-row"><span class="kv-k">Структура</span><span class="kv-v">—</span></div>
+          </div>
+          <div class="note-box">
+            Исследовательский слой: разметка HH/HL/LH/LL, BOS/CHoCH, зон и ретестов. Не формирует торговое решение. Параметры зон и ретеста пока экспериментальные. MTF-контекст отключён до калибровки времени провайдера.
+          </div>
+        </section>
       </div>
     </div>
 
@@ -3759,6 +3773,2897 @@
       }
     };
 
+
+    // B2-A..B2-G research engines are inlined for the single-file iPhone prototype.
+    // B2-F remains intentionally disconnected until live provider-time spread is calibrated.
+    (function attachB2CausalSwingEngine(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.B2CausalSwingEngine = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function createB2CausalSwingEngine() {
+  'use strict';
+  const ENGINE_VERSION = '2.0.0-b2a';
+  const TIMEFRAME_MS = Object.freeze({ '1h': 3600000, '4h': 14400000, '1d': 86400000 });
+  const CLOSED_STATES = new Set(['CONFIRMED', 'TIME_DERIVED']);
+
+  function freezeDeep(value) {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    Object.freeze(value);
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+    return value;
+  }
+  function blocked(status, reasons, meta = {}) {
+    return freezeDeep({
+      engine_version: ENGINE_VERSION, policy_version: meta.policyVersion || null, status,
+      admission: { status: 'BLOCKED', reasons }, snapshot_id: meta.snapshotId || null,
+      symbol: meta.symbol || null, timeframe: meta.timeframe || null,
+      analysis_as_of_ms: meta.analysisAsOfMs ?? null, pivots: [], diagnostics: meta.diagnostics || {}
+    });
+  }
+  function isObject(value) { return Boolean(value && typeof value === 'object' && !Array.isArray(value)); }
+  function validatePolicy(policy) {
+    if (!isObject(policy)) return 'POLICY_MISSING';
+    if (typeof policy.version !== 'string' || !policy.version.trim()) return 'POLICY_VERSION_INVALID';
+    if (typeof policy.b1_contract_version !== 'string' || !policy.b1_contract_version.trim()) return 'B1_CONTRACT_VERSION_MISSING';
+    if (typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim()) return 'B1_VALIDATOR_VERSION_MISSING';
+    if (typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim()) return 'B1_QUALITY_POLICY_VERSION_MISSING';
+    if (!Number.isSafeInteger(policy.left_strength) || policy.left_strength < 1 || policy.left_strength > 50) return 'LEFT_STRENGTH_INVALID';
+    if (!Number.isSafeInteger(policy.right_strength) || policy.right_strength < 1 || policy.right_strength > 50) return 'RIGHT_STRENGTH_INVALID';
+    if (!Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0) return 'FINALITY_LAG_INVALID';
+    if (policy.price_equality_policy !== 'EXACT_PRICE_V1') return 'PRICE_EQUALITY_POLICY_UNSUPPORTED';
+    return null;
+  }
+  function timeframeFor(snapshot, requested) {
+    const keys = Object.keys(snapshot.candles_by_timeframe || {});
+    if (keys.length !== 1) return null;
+    if (requested && requested !== keys[0]) return null;
+    return keys[0];
+  }
+  function validateCandle(candle, snapshot, timeframe, stepMs, analysisAsOfMs, lagMs) {
+    if (!isObject(candle)) return 'CANDLE_NOT_OBJECT';
+    if (!Number.isSafeInteger(candle.open_time_ms) || !Number.isSafeInteger(candle.close_time_ms)) return 'CANDLE_TIME_INVALID';
+    if (candle.close_time_ms - candle.open_time_ms !== stepMs) return 'CANDLE_DURATION_INVALID';
+    if (candle.open_time_ms % stepMs !== 0) return 'CANDLE_ALIGNMENT_INVALID';
+    if (candle.close_time_ms > analysisAsOfMs) return 'CANDLE_AFTER_ANALYSIS_CUTOFF';
+    if (candle.close_time_ms + lagMs > analysisAsOfMs) return 'CANDLE_NOT_FINAL_AT_ANALYSIS_CUTOFF';
+    if (!CLOSED_STATES.has(candle.closed_state)) return 'CANDLE_NOT_CLOSED';
+    if (candle.canonical_symbol !== snapshot.canonical_symbol || candle.market_type !== snapshot.market_type || candle.timeframe !== timeframe) return 'CANDLE_PROVENANCE_MISMATCH';
+    if (['open', 'high', 'low', 'close'].some(k => !Number.isFinite(candle[k]) || candle[k] <= 0)) return 'CANDLE_PRICE_INVALID';
+    if (candle.high < Math.max(candle.open, candle.close, candle.low) || candle.low > Math.min(candle.open, candle.close, candle.high) || candle.high < candle.low) return 'CANDLE_OHLC_INVALID';
+    return null;
+  }
+  function detectType(candles, type, leftStrength, rightStrength, asOf, lagMs, timeframe) {
+    const key = type === 'SWING_HIGH' ? 'high' : 'low';
+    const moreExtreme = type === 'SWING_HIGH' ? (a, b) => a > b : (a, b) => a < b;
+    const pivots = [];
+    let i = 0;
+    while (i < candles.length) {
+      const price = candles[i][key];
+      let end = i;
+      while (end + 1 < candles.length && candles[end + 1][key] === price) end++;
+      const rightEnd = end + rightStrength;
+      if (i - leftStrength >= 0 && rightEnd < candles.length) {
+        let qualifies = true;
+        for (let j = i - leftStrength; j < i && qualifies; j++) if (!moreExtreme(price, candles[j][key])) qualifies = false;
+        for (let j = end + 1; j <= rightEnd && qualifies; j++) if (!moreExtreme(price, candles[j][key])) qualifies = false;
+        if (qualifies) {
+          const representative = candles[end];
+          const confirmedAt = candles[rightEnd].close_time_ms;
+          const availableAt = confirmedAt + lagMs;
+          if (availableAt <= asOf) pivots.push({
+            pivot_id: ['B2A', timeframe, type, candles[i].open_time_ms, representative.open_time_ms, String(price)].join(':'),
+            type, price, source_time_ms: representative.open_time_ms, source_index: end,
+            plateau_start_time_ms: candles[i].open_time_ms, plateau_end_time_ms: representative.open_time_ms,
+            plateau_start_index: i, plateau_end_index: end,
+            confirmed_at_ms: confirmedAt, available_at_ms: availableAt,
+            confirmation: {
+              method: 'CLOSED_CANDLE_SYMMETRIC_WINDOW', left_strength: leftStrength,
+              right_strength: rightStrength, equality_policy: 'EXACT_PRICE_V1', finality_safety_lag_ms: lagMs
+            }
+          });
+        }
+      }
+      i = end + 1;
+    }
+    return pivots;
+  }
+  function analyze(input) {
+    const policy = input && input.policy;
+    const policyError = validatePolicy(policy);
+    if (policyError) return blocked('INVALID', [{ code: policyError, severity: 'CRITICAL' }], { policyVersion: policy && policy.version });
+    const snapshot = input && input.snapshot;
+    const report = input && input.quality_report;
+    const requestedTf = input && input.timeframe;
+    const asOf = input && input.analysis_as_of_ms;
+    const meta = { policyVersion: policy.version, snapshotId: snapshot && snapshot.snapshot_id, symbol: snapshot && snapshot.canonical_symbol, timeframe: requestedTf, analysisAsOfMs: asOf };
+    if (!isObject(snapshot) || !isObject(report)) return blocked('INVALID', [{ code: 'SNAPSHOT_OR_QUALITY_REPORT_MISSING', severity: 'CRITICAL' }], meta);
+    if (!Number.isSafeInteger(asOf) || asOf <= 0 || snapshot.analysis_as_of_ms !== asOf || snapshot.provider_server_time_ms !== asOf || !snapshot.provider_metadata || snapshot.provider_metadata.time_source !== 'provider') {
+      return blocked('INVALID', [{ code: 'ANALYSIS_CUTOFF_INVALID', severity: 'CRITICAL' }], meta);
+    }
+    if (typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id || snapshot.contract_version !== policy.b1_contract_version ||
+        typeof snapshot.canonical_symbol !== 'string' || !snapshot.canonical_symbol || typeof snapshot.market_type !== 'string' || !snapshot.market_type) {
+      return blocked('INVALID', [{ code: 'SNAPSHOT_IDENTITY_INVALID', severity: 'CRITICAL' }], meta);
+    }
+    const timeframe = timeframeFor(snapshot, requestedTf);
+    const stepMs = TIMEFRAME_MS[timeframe];
+    meta.timeframe = timeframe || requestedTf;
+    if (!stepMs) return blocked('INVALID', [{ code: 'TIMEFRAME_SCOPE_INVALID', severity: 'CRITICAL' }], meta);
+    const reportMatches = report.snapshot_id === snapshot.snapshot_id && report.symbol === snapshot.canonical_symbol &&
+      report.timeframe === timeframe && report.analysis_as_of_ms === asOf && report.policy_version === policy.b1_quality_policy_version &&
+      report.validator_version === policy.b1_validator_version &&
+      typeof report.policy_version === 'string' && report.policy_version.length > 0 &&
+      Number.isSafeInteger(report.checked_at_ms) && report.checked_at_ms >= 0;
+    if (!reportMatches) return blocked('INVALID', [{ code: 'QUALITY_REPORT_IDENTITY_MISMATCH', severity: 'CRITICAL' }], meta);
+    if (report.status !== 'VALID') return blocked('BLOCKED', [{ code: 'QUALITY_STATUS_NOT_VALID', severity: 'CRITICAL', quality_status: report.status || 'MISSING' }], meta);
+    const closedMap = snapshot.candles_by_timeframe;
+    const formingMap = snapshot.forming_candle_by_timeframe;
+    const unknownMap = snapshot.unclassified_candles_by_timeframe;
+    if (!isObject(closedMap) || !isObject(formingMap) || !isObject(unknownMap) ||
+        !Object.prototype.hasOwnProperty.call(formingMap, timeframe) || !Object.prototype.hasOwnProperty.call(unknownMap, timeframe) ||
+        !Array.isArray(closedMap[timeframe]) || !(formingMap[timeframe] === null || isObject(formingMap[timeframe])) || !Array.isArray(unknownMap[timeframe])) {
+      return blocked('INVALID', [{ code: 'CANDLE_COLLECTION_INVALID', severity: 'CRITICAL' }], meta);
+    }
+    const candles = closedMap[timeframe];
+    if (report.closed_count !== candles.length || report.valid_count < candles.length || report.insufficient_history === true) {
+      return blocked('INVALID', [{ code: 'QUALITY_CANDLE_COUNT_MISMATCH', severity: 'CRITICAL' }], meta);
+    }
+    for (let i = 1; i < candles.length; i++) {
+      if (candles[i].open_time_ms === candles[i - 1].open_time_ms) {
+        return blocked('INVALID', [{ code: 'CANDLE_DUPLICATE_TIMESTAMP', severity: 'CRITICAL', timestamp_ms: candles[i].open_time_ms }], meta);
+      }
+      if (candles[i].open_time_ms < candles[i - 1].open_time_ms) {
+        return blocked('INVALID', [{ code: 'CANDLE_ORDER_INVALID', severity: 'CRITICAL', index: i }], meta);
+      }
+    }
+    const seen = new Set();
+    for (let i = 0; i < candles.length; i++) {
+      const error = validateCandle(candles[i], snapshot, timeframe, stepMs, asOf, policy.finality_safety_lag_ms);
+      if (error) return blocked('INVALID', [{ code: error, severity: 'CRITICAL', index: i }], meta);
+      if (seen.has(candles[i].open_time_ms)) return blocked('INVALID', [{ code: 'CANDLE_DUPLICATE_TIMESTAMP', severity: 'CRITICAL', timestamp_ms: candles[i].open_time_ms }], meta);
+      if (i > 0 && candles[i].open_time_ms - candles[i - 1].open_time_ms !== stepMs) return blocked('INVALID', [{ code: 'CANDLE_GAP_DETECTED', severity: 'CRITICAL', index: i, expected_step_ms: stepMs, actual_step_ms: candles[i].open_time_ms - candles[i - 1].open_time_ms }], meta);
+      seen.add(candles[i].open_time_ms);
+    }
+    const excluded = [formingMap[timeframe], ...unknownMap[timeframe]].filter(Boolean);
+    for (const candle of excluded) if (!isObject(candle) || seen.has(candle.open_time_ms)) {
+      return blocked('INVALID', [{ code: 'FORMING_OR_UNKNOWN_CANDLE_OVERLAPS_CLOSED_SET', severity: 'CRITICAL' }], meta);
+    }
+    const required = policy.left_strength + policy.right_strength + 1;
+    if (candles.length < required) return blocked('INSUFFICIENT', [{
+      code: 'INSUFFICIENT_PIVOT_HISTORY', severity: 'INSUFFICIENT', required_count: required, received_count: candles.length
+    }], { ...meta, diagnostics: { required_history_count: required, received_history_count: candles.length } });
+    const pivots = [
+      ...detectType(candles, 'SWING_HIGH', policy.left_strength, policy.right_strength, asOf, policy.finality_safety_lag_ms, timeframe),
+      ...detectType(candles, 'SWING_LOW', policy.left_strength, policy.right_strength, asOf, policy.finality_safety_lag_ms, timeframe)
+    ].sort((a, b) => a.available_at_ms - b.available_at_ms || a.source_time_ms - b.source_time_ms || a.type.localeCompare(b.type));
+    return freezeDeep({
+      engine_version: ENGINE_VERSION, policy_version: policy.version, status: 'VALID',
+      admission: { status: 'ADMITTED', snapshot_id: snapshot.snapshot_id, quality_report: {
+        snapshot_id: report.snapshot_id, validator_version: report.validator_version,
+        policy_version: report.policy_version, checked_at_ms: report.checked_at_ms
+      }},
+      snapshot_id: snapshot.snapshot_id, symbol: snapshot.canonical_symbol, timeframe, analysis_as_of_ms: asOf,
+      parameters: { left_strength: policy.left_strength, right_strength: policy.right_strength,
+        finality_safety_lag_ms: policy.finality_safety_lag_ms, price_equality_policy: policy.price_equality_policy },
+      pivots,
+      diagnostics: { closed_candle_count: candles.length, forming_candle_excluded: Boolean(formingMap[timeframe]),
+        unknown_finality_count: unknownMap[timeframe].length, pivot_high_count: pivots.filter(p => p.type === 'SWING_HIGH').length,
+        pivot_low_count: pivots.filter(p => p.type === 'SWING_LOW').length }
+    });
+  }
+  return Object.freeze({ ENGINE_VERSION, TIMEFRAME_MS, analyze });
+});
+
+
+(function attachB2BSwingSequenceEngine(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.B2BSwingSequenceEngine = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function createB2BSwingSequenceEngine() {
+  'use strict';
+
+  const ENGINE_VERSION = '2.2.0-b2b';
+  const REQUIRED_B2A_ENGINE_VERSION = '2.0.0-b2a';
+  const VALID_TYPES = new Set(['SWING_HIGH', 'SWING_LOW']);
+
+  function freezeDeep(value) {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    Object.freeze(value);
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+    return value;
+  }
+
+  function isObject(value) {
+    return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+  }
+
+  function blocked(status, code, meta = {}) {
+    return freezeDeep({
+      engine_version: ENGINE_VERSION,
+      policy_version: meta.policyVersion || null,
+      status,
+      admission: { status: 'BLOCKED', reasons: [{ code, severity: 'CRITICAL' }] },
+      snapshot_id: meta.snapshotId || null,
+      symbol: meta.symbol || null,
+      timeframe: meta.timeframe || null,
+      analysis_as_of_ms: meta.analysisAsOfMs ?? null,
+      raw_pivots: [],
+      sequence: [],
+      sequence_history: [],
+      diagnostics: { raw_pivot_count: 0, sequence_pivot_count: 0, sequence_history_count: 0, superseded_count: 0 }
+    });
+  }
+
+  function validatePivot(pivot, seen, asOf, equalityPolicy) {
+    if (!isObject(pivot)) return 'PIVOT_NOT_OBJECT';
+    if (typeof pivot.pivot_id !== 'string' || !pivot.pivot_id.trim()) return 'PIVOT_ID_INVALID';
+    if (seen.has(pivot.pivot_id)) return 'PIVOT_ID_DUPLICATE';
+    if (!VALID_TYPES.has(pivot.type)) return 'PIVOT_TYPE_INVALID';
+    if (!Number.isFinite(pivot.price) || pivot.price <= 0) return 'PIVOT_PRICE_INVALID';
+    for (const key of ['source_time_ms', 'confirmed_at_ms', 'available_at_ms']) {
+      if (!Number.isSafeInteger(pivot[key]) || pivot[key] <= 0) return 'PIVOT_TIME_INVALID';
+    }
+    if (pivot.source_time_ms > pivot.confirmed_at_ms ||
+        pivot.confirmed_at_ms > pivot.available_at_ms ||
+        pivot.available_at_ms > asOf) return 'PIVOT_CAUSAL_TIME_INVALID';
+    if (!isObject(pivot.confirmation) || pivot.confirmation.equality_policy !== equalityPolicy) {
+      return 'PIVOT_POLICY_MISMATCH';
+    }
+    seen.add(pivot.pivot_id);
+    return null;
+  }
+
+  function compareLabel(pivot, previous) {
+    if (!previous) {
+      return {
+        structure_label: pivot.type === 'SWING_HIGH' ? 'INITIAL_HIGH' : 'INITIAL_LOW',
+        comparison_pivot_id: null,
+        price_delta: null,
+        relative_delta_pct: null
+      };
+    }
+    const delta = pivot.price - previous.price;
+    if (pivot.type === 'SWING_HIGH') {
+      return {
+        structure_label: delta > 0 ? 'HH' : delta < 0 ? 'LH' : 'EQH',
+        comparison_pivot_id: previous.pivot_id,
+        price_delta: delta,
+        relative_delta_pct: (delta / previous.price) * 100
+      };
+    }
+    return {
+      structure_label: delta > 0 ? 'HL' : delta < 0 ? 'LL' : 'EQL',
+      comparison_pivot_id: previous.pivot_id,
+      price_delta: delta,
+      relative_delta_pct: (delta / previous.price) * 100
+    };
+  }
+
+  function analyze(input) {
+    const policy = input && input.policy;
+    if (!isObject(policy) || typeof policy.version !== 'string' || !policy.version.trim()) {
+      return blocked('INVALID', 'B2B_POLICY_INVALID', { policyVersion: policy && policy.version });
+    }
+    if (policy.b2a_engine_version !== REQUIRED_B2A_ENGINE_VERSION ||
+        typeof policy.b2a_policy_version !== 'string' || !policy.b2a_policy_version.trim() ||
+        typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
+        typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
+        policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
+        policy.same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1') {
+      return blocked('INVALID', 'B2A_POLICY_BINDING_INVALID', { policyVersion: policy.version });
+    }
+
+    const source = input && input.b2a_result;
+    const meta = {
+      policyVersion: policy.version,
+      snapshotId: source && source.snapshot_id,
+      symbol: source && source.symbol,
+      timeframe: source && source.timeframe,
+      analysisAsOfMs: source && source.analysis_as_of_ms
+    };
+
+    if (!isObject(source)) return blocked('INVALID', 'B2A_RESULT_MISSING', meta);
+    if (source.status !== 'VALID') return blocked('BLOCKED', 'B2A_RESULT_NOT_VALID', meta);
+    if (source.engine_version !== REQUIRED_B2A_ENGINE_VERSION ||
+        source.policy_version !== policy.b2a_policy_version ||
+        !isObject(source.admission) || source.admission.status !== 'ADMITTED' ||
+        source.admission.snapshot_id !== source.snapshot_id ||
+        !isObject(source.admission.quality_report) ||
+        source.admission.quality_report.snapshot_id !== source.snapshot_id ||
+        source.admission.quality_report.validator_version !== policy.b1_validator_version ||
+        source.admission.quality_report.policy_version !== policy.b1_quality_policy_version ||
+        !Number.isSafeInteger(source.admission.quality_report.checked_at_ms) ||
+        source.admission.quality_report.checked_at_ms < 0) {
+      return blocked('INVALID', 'B2A_ADMISSION_IDENTITY_MISMATCH', meta);
+    }
+    if (typeof source.snapshot_id !== 'string' || !source.snapshot_id ||
+        typeof source.symbol !== 'string' || !source.symbol ||
+        typeof source.timeframe !== 'string' || !source.timeframe ||
+        !Number.isSafeInteger(source.analysis_as_of_ms) || source.analysis_as_of_ms <= 0 ||
+        !isObject(source.parameters) ||
+        source.parameters.price_equality_policy !== policy.price_equality_policy ||
+        !Array.isArray(source.pivots)) {
+      return blocked('INVALID', 'B2A_RESULT_SHAPE_INVALID', meta);
+    }
+
+    const seen = new Set();
+    let previousAvailableAt = -1;
+    for (const pivot of source.pivots) {
+      const error = validatePivot(pivot, seen, source.analysis_as_of_ms, policy.price_equality_policy);
+      if (error) return blocked('INVALID', error, meta);
+      if (pivot.available_at_ms < previousAvailableAt) {
+        return blocked('INVALID', 'B2A_PIVOT_AVAILABILITY_ORDER_INVALID', meta);
+      }
+      previousAvailableAt = pivot.available_at_ms;
+    }
+
+    const typesBySourceTime = new Map();
+    for (const pivot of source.pivots) {
+      if (!typesBySourceTime.has(pivot.source_time_ms)) typesBySourceTime.set(pivot.source_time_ms, new Set());
+      typesBySourceTime.get(pivot.source_time_ms).add(pivot.type);
+    }
+    const ambiguousSourceTimes = new Set([...typesBySourceTime.entries()]
+      .filter(([, types]) => types.has('SWING_HIGH') && types.has('SWING_LOW'))
+      .map(([sourceTime]) => sourceTime));
+
+    const raw = source.pivots.map(pivot => ({
+      ...pivot,
+      confirmation: { ...pivot.confirmation },
+      sequence_status: ambiguousSourceTimes.has(pivot.source_time_ms) ? 'AMBIGUOUS_FOR_SEQUENCE' : 'PENDING',
+      exclusion_reason: ambiguousSourceTimes.has(pivot.source_time_ms) ? 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE' : null,
+      structure_label: null,
+      comparison_pivot_id: null,
+      price_delta: null,
+      relative_delta_pct: null,
+      superseded_by: null
+    }));
+    const sequence = [];
+    const sequenceHistory = [];
+
+    for (let i = 0; i < raw.length; i++) {
+      const current = raw[i];
+      if (current.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE') continue;
+      const last = sequence.length ? sequence[sequence.length - 1] : null;
+
+      if (last && last.type === current.type) {
+        const moreExtreme = current.type === 'SWING_HIGH'
+          ? current.price > last.price
+          : current.price < last.price;
+
+        if (!moreExtreme) {
+          current.sequence_status = 'SUPERSEDED_FOR_SEQUENCE';
+          current.superseded_by = last.pivot_id;
+          continue;
+        }
+
+        last.sequence_status = 'SUPERSEDED_FOR_SEQUENCE';
+        last.superseded_by = current.pivot_id;
+        sequence.pop();
+      }
+
+      let previousSameType = null;
+      for (let j = sequence.length - 1; j >= 0; j--) {
+        if (sequence[j].type === current.type) {
+          previousSameType = sequence[j];
+          break;
+        }
+      }
+
+      const label = compareLabel(current, previousSameType);
+      current.sequence_status = 'ACCEPTED';
+      current.structure_label = label.structure_label;
+      current.comparison_pivot_id = label.comparison_pivot_id;
+      current.price_delta = label.price_delta;
+      current.relative_delta_pct = label.relative_delta_pct;
+      sequence.push(current);
+      sequenceHistory.push({
+        ...current,
+        confirmation: { ...current.confirmation },
+        sequence_status: 'ACCEPTED_AT_AVAILABILITY',
+        exclusion_reason: null,
+        superseded_by: null,
+        sequence_index_at_availability: sequence.length - 1
+      });
+    }
+
+    const normalizedSequence = sequence.map((pivot, index) => ({
+      ...pivot,
+      sequence_index: index
+    }));
+
+    return freezeDeep({
+      engine_version: ENGINE_VERSION,
+      policy_version: policy.version,
+      status: 'VALID',
+      admission: {
+        status: 'ADMITTED',
+        snapshot_id: source.snapshot_id,
+        b2a_engine_version: source.engine_version,
+        b2a_policy_version: source.policy_version,
+        same_candle_dual_pivot_policy: policy.same_candle_dual_pivot_policy,
+        b2a_quality_report: { ...source.admission.quality_report }
+      },
+      snapshot_id: source.snapshot_id,
+      symbol: source.symbol,
+      timeframe: source.timeframe,
+      analysis_as_of_ms: source.analysis_as_of_ms,
+      sequence_order_basis: 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS_WITH_HISTORY',
+      comparison_policy: policy.price_equality_policy,
+      raw_pivots: raw,
+      sequence: normalizedSequence,
+      sequence_history: sequenceHistory,
+      diagnostics: {
+        raw_pivot_count: raw.length,
+        sequence_pivot_count: normalizedSequence.length,
+        sequence_history_count: sequenceHistory.length,
+        superseded_count: raw.filter(p => p.sequence_status === 'SUPERSEDED_FOR_SEQUENCE').length,
+        ambiguous_dual_pivot_count: raw.filter(p => p.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE').length
+      }
+    });
+  }
+
+  return Object.freeze({ ENGINE_VERSION, REQUIRED_B2A_ENGINE_VERSION, analyze });
+});
+
+
+(function attachB2CSwingStructureEngine(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.B2CSwingStructureEngine = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function createB2CSwingStructureEngine() {
+  'use strict';
+
+  const ENGINE_VERSION = '2.1.0-b2c';
+  const REQUIRED_B2B_ENGINE_VERSION = '2.2.0-b2b';
+  const REQUIRED_B2B_POLICY_VERSION = 'b2b-swing-sequence-v3';
+  const REQUIRED_POLICY_VERSION = 'b2c-state-v2';
+  const REQUIRED_B2A_ENGINE_VERSION = '2.0.0-b2a';
+  const TIMEFRAME_MS = Object.freeze({ '1h': 3600000, '4h': 14400000, '1d': 86400000 });
+  const CLOSED_STATES = new Set(['CONFIRMED', 'TIME_DERIVED']);
+
+  function freezeDeep(value) {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    Object.freeze(value);
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+    return value;
+  }
+  function isObject(value) { return Boolean(value && typeof value === 'object' && !Array.isArray(value)); }
+  function blocked(status, code, meta = {}) {
+    return freezeDeep({
+      engine_version: ENGINE_VERSION, policy_version: meta.policyVersion || null, status,
+      admission: { status: 'BLOCKED', reasons: [{ code, severity: 'CRITICAL' }] },
+      snapshot_id: meta.snapshotId || null, symbol: meta.symbol || null,
+      timeframe: meta.timeframe || null, analysis_as_of_ms: meta.analysisAsOfMs ?? null,
+      structure_state: 'UNESTABLISHED', events: [], pivots: [], sequence_history: [],
+      diagnostics: { candle_count: 0, pivot_count: 0, event_count: 0 }
+    });
+  }
+  function validatePolicy(policy) {
+    if (!isObject(policy) || policy.version !== REQUIRED_POLICY_VERSION) return 'B2C_POLICY_INVALID';
+    if (policy.b2b_engine_version !== REQUIRED_B2B_ENGINE_VERSION ||
+        policy.b2b_policy_version !== REQUIRED_B2B_POLICY_VERSION ||
+        policy.b2a_engine_version !== REQUIRED_B2A_ENGINE_VERSION ||
+        typeof policy.b2a_policy_version !== 'string' || !policy.b2a_policy_version.trim() ||
+        typeof policy.b1_contract_version !== 'string' || !policy.b1_contract_version.trim() ||
+        typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
+        typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
+        policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
+        policy.b2b_same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1' ||
+        policy.break_buffer_policy !== 'ZERO_BUFFER_V1' ||
+        !Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0) {
+      return 'B2C_POLICY_BINDING_INVALID';
+    }
+    return null;
+  }
+  function validateCandle(candle, snapshot, timeframe, stepMs, asOf, lagMs) {
+    if (!isObject(candle)) return 'CANDLE_NOT_OBJECT';
+    if (!Number.isSafeInteger(candle.open_time_ms) || !Number.isSafeInteger(candle.close_time_ms)) return 'CANDLE_TIME_INVALID';
+    if (candle.close_time_ms - candle.open_time_ms !== stepMs || candle.open_time_ms % stepMs !== 0) return 'CANDLE_ALIGNMENT_INVALID';
+    if (candle.close_time_ms + lagMs > asOf) return 'CANDLE_NOT_FINAL_AT_ANALYSIS_CUTOFF';
+    if (!CLOSED_STATES.has(candle.closed_state)) return 'CANDLE_NOT_CLOSED';
+    if (candle.canonical_symbol !== snapshot.canonical_symbol || candle.market_type !== snapshot.market_type || candle.timeframe !== timeframe) return 'CANDLE_PROVENANCE_MISMATCH';
+    if (['open', 'high', 'low', 'close'].some(k => !Number.isFinite(candle[k]) || candle[k] <= 0)) return 'CANDLE_PRICE_INVALID';
+    if (candle.high < Math.max(candle.open, candle.close, candle.low) || candle.low > Math.min(candle.open, candle.close, candle.high) || candle.high < candle.low) return 'CANDLE_OHLC_INVALID';
+    return null;
+  }
+  function validatePivot(pivot, ids, asOf, equalityPolicy) {
+    if (!isObject(pivot) || typeof pivot.pivot_id !== 'string' || !pivot.pivot_id.trim() || ids.has(pivot.pivot_id)) return 'B2B_PIVOT_ID_INVALID';
+    if (!['SWING_HIGH', 'SWING_LOW'].includes(pivot.type) || !Number.isFinite(pivot.price) || pivot.price <= 0) return 'B2B_PIVOT_VALUE_INVALID';
+    for (const key of ['source_time_ms', 'confirmed_at_ms', 'available_at_ms']) {
+      if (!Number.isSafeInteger(pivot[key]) || pivot[key] <= 0) return 'B2B_PIVOT_TIME_INVALID';
+    }
+    if (pivot.source_time_ms > pivot.confirmed_at_ms || pivot.confirmed_at_ms > pivot.available_at_ms || pivot.available_at_ms > asOf) return 'B2B_PIVOT_CAUSAL_TIME_INVALID';
+    if (!isObject(pivot.confirmation) || pivot.confirmation.equality_policy !== equalityPolicy) return 'B2B_PIVOT_POLICY_MISMATCH';
+    ids.add(pivot.pivot_id);
+    return null;
+  }
+  function analyze(input) {
+    const policy = input && input.policy;
+    const policyError = validatePolicy(policy);
+    if (policyError) return blocked('INVALID', policyError, { policyVersion: policy && policy.version });
+
+    const snapshot = input && input.snapshot;
+    const report = input && input.quality_report;
+    const source = input && input.b2b_result;
+    const b2aSource = input && input.b2a_result;
+    const asOf = input && input.analysis_as_of_ms;
+    const meta = {
+      policyVersion: policy.version,
+      snapshotId: snapshot && snapshot.snapshot_id,
+      symbol: snapshot && snapshot.canonical_symbol,
+      timeframe: input && input.timeframe,
+      analysisAsOfMs: asOf
+    };
+    if (!isObject(snapshot) || !isObject(report) || !isObject(source) || !isObject(b2aSource)) return blocked('INVALID', 'B2C_INPUT_MISSING', meta);
+    if (!Number.isSafeInteger(asOf) || asOf <= 0 || snapshot.analysis_as_of_ms !== asOf ||
+        snapshot.provider_server_time_ms !== asOf || !isObject(snapshot.provider_metadata) ||
+        snapshot.provider_metadata.time_source !== 'provider') return blocked('INVALID', 'B1_ANALYSIS_CUTOFF_INVALID', meta);
+    if (typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id ||
+        snapshot.contract_version !== policy.b1_contract_version ||
+        typeof snapshot.canonical_symbol !== 'string' || !snapshot.canonical_symbol ||
+        typeof snapshot.market_type !== 'string' || !snapshot.market_type) return blocked('INVALID', 'B1_SNAPSHOT_IDENTITY_INVALID', meta);
+
+    const keys = Object.keys(snapshot.candles_by_timeframe || {});
+    const timeframe = keys.length === 1 ? keys[0] : null;
+    const stepMs = TIMEFRAME_MS[timeframe];
+    meta.timeframe = timeframe;
+    if (!stepMs || (input.timeframe && input.timeframe !== timeframe)) return blocked('INVALID', 'B2C_TIMEFRAME_SCOPE_INVALID', meta);
+
+    const reportMatches = report.snapshot_id === snapshot.snapshot_id &&
+      report.symbol === snapshot.canonical_symbol && report.timeframe === timeframe &&
+      report.analysis_as_of_ms === asOf && report.validator_version === policy.b1_validator_version &&
+      report.policy_version === policy.b1_quality_policy_version &&
+      Number.isSafeInteger(report.checked_at_ms) && report.checked_at_ms >= 0;
+    if (!reportMatches) return blocked('INVALID', 'B1_QUALITY_REPORT_IDENTITY_MISMATCH', meta);
+    if (report.status !== 'VALID') return blocked('BLOCKED', 'B1_QUALITY_STATUS_NOT_VALID', meta);
+
+    if (b2aSource.status !== 'VALID' || b2aSource.engine_version !== REQUIRED_B2A_ENGINE_VERSION ||
+        b2aSource.policy_version !== policy.b2a_policy_version ||
+        b2aSource.snapshot_id !== snapshot.snapshot_id || b2aSource.symbol !== snapshot.canonical_symbol ||
+        b2aSource.timeframe !== timeframe || b2aSource.analysis_as_of_ms !== asOf ||
+        !isObject(b2aSource.admission) || b2aSource.admission.status !== 'ADMITTED' ||
+        b2aSource.admission.snapshot_id !== snapshot.snapshot_id ||
+        !isObject(b2aSource.admission.quality_report) ||
+        b2aSource.admission.quality_report.snapshot_id !== snapshot.snapshot_id ||
+        b2aSource.admission.quality_report.validator_version !== policy.b1_validator_version ||
+        b2aSource.admission.quality_report.policy_version !== policy.b1_quality_policy_version ||
+        b2aSource.admission.quality_report.checked_at_ms !== report.checked_at_ms ||
+        !Array.isArray(b2aSource.pivots)) {
+      return blocked('INVALID', 'B2A_ADMISSION_IDENTITY_MISMATCH', meta);
+    }
+
+    if (source.status !== 'VALID' || source.engine_version !== REQUIRED_B2B_ENGINE_VERSION ||
+        source.policy_version !== policy.b2b_policy_version ||
+        source.snapshot_id !== snapshot.snapshot_id || source.symbol !== snapshot.canonical_symbol ||
+        source.timeframe !== timeframe || source.analysis_as_of_ms !== asOf ||
+        source.comparison_policy !== policy.price_equality_policy ||
+        source.sequence_order_basis !== 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS_WITH_HISTORY' ||
+        !isObject(source.admission) || source.admission.same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy || source.admission.status !== 'ADMITTED' ||
+        source.admission.snapshot_id !== snapshot.snapshot_id ||
+        source.admission.b2a_engine_version !== policy.b2a_engine_version ||
+        source.admission.b2a_policy_version !== policy.b2a_policy_version ||
+        !isObject(source.admission.b2a_quality_report) ||
+        source.admission.b2a_quality_report.snapshot_id !== snapshot.snapshot_id ||
+        source.admission.b2a_quality_report.validator_version !== policy.b1_validator_version ||
+        source.admission.b2a_quality_report.policy_version !== policy.b1_quality_policy_version ||
+        source.admission.b2a_quality_report.checked_at_ms !== report.checked_at_ms) {
+      return blocked('INVALID', 'B2B_ADMISSION_IDENTITY_MISMATCH', meta);
+    }
+
+    const closedMap = snapshot.candles_by_timeframe;
+    const formingMap = snapshot.forming_candle_by_timeframe;
+    const unknownMap = snapshot.unclassified_candles_by_timeframe;
+    if (!isObject(closedMap) || !Array.isArray(closedMap[timeframe]) ||
+        !isObject(formingMap) || !Object.prototype.hasOwnProperty.call(formingMap, timeframe) ||
+        !isObject(unknownMap) || !Array.isArray(unknownMap[timeframe])) return blocked('INVALID', 'B1_CANDLE_COLLECTION_INVALID', meta);
+
+    const candles = closedMap[timeframe];
+    if (report.closed_count !== candles.length || report.valid_count < candles.length || report.insufficient_history === true) {
+      return blocked('INVALID', 'B1_QUALITY_CANDLE_COUNT_MISMATCH', meta);
+    }
+    const seenTimes = new Set();
+    for (let i = 0; i < candles.length; i++) {
+      const error = validateCandle(candles[i], snapshot, timeframe, stepMs, asOf, policy.finality_safety_lag_ms);
+      if (error) return blocked('INVALID', error, meta);
+      if (seenTimes.has(candles[i].open_time_ms) || (i > 0 && candles[i].open_time_ms - candles[i - 1].open_time_ms !== stepMs)) {
+        return blocked('INVALID', 'B1_CANDLE_ORDER_OR_DUPLICATE_INVALID', meta);
+      }
+      seenTimes.add(candles[i].open_time_ms);
+    }
+    const excluded = [formingMap[timeframe], ...unknownMap[timeframe]].filter(Boolean);
+    for (const candle of excluded) if (!isObject(candle) || seenTimes.has(candle.open_time_ms)) {
+      return blocked('INVALID', 'B1_FORMING_OR_UNKNOWN_OVERLAP', meta);
+    }
+
+    if (!Array.isArray(source.raw_pivots) || !Array.isArray(source.sequence) || !Array.isArray(source.sequence_history)) return blocked('INVALID', 'B2B_SEQUENCE_SHAPE_INVALID', meta);
+    if (source.raw_pivots.length !== b2aSource.pivots.length) {
+      return blocked('INVALID', 'B2A_PIVOT_SET_MISMATCH', meta);
+    }
+    for (let i = 0; i < b2aSource.pivots.length; i++) {
+      const expected = b2aSource.pivots[i];
+      const actual = source.raw_pivots[i];
+      if (!actual || actual.pivot_id !== expected.pivot_id || actual.type !== expected.type ||
+          actual.price !== expected.price || actual.source_time_ms !== expected.source_time_ms ||
+          actual.source_index !== expected.source_index || actual.confirmed_at_ms !== expected.confirmed_at_ms ||
+          actual.available_at_ms !== expected.available_at_ms ||
+          !isObject(actual.confirmation) || !isObject(expected.confirmation) ||
+          actual.confirmation.method !== expected.confirmation.method ||
+          actual.confirmation.left_strength !== expected.confirmation.left_strength ||
+          actual.confirmation.right_strength !== expected.confirmation.right_strength ||
+          actual.confirmation.equality_policy !== expected.confirmation.equality_policy ||
+          actual.confirmation.finality_safety_lag_ms !== expected.confirmation.finality_safety_lag_ms) {
+        return blocked('INVALID', 'B2A_PIVOT_SET_MISMATCH', meta);
+      }
+    }
+    const rawIds = new Set();
+    let previousAvailable = -1;
+    for (const pivot of source.raw_pivots) {
+      const error = validatePivot(pivot, rawIds, asOf, policy.price_equality_policy);
+      if (error) return blocked('INVALID', error, meta);
+      if (pivot.available_at_ms < previousAvailable) return blocked('INVALID', 'B2B_RAW_PIVOT_ORDER_INVALID', meta);
+      previousAvailable = pivot.available_at_ms;
+    }
+    const typesBySourceTime = new Map();
+    for (const pivot of source.raw_pivots) {
+      if (!typesBySourceTime.has(pivot.source_time_ms)) typesBySourceTime.set(pivot.source_time_ms, new Set());
+      typesBySourceTime.get(pivot.source_time_ms).add(pivot.type);
+    }
+    const ambiguousSourceTimes = new Set([...typesBySourceTime.entries()]
+      .filter(([, types]) => types.has('SWING_HIGH') && types.has('SWING_LOW'))
+      .map(([sourceTime]) => sourceTime));
+    const expectedSequence = [];
+    const expectedHistory = [];
+    const expectedRawStatus = new Map();
+    for (const rawPivot of source.raw_pivots) {
+      if (ambiguousSourceTimes.has(rawPivot.source_time_ms)) {
+        expectedRawStatus.set(rawPivot.pivot_id, { status: 'AMBIGUOUS_FOR_SEQUENCE', superseded_by: null });
+        continue;
+      }
+      const last = expectedSequence.length ? expectedSequence[expectedSequence.length - 1] : null;
+      if (last && last.type === rawPivot.type) {
+        const moreExtreme = rawPivot.type === 'SWING_HIGH'
+          ? rawPivot.price > last.price
+          : rawPivot.price < last.price;
+        if (!moreExtreme) {
+          expectedRawStatus.set(rawPivot.pivot_id, { status: 'SUPERSEDED_FOR_SEQUENCE', superseded_by: last.pivot_id });
+          continue;
+        }
+        expectedRawStatus.set(last.pivot_id, { status: 'SUPERSEDED_FOR_SEQUENCE', superseded_by: rawPivot.pivot_id });
+        expectedSequence.pop();
+      }
+      const previousSameSide = [...expectedSequence].reverse().find(p => p.type === rawPivot.type) || null;
+      const delta = previousSameSide ? rawPivot.price - previousSameSide.price : null;
+      const expectedLabel = !previousSameSide
+        ? (rawPivot.type === 'SWING_HIGH' ? 'INITIAL_HIGH' : 'INITIAL_LOW')
+        : rawPivot.type === 'SWING_HIGH'
+          ? (delta > 0 ? 'HH' : delta < 0 ? 'LH' : 'EQH')
+          : (delta > 0 ? 'HL' : delta < 0 ? 'LL' : 'EQL');
+      const expectedComparisonId = previousSameSide ? previousSameSide.pivot_id : null;
+      const expectedRelativeDelta = previousSameSide ? (delta / previousSameSide.price) * 100 : null;
+      expectedSequence.push({
+        pivot_id: rawPivot.pivot_id,
+        type: rawPivot.type,
+        price: rawPivot.price,
+        structure_label: expectedLabel,
+        comparison_pivot_id: expectedComparisonId,
+        price_delta: delta,
+        relative_delta_pct: expectedRelativeDelta
+      });
+      expectedHistory.push({
+        ...rawPivot,
+        confirmation: { ...rawPivot.confirmation },
+        sequence_status: 'ACCEPTED_AT_AVAILABILITY',
+        exclusion_reason: null,
+        structure_label: expectedLabel,
+        comparison_pivot_id: expectedComparisonId,
+        price_delta: delta,
+        relative_delta_pct: expectedRelativeDelta,
+        superseded_by: null,
+        sequence_index_at_availability: expectedSequence.length - 1
+      });
+      expectedRawStatus.set(rawPivot.pivot_id, { status: 'ACCEPTED', superseded_by: null });
+    }
+    for (const rawPivot of source.raw_pivots) {
+      const expectedStatus = expectedRawStatus.get(rawPivot.pivot_id);
+      if (!expectedStatus || rawPivot.sequence_status !== expectedStatus.status ||
+          (rawPivot.superseded_by ?? null) !== expectedStatus.superseded_by ||
+          (rawPivot.exclusion_reason ?? null) !== (expectedStatus.status === 'AMBIGUOUS_FOR_SEQUENCE' ? 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE' : null)) {
+        return blocked('INVALID', 'B2B_RAW_SEQUENCE_STATUS_MISMATCH', meta);
+      }
+    }
+    if (source.sequence.length !== expectedSequence.length) return blocked('INVALID', 'B2B_SEQUENCE_DERIVATION_MISMATCH', meta);
+    if (source.sequence_history.length !== expectedHistory.length) return blocked('INVALID', 'B2B_SEQUENCE_HISTORY_DERIVATION_MISMATCH', meta);
+
+    const sequenceIds = new Set();
+    let lastSequenceType = null;
+    previousAvailable = -1;
+    for (const pivot of source.sequence) {
+      if (!rawIds.has(pivot.pivot_id) || sequenceIds.has(pivot.pivot_id) ||
+          pivot.sequence_status !== 'ACCEPTED' ||
+          (pivot.type === lastSequenceType) ||
+          pivot.available_at_ms < previousAvailable) return blocked('INVALID', 'B2B_SEQUENCE_PIVOT_INVALID', meta);
+      sequenceIds.add(pivot.pivot_id);
+      lastSequenceType = pivot.type;
+      previousAvailable = pivot.available_at_ms;
+    }
+
+    const candleByOpen = new Map(candles.map(c => [c.open_time_ms, c]));
+    const candleByClose = new Map(candles.map(c => [c.close_time_ms, c]));
+    for (const pivot of source.raw_pivots) {
+      const sourceCandle = candleByOpen.get(pivot.source_time_ms);
+      const confirmationCandle = candleByClose.get(pivot.confirmed_at_ms);
+      const expectedPrice = sourceCandle && (pivot.type === 'SWING_HIGH' ? sourceCandle.high : sourceCandle.low);
+      if (!sourceCandle || !confirmationCandle || expectedPrice !== pivot.price ||
+          pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms) {
+        return blocked('INVALID', 'B2B_PIVOT_CANDLE_PROVENANCE_MISMATCH', meta);
+      }
+    }
+
+    const historyIds = new Set();
+    let historyAvailableAt = -1;
+    for (let i = 0; i < expectedHistory.length; i++) {
+      const actual = source.sequence_history[i];
+      const expected = expectedHistory[i];
+      if (!actual || historyIds.has(actual.pivot_id) ||
+          actual.pivot_id !== expected.pivot_id || actual.type !== expected.type ||
+          actual.price !== expected.price || actual.source_time_ms !== expected.source_time_ms ||
+          actual.confirmed_at_ms !== expected.confirmed_at_ms || actual.available_at_ms !== expected.available_at_ms ||
+          actual.sequence_status !== 'ACCEPTED_AT_AVAILABILITY' || actual.exclusion_reason !== null ||
+          actual.structure_label !== expected.structure_label ||
+          actual.comparison_pivot_id !== expected.comparison_pivot_id ||
+          actual.price_delta !== expected.price_delta ||
+          actual.relative_delta_pct !== expected.relative_delta_pct ||
+          actual.superseded_by !== null ||
+          actual.sequence_index_at_availability !== expected.sequence_index_at_availability ||
+          actual.available_at_ms < historyAvailableAt ||
+          !isObject(actual.confirmation) ||
+          actual.confirmation.equality_policy !== expected.confirmation.equality_policy ||
+          actual.confirmation.finality_safety_lag_ms !== expected.confirmation.finality_safety_lag_ms) {
+        return blocked('INVALID', 'B2B_SEQUENCE_HISTORY_DERIVATION_MISMATCH', meta);
+      }
+      historyIds.add(actual.pivot_id);
+      historyAvailableAt = actual.available_at_ms;
+    }
+
+    for (let i = 0; i < expectedSequence.length; i++) {
+      const expected = expectedSequence[i];
+      const actual = source.sequence[i];
+      if (!actual || actual.pivot_id !== expected.pivot_id ||
+          actual.structure_label !== expected.structure_label ||
+          actual.comparison_pivot_id !== expected.comparison_pivot_id ||
+          actual.price_delta !== expected.price_delta ||
+          actual.relative_delta_pct !== expected.relative_delta_pct) {
+        return blocked('INVALID', 'B2B_SEQUENCE_DERIVATION_MISMATCH', meta);
+      }
+    }
+
+    const rawById = new Map(source.raw_pivots.map(p => [p.pivot_id, p]));
+    const priorSameSide = { SWING_HIGH: null, SWING_LOW: null };
+    for (const pivot of source.sequence) {
+      const raw = rawById.get(pivot.pivot_id);
+      if (!raw || raw.type !== pivot.type || raw.price !== pivot.price ||
+          raw.available_at_ms !== pivot.available_at_ms || raw.source_time_ms !== pivot.source_time_ms) {
+        return blocked('INVALID', 'B2B_SEQUENCE_RAW_EVIDENCE_MISMATCH', meta);
+      }
+      const previous = priorSameSide[pivot.type];
+      const expectedLabel = !previous
+        ? (pivot.type === 'SWING_HIGH' ? 'INITIAL_HIGH' : 'INITIAL_LOW')
+        : pivot.type === 'SWING_HIGH'
+          ? (pivot.price > previous.price ? 'HH' : pivot.price < previous.price ? 'LH' : 'EQH')
+          : (pivot.price > previous.price ? 'HL' : pivot.price < previous.price ? 'LL' : 'EQL');
+      if (pivot.structure_label !== expectedLabel ||
+          pivot.comparison_pivot_id !== (previous ? previous.pivot_id : null)) {
+        return blocked('INVALID', 'B2B_SEQUENCE_LABEL_MISMATCH', meta);
+      }
+      priorSameSide[pivot.type] = pivot;
+    }
+
+    const pivots = source.sequence.map(p => ({ ...p, confirmation: { ...p.confirmation } }));
+    const eventPivots = source.sequence_history.map(p => ({ ...p, confirmation: { ...p.confirmation } }));
+    const events = [];
+    const consumed = new Set();
+    let state = 'UNESTABLISHED';
+    let latestHigh = null;
+    let latestLow = null;
+    let continuationLevel = null;
+    let protectedLevel = null;
+    let transitionAvailableAt = -1;
+    let pivotCursor = 0;
+
+    function addPivot(pivot) {
+      if (pivot.type === 'SWING_HIGH') latestHigh = pivot;
+      else latestLow = pivot;
+
+      if (state === 'UP' && pivot.type === 'SWING_LOW' &&
+          pivot.structure_label === 'HL' && pivot.available_at_ms > transitionAvailableAt) {
+        protectedLevel = { ...pivot, activated_by_transition_id: events.filter(e => e.direction === 'BULLISH' && e.transition).at(-1)?.event_id || null };
+      } else if (state === 'DOWN' && pivot.type === 'SWING_HIGH' &&
+          pivot.structure_label === 'LH' && pivot.available_at_ms > transitionAvailableAt) {
+        protectedLevel = { ...pivot, activated_by_transition_id: events.filter(e => e.direction === 'BEARISH' && e.transition).at(-1)?.event_id || null };
+      }
+
+      if (state === 'UP' && pivot.type === 'SWING_HIGH' && pivot.structure_label === 'HH' && pivot.available_at_ms > transitionAvailableAt) continuationLevel = pivot;
+      if (state === 'DOWN' && pivot.type === 'SWING_LOW' && pivot.structure_label === 'LL' && pivot.available_at_ms > transitionAvailableAt) continuationLevel = pivot;
+    }
+    function emit(type, direction, candle, pivot, extra = {}) {
+      const eventId = ['B2C', type, candle.close_time_ms, pivot ? pivot.pivot_id : 'NO_LEVEL'].join(':');
+      const event = {
+        event_id: eventId, event_type: type, direction,
+        level_price: pivot ? pivot.price : null,
+        source_pivot_id: pivot ? pivot.pivot_id : null,
+        source_time_ms: pivot ? pivot.source_time_ms : null,
+        pivot_confirmed_at_ms: pivot ? pivot.confirmed_at_ms : null,
+        pivot_available_at_ms: pivot ? pivot.available_at_ms : null,
+        breaking_candle_open_time_ms: candle.open_time_ms,
+        breaking_candle_close_time_ms: candle.close_time_ms,
+        breaking_candle_close: candle.close,
+        confirmed_at_ms: candle.close_time_ms,
+        available_at_ms: candle.close_time_ms + policy.finality_safety_lag_ms,
+        prior_state: state,
+        transition: type === 'INITIAL_BULLISH_BREAK' || type === 'INITIAL_BEARISH_BREAK' || type === 'BULLISH_CHOCH' || type === 'BEARISH_CHOCH',
+        confirmation_method: 'CLOSED_CANDLE_CLOSE',
+        break_buffer_policy: policy.break_buffer_policy,
+        break_buffer: 0,
+        ...extra
+      };
+      events.push(event);
+      return event;
+    }
+
+    for (const candle of candles) {
+      // Only pivots available strictly before this candle closes can influence its break test.
+      while (pivotCursor < eventPivots.length && eventPivots[pivotCursor].available_at_ms < candle.close_time_ms) {
+        addPivot(eventPivots[pivotCursor++]);
+      }
+
+      let bullishLevel = null;
+      let bearishLevel = null;
+      if (state === 'UNESTABLISHED') {
+        bullishLevel = latestHigh && !consumed.has(latestHigh.pivot_id) ? latestHigh : null;
+        bearishLevel = latestLow && !consumed.has(latestLow.pivot_id) ? latestLow : null;
+      } else if (state === 'UP') {
+        bullishLevel = continuationLevel && !consumed.has(continuationLevel.pivot_id) ? continuationLevel : null;
+        bearishLevel = protectedLevel && !consumed.has(protectedLevel.pivot_id) ? protectedLevel : null;
+      } else if (state === 'DOWN') {
+        bearishLevel = continuationLevel && !consumed.has(continuationLevel.pivot_id) ? continuationLevel : null;
+        bullishLevel = protectedLevel && !consumed.has(protectedLevel.pivot_id) ? protectedLevel : null;
+      }
+
+      const bullBreak = Boolean(bullishLevel && candle.close > bullishLevel.price);
+      const bearBreak = Boolean(bearishLevel && candle.close < bearishLevel.price);
+      if (bullBreak && bearBreak) {
+        emit('AMBIGUOUS_BREAK', 'NONE', candle, null, { diagnostic: 'CONTRADICTORY_DIRECTIONAL_LEVELS' });
+      } else if (bullBreak || bearBreak) {
+        const pivot = bullBreak ? bullishLevel : bearishLevel;
+        const direction = bullBreak ? 'BULLISH' : 'BEARISH';
+        let eventType;
+        if (state === 'UNESTABLISHED') eventType = bullBreak ? 'INITIAL_BULLISH_BREAK' : 'INITIAL_BEARISH_BREAK';
+        else if (state === 'UP' && bearBreak) eventType = 'BEARISH_CHOCH';
+        else if (state === 'DOWN' && bullBreak) eventType = 'BULLISH_CHOCH';
+        else eventType = bullBreak ? 'BULLISH_BOS' : 'BEARISH_BOS';
+
+        const event = emit(eventType, direction, candle, pivot, {
+          gap_through: bullBreak ? candle.open > pivot.price : candle.open < pivot.price
+        });
+        consumed.add(pivot.pivot_id);
+
+        if (event.transition) {
+          const priorState = state;
+          state = direction === 'BULLISH' ? 'UP' : 'DOWN';
+          transitionAvailableAt = event.available_at_ms;
+          continuationLevel = null;
+          if (state === 'UP') {
+            protectedLevel = latestLow && latestLow.available_at_ms < candle.close_time_ms
+              ? { ...latestLow, activated_by_transition_id: event.event_id }
+              : null;
+          } else {
+            protectedLevel = latestHigh && latestHigh.available_at_ms < candle.close_time_ms
+              ? { ...latestHigh, activated_by_transition_id: event.event_id }
+              : null;
+          }
+          // A pivot consumed in the prior regime may become the protected reversal level
+          // in the new regime. It must be eligible once in this new structural role.
+          if (protectedLevel) consumed.delete(protectedLevel.pivot_id);
+          event.prior_state = priorState;
+        } else {
+          continuationLevel = null;
+        }
+      } else {
+        if (bullishLevel && candle.high > bullishLevel.price && candle.close <= bullishLevel.price) {
+          emit('BULLISH_SWEEP', 'BULLISH', candle, bullishLevel, { wick_only: true, gap_through: false });
+        }
+        if (bearishLevel && candle.low < bearishLevel.price && candle.close >= bearishLevel.price) {
+          emit('BEARISH_SWEEP', 'BEARISH', candle, bearishLevel, { wick_only: true, gap_through: false });
+        }
+      }
+
+      // Pivots becoming available at this candle close are admitted only after break evaluation.
+      while (pivotCursor < eventPivots.length && eventPivots[pivotCursor].available_at_ms <= candle.close_time_ms) {
+        addPivot(pivots[pivotCursor++]);
+      }
+    }
+
+    return freezeDeep({
+      engine_version: ENGINE_VERSION,
+      policy_version: policy.version,
+      status: 'VALID',
+      admission: {
+        status: 'ADMITTED', snapshot_id: snapshot.snapshot_id,
+        b2b_engine_version: source.engine_version, b2b_policy_version: source.policy_version,
+        b2b_same_candle_dual_pivot_policy: policy.b2b_same_candle_dual_pivot_policy,
+        b1_validator_version: report.validator_version, b1_quality_policy_version: report.policy_version
+      },
+      snapshot_id: snapshot.snapshot_id, symbol: snapshot.canonical_symbol, timeframe,
+      analysis_as_of_ms: asOf, structure_state: state,
+      state_policy: 'PROTECTED_SWING_HL_LH_V1',
+      break_buffer_policy: policy.break_buffer_policy,
+      price_equality_policy: policy.price_equality_policy,
+      events, raw_pivots: source.raw_pivots.map(p => ({ ...p, confirmation: { ...p.confirmation } })),
+      pivots, sequence_history: eventPivots,
+      protected_level: protectedLevel ? {
+        pivot_id: protectedLevel.pivot_id, price: protectedLevel.price,
+        source_time_ms: protectedLevel.source_time_ms,
+        confirmed_at_ms: protectedLevel.confirmed_at_ms,
+        available_at_ms: protectedLevel.available_at_ms,
+        activated_by_transition_id: protectedLevel.activated_by_transition_id
+      } : null,
+      continuation_level: continuationLevel ? {
+        pivot_id: continuationLevel.pivot_id, price: continuationLevel.price,
+        type: continuationLevel.type, available_at_ms: continuationLevel.available_at_ms
+      } : null,
+      diagnostics: {
+        candle_count: candles.length, pivot_count: pivots.length, event_pivot_count: eventPivots.length, event_count: events.length,
+        consumed_level_count: consumed.size,
+        protected_level_unavailable: state !== 'UNESTABLISHED' && !protectedLevel,
+        protected_level_status: state === 'UNESTABLISHED' ? 'NOT_APPLICABLE' : protectedLevel ? 'AVAILABLE' : 'PROTECTED_LEVEL_UNAVAILABLE'
+      }
+    });
+  }
+
+  return Object.freeze({ ENGINE_VERSION, REQUIRED_B2B_ENGINE_VERSION, analyze });
+});
+
+
+(function attachB2DSupportResistanceEngine(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.B2DSupportResistanceEngine = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function createB2DSupportResistanceEngine() {
+  'use strict';
+
+  const ENGINE_VERSION = '2.0.0-b2d';
+  const REQUIRED_B2C_ENGINE_VERSION = '2.1.0-b2c';
+  const REQUIRED_B2B_ENGINE_VERSION = '2.2.0-b2b';
+  const REQUIRED_B2A_ENGINE_VERSION = '2.0.0-b2a';
+  const TIMEFRAME_MS = Object.freeze({ '1h': 3600000, '4h': 14400000, '1d': 86400000 });
+  const CLOSED_STATES = new Set(['CONFIRMED', 'TIME_DERIVED']);
+
+  function freezeDeep(value) {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    Object.freeze(value);
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+    return value;
+  }
+  function isObject(value) { return Boolean(value && typeof value === 'object' && !Array.isArray(value)); }
+  function blocked(status, code, meta = {}) {
+    return freezeDeep({
+      engine_version: ENGINE_VERSION, policy_version: meta.policyVersion || null, status,
+      admission: { status: 'BLOCKED', reasons: [{ code, severity: 'CRITICAL' }] },
+      snapshot_id: meta.snapshotId || null, symbol: meta.symbol || null,
+      timeframe: meta.timeframe || null, analysis_as_of_ms: meta.analysisAsOfMs ?? null,
+      zones: [], candidate_levels: [],
+      diagnostics: { raw_pivot_count: 0, zone_count: 0, candidate_cluster_count: 0 }
+    });
+  }
+  function validatePolicy(policy, zonePolicy, symbol, timeframe) {
+    if (!isObject(policy) || typeof policy.version !== 'string' || !policy.version.trim()) return 'B2D_POLICY_INVALID';
+    if (policy.b2c_engine_version !== REQUIRED_B2C_ENGINE_VERSION ||
+        typeof policy.b2c_policy_version !== 'string' || !policy.b2c_policy_version.trim() ||
+        policy.b2b_engine_version !== REQUIRED_B2B_ENGINE_VERSION ||
+        typeof policy.b2b_policy_version !== 'string' || !policy.b2b_policy_version.trim() ||
+        policy.b2a_engine_version !== REQUIRED_B2A_ENGINE_VERSION ||
+        typeof policy.b2a_policy_version !== 'string' || !policy.b2a_policy_version.trim() ||
+        typeof policy.b1_contract_version !== 'string' || !policy.b1_contract_version.trim() ||
+        typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
+        typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
+        !Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0 ||
+        policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
+        policy.b2b_same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1') return 'B2D_UPSTREAM_POLICY_BINDING_INVALID';
+    if (!isObject(zonePolicy) || typeof zonePolicy.version !== 'string' || !zonePolicy.version.trim() ||
+        zonePolicy.instrument_symbol !== symbol || zonePolicy.timeframe !== timeframe ||
+        zonePolicy.cluster_method !== 'MAX_TOTAL_SPAN_V1' ||
+        !Number.isFinite(zonePolicy.max_cluster_span_price) || zonePolicy.max_cluster_span_price <= 0 ||
+        !Number.isSafeInteger(zonePolicy.min_independent_touches) ||
+        zonePolicy.min_independent_touches < 2 || zonePolicy.min_independent_touches > 20) {
+      return 'ZONE_POLICY_INVALID_OR_UNSCOPED';
+    }
+    return null;
+  }
+  function validateCandle(candle, snapshot, timeframe, stepMs, asOf, lagMs) {
+    if (!isObject(candle) || !Number.isSafeInteger(candle.open_time_ms) || !Number.isSafeInteger(candle.close_time_ms)) return 'CANDLE_TIME_INVALID';
+    if (candle.close_time_ms - candle.open_time_ms !== stepMs || candle.open_time_ms % stepMs !== 0) return 'CANDLE_ALIGNMENT_INVALID';
+    if (candle.close_time_ms + lagMs > asOf || !CLOSED_STATES.has(candle.closed_state)) return 'CANDLE_NOT_FINAL_CLOSED';
+    if (candle.canonical_symbol !== snapshot.canonical_symbol || candle.market_type !== snapshot.market_type || candle.timeframe !== timeframe) return 'CANDLE_PROVENANCE_MISMATCH';
+    if (['open', 'high', 'low', 'close'].some(k => !Number.isFinite(candle[k]) || candle[k] <= 0) ||
+        candle.high < Math.max(candle.open, candle.close, candle.low) ||
+        candle.low > Math.min(candle.open, candle.close, candle.high) || candle.high < candle.low) return 'CANDLE_OHLC_INVALID';
+    return null;
+  }
+  function validatePivot(pivot, ids, asOf, equalityPolicy) {
+    if (!isObject(pivot) || typeof pivot.pivot_id !== 'string' || !pivot.pivot_id.trim() || ids.has(pivot.pivot_id)) return 'PIVOT_ID_INVALID';
+    if (!['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE', 'AMBIGUOUS_FOR_SEQUENCE'].includes(pivot.sequence_status) ||
+        (pivot.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE' && pivot.exclusion_reason !== 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE') ||
+        (pivot.sequence_status !== 'AMBIGUOUS_FOR_SEQUENCE' && pivot.exclusion_reason != null)) return 'PIVOT_SEQUENCE_STATUS_INVALID';
+    if (!['SWING_HIGH', 'SWING_LOW'].includes(pivot.type) || !Number.isFinite(pivot.price) || pivot.price <= 0) return 'PIVOT_VALUE_INVALID';
+    for (const key of ['source_time_ms', 'confirmed_at_ms', 'available_at_ms']) {
+      if (!Number.isSafeInteger(pivot[key]) || pivot[key] <= 0) return 'PIVOT_TIME_INVALID';
+    }
+    if (pivot.source_time_ms > pivot.confirmed_at_ms || pivot.confirmed_at_ms > pivot.available_at_ms ||
+        pivot.available_at_ms > asOf) return 'PIVOT_CAUSAL_TIME_INVALID';
+    if (!isObject(pivot.confirmation) || pivot.confirmation.equality_policy !== equalityPolicy) return 'PIVOT_POLICY_MISMATCH';
+    ids.add(pivot.pivot_id);
+    return null;
+  }
+  function median(values) {
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+  function buildClusters(pivots, role, maxSpan, minTouches, asOf) {
+    const sorted = [...pivots].sort((a, b) =>
+      a.price - b.price || a.source_time_ms - b.source_time_ms || a.pivot_id.localeCompare(b.pivot_id));
+    const clusters = [];
+    let current = [];
+    let minPrice = null;
+    for (const pivot of sorted) {
+      if (!current.length) {
+        current = [pivot];
+        minPrice = pivot.price;
+      } else if (pivot.price - minPrice <= maxSpan) {
+        current.push(pivot);
+      } else {
+        clusters.push(current);
+        current = [pivot];
+        minPrice = pivot.price;
+      }
+    }
+    if (current.length) clusters.push(current);
+
+    const zones = [];
+    const candidates = [];
+    for (const cluster of clusters) {
+      const prices = cluster.map(p => p.price);
+      const sourceTimes = cluster.map(p => p.source_time_ms);
+      const availableTimes = cluster.map(p => p.available_at_ms);
+      const pivotIds = cluster.map(p => p.pivot_id).sort();
+      const touches = [...cluster].sort((a, b) =>
+        a.source_time_ms - b.source_time_ms || a.pivot_id.localeCompare(b.pivot_id))
+        .map(p => ({
+          pivot_id: p.pivot_id,
+          price: p.price,
+          source_time_ms: p.source_time_ms,
+          confirmed_at_ms: p.confirmed_at_ms,
+          available_at_ms: p.available_at_ms,
+          sequence_status: p.sequence_status
+        }));
+      const base = {
+        role,
+        lower_bound: Math.min(...prices),
+        upper_bound: Math.max(...prices),
+        representative_price: median(prices),
+        cluster_span_price: Math.max(...prices) - Math.min(...prices),
+        touch_count: new Set(sourceTimes).size,
+        first_touch_time_ms: Math.min(...sourceTimes),
+        last_touch_time_ms: Math.max(...sourceTimes),
+        last_touch_age_ms: asOf - Math.max(...sourceTimes),
+        available_at_ms: Math.max(...availableTimes),
+        pivot_ids: pivotIds,
+        touches
+      };
+      if (base.touch_count >= minTouches) {
+        zones.push({
+          zone_id: ['B2D', role, pivotIds[0], pivotIds[pivotIds.length - 1]].join(':'),
+          ...base,
+          evidence_status: 'CONFIRMED_CLUSTER',
+        freshness_status: 'NOT_CLASSIFIED'
+        });
+      } else {
+        candidates.push({
+          candidate_id: ['B2D-CANDIDATE', role, pivotIds[0]].join(':'),
+          ...base,
+          evidence_status: 'INSUFFICIENT_INDEPENDENT_TOUCHES',
+          required_touch_count: minTouches,
+          freshness_status: 'NOT_CLASSIFIED'
+        });
+      }
+    }
+    return { zones, candidates };
+  }
+
+  function analyze(input) {
+    const policy = input && input.policy;
+    const zonePolicy = input && input.zone_policy;
+    const snapshot = input && input.snapshot;
+    const report = input && input.quality_report;
+    const source = input && input.b2c_result;
+    const asOf = input && input.analysis_as_of_ms;
+    const meta = {
+      policyVersion: policy && policy.version,
+      snapshotId: snapshot && snapshot.snapshot_id,
+      symbol: snapshot && snapshot.canonical_symbol,
+      timeframe: input && input.timeframe,
+      analysisAsOfMs: asOf
+    };
+    if (!isObject(snapshot) || !isObject(report) || !isObject(source)) return blocked('INVALID', 'B2D_INPUT_MISSING', meta);
+    if (!Number.isSafeInteger(asOf) || asOf <= 0 || snapshot.analysis_as_of_ms !== asOf ||
+        snapshot.provider_server_time_ms !== asOf || !isObject(snapshot.provider_metadata) ||
+        snapshot.provider_metadata.time_source !== 'provider') return blocked('INVALID', 'B1_ANALYSIS_CUTOFF_INVALID', meta);
+    if (typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id ||
+        snapshot.contract_version !== (policy && policy.b1_contract_version) ||
+        typeof snapshot.canonical_symbol !== 'string' || !snapshot.canonical_symbol ||
+        typeof snapshot.market_type !== 'string' || !snapshot.market_type) return blocked('INVALID', 'B1_SNAPSHOT_IDENTITY_INVALID', meta);
+
+    const keys = Object.keys(snapshot.candles_by_timeframe || {});
+    const timeframe = keys.length === 1 ? keys[0] : null;
+    const stepMs = TIMEFRAME_MS[timeframe];
+    meta.timeframe = timeframe;
+    if (!stepMs || (input.timeframe && input.timeframe !== timeframe)) return blocked('INVALID', 'B2D_TIMEFRAME_SCOPE_INVALID', meta);
+    const policyError = validatePolicy(policy, zonePolicy, snapshot.canonical_symbol, timeframe);
+    if (policyError) return blocked('INVALID', policyError, meta);
+
+    if (report.snapshot_id !== snapshot.snapshot_id || report.symbol !== snapshot.canonical_symbol ||
+        report.timeframe !== timeframe || report.analysis_as_of_ms !== asOf ||
+        report.validator_version !== policy.b1_validator_version ||
+        report.policy_version !== policy.b1_quality_policy_version ||
+        !Number.isSafeInteger(report.checked_at_ms) || report.checked_at_ms < 0) {
+      return blocked('INVALID', 'B1_QUALITY_REPORT_IDENTITY_MISMATCH', meta);
+    }
+    if (report.status !== 'VALID') return blocked('BLOCKED', 'B1_QUALITY_STATUS_NOT_VALID', meta);
+
+    if (source.status !== 'VALID' || source.engine_version !== policy.b2c_engine_version ||
+        source.policy_version !== policy.b2c_policy_version ||
+        source.snapshot_id !== snapshot.snapshot_id || source.symbol !== snapshot.canonical_symbol ||
+        source.timeframe !== timeframe || source.analysis_as_of_ms !== asOf ||
+        !isObject(source.admission) || source.admission.status !== 'ADMITTED' ||
+        source.admission.snapshot_id !== snapshot.snapshot_id ||
+        source.admission.b1_validator_version !== policy.b1_validator_version ||
+        source.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
+        source.admission.b2b_engine_version !== policy.b2b_engine_version ||
+        source.admission.b2b_policy_version !== policy.b2b_policy_version ||
+        source.admission.b2b_same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy) {
+      return blocked('INVALID', 'B2C_ADMISSION_IDENTITY_MISMATCH', meta);
+    }
+
+    const closedMap = snapshot.candles_by_timeframe;
+    const formingMap = snapshot.forming_candle_by_timeframe;
+    const unknownMap = snapshot.unclassified_candles_by_timeframe;
+    if (!isObject(closedMap) || !Array.isArray(closedMap[timeframe]) ||
+        !isObject(formingMap) || !Object.prototype.hasOwnProperty.call(formingMap, timeframe) ||
+        !isObject(unknownMap) || !Array.isArray(unknownMap[timeframe])) return blocked('INVALID', 'B1_CANDLE_COLLECTION_INVALID', meta);
+    const candles = closedMap[timeframe];
+    if (report.closed_count !== candles.length || report.valid_count < candles.length || report.insufficient_history === true) {
+      return blocked('INVALID', 'B1_QUALITY_CANDLE_COUNT_MISMATCH', meta);
+    }
+    const seenTimes = new Set();
+    for (let i = 0; i < candles.length; i++) {
+      const error = validateCandle(candles[i], snapshot, timeframe, stepMs, asOf, policy.finality_safety_lag_ms);
+      if (error) return blocked('INVALID', error, meta);
+      if (seenTimes.has(candles[i].open_time_ms) ||
+          (i > 0 && candles[i].open_time_ms - candles[i - 1].open_time_ms !== stepMs)) {
+        return blocked('INVALID', 'B1_CANDLE_ORDER_OR_GAP_INVALID', meta);
+      }
+      seenTimes.add(candles[i].open_time_ms);
+    }
+    const excluded = [formingMap[timeframe], ...unknownMap[timeframe]].filter(Boolean);
+    for (const candle of excluded) if (!isObject(candle) || seenTimes.has(candle.open_time_ms)) {
+      return blocked('INVALID', 'B1_FORMING_OR_UNKNOWN_OVERLAP', meta);
+    }
+
+    if (!Array.isArray(source.raw_pivots)) return blocked('INVALID', 'B2C_RAW_PIVOT_COLLECTION_INVALID', meta);
+    const byOpen = new Map(candles.map(c => [c.open_time_ms, c]));
+    const byClose = new Map(candles.map(c => [c.close_time_ms, c]));
+    const ids = new Set();
+    let previousAvailable = -1;
+    const eligible = [];
+    for (const pivot of source.raw_pivots) {
+      const error = validatePivot(pivot, ids, asOf, policy.price_equality_policy);
+      if (error) return blocked('INVALID', error, meta);
+      if (pivot.available_at_ms < previousAvailable) return blocked('INVALID', 'B2C_PIVOT_ORDER_INVALID', meta);
+      previousAvailable = pivot.available_at_ms;
+      const sourceCandle = byOpen.get(pivot.source_time_ms);
+      const confirmationCandle = byClose.get(pivot.confirmed_at_ms);
+      const expectedPrice = sourceCandle && (pivot.type === 'SWING_HIGH' ? sourceCandle.high : sourceCandle.low);
+      if (!sourceCandle || !confirmationCandle || expectedPrice !== pivot.price ||
+          pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms) {
+        return blocked('INVALID', 'B2C_PIVOT_PROVENANCE_MISMATCH', meta);
+      }
+      if (pivot.available_at_ms <= asOf) eligible.push(pivot);
+    }
+
+    for (const type of ['SWING_LOW', 'SWING_HIGH']) {
+      const sourceTimes = new Set();
+      for (const pivot of eligible.filter(p => p.type === type)) {
+        if (sourceTimes.has(pivot.source_time_ms)) {
+          return blocked('INVALID', 'DUPLICATE_PIVOT_TOUCH_SOURCE_TIME', meta);
+        }
+        sourceTimes.add(pivot.source_time_ms);
+      }
+    }
+
+    const support = buildClusters(eligible.filter(p => p.type === 'SWING_LOW'), 'SUPPORT',
+      zonePolicy.max_cluster_span_price, zonePolicy.min_independent_touches, asOf);
+    const resistance = buildClusters(eligible.filter(p => p.type === 'SWING_HIGH'), 'RESISTANCE',
+      zonePolicy.max_cluster_span_price, zonePolicy.min_independent_touches, asOf);
+    const zones = [...support.zones, ...resistance.zones].sort((a, b) =>
+      a.role.localeCompare(b.role) || a.lower_bound - b.lower_bound || a.zone_id.localeCompare(b.zone_id));
+    const candidates = [...support.candidates, ...resistance.candidates].sort((a, b) =>
+      a.role.localeCompare(b.role) || a.lower_bound - b.lower_bound || a.candidate_id.localeCompare(b.candidate_id));
+
+    return freezeDeep({
+      engine_version: ENGINE_VERSION,
+      policy_version: policy.version,
+      zone_policy_version: zonePolicy.version,
+      status: 'VALID',
+      admission: {
+        status: 'ADMITTED',
+        snapshot_id: snapshot.snapshot_id,
+        b2c_engine_version: source.engine_version,
+        b2c_policy_version: source.policy_version,
+        b1_validator_version: report.validator_version,
+        b1_quality_policy_version: report.policy_version
+      },
+      snapshot_id: snapshot.snapshot_id,
+      symbol: snapshot.canonical_symbol,
+      timeframe,
+      analysis_as_of_ms: asOf,
+      cluster_method: zonePolicy.cluster_method,
+      max_cluster_span_price: zonePolicy.max_cluster_span_price,
+      min_independent_touches: zonePolicy.min_independent_touches,
+      zone_identity_scope: 'MEMBERSHIP_DERIVED_V1',
+      freshness_policy: 'NOT_CLASSIFIED_V1',
+      touch_evidence_basis: 'ALL_CONFIRMED_RAW_PIVOTS_V1',
+      zones,
+      candidate_levels: candidates,
+      diagnostics: {
+        raw_pivot_count: source.raw_pivots.length,
+        eligible_pivot_count: eligible.length,
+        support_zone_count: support.zones.length,
+        resistance_zone_count: resistance.zones.length,
+        candidate_cluster_count: candidates.length,
+        support_pivot_count: eligible.filter(p => p.type === 'SWING_LOW').length,
+        resistance_pivot_count: eligible.filter(p => p.type === 'SWING_HIGH').length
+      }
+    });
+  }
+
+  return Object.freeze({ ENGINE_VERSION, REQUIRED_B2C_ENGINE_VERSION, analyze });
+});
+
+
+(function attachB2EBreakoutRetestEngine(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.B2EBreakoutRetestEngine = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function createB2EBreakoutRetestEngine() {
+  'use strict';
+
+  const ENGINE_VERSION = '2.0.0-b2e';
+  const REQUIRED_B2D_ENGINE_VERSION = '2.0.0-b2d';
+  const REQUIRED_B2B_ENGINE_VERSION = '2.2.0-b2b';
+  const REQUIRED_B2C_ENGINE_VERSION = '2.1.0-b2c';
+  const BREAK_TYPES = Object.freeze({
+    INITIAL_BULLISH_BREAK: 'BULLISH',
+    BULLISH_BOS: 'BULLISH',
+    BULLISH_CHOCH: 'BULLISH',
+    INITIAL_BEARISH_BREAK: 'BEARISH',
+    BEARISH_BOS: 'BEARISH',
+    BEARISH_CHOCH: 'BEARISH'
+  });
+  const TIMEFRAME_MS = Object.freeze({ '1h': 3600000, '4h': 14400000, '1d': 86400000 });
+  const CLOSED_STATES = new Set(['CONFIRMED', 'TIME_DERIVED']);
+
+  function freezeDeep(value) {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    Object.freeze(value);
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+    return value;
+  }
+  function isObject(value) { return Boolean(value && typeof value === 'object' && !Array.isArray(value)); }
+  function blocked(status, code, meta = {}) {
+    return freezeDeep({
+      engine_version: ENGINE_VERSION, policy_version: meta.policyVersion || null, status,
+      admission: { status: 'BLOCKED', reasons: [{ code, severity: 'CRITICAL' }] },
+      snapshot_id: meta.snapshotId || null, symbol: meta.symbol || null,
+      timeframe: meta.timeframe || null, analysis_as_of_ms: meta.analysisAsOfMs ?? null,
+      lifecycles: [], unmatched_breakouts: [],
+      diagnostics: { breakout_event_count: 0, lifecycle_count: 0, unmatched_breakout_count: 0 }
+    });
+  }
+  function validatePolicy(policy) {
+    if (!isObject(policy) || typeof policy.version !== 'string' || !policy.version.trim()) return 'B2E_POLICY_INVALID';
+    if (policy.b2d_engine_version !== REQUIRED_B2D_ENGINE_VERSION ||
+        typeof policy.b2d_policy_version !== 'string' || !policy.b2d_policy_version.trim() ||
+        typeof policy.b2d_zone_policy_version !== 'string' || !policy.b2d_zone_policy_version.trim() ||
+        policy.b2b_engine_version !== REQUIRED_B2B_ENGINE_VERSION ||
+        typeof policy.b2b_policy_version !== 'string' || !policy.b2b_policy_version.trim() ||
+        policy.b2c_engine_version !== REQUIRED_B2C_ENGINE_VERSION ||
+        typeof policy.b2c_policy_version !== 'string' || !policy.b2c_policy_version.trim() ||
+        typeof policy.b1_contract_version !== 'string' || !policy.b1_contract_version.trim() ||
+        typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
+        typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
+        !Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0 ||
+        policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
+        policy.b2b_same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1') return 'B2E_UPSTREAM_POLICY_BINDING_INVALID';
+    const rp = policy.retest_policy;
+    if (!isObject(rp) || typeof rp.version !== 'string' || !rp.version.trim() ||
+        rp.touch_method !== 'RANGE_INTERSECTION_V1' ||
+        !Number.isFinite(rp.touch_tolerance_price) || rp.touch_tolerance_price < 0 ||
+        !Number.isFinite(rp.success_buffer_price) || rp.success_buffer_price < 0 ||
+        !Number.isFinite(rp.failure_buffer_price) || rp.failure_buffer_price < 0 ||
+        !Number.isSafeInteger(rp.retest_window_bars) || rp.retest_window_bars < 1 || rp.retest_window_bars > 500 ||
+        !Number.isSafeInteger(rp.confirmation_window_bars) || rp.confirmation_window_bars < 1 || rp.confirmation_window_bars > 100) {
+      return 'RETEST_POLICY_INVALID';
+    }
+    return null;
+  }
+  function validateCandle(candle, snapshot, timeframe, stepMs, asOf, lagMs) {
+    if (!isObject(candle) || !Number.isSafeInteger(candle.open_time_ms) || !Number.isSafeInteger(candle.close_time_ms)) return 'CANDLE_TIME_INVALID';
+    if (candle.close_time_ms - candle.open_time_ms !== stepMs || candle.open_time_ms % stepMs !== 0) return 'CANDLE_ALIGNMENT_INVALID';
+    if (candle.close_time_ms + lagMs > asOf || !CLOSED_STATES.has(candle.closed_state)) return 'CANDLE_NOT_FINAL_CLOSED';
+    if (candle.canonical_symbol !== snapshot.canonical_symbol || candle.market_type !== snapshot.market_type || candle.timeframe !== timeframe) return 'CANDLE_PROVENANCE_MISMATCH';
+    if (['open', 'high', 'low', 'close'].some(k => !Number.isFinite(candle[k]) || candle[k] <= 0) ||
+        candle.high < Math.max(candle.open, candle.close, candle.low) ||
+        candle.low > Math.min(candle.open, candle.close, candle.high) || candle.high < candle.low) return 'CANDLE_OHLC_INVALID';
+    return null;
+  }
+  function validatePivot(pivot, ids, asOf, equalityPolicy) {
+    if (!isObject(pivot) || typeof pivot.pivot_id !== 'string' || !pivot.pivot_id.trim() || ids.has(pivot.pivot_id)) return 'PIVOT_ID_INVALID';
+    if (!['SWING_HIGH', 'SWING_LOW'].includes(pivot.type) || !Number.isFinite(pivot.price) || pivot.price <= 0) return 'PIVOT_VALUE_INVALID';
+    for (const key of ['source_time_ms', 'confirmed_at_ms', 'available_at_ms']) {
+      if (!Number.isSafeInteger(pivot[key]) || pivot[key] <= 0) return 'PIVOT_TIME_INVALID';
+    }
+    if (pivot.source_time_ms > pivot.confirmed_at_ms || pivot.confirmed_at_ms > pivot.available_at_ms ||
+        pivot.available_at_ms > asOf) return 'PIVOT_CAUSAL_TIME_INVALID';
+    if (!isObject(pivot.confirmation) || pivot.confirmation.equality_policy !== equalityPolicy) return 'PIVOT_POLICY_MISMATCH';
+    ids.add(pivot.pivot_id);
+    return null;
+  }
+  function median(values) {
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+  function buildHistoricalZones(pivots, role, maxSpan, minTouches, cutoff) {
+    const expectedType = role === 'RESISTANCE' ? 'SWING_HIGH' : 'SWING_LOW';
+    const sorted = pivots.filter(p => p.type === expectedType && p.available_at_ms < cutoff)
+      .sort((a, b) => a.price - b.price || a.source_time_ms - b.source_time_ms || a.pivot_id.localeCompare(b.pivot_id));
+    const clusters = [];
+    let current = [];
+    let minPrice = null;
+    for (const pivot of sorted) {
+      if (!current.length) {
+        current = [pivot];
+        minPrice = pivot.price;
+      } else if (pivot.price - minPrice <= maxSpan) {
+        current.push(pivot);
+      } else {
+        clusters.push(current);
+        current = [pivot];
+        minPrice = pivot.price;
+      }
+    }
+    if (current.length) clusters.push(current);
+    return clusters.filter(cluster => new Set(cluster.map(p => p.source_time_ms)).size >= minTouches)
+      .map(cluster => {
+        const prices = cluster.map(p => p.price);
+        const ids = cluster.map(p => p.pivot_id).sort();
+        return {
+          historical_zone_id: ['B2E-ZONE', role, ids[0], ids[ids.length - 1]].join(':'),
+          role,
+          lower_bound: Math.min(...prices),
+          upper_bound: Math.max(...prices),
+          representative_price: median(prices),
+          cluster_span_price: Math.max(...prices) - Math.min(...prices),
+          touch_count: new Set(cluster.map(p => p.source_time_ms)).size,
+          first_touch_time_ms: Math.min(...cluster.map(p => p.source_time_ms)),
+          last_touch_time_ms: Math.max(...cluster.map(p => p.source_time_ms)),
+          available_at_ms: Math.max(...cluster.map(p => p.available_at_ms)),
+          pivot_ids: ids,
+          touches: [...cluster].sort((a, b) => a.source_time_ms - b.source_time_ms || a.pivot_id.localeCompare(b.pivot_id)).map(p => ({
+            pivot_id: p.pivot_id, price: p.price, source_time_ms: p.source_time_ms,
+            confirmed_at_ms: p.confirmed_at_ms, available_at_ms: p.available_at_ms
+          }))
+        };
+      });
+  }
+  function outcome(direction, candle, zone, policy) {
+    const rp = policy.retest_policy;
+    if (direction === 'BULLISH') {
+      if (candle.close > zone.upper_bound + rp.success_buffer_price) return 'SUCCESS';
+      if (candle.close < zone.lower_bound - rp.failure_buffer_price) return 'FAILURE';
+    } else {
+      if (candle.close < zone.lower_bound - rp.success_buffer_price) return 'SUCCESS';
+      if (candle.close > zone.upper_bound + rp.failure_buffer_price) return 'FAILURE';
+    }
+    return null;
+  }
+  function isTouch(candle, zone, policy) {
+    const tolerance = policy.retest_policy.touch_tolerance_price;
+    return candle.low <= zone.upper_bound + tolerance &&
+      candle.high >= zone.lower_bound - tolerance;
+  }
+  function makeLifecycle(event, zone, candles, breakIndex, policy) {
+    const rp = policy.retest_policy;
+    let touchIndex = -1;
+    let preTouchFailureIndex = -1;
+    const retestEnd = Math.min(candles.length - 1, breakIndex + rp.retest_window_bars);
+    for (let i = breakIndex + 1; i <= retestEnd; i++) {
+      if (isTouch(candles[i], zone, policy)) {
+        touchIndex = i;
+        break;
+      }
+      // A gap can close beyond the failure boundary without intersecting the zone.
+      // That is still a failed breakout and must not be ignored in favor of a later retest.
+      if (outcome(event.direction, candles[i], zone, policy) === 'FAILURE') {
+        preTouchFailureIndex = i;
+        break;
+      }
+    }
+
+    const proposedRole = event.direction === 'BULLISH' ? 'SUPPORT' : 'RESISTANCE';
+    const base = {
+      lifecycle_id: ['B2E', event.event_id, zone.historical_zone_id].join(':'),
+      breakout_event_id: event.event_id,
+      breakout_event_type: event.event_type,
+      direction: event.direction,
+      original_role: zone.role,
+      proposed_role: proposedRole,
+      historical_zone: zone,
+      breakout_candle_open_time_ms: event.breaking_candle_open_time_ms,
+      breakout_candle_close_time_ms: event.breaking_candle_close_time_ms,
+      breakout_available_at_ms: event.available_at_ms,
+      retest_window_bars: rp.retest_window_bars,
+      confirmation_window_bars: rp.confirmation_window_bars,
+      touch_tolerance_price: rp.touch_tolerance_price,
+      success_buffer_price: rp.success_buffer_price,
+      failure_buffer_price: rp.failure_buffer_price
+    };
+
+    if (touchIndex < 0 && preTouchFailureIndex >= 0) {
+      const failureCandle = candles[preTouchFailureIndex];
+      return {
+        ...base,
+        status: 'RETEST_FAILED',
+        role_transition_status: 'REJECTED',
+        effective_role: zone.role,
+        touch: null,
+        confirmation: {
+          outcome: 'FAILURE',
+          candle_open_time_ms: failureCandle.open_time_ms,
+          candle_close_time_ms: failureCandle.close_time_ms,
+          candle_close: failureCandle.close,
+          available_at_ms: failureCandle.close_time_ms + policy.finality_safety_lag_ms,
+          bars_after_break: preTouchFailureIndex - breakIndex
+        },
+        bars_observed_after_break: Math.max(0, candles.length - 1 - breakIndex)
+      };
+    }
+    if (touchIndex < 0) {
+      const windowComplete = candles.length - 1 >= breakIndex + rp.retest_window_bars;
+      return {
+        ...base,
+        status: windowComplete ? 'RETEST_EXPIRED' : 'WAITING_RETEST',
+        role_transition_status: windowComplete ? 'UNCONFIRMED' : 'PENDING',
+        effective_role: zone.role,
+        touch: null,
+        confirmation: null,
+        bars_observed_after_break: Math.max(0, candles.length - 1 - breakIndex)
+      };
+    }
+
+    const touchCandle = candles[touchIndex];
+    const immediateOutcome = outcome(event.direction, touchCandle, zone, policy);
+    let result = immediateOutcome;
+    let confirmationIndex = immediateOutcome ? touchIndex : -1;
+    const confirmationEnd = Math.min(candles.length - 1, touchIndex + rp.confirmation_window_bars);
+    if (!result) {
+      for (let i = touchIndex + 1; i <= confirmationEnd; i++) {
+        const candidate = outcome(event.direction, candles[i], zone, policy);
+        if (candidate) {
+          result = candidate;
+          confirmationIndex = i;
+          break;
+        }
+      }
+    }
+
+    let status;
+    let roleTransitionStatus;
+    let effectiveRole;
+    if (result === 'SUCCESS') {
+      status = 'RETEST_SUCCESSFUL';
+      roleTransitionStatus = 'CONFIRMED';
+      effectiveRole = proposedRole;
+    } else if (result === 'FAILURE') {
+      status = 'RETEST_FAILED';
+      roleTransitionStatus = 'REJECTED';
+      effectiveRole = zone.role;
+    } else {
+      const confirmationComplete = candles.length - 1 >= touchIndex + rp.confirmation_window_bars;
+      status = confirmationComplete ? 'RETEST_UNRESOLVED' : 'RETEST_PENDING_CONFIRMATION';
+      roleTransitionStatus = confirmationComplete ? 'UNCONFIRMED' : 'PENDING';
+      effectiveRole = zone.role;
+    }
+
+    return {
+      ...base,
+      status,
+      role_transition_status: roleTransitionStatus,
+      effective_role: effectiveRole,
+      touch: {
+        candle_open_time_ms: touchCandle.open_time_ms,
+        candle_close_time_ms: touchCandle.close_time_ms,
+        candle_low: touchCandle.low,
+        candle_high: touchCandle.high,
+        candle_close: touchCandle.close,
+        bars_after_break: touchIndex - breakIndex
+      },
+      confirmation: confirmationIndex >= 0 ? {
+        outcome: result,
+        candle_open_time_ms: candles[confirmationIndex].open_time_ms,
+        candle_close_time_ms: candles[confirmationIndex].close_time_ms,
+        candle_close: candles[confirmationIndex].close,
+        available_at_ms: candles[confirmationIndex].close_time_ms + policy.finality_safety_lag_ms,
+        bars_after_touch: confirmationIndex - touchIndex
+      } : null,
+      bars_observed_after_touch: Math.max(0, candles.length - 1 - touchIndex)
+    };
+  }
+
+  function analyze(input) {
+    const policy = input && input.policy;
+    const snapshot = input && input.snapshot;
+    const report = input && input.quality_report;
+    const b2c = input && input.b2c_result;
+    const b2d = input && input.b2d_result;
+    const asOf = input && input.analysis_as_of_ms;
+    const meta = {
+      policyVersion: policy && policy.version,
+      snapshotId: snapshot && snapshot.snapshot_id,
+      symbol: snapshot && snapshot.canonical_symbol,
+      timeframe: input && input.timeframe,
+      analysisAsOfMs: asOf
+    };
+    if (!isObject(snapshot) || !isObject(report) || !isObject(b2c) || !isObject(b2d)) return blocked('INVALID', 'B2E_INPUT_MISSING', meta);
+    if (!Number.isSafeInteger(asOf) || asOf <= 0 || snapshot.analysis_as_of_ms !== asOf ||
+        snapshot.provider_server_time_ms !== asOf || !isObject(snapshot.provider_metadata) ||
+        snapshot.provider_metadata.time_source !== 'provider') return blocked('INVALID', 'B1_ANALYSIS_CUTOFF_INVALID', meta);
+    if (typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id ||
+        snapshot.contract_version !== (policy && policy.b1_contract_version) ||
+        typeof snapshot.canonical_symbol !== 'string' || !snapshot.canonical_symbol ||
+        typeof snapshot.market_type !== 'string' || !snapshot.market_type) return blocked('INVALID', 'B1_SNAPSHOT_IDENTITY_INVALID', meta);
+
+    const keys = Object.keys(snapshot.candles_by_timeframe || {});
+    const timeframe = keys.length === 1 ? keys[0] : null;
+    const stepMs = TIMEFRAME_MS[timeframe];
+    meta.timeframe = timeframe;
+    if (!stepMs || (input.timeframe && input.timeframe !== timeframe)) return blocked('INVALID', 'B2E_TIMEFRAME_SCOPE_INVALID', meta);
+    const policyError = validatePolicy(policy);
+    if (policyError) return blocked('INVALID', policyError, meta);
+
+    if (report.snapshot_id !== snapshot.snapshot_id || report.symbol !== snapshot.canonical_symbol ||
+        report.timeframe !== timeframe || report.analysis_as_of_ms !== asOf ||
+        report.validator_version !== policy.b1_validator_version ||
+        report.policy_version !== policy.b1_quality_policy_version ||
+        !Number.isSafeInteger(report.checked_at_ms) || report.checked_at_ms < 0) return blocked('INVALID', 'B1_QUALITY_REPORT_IDENTITY_MISMATCH', meta);
+    if (report.status !== 'VALID') return blocked('BLOCKED', 'B1_QUALITY_STATUS_NOT_VALID', meta);
+
+    if (b2c.status !== 'VALID' || b2c.engine_version !== policy.b2c_engine_version ||
+        b2c.policy_version !== policy.b2c_policy_version || b2c.snapshot_id !== snapshot.snapshot_id ||
+        b2c.symbol !== snapshot.canonical_symbol || b2c.timeframe !== timeframe ||
+        b2c.analysis_as_of_ms !== asOf || !isObject(b2c.admission) ||
+        b2c.admission.status !== 'ADMITTED' || b2c.admission.snapshot_id !== snapshot.snapshot_id ||
+        b2c.admission.b2b_engine_version !== policy.b2b_engine_version ||
+        b2c.admission.b2b_policy_version !== policy.b2b_policy_version ||
+        b2c.admission.b2b_same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy ||
+        b2c.admission.b1_validator_version !== policy.b1_validator_version ||
+        b2c.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
+        !Array.isArray(b2c.raw_pivots) || !Array.isArray(b2c.sequence_history) || !Array.isArray(b2c.events) || b2c.events.some(e => !isObject(e))) return blocked('INVALID', 'B2C_ADMISSION_IDENTITY_MISMATCH', meta);
+
+    if (b2d.status !== 'VALID' || b2d.engine_version !== policy.b2d_engine_version ||
+        b2d.policy_version !== policy.b2d_policy_version ||
+        b2d.zone_policy_version !== policy.b2d_zone_policy_version ||
+        b2d.snapshot_id !== snapshot.snapshot_id || b2d.symbol !== snapshot.canonical_symbol ||
+        b2d.timeframe !== timeframe || b2d.analysis_as_of_ms !== asOf ||
+        !isObject(b2d.admission) || b2d.admission.status !== 'ADMITTED' ||
+        b2d.admission.snapshot_id !== snapshot.snapshot_id ||
+        b2d.admission.b2c_engine_version !== policy.b2c_engine_version ||
+        b2d.admission.b2c_policy_version !== policy.b2c_policy_version ||
+        b2d.admission.b1_validator_version !== policy.b1_validator_version ||
+        b2d.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
+        b2d.cluster_method !== 'MAX_TOTAL_SPAN_V1' ||
+        !Number.isFinite(b2d.max_cluster_span_price) || b2d.max_cluster_span_price <= 0 ||
+        !Number.isSafeInteger(b2d.min_independent_touches) || b2d.min_independent_touches < 2 ||
+        !Array.isArray(b2d.zones)) return blocked('INVALID', 'B2D_ADMISSION_IDENTITY_MISMATCH', meta);
+
+    const closedMap = snapshot.candles_by_timeframe;
+    const formingMap = snapshot.forming_candle_by_timeframe;
+    const unknownMap = snapshot.unclassified_candles_by_timeframe;
+    if (!isObject(closedMap) || !Array.isArray(closedMap[timeframe]) ||
+        !isObject(formingMap) || !Object.prototype.hasOwnProperty.call(formingMap, timeframe) ||
+        !isObject(unknownMap) || !Array.isArray(unknownMap[timeframe])) return blocked('INVALID', 'B1_CANDLE_COLLECTION_INVALID', meta);
+    const candles = closedMap[timeframe];
+    if (report.closed_count !== candles.length || report.valid_count < candles.length || report.insufficient_history === true) return blocked('INVALID', 'B1_QUALITY_CANDLE_COUNT_MISMATCH', meta);
+    const byOpen = new Map();
+    const byClose = new Map();
+    for (let i = 0; i < candles.length; i++) {
+      const error = validateCandle(candles[i], snapshot, timeframe, stepMs, asOf, policy.finality_safety_lag_ms);
+      if (error) return blocked('INVALID', error, meta);
+      if (byOpen.has(candles[i].open_time_ms) ||
+          (i > 0 && candles[i].open_time_ms - candles[i - 1].open_time_ms !== stepMs)) return blocked('INVALID', 'B1_CANDLE_ORDER_OR_GAP_INVALID', meta);
+      byOpen.set(candles[i].open_time_ms, candles[i]);
+      byClose.set(candles[i].close_time_ms, candles[i]);
+    }
+    const excluded = [formingMap[timeframe], ...unknownMap[timeframe]].filter(Boolean);
+    for (const candle of excluded) if (!isObject(candle) || byOpen.has(candle.open_time_ms)) return blocked('INVALID', 'B1_FORMING_OR_UNKNOWN_OVERLAP', meta);
+
+    const pivotIds = new Set();
+    const pivotById = new Map();
+    const sourceTimesByRole = { SWING_HIGH: new Set(), SWING_LOW: new Set() };
+    let previousAvailable = -1;
+    for (const pivot of b2c.raw_pivots) {
+      const error = validatePivot(pivot, pivotIds, asOf, policy.price_equality_policy);
+      if (error) return blocked('INVALID', error, meta);
+      if (pivot.available_at_ms < previousAvailable) return blocked('INVALID', 'B2C_PIVOT_ORDER_INVALID', meta);
+      previousAvailable = pivot.available_at_ms;
+      const sourceCandle = byOpen.get(pivot.source_time_ms);
+      const confirmationCandle = byClose.get(pivot.confirmed_at_ms);
+      const expectedPrice = sourceCandle && (pivot.type === 'SWING_HIGH' ? sourceCandle.high : sourceCandle.low);
+      if (!sourceCandle || !confirmationCandle || expectedPrice !== pivot.price ||
+          pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms) return blocked('INVALID', 'B2C_PIVOT_PROVENANCE_MISMATCH', meta);
+      if (sourceTimesByRole[pivot.type].has(pivot.source_time_ms)) return blocked('INVALID', 'DUPLICATE_PIVOT_TOUCH_SOURCE_TIME', meta);
+      sourceTimesByRole[pivot.type].add(pivot.source_time_ms);
+      pivotById.set(pivot.pivot_id, pivot);
+    }
+
+    const eventPivotById = new Map();
+    let historyAvailableAt = -1;
+    for (const historyPivot of b2c.sequence_history) {
+      const rawPivot = historyPivot && pivotById.get(historyPivot.pivot_id);
+      if (!rawPivot || eventPivotById.has(historyPivot.pivot_id) ||
+          historyPivot.sequence_status !== 'ACCEPTED_AT_AVAILABILITY' ||
+          historyPivot.exclusion_reason !== null || historyPivot.superseded_by !== null ||
+          historyPivot.type !== rawPivot.type || historyPivot.price !== rawPivot.price ||
+          historyPivot.source_time_ms !== rawPivot.source_time_ms ||
+          historyPivot.confirmed_at_ms !== rawPivot.confirmed_at_ms ||
+          historyPivot.available_at_ms !== rawPivot.available_at_ms ||
+          !Number.isSafeInteger(historyPivot.sequence_index_at_availability) ||
+          historyPivot.sequence_index_at_availability < 0 ||
+          historyPivot.available_at_ms < historyAvailableAt) {
+        return blocked('INVALID', 'B2C_SEQUENCE_HISTORY_INVALID', meta);
+      }
+      eventPivotById.set(historyPivot.pivot_id, historyPivot);
+      historyAvailableAt = historyPivot.available_at_ms;
+    }
+
+    const zoneIds = new Set();
+    for (const zone of b2d.zones) {
+      if (!isObject(zone) || typeof zone.zone_id !== 'string' || !zone.zone_id ||
+          zoneIds.has(zone.zone_id) || !['SUPPORT', 'RESISTANCE'].includes(zone.role) ||
+          !Array.isArray(zone.pivot_ids) || !Array.isArray(zone.touches) || zone.pivot_ids.length < b2d.min_independent_touches) {
+        return blocked('INVALID', 'B2D_ZONE_SHAPE_INVALID', meta);
+      }
+      zoneIds.add(zone.zone_id);
+      const members = zone.pivot_ids.map(id => pivotById.get(id));
+      if (members.some(p => !p) || members.some(p => p.type !== (zone.role === 'SUPPORT' ? 'SWING_LOW' : 'SWING_HIGH'))) {
+        return blocked('INVALID', 'B2D_ZONE_PIVOT_MEMBERSHIP_INVALID', meta);
+      }
+      const prices = members.map(p => p.price);
+      const touchTimes = members.map(p => p.source_time_ms);
+      const availableTimes = members.map(p => p.available_at_ms);
+      const sortedIds = [...zone.pivot_ids].sort();
+      const orderedMembers = [...members].sort((a, b) => a.source_time_ms - b.source_time_ms || a.pivot_id.localeCompare(b.pivot_id));
+      const expectedZoneId = ['B2D', zone.role, sortedIds[0], sortedIds[sortedIds.length - 1]].join(':');
+      if (JSON.stringify(sortedIds) !== JSON.stringify(zone.pivot_ids) || zone.zone_id !== expectedZoneId ||
+          new Set(touchTimes).size !== members.length ||
+          zone.lower_bound !== Math.min(...prices) || zone.upper_bound !== Math.max(...prices) ||
+          zone.representative_price !== median(prices) ||
+          zone.cluster_span_price !== zone.upper_bound - zone.lower_bound ||
+          zone.cluster_span_price > b2d.max_cluster_span_price ||
+          zone.touch_count !== members.length ||
+          zone.available_at_ms !== Math.max(...availableTimes) ||
+          zone.first_touch_time_ms !== Math.min(...touchTimes) ||
+          zone.last_touch_time_ms !== Math.max(...touchTimes) ||
+          zone.touches.length !== members.length ||
+          zone.evidence_status !== 'CONFIRMED_CLUSTER' ||
+          zone.touches.some((t, i) => t.pivot_id !== orderedMembers[i].pivot_id ||
+            t.price !== orderedMembers[i].price || t.source_time_ms !== orderedMembers[i].source_time_ms ||
+            t.confirmed_at_ms !== orderedMembers[i].confirmed_at_ms || t.available_at_ms !== orderedMembers[i].available_at_ms)) {
+        return blocked('INVALID', 'B2D_ZONE_EVIDENCE_MISMATCH', meta);
+      }
+    }
+
+    const closeIndex = new Map(candles.map((c, i) => [c.close_time_ms, i]));
+    const eventIds = new Set();
+    let previousEventClose = -1;
+    for (const event of b2c.events) {
+      if (typeof event.event_id !== 'string' || !event.event_id || eventIds.has(event.event_id)) return blocked('INVALID', 'B2C_EVENT_ID_INVALID', meta);
+      eventIds.add(event.event_id);
+      const eventIndex = closeIndex.get(event.breaking_candle_close_time_ms);
+      const eventCandle = eventIndex === undefined ? null : candles[eventIndex];
+      if (!eventCandle || event.breaking_candle_open_time_ms !== eventCandle.open_time_ms ||
+          event.breaking_candle_close !== eventCandle.close || event.confirmed_at_ms !== eventCandle.close_time_ms ||
+          event.available_at_ms !== eventCandle.close_time_ms + policy.finality_safety_lag_ms ||
+          event.breaking_candle_close_time_ms < previousEventClose) return blocked('INVALID', 'B2C_EVENT_PROVENANCE_INVALID', meta);
+      previousEventClose = event.breaking_candle_close_time_ms;
+      if (event.source_pivot_id !== null) {
+        const evidencePivot = eventPivotById.get(event.source_pivot_id);
+        if (!evidencePivot || event.level_price !== evidencePivot.price || evidencePivot.available_at_ms >= eventCandle.close_time_ms) {
+          return blocked('INVALID', 'B2C_EVENT_PIVOT_PROVENANCE_INVALID', meta);
+        }
+      }
+    }
+    const lifecycles = [];
+    const unmatched = [];
+    const breakEvents = b2c.events.filter(e => Object.prototype.hasOwnProperty.call(BREAK_TYPES, e.event_type));
+
+    const expectedPriorState = {
+      INITIAL_BULLISH_BREAK: 'UNESTABLISHED', INITIAL_BEARISH_BREAK: 'UNESTABLISHED',
+      BULLISH_BOS: 'UP', BEARISH_BOS: 'DOWN', BULLISH_CHOCH: 'DOWN', BEARISH_CHOCH: 'UP'
+    };
+    for (const event of breakEvents) {
+      const direction = BREAK_TYPES[event.event_type];
+      const pivot = eventPivotById.get(event.source_pivot_id);
+      const candleIndex = closeIndex.get(event.breaking_candle_close_time_ms);
+      const breakingCandle = candleIndex === undefined ? null : candles[candleIndex];
+      if (!pivot || !breakingCandle || event.direction !== direction ||
+          event.breaking_candle_open_time_ms !== breakingCandle.open_time_ms ||
+          event.breaking_candle_close !== breakingCandle.close ||
+          event.confirmed_at_ms !== breakingCandle.close_time_ms ||
+          event.available_at_ms !== breakingCandle.close_time_ms + policy.finality_safety_lag_ms ||
+          pivot.available_at_ms >= breakingCandle.close_time_ms || pivot.sequence_status !== 'ACCEPTED_AT_AVAILABILITY' ||
+          event.prior_state !== expectedPriorState[event.event_type] ||
+          event.transition !== (event.event_type === 'INITIAL_BULLISH_BREAK' || event.event_type === 'INITIAL_BEARISH_BREAK' || event.event_type === 'BULLISH_CHOCH' || event.event_type === 'BEARISH_CHOCH') ||
+          event.confirmation_method !== 'CLOSED_CANDLE_CLOSE' || event.break_buffer_policy !== 'ZERO_BUFFER_V1' || event.break_buffer !== 0 ||
+          event.level_price !== pivot.price ||
+          (direction === 'BULLISH' && (pivot.type !== 'SWING_HIGH' || breakingCandle.close <= pivot.price)) ||
+          (direction === 'BEARISH' && (pivot.type !== 'SWING_LOW' || breakingCandle.close >= pivot.price))) {
+        return blocked('INVALID', 'B2C_BREAK_EVENT_PROVENANCE_MISMATCH', meta);
+      }
+
+      const role = direction === 'BULLISH' ? 'RESISTANCE' : 'SUPPORT';
+      const historicalZones = buildHistoricalZones(
+        b2c.raw_pivots, role, b2d.max_cluster_span_price,
+        b2d.min_independent_touches, breakingCandle.close_time_ms
+      );
+      const zone = historicalZones.find(z => z.pivot_ids.includes(event.source_pivot_id));
+      if (!zone) {
+        unmatched.push({
+          breakout_event_id: event.event_id,
+          event_type: event.event_type,
+          source_pivot_id: event.source_pivot_id,
+          reason: 'ZONE_NOT_FORMED_BEFORE_BREAK',
+          break_close_time_ms: breakingCandle.close_time_ms
+        });
+        continue;
+      }
+      const zoneBoundaryCleared = direction === 'BULLISH'
+        ? breakingCandle.close > zone.upper_bound
+        : breakingCandle.close < zone.lower_bound;
+      if (!zoneBoundaryCleared) {
+        unmatched.push({
+          breakout_event_id: event.event_id,
+          event_type: event.event_type,
+          source_pivot_id: event.source_pivot_id,
+          reason: 'ZONE_BOUNDARY_NOT_CLEARED_AT_BREAK',
+          zone_lower_bound: zone.lower_bound,
+          zone_upper_bound: zone.upper_bound,
+          break_close: breakingCandle.close,
+          break_close_time_ms: breakingCandle.close_time_ms
+        });
+        continue;
+      }
+      lifecycles.push(makeLifecycle(event, zone, candles, candleIndex, policy));
+    }
+
+    return freezeDeep({
+      engine_version: ENGINE_VERSION,
+      policy_version: policy.version,
+      retest_policy_version: policy.retest_policy.version,
+      status: 'VALID',
+      admission: {
+        status: 'ADMITTED',
+        snapshot_id: snapshot.snapshot_id,
+        b2c_engine_version: b2c.engine_version,
+        b2c_policy_version: b2c.policy_version,
+        b2d_engine_version: b2d.engine_version,
+        b2d_policy_version: b2d.policy_version,
+        b2d_zone_policy_version: b2d.zone_policy_version,
+        b1_validator_version: report.validator_version,
+        b1_quality_policy_version: report.policy_version
+      },
+      snapshot_id: snapshot.snapshot_id,
+      symbol: snapshot.canonical_symbol,
+      timeframe,
+      analysis_as_of_ms: asOf,
+      retest_policy: {
+        version: policy.retest_policy.version,
+        touch_method: policy.retest_policy.touch_method,
+        touch_tolerance_price: policy.retest_policy.touch_tolerance_price,
+        success_buffer_price: policy.retest_policy.success_buffer_price,
+        failure_buffer_price: policy.retest_policy.failure_buffer_price,
+        retest_window_bars: policy.retest_policy.retest_window_bars,
+        confirmation_window_bars: policy.retest_policy.confirmation_window_bars
+      },
+      lifecycles,
+      unmatched_breakouts: unmatched,
+      diagnostics: {
+        breakout_event_count: breakEvents.length,
+        lifecycle_count: lifecycles.length,
+        unmatched_breakout_count: unmatched.length,
+        successful_retest_count: lifecycles.filter(l => l.status === 'RETEST_SUCCESSFUL').length,
+        failed_retest_count: lifecycles.filter(l => l.status === 'RETEST_FAILED').length,
+        pending_count: lifecycles.filter(l => l.status === 'WAITING_RETEST' || l.status === 'RETEST_PENDING_CONFIRMATION').length,
+        expired_count: lifecycles.filter(l => l.status === 'RETEST_EXPIRED' || l.status === 'RETEST_UNRESOLVED').length
+      }
+    });
+  }
+
+  return Object.freeze({ ENGINE_VERSION, REQUIRED_B2D_ENGINE_VERSION, analyze });
+});
+
+
+(function attachB2FMtfStructureConfluenceEngine(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.B2FMtfStructureConfluenceEngine = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function createB2FMtfStructureConfluenceEngine() {
+  'use strict';
+
+  const ENGINE_VERSION = '2.0.0-b2f';
+  const REQUIRED = Object.freeze(['1d', '4h', '1h']);
+  const STEP = Object.freeze({ '1d': 86400000, '4h': 14400000, '1h': 3600000 });
+  const CLOSED_KEYS = Object.freeze([
+    'open_time_ms', 'close_time_ms', 'open', 'high', 'low', 'close',
+    'volume_base', 'volume_quote'
+  ]);
+
+  function freezeDeep(value) {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    Object.freeze(value);
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+    return value;
+  }
+  function isObject(value) {
+    return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+  }
+  function blocked(status, code, meta = {}) {
+    return freezeDeep({
+      engine_version: ENGINE_VERSION,
+      policy_version: meta.policyVersion || null,
+      status,
+      admission: { status: 'BLOCKED', reasons: [{ code, severity: 'CRITICAL' }] },
+      symbol: meta.symbol || null,
+      market_type: meta.marketType || null,
+      analysis_as_of_ms: meta.analysisAsOfMs ?? null,
+      timeframes: {},
+      structure_pattern: null,
+      alignment_status: 'BLOCKED',
+      alignment_context: 'UNAVAILABLE',
+      hierarchical_interpretation: 'BLOCKED',
+      lower_timeframe_consensus: 'BLOCKED',
+      diagnostics: { timeframe_count: 0, event_count: 0 }
+    });
+  }
+  function validatePolicy(policy) {
+    if (!isObject(policy) || typeof policy.version !== 'string' || !policy.version.trim()) return 'B2F_POLICY_INVALID';
+    const required = {
+      b1_mtf_contract_version: '1.0.0',
+      b1_contract_version: '1.1.0',
+      b1_validator_version: '1.1.0',
+      b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
+      b2b_engine_version: '2.2.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v3',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      b2c_engine_version: '2.1.0-b2c',
+      b2c_policy_version: 'b2c-state-v2'
+    };
+    for (const [key, value] of Object.entries(required)) {
+      if (policy[key] !== value) return 'B2F_UPSTREAM_VERSION_BINDING_INVALID';
+    }
+    if (!Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0) {
+      return 'B2F_FINALITY_POLICY_INVALID';
+    }
+    if (!Number.isSafeInteger(policy.max_provider_time_spread_ms) || policy.max_provider_time_spread_ms < 0) {
+      return 'B2F_MTF_SPREAD_POLICY_INVALID';
+    }
+    return null;
+  }
+  function sameCandle(a, b) {
+    return CLOSED_KEYS.every(key => a[key] === b[key]);
+  }
+  function summarizeEvent(event) {
+    if (!event) return null;
+    return {
+      event_id: event.event_id,
+      event_type: event.event_type,
+      direction: event.direction,
+      level_price: event.level_price,
+      source_pivot_id: event.source_pivot_id,
+      breaking_candle_close_time_ms: event.breaking_candle_close_time_ms,
+      available_at_ms: event.available_at_ms
+    };
+  }
+  function lowerConsensus(fourHour, oneHour) {
+    if (fourHour === 'UP' && oneHour === 'UP') return 'BULLISH';
+    if (fourHour === 'DOWN' && oneHour === 'DOWN') return 'BEARISH';
+    if ((fourHour === 'UP' && oneHour === 'DOWN') || (fourHour === 'DOWN' && oneHour === 'UP')) return 'CONFLICT';
+    if (fourHour === 'UNESTABLISHED' && oneHour === 'UNESTABLISHED') return 'UNESTABLISHED';
+    return 'PARTIAL';
+  }
+  function alignment(states) {
+    const values = REQUIRED.map(tf => states[tf]);
+    const hasUp = values.includes('UP');
+    const hasDown = values.includes('DOWN');
+    const allUp = values.every(v => v === 'UP');
+    const allDown = values.every(v => v === 'DOWN');
+    const allUnestablished = values.every(v => v === 'UNESTABLISHED');
+    if (allUp) return { status: 'FULL_BULLISH', context: 'BULLISH_STRUCTURE' };
+    if (allDown) return { status: 'FULL_BEARISH', context: 'BEARISH_STRUCTURE' };
+    if (hasUp && hasDown) return { status: 'MIXED', context: 'MIXED_STRUCTURE' };
+    if (hasUp) return { status: 'PARTIAL_BULLISH', context: 'PARTIAL_BULLISH_STRUCTURE' };
+    if (hasDown) return { status: 'PARTIAL_BEARISH', context: 'PARTIAL_BEARISH_STRUCTURE' };
+    if (allUnestablished) return { status: 'UNESTABLISHED', context: 'UNESTABLISHED_STRUCTURE' };
+    return { status: 'UNESTABLISHED', context: 'UNESTABLISHED_STRUCTURE' };
+  }
+  function interpretation(pattern, alignmentStatus) {
+    const exact = {
+      'UP|UP|DOWN': '1H_PULLBACK_AGAINST_BULLISH_1D_4H',
+      'DOWN|DOWN|UP': '1H_BOUNCE_AGAINST_BEARISH_1D_4H',
+      'UP|DOWN|DOWN': '4H_1H_COUNTERTREND_BEARISH_VS_1D',
+      'DOWN|UP|UP': '4H_1H_COUNTERTREND_BULLISH_VS_1D'
+    };
+    if (exact[pattern]) return exact[pattern];
+    if (alignmentStatus === 'MIXED') return 'MULTI_TIMEFRAME_CONFLICT';
+    if (alignmentStatus === 'PARTIAL_BULLISH' || alignmentStatus === 'PARTIAL_BEARISH') return 'PARTIAL_CONTEXT';
+    if (alignmentStatus === 'UNESTABLISHED') return 'NO_ESTABLISHED_STRUCTURE';
+    return 'FULL_TIMEFRAME_ALIGNMENT';
+  }
+
+  function analyze(input) {
+    const policy = input && input.policy;
+    const mtf = input && input.mtf_result;
+    const b2cByTf = input && input.b2c_by_timeframe;
+    const meta = {
+      policyVersion: policy && policy.version,
+      symbol: mtf && mtf.symbol,
+      marketType: mtf && mtf.market_type,
+      analysisAsOfMs: mtf && mtf.analysis_as_of_ms
+    };
+    if (!isObject(mtf) || !isObject(b2cByTf)) return blocked('INVALID', 'B2F_INPUT_MISSING', meta);
+    const policyError = validatePolicy(policy);
+    if (policyError) return blocked('INVALID', policyError, meta);
+    if (mtf.contract_version !== policy.b1_mtf_contract_version) return blocked('INVALID', 'B1_MTF_CONTRACT_VERSION_MISMATCH', meta);
+    if (mtf.status !== 'VALID') return blocked('BLOCKED', 'B1_MTF_STATUS_NOT_VALID', meta);
+    if (mtf.directional_allowed !== true) return blocked('BLOCKED', 'B1_MTF_DIRECTIONAL_PERMISSION_FALSE', meta);
+    if (!Array.isArray(mtf.required_timeframes) ||
+        mtf.required_timeframes.length !== REQUIRED.length ||
+        REQUIRED.some((tf, i) => mtf.required_timeframes[i] !== tf)) {
+      return blocked('INVALID', 'B1_MTF_REQUIRED_TIMEFRAMES_MISMATCH', meta);
+    }
+    if (typeof mtf.symbol !== 'string' || !mtf.symbol ||
+        typeof mtf.market_type !== 'string' || !mtf.market_type ||
+        !Number.isSafeInteger(mtf.analysis_as_of_ms) || mtf.analysis_as_of_ms <= 0 ||
+        !Number.isSafeInteger(mtf.requested_closed_count) || mtf.requested_closed_count < 1 ||
+        !Number.isSafeInteger(mtf.provider_time_spread_ms) || mtf.provider_time_spread_ms < 0 ||
+        !Number.isSafeInteger(mtf.max_provider_time_spread_ms) || mtf.max_provider_time_spread_ms < 0 ||
+        mtf.provider_time_spread_ms > mtf.max_provider_time_spread_ms ||
+        mtf.max_provider_time_spread_ms !== policy.max_provider_time_spread_ms) {
+      return blocked('INVALID', 'B1_MTF_METADATA_INVALID', meta);
+    }
+    if (!isObject(mtf.timeframes) || !REQUIRED.every(tf => Object.prototype.hasOwnProperty.call(mtf.timeframes, tf)) ||
+        Object.keys(mtf.timeframes).length !== REQUIRED.length) {
+      return blocked('INVALID', 'B1_MTF_TIMEFRAME_COLLECTION_INVALID', meta);
+    }
+    if (!REQUIRED.every(tf => isObject(b2cByTf[tf])) || Object.keys(b2cByTf).length !== REQUIRED.length) {
+      return blocked('INVALID', 'B2C_TIMEFRAME_COLLECTION_INVALID', meta);
+    }
+
+    const cutoff = mtf.analysis_as_of_ms;
+    const providerTimes = [];
+    let canonicalSymbol = null;
+    let marketType = null;
+    const states = {};
+    const timeframeOutput = {};
+    const snapshotIds = {};
+    const seenSnapshotIds = new Set();
+    let totalEvents = 0;
+
+    for (const tf of REQUIRED) {
+      const entry = mtf.timeframes[tf];
+      const b2c = b2cByTf[tf];
+      if (!isObject(entry) || entry.timeframe !== tf || entry.status !== 'VALID' ||
+          !Number.isSafeInteger(entry.provider_time_ms) || entry.provider_time_ms <= 0 ||
+          entry.provider_time_ms < cutoff ||
+          !Number.isSafeInteger(entry.receive_time_ms) || entry.receive_time_ms <= 0) {
+        return blocked('INVALID', 'B1_MTF_TIMEFRAME_ENTRY_INVALID', meta);
+      }
+      providerTimes.push(entry.provider_time_ms);
+
+      const snapshot = entry.snapshot;
+      const report = entry.quality_report;
+      if (!isObject(snapshot) || !isObject(report) ||
+          snapshot.contract_version !== policy.b1_contract_version ||
+          typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id ||
+          seenSnapshotIds.has(snapshot.snapshot_id) ||
+          typeof snapshot.canonical_symbol !== 'string' || !snapshot.canonical_symbol ||
+          typeof snapshot.market_type !== 'string' || !snapshot.market_type ||
+          snapshot.analysis_as_of_ms !== cutoff || snapshot.provider_server_time_ms !== cutoff ||
+          report.snapshot_id !== snapshot.snapshot_id ||
+          report.symbol !== snapshot.canonical_symbol ||
+          report.timeframe !== tf || report.analysis_as_of_ms !== cutoff ||
+          report.validator_version !== policy.b1_validator_version ||
+          report.policy_version !== policy.b1_quality_policy_version ||
+          report.status !== 'VALID' || !Number.isSafeInteger(report.closed_count) ||
+          !Number.isSafeInteger(report.valid_count) || report.closed_count < 1 ||
+          report.valid_count < report.closed_count || report.insufficient_history === true) {
+        return blocked('INVALID', 'B1_MTF_SNAPSHOT_QUALITY_MISMATCH', meta);
+      }
+      if (canonicalSymbol === null) canonicalSymbol = snapshot.canonical_symbol;
+      if (marketType === null) marketType = snapshot.market_type;
+      if (snapshot.canonical_symbol !== canonicalSymbol || snapshot.market_type !== marketType) {
+        return blocked('INVALID', 'B1_MTF_CANONICAL_IDENTITY_MISMATCH', meta);
+      }
+
+      const closedMap = snapshot.candles_by_timeframe;
+      if (!isObject(closedMap) || Object.keys(closedMap).length !== 1 || !Array.isArray(closedMap[tf]) ||
+          !isObject(snapshot.forming_candle_by_timeframe) || Object.keys(snapshot.forming_candle_by_timeframe).length !== 1 ||
+          !Object.prototype.hasOwnProperty.call(snapshot.forming_candle_by_timeframe, tf) ||
+          !isObject(snapshot.unclassified_candles_by_timeframe) || Object.keys(snapshot.unclassified_candles_by_timeframe).length !== 1 ||
+          !Array.isArray(snapshot.unclassified_candles_by_timeframe[tf])) {
+        return blocked('INVALID', 'B1_MTF_CANONICAL_CANDLES_INVALID', meta);
+      }
+      const step = STEP[tf];
+      const expectedEnd = Math.floor((cutoff - policy.finality_safety_lag_ms) / step) * step - step;
+      const expectedStart = expectedEnd - (mtf.requested_closed_count - 1) * step;
+      const selected = closedMap[tf].filter(c => c.open_time_ms >= expectedStart && c.open_time_ms <= expectedEnd);
+      if (report.closed_count !== closedMap[tf].length ||
+          selected.length !== mtf.requested_closed_count ||
+          !Array.isArray(entry.analysis_candles) ||
+          entry.analysis_candles.length !== selected.length ||
+          selected.some((c, i) => !entry.analysis_candles[i] || !sameCandle(c, entry.analysis_candles[i]) ||
+            c.open_time_ms !== expectedStart + i * step)) {
+        return blocked('INVALID', 'B1_MTF_ANALYSIS_WINDOW_MISMATCH', meta);
+      }
+      seenSnapshotIds.add(snapshot.snapshot_id);
+      snapshotIds[tf] = snapshot.snapshot_id;
+
+      if (b2c.status !== 'VALID' || b2c.engine_version !== policy.b2c_engine_version ||
+          b2c.policy_version !== policy.b2c_policy_version ||
+          b2c.snapshot_id !== snapshot.snapshot_id ||
+          b2c.symbol !== snapshot.canonical_symbol || b2c.timeframe !== tf ||
+          b2c.analysis_as_of_ms !== cutoff || !isObject(b2c.admission) ||
+          b2c.admission.status !== 'ADMITTED' || b2c.admission.snapshot_id !== snapshot.snapshot_id ||
+          b2c.admission.b2b_engine_version !== policy.b2b_engine_version ||
+          b2c.admission.b2b_policy_version !== policy.b2b_policy_version ||
+          b2c.admission.b2b_same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy ||
+          b2c.admission.b1_validator_version !== policy.b1_validator_version ||
+          b2c.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
+          !['UP', 'DOWN', 'UNESTABLISHED'].includes(b2c.structure_state) ||
+          !Array.isArray(b2c.events)) {
+        return blocked('INVALID', 'B2C_TIMEFRAME_RESULT_MISMATCH', meta);
+      }
+      const eventIds = new Set();
+      let previousClose = -1;
+      for (const event of b2c.events) {
+        if (!isObject(event) || typeof event.event_id !== 'string' || !event.event_id ||
+            eventIds.has(event.event_id) ||
+            !Number.isSafeInteger(event.breaking_candle_close_time_ms) || event.breaking_candle_close_time_ms <= 0 ||
+            event.breaking_candle_close_time_ms % STEP[tf] !== 0 ||
+            !Number.isSafeInteger(event.available_at_ms) ||
+            event.available_at_ms !== event.breaking_candle_close_time_ms + policy.finality_safety_lag_ms ||
+            event.available_at_ms > cutoff ||
+            event.breaking_candle_close_time_ms < previousClose) {
+          return blocked('INVALID', 'B2C_EVENT_HISTORY_INVALID', meta);
+        }
+        eventIds.add(event.event_id);
+        previousClose = event.breaking_candle_close_time_ms;
+      }
+
+      states[tf] = b2c.structure_state;
+      const lastEvent = b2c.events.length ? b2c.events[b2c.events.length - 1] : null;
+      timeframeOutput[tf] = {
+        timeframe: tf,
+        role: tf === '1d' ? 'HIGHER_TIMEFRAME_CONTEXT' : tf === '4h' ? 'INTERMEDIATE_STRUCTURE' : 'TACTICAL_STRUCTURE',
+        structure_state: b2c.structure_state,
+        last_event: summarizeEvent(lastEvent),
+        event_count: b2c.events.length,
+        snapshot_id: snapshot.snapshot_id,
+        quality_status: report.status
+      };
+      totalEvents += b2c.events.length;
+    }
+
+    const actualSpread = Math.max(...providerTimes) - Math.min(...providerTimes);
+    if (Math.min(...providerTimes) !== cutoff || actualSpread !== mtf.provider_time_spread_ms) {
+      return blocked('INVALID', 'B1_MTF_PROVIDER_TIME_SPREAD_MISMATCH', meta);
+    }
+
+    const pattern = REQUIRED.map(tf => states[tf]).join('|');
+    const aligned = alignment(states);
+    const lower = lowerConsensus(states['4h'], states['1h']);
+    return freezeDeep({
+      engine_version: ENGINE_VERSION,
+      policy_version: policy.version,
+      status: 'VALID',
+      admission: {
+        status: 'ADMITTED',
+        b1_mtf_contract_version: mtf.contract_version,
+        b1_contract_version: policy.b1_contract_version,
+        b1_validator_version: policy.b1_validator_version,
+        b1_quality_policy_version: policy.b1_quality_policy_version,
+        b2c_engine_version: policy.b2c_engine_version,
+        b2c_policy_version: policy.b2c_policy_version,
+        analysis_as_of_ms: cutoff,
+        provider_time_spread_ms: mtf.provider_time_spread_ms,
+        max_provider_time_spread_ms: mtf.max_provider_time_spread_ms,
+        snapshot_ids: snapshotIds
+      },
+      symbol: canonicalSymbol,
+      market_type: marketType,
+      source_market_type_label: mtf.market_type,
+      analysis_as_of_ms: cutoff,
+      required_timeframes: REQUIRED.slice(),
+      timeframes: timeframeOutput,
+      structure_pattern: pattern,
+      alignment_status: aligned.status,
+      alignment_context: aligned.context,
+      hierarchical_interpretation: interpretation(pattern, aligned.status),
+      lower_timeframe_consensus: lower,
+      diagnostics: {
+        timeframe_count: REQUIRED.length,
+        up_count: REQUIRED.filter(tf => states[tf] === 'UP').length,
+        down_count: REQUIRED.filter(tf => states[tf] === 'DOWN').length,
+        unestablished_count: REQUIRED.filter(tf => states[tf] === 'UNESTABLISHED').length,
+        event_count: totalEvents
+      }
+    });
+  }
+
+  return Object.freeze({ ENGINE_VERSION, REQUIRED_TIMEFRAMES: REQUIRED, analyze });
+});
+
+
+(function attachB2GChartProjectionEngine(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.B2GChartProjectionEngine = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function createB2GChartProjectionEngine() {
+  'use strict';
+
+  const ENGINE_VERSION = '2.0.0-b2g';
+  const STEP = Object.freeze({ '1h': 3600000, '4h': 14400000, '1d': 86400000 });
+
+  function freezeDeep(value) {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    Object.freeze(value);
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+    return value;
+  }
+  function isObject(value) {
+    return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+  }
+  function blocked(code, meta = {}) {
+    return freezeDeep({
+      engine_version: ENGINE_VERSION,
+      policy_version: meta.policyVersion || null,
+      status: 'BLOCKED',
+      admission: { status: 'BLOCKED', reasons: [{ code, severity: 'CRITICAL' }] },
+      symbol: meta.symbol || null,
+      timeframe: meta.timeframe || null,
+      snapshot_id: meta.snapshotId || null,
+      analysis_as_of_ms: meta.analysisAsOfMs ?? null,
+      swing_markers: [],
+      superseded_pivots: [],
+      ambiguous_pivots: [],
+      structure_events: [],
+      zones: [],
+      candidate_levels: [],
+      retest_lifecycles: [],
+      mtf_context: null
+    });
+  }
+  function policyError(policy) {
+    if (!isObject(policy) || typeof policy.version !== 'string' || !policy.version.trim()) return 'B2G_POLICY_INVALID';
+    const required = {
+      b1_contract_version: '1.1.0',
+      b1_validator_version: '1.1.0',
+      b2a_engine_version: '2.0.0-b2a',
+      b2a_policy_version: 'b2a-causal-swing-v1',
+      b2b_engine_version: '2.2.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v3',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      b2c_engine_version: '2.1.0-b2c',
+      b2c_policy_version: 'b2c-state-v2',
+      b2d_engine_version: '2.0.0-b2d',
+      b2d_policy_version: 'b2d-zone-engine-v1',
+      b2d_zone_policy_version: 'b2d-absolute-span-v1',
+      b2e_engine_version: '2.0.0-b2e',
+      b2e_policy_version: 'b2e-retest-engine-v1',
+      b2e_retest_policy_version: 'retest-policy-v1',
+      b2f_engine_version: '2.0.0-b2f',
+      b2f_policy_version: 'b2f-mtf-confluence-v1'
+    };
+    for (const [key, expected] of Object.entries(required)) {
+      if (policy[key] !== expected) return 'B2G_UPSTREAM_VERSION_BINDING_INVALID';
+    }
+    if (typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
+        !Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0) {
+      return 'B2G_B1_POLICY_INVALID';
+    }
+    return null;
+  }
+  function samePivot(a, b) {
+    return a.pivot_id === b.pivot_id && a.type === b.type && a.price === b.price &&
+      a.source_time_ms === b.source_time_ms && a.confirmed_at_ms === b.confirmed_at_ms &&
+      a.available_at_ms === b.available_at_ms;
+  }
+  function sortByTimeAndId(items, timeKey, idKey) {
+    return items.slice().sort((a, b) => a[timeKey] - b[timeKey] || String(a[idKey]).localeCompare(String(b[idKey])));
+  }
+  function lifecycleVisibleAt(item, step, lag) {
+    if (item.confirmation) return item.confirmation.available_at_ms;
+    if (item.status === 'RETEST_UNRESOLVED') {
+      return item.touch.candle_close_time_ms + item.confirmation_window_bars * step + lag;
+    }
+    if (item.touch) return item.touch.candle_close_time_ms + lag;
+    if (item.status === 'RETEST_EXPIRED') return item.breakout_candle_close_time_ms + item.retest_window_bars * step + lag;
+    return item.breakout_available_at_ms;
+  }
+
+  function analyze(input) {
+    const policy = input && input.policy;
+    const timeframe = input && input.chart_timeframe;
+    const snapshot = input && input.snapshot;
+    const report = input && input.quality_report;
+    const b2a = input && input.b2a_result;
+    const b2c = input && input.b2c_result;
+    const b2d = input && input.b2d_result;
+    const b2e = input && input.b2e_result;
+    const b2f = input && input.b2f_result;
+    const meta = {
+      policyVersion: policy && policy.version,
+      symbol: snapshot && snapshot.canonical_symbol,
+      timeframe,
+      snapshotId: snapshot && snapshot.snapshot_id,
+      analysisAsOfMs: snapshot && snapshot.analysis_as_of_ms
+    };
+    if (!['1h', '4h', '1d'].includes(timeframe) || !isObject(snapshot) || !isObject(report) ||
+        !isObject(b2a) || !isObject(b2c) || !isObject(b2d) || !isObject(b2e)) {
+      return blocked('B2G_INPUT_MISSING_OR_INVALID', meta);
+    }
+    const error = policyError(policy);
+    if (error) return blocked(error, meta);
+    const asOf = snapshot.analysis_as_of_ms;
+    const symbol = snapshot.canonical_symbol;
+    const step = STEP[timeframe];
+    if (snapshot.contract_version !== policy.b1_contract_version ||
+        typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id ||
+        typeof symbol !== 'string' || !symbol ||
+        !Number.isSafeInteger(asOf) || asOf <= 0 ||
+        snapshot.provider_server_time_ms !== asOf ||
+        !isObject(snapshot.candles_by_timeframe) ||
+        !Array.isArray(snapshot.candles_by_timeframe[timeframe]) || snapshot.candles_by_timeframe[timeframe].length < 1 ||
+        typeof snapshot.market_type !== 'string' || !snapshot.market_type ||
+        !isObject(snapshot.forming_candle_by_timeframe) ||
+        !Object.prototype.hasOwnProperty.call(snapshot.forming_candle_by_timeframe, timeframe) ||
+        !isObject(snapshot.unclassified_candles_by_timeframe) ||
+        !Array.isArray(snapshot.unclassified_candles_by_timeframe[timeframe])) {
+      return blocked('B1_SNAPSHOT_INVALID', meta);
+    }
+    if (report.status !== 'VALID' || report.snapshot_id !== snapshot.snapshot_id ||
+        report.symbol !== symbol || report.timeframe !== timeframe ||
+        report.analysis_as_of_ms !== asOf ||
+        report.validator_version !== policy.b1_validator_version ||
+        report.policy_version !== policy.b1_quality_policy_version ||
+        report.closed_count !== snapshot.candles_by_timeframe[timeframe].length ||
+        !Number.isSafeInteger(report.valid_count) || report.valid_count < report.closed_count ||
+        report.insufficient_history === true) {
+      return blocked('B1_QUALITY_REPORT_MISMATCH', meta);
+    }
+    const baseIdentity = (result, engineVersion, policyVersion) =>
+      result.status === 'VALID' && result.engine_version === engineVersion &&
+      result.policy_version === policyVersion && result.snapshot_id === snapshot.snapshot_id &&
+      result.symbol === symbol && result.timeframe === timeframe &&
+      result.analysis_as_of_ms === asOf;
+    if (!baseIdentity(b2a, policy.b2a_engine_version, policy.b2a_policy_version) ||
+        !isObject(b2a.admission) || b2a.admission.status !== 'ADMITTED' ||
+        b2a.admission.snapshot_id !== snapshot.snapshot_id ||
+        !isObject(b2a.admission.quality_report) ||
+        b2a.admission.quality_report.snapshot_id !== snapshot.snapshot_id ||
+        b2a.admission.quality_report.validator_version !== policy.b1_validator_version ||
+        b2a.admission.quality_report.policy_version !== policy.b1_quality_policy_version ||
+        !Array.isArray(b2a.pivots)) return blocked('B2A_RESULT_MISMATCH', meta);
+    if (!baseIdentity(b2c, policy.b2c_engine_version, policy.b2c_policy_version) ||
+        !isObject(b2c.admission) || b2c.admission.status !== 'ADMITTED' ||
+        b2c.admission.snapshot_id !== snapshot.snapshot_id ||
+        b2c.admission.b2b_engine_version !== policy.b2b_engine_version ||
+        b2c.admission.b2b_policy_version !== policy.b2b_policy_version ||
+        b2c.admission.b2b_same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy ||
+        b2c.admission.b1_validator_version !== policy.b1_validator_version ||
+        b2c.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
+        !Array.isArray(b2c.raw_pivots) || !Array.isArray(b2c.pivots) ||
+        !Array.isArray(b2c.events)) return blocked('B2C_RESULT_MISMATCH', meta);
+    if (!baseIdentity(b2d, policy.b2d_engine_version, policy.b2d_policy_version) ||
+        b2d.zone_policy_version !== policy.b2d_zone_policy_version ||
+        !isObject(b2d.admission) || b2d.admission.status !== 'ADMITTED' ||
+        b2d.admission.snapshot_id !== snapshot.snapshot_id ||
+        b2d.admission.b2c_engine_version !== policy.b2c_engine_version ||
+        b2d.admission.b2c_policy_version !== policy.b2c_policy_version ||
+        b2d.admission.b1_validator_version !== policy.b1_validator_version ||
+        b2d.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
+        !Array.isArray(b2d.zones) || !Array.isArray(b2d.candidate_levels)) {
+      return blocked('B2D_RESULT_MISMATCH', meta);
+    }
+    if (!baseIdentity(b2e, policy.b2e_engine_version, policy.b2e_policy_version) ||
+        b2e.retest_policy_version !== policy.b2e_retest_policy_version ||
+        !isObject(b2e.admission) || b2e.admission.status !== 'ADMITTED' ||
+        b2e.admission.snapshot_id !== snapshot.snapshot_id ||
+        b2e.admission.b2c_engine_version !== policy.b2c_engine_version ||
+        b2e.admission.b2c_policy_version !== policy.b2c_policy_version ||
+        b2e.admission.b2d_engine_version !== policy.b2d_engine_version ||
+        b2e.admission.b2d_policy_version !== policy.b2d_policy_version ||
+        b2e.admission.b2d_zone_policy_version !== policy.b2d_zone_policy_version ||
+        b2e.admission.b1_validator_version !== policy.b1_validator_version ||
+        b2e.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
+        !Array.isArray(b2e.lifecycles)) return blocked('B2E_RESULT_MISMATCH', meta);
+    if (b2f !== null && b2f !== undefined) {
+      if (!isObject(b2f) || b2f.status !== 'VALID' || b2f.engine_version !== policy.b2f_engine_version ||
+          b2f.policy_version !== policy.b2f_policy_version ||
+          b2f.symbol !== symbol || b2f.analysis_as_of_ms !== asOf ||
+          !isObject(b2f.admission) || b2f.admission.status !== 'ADMITTED' ||
+          b2f.admission.b1_contract_version !== policy.b1_contract_version ||
+          b2f.admission.b1_validator_version !== policy.b1_validator_version ||
+          b2f.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
+          b2f.admission.b2c_engine_version !== policy.b2c_engine_version ||
+          b2f.admission.b2c_policy_version !== policy.b2c_policy_version ||
+          b2f.market_type !== snapshot.market_type ||
+          !isObject(b2f.admission.snapshot_ids) ||
+          b2f.admission.snapshot_ids[timeframe] !== snapshot.snapshot_id ||
+          !isObject(b2f.timeframes) || !isObject(b2f.timeframes[timeframe]) ||
+          b2f.timeframes[timeframe].snapshot_id !== snapshot.snapshot_id ||
+          b2f.timeframes[timeframe].structure_state !== b2c.structure_state) {
+        return blocked('B2F_RESULT_MISMATCH', meta);
+      }
+    }
+
+    const b2aById = new Map();
+    for (const pivot of b2a.pivots) {
+      if (!isObject(pivot) || typeof pivot.pivot_id !== 'string' || !pivot.pivot_id || b2aById.has(pivot.pivot_id) ||
+          !['SWING_HIGH', 'SWING_LOW'].includes(pivot.type) || !Number.isFinite(pivot.price) ||
+          !Number.isSafeInteger(pivot.source_time_ms) || pivot.source_time_ms <= 0 || pivot.source_time_ms % step !== 0 ||
+          !Number.isSafeInteger(pivot.confirmed_at_ms) || pivot.confirmed_at_ms <= 0 || pivot.confirmed_at_ms % step !== 0 ||
+          !Number.isSafeInteger(pivot.available_at_ms) ||
+          pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms ||
+          pivot.available_at_ms > asOf) return blocked('B2A_PIVOT_EVIDENCE_INVALID', meta);
+      b2aById.set(pivot.pivot_id, pivot);
+    }
+    if (b2c.raw_pivots.length !== b2a.pivots.length) return blocked('B2C_RAW_PIVOT_SET_MISMATCH', meta);
+    const rawIds = new Set();
+    for (const pivot of b2c.raw_pivots) {
+      const original = pivot && b2aById.get(pivot.pivot_id);
+      if (!original || rawIds.has(pivot.pivot_id) || !samePivot(original, pivot) ||
+          !['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE', 'AMBIGUOUS_FOR_SEQUENCE'].includes(pivot.sequence_status) ||
+          (pivot.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE' && pivot.exclusion_reason !== 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE') ||
+          pivot.available_at_ms > asOf) return blocked('B2C_RAW_PIVOT_SET_MISMATCH', meta);
+      rawIds.add(pivot.pivot_id);
+    }
+
+    const activeIds = new Set();
+    const swingMarkers = [];
+    for (const pivot of b2c.pivots) {
+      if (!isObject(pivot) || typeof pivot.pivot_id !== 'string' || !pivot.pivot_id ||
+          activeIds.has(pivot.pivot_id) || !rawIds.has(pivot.pivot_id) ||
+          !Number.isFinite(pivot.price) || !Number.isSafeInteger(pivot.source_time_ms) ||
+          !Number.isSafeInteger(pivot.confirmed_at_ms) || !Number.isSafeInteger(pivot.available_at_ms) ||
+          pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms ||
+          pivot.available_at_ms > asOf || !['INITIAL_HIGH', 'INITIAL_LOW', 'HH', 'HL', 'LH', 'LL', 'EQH', 'EQL'].includes(pivot.structure_label)) {
+        return blocked('B2C_ACTIVE_PIVOT_INVALID', meta);
+      }
+      activeIds.add(pivot.pivot_id);
+      swingMarkers.push({
+        id: pivot.pivot_id,
+        kind: 'SWING_PIVOT',
+        label: pivot.structure_label,
+        pivot_type: pivot.type,
+        price: pivot.price,
+        anchor_time_ms: pivot.source_time_ms,
+        source_time_ms: pivot.source_time_ms,
+        confirmed_at_ms: pivot.confirmed_at_ms,
+        visible_at_ms: pivot.available_at_ms,
+        visibility_rule: 'SHOW_ONLY_AT_OR_AFTER_VISIBLE_AT'
+      });
+    }
+
+    const expectedActiveIds = b2c.raw_pivots.filter(p => p.sequence_status === 'ACCEPTED').map(p => p.pivot_id).sort();
+    const actualActiveIds = [...activeIds].sort();
+    if (expectedActiveIds.length !== actualActiveIds.length || expectedActiveIds.some((id, i) => id !== actualActiveIds[i])) {
+      return blocked('B2C_ACTIVE_PIVOT_SET_MISMATCH', meta);
+    }
+    const rawById = new Map(b2c.raw_pivots.map(p => [p.pivot_id, p]));
+    const superseded = b2c.raw_pivots.filter(p => p.sequence_status === 'SUPERSEDED_FOR_SEQUENCE');
+    const supersededPivots = [];
+    for (const p of superseded) {
+      const replacement = rawById.get(p.superseded_by);
+      const moreExtreme = replacement && replacement.type === p.type &&
+        (p.type === 'SWING_HIGH' ? replacement.price > p.price : replacement.price < p.price);
+      if (!replacement || replacement.pivot_id === p.pivot_id || !moreExtreme ||
+          !['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE'].includes(replacement.sequence_status)) {
+        return blocked('SUPERSEDED_PIVOT_REPLACEMENT_INVALID', meta);
+      }
+      const statusVisibleAt = Math.max(p.available_at_ms, replacement.available_at_ms);
+      if (statusVisibleAt > asOf) return blocked('SUPERSEDED_STATUS_AFTER_CUTOFF', meta);
+      supersededPivots.push({
+        id: p.pivot_id,
+        kind: 'SUPERSEDED_RAW_PIVOT',
+        label: 'SUPERSEDED_FOR_SEQUENCE',
+        pivot_type: p.type,
+        price: p.price,
+        anchor_time_ms: p.source_time_ms,
+        source_time_ms: p.source_time_ms,
+        confirmed_at_ms: p.confirmed_at_ms,
+        visible_at_ms: p.available_at_ms,
+        status_visible_at_ms: statusVisibleAt,
+        superseded_by: p.superseded_by,
+        visibility_rule: 'SHOW_MARKER_AT_VISIBLE_AT; APPLY_SUPERSEDED_STATUS_AT_STATUS_VISIBLE_AT'
+      });
+    }
+
+    const ambiguousGroups = new Map();
+    for (const p of b2c.raw_pivots.filter(p => p.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE')) {
+      if (!ambiguousGroups.has(p.source_time_ms)) ambiguousGroups.set(p.source_time_ms, []);
+      ambiguousGroups.get(p.source_time_ms).push(p);
+    }
+    const ambiguousPivots = [];
+    for (const [sourceTime, group] of ambiguousGroups) {
+      const high = group.find(p => p.type === 'SWING_HIGH');
+      const low = group.find(p => p.type === 'SWING_LOW');
+      if (group.length !== 2 || !high || !low) return blocked('AMBIGUOUS_PIVOT_PAIR_INVALID', meta);
+      const statusVisibleAt = Math.max(high.available_at_ms, low.available_at_ms);
+      if (statusVisibleAt > asOf) return blocked('AMBIGUOUS_STATUS_AFTER_CUTOFF', meta);
+      for (const p of group) ambiguousPivots.push({
+        id: p.pivot_id, kind: 'AMBIGUOUS_DUAL_PIVOT', label: 'AMBIGUOUS_FOR_SEQUENCE',
+        pivot_type: p.type, price: p.price, anchor_time_ms: sourceTime,
+        source_time_ms: p.source_time_ms, confirmed_at_ms: p.confirmed_at_ms,
+        visible_at_ms: p.available_at_ms, status_visible_at_ms: statusVisibleAt,
+        exclusion_reason: p.exclusion_reason,
+        visibility_rule: 'SHOW_MARKER_AT_VISIBLE_AT; APPLY_AMBIGUOUS_STATUS_AT_STATUS_VISIBLE_AT'
+      });
+    }
+
+    const historyById = new Map();
+    let historyAvailableAt = -1;
+    for (const pivot of b2c.sequence_history) {
+      const raw = b2c.raw_pivots.find(p => p.pivot_id === (pivot && pivot.pivot_id));
+      if (!raw || historyById.has(pivot.pivot_id) ||
+          pivot.sequence_status !== 'ACCEPTED_AT_AVAILABILITY' ||
+          pivot.exclusion_reason !== null || pivot.superseded_by !== null ||
+          !samePivot(raw, pivot) ||
+          !Number.isSafeInteger(pivot.sequence_index_at_availability) ||
+          pivot.sequence_index_at_availability < 0 ||
+          pivot.available_at_ms < historyAvailableAt) return blocked('B2C_SEQUENCE_HISTORY_INVALID', meta);
+      historyById.set(pivot.pivot_id, pivot);
+      historyAvailableAt = pivot.available_at_ms;
+    }
+
+    const eventIds = new Set();
+    const structureEvents = [];
+    for (const event of b2c.events) {
+      if (!isObject(event) || typeof event.event_id !== 'string' || !event.event_id ||
+          eventIds.has(event.event_id) || !Number.isSafeInteger(event.available_at_ms) ||
+          event.available_at_ms !== event.breaking_candle_close_time_ms + policy.finality_safety_lag_ms ||
+          event.available_at_ms > asOf || !Number.isSafeInteger(event.breaking_candle_open_time_ms) ||
+          !Number.isSafeInteger(event.breaking_candle_close_time_ms) ||
+          event.breaking_candle_open_time_ms <= 0 || event.breaking_candle_open_time_ms % step !== 0 ||
+          event.breaking_candle_close_time_ms - event.breaking_candle_open_time_ms !== step ||
+          (event.source_pivot_id !== null && event.source_pivot_id !== undefined &&
+            (!rawIds.has(event.source_pivot_id) || !historyById.has(event.source_pivot_id) ||
+             historyById.get(event.source_pivot_id).available_at_ms >= event.breaking_candle_close_time_ms ||
+             event.level_price !== historyById.get(event.source_pivot_id).price ||
+             event.pivot_available_at_ms !== historyById.get(event.source_pivot_id).available_at_ms))) {
+        return blocked('B2C_EVENT_INVALID', meta);
+      }
+      eventIds.add(event.event_id);
+      structureEvents.push({
+        id: event.event_id,
+        kind: 'STRUCTURE_EVENT',
+        event_type: event.event_type,
+        direction: event.direction,
+        level_price: event.level_price,
+        source_pivot_id: event.source_pivot_id,
+        source_time_ms: event.source_time_ms,
+        anchor_time_ms: event.breaking_candle_open_time_ms,
+        breaking_candle_close_time_ms: event.breaking_candle_close_time_ms,
+        visible_at_ms: event.available_at_ms,
+        visibility_rule: 'SHOW_ONLY_AT_OR_AFTER_VISIBLE_AT'
+      });
+    }
+
+    const zoneIds = new Set();
+    const zones = [];
+    for (const zone of b2d.zones) {
+      if (!isObject(zone) || typeof zone.zone_id !== 'string' || !zone.zone_id ||
+          zoneIds.has(zone.zone_id) || !Number.isFinite(zone.lower_bound) ||
+          !Number.isFinite(zone.upper_bound) || zone.lower_bound > zone.upper_bound ||
+          !Number.isSafeInteger(zone.available_at_ms) || zone.available_at_ms <= 0 || zone.available_at_ms > asOf ||
+          !Array.isArray(zone.pivot_ids) || zone.pivot_ids.length < 2 || zone.freshness_status !== 'NOT_CLASSIFIED' ||
+          !['SUPPORT', 'RESISTANCE'].includes(zone.role)) {
+        return blocked('B2D_ZONE_INVALID', meta);
+      }
+      const zonePivots = zone.pivot_ids.map(id => b2c.raw_pivots.find(p => p.pivot_id === id));
+      if (new Set(zone.pivot_ids).size !== zone.pivot_ids.length || zone.evidence_status !== 'CONFIRMED_CLUSTER' || zonePivots.some(p => !p || (zone.role === 'SUPPORT' ? p.type !== 'SWING_LOW' : p.type !== 'SWING_HIGH')) ||
+          Math.min(...zonePivots.map(p => p.price)) !== zone.lower_bound ||
+          Math.max(...zonePivots.map(p => p.price)) !== zone.upper_bound ||
+          Math.max(...zonePivots.map(p => p.available_at_ms)) !== zone.available_at_ms ||
+          new Set(zonePivots.map(p => p.source_time_ms)).size !== zone.touch_count) {
+        return blocked('B2D_ZONE_EVIDENCE_MISMATCH', meta);
+      }
+      zoneIds.add(zone.zone_id);
+      zones.push({
+        id: zone.zone_id,
+        kind: 'CONFIRMED_ZONE',
+        role: zone.role,
+        lower_bound: zone.lower_bound,
+        upper_bound: zone.upper_bound,
+        representative_price: zone.representative_price,
+        touch_count: zone.touch_count,
+        pivot_ids: zone.pivot_ids.slice(),
+        source_first_touch_time_ms: zone.first_touch_time_ms,
+        source_last_touch_time_ms: zone.last_touch_time_ms,
+        visible_from_ms: zone.available_at_ms,
+        visible_at_ms: zone.available_at_ms,
+        end_time_ms: asOf,
+        freshness_status: zone.freshness_status,
+        visibility_rule: 'DO_NOT_BACKDATE_CONFIRMED_ZONE'
+      });
+    }
+
+    const candidateIds = new Set();
+    const candidateLevels = [];
+    for (const candidate of b2d.candidate_levels) {
+      if (!isObject(candidate) || typeof candidate.candidate_id !== 'string' || !candidate.candidate_id ||
+          candidateIds.has(candidate.candidate_id) || !Number.isFinite(candidate.lower_bound) ||
+          !Number.isFinite(candidate.upper_bound) || candidate.lower_bound > candidate.upper_bound ||
+          !Number.isSafeInteger(candidate.available_at_ms) || candidate.available_at_ms <= 0 || candidate.available_at_ms > asOf) {
+        return blocked('B2D_CANDIDATE_INVALID', meta);
+      }
+      if (!Array.isArray(candidate.pivot_ids) || candidate.pivot_ids.length < 1 ||
+          new Set(candidate.pivot_ids).size !== candidate.pivot_ids.length ||
+          !['SUPPORT', 'RESISTANCE'].includes(candidate.role) ||
+          !Number.isSafeInteger(candidate.touch_count) || candidate.touch_count < 1 ||
+          !Number.isSafeInteger(candidate.required_touch_count) || candidate.required_touch_count <= candidate.touch_count ||
+          candidate.evidence_status !== 'INSUFFICIENT_INDEPENDENT_TOUCHES') return blocked('B2D_CANDIDATE_EVIDENCE_MISMATCH', meta);
+      const candidatePivots = candidate.pivot_ids.map(id => b2c.raw_pivots.find(p => p.pivot_id === id));
+      if (candidatePivots.some(p => !p || (candidate.role === 'SUPPORT' ? p.type !== 'SWING_LOW' : p.type !== 'SWING_HIGH')) ||
+          Math.min(...candidatePivots.map(p => p.price)) !== candidate.lower_bound ||
+          Math.max(...candidatePivots.map(p => p.price)) !== candidate.upper_bound ||
+          Math.max(...candidatePivots.map(p => p.available_at_ms)) !== candidate.available_at_ms ||
+          new Set(candidatePivots.map(p => p.source_time_ms)).size !== candidate.touch_count) {
+        return blocked('B2D_CANDIDATE_EVIDENCE_MISMATCH', meta);
+      }
+      candidateIds.add(candidate.candidate_id);
+      candidateLevels.push({
+        id: candidate.candidate_id,
+        kind: 'CANDIDATE_LEVEL',
+        role: candidate.role,
+        lower_bound: candidate.lower_bound,
+        upper_bound: candidate.upper_bound,
+        representative_price: candidate.representative_price,
+        touch_count: candidate.touch_count,
+        required_touch_count: candidate.required_touch_count,
+        visible_at_ms: candidate.available_at_ms,
+        visibility_rule: 'SHOW_ONLY_AT_OR_AFTER_VISIBLE_AT'
+      });
+    }
+
+    const lifecycleIds = new Set();
+    const retestLifecycles = [];
+    for (const lifecycle of b2e.lifecycles) {
+      if (!isObject(lifecycle) || typeof lifecycle.lifecycle_id !== 'string' || !lifecycle.lifecycle_id ||
+          lifecycleIds.has(lifecycle.lifecycle_id) ||
+          !['RETEST_SUCCESSFUL', 'RETEST_FAILED', 'RETEST_EXPIRED', 'RETEST_UNRESOLVED', 'WAITING_RETEST', 'RETEST_PENDING_CONFIRMATION'].includes(lifecycle.status) ||
+          !['BULLISH', 'BEARISH'].includes(lifecycle.direction) ||
+          !['SUPPORT', 'RESISTANCE'].includes(lifecycle.original_role) ||
+          !['SUPPORT', 'RESISTANCE'].includes(lifecycle.proposed_role) ||
+          lifecycle.proposed_role !== (lifecycle.direction === 'BULLISH' ? 'SUPPORT' : 'RESISTANCE') ||
+          lifecycle.original_role !== (lifecycle.direction === 'BULLISH' ? 'RESISTANCE' : 'SUPPORT') ||
+          !isObject(lifecycle.historical_zone) || lifecycle.historical_zone.role !== lifecycle.original_role ||
+          !Number.isFinite(lifecycle.historical_zone.lower_bound) || !Number.isFinite(lifecycle.historical_zone.upper_bound) ||
+          !Number.isSafeInteger(lifecycle.breakout_available_at_ms) ||
+          lifecycle.breakout_available_at_ms > asOf ||
+          lifecycle.breakout_available_at_ms !== lifecycle.breakout_candle_close_time_ms + policy.finality_safety_lag_ms ||
+          !Number.isSafeInteger(lifecycle.breakout_candle_close_time_ms) ||
+          lifecycle.breakout_candle_close_time_ms <= 0 || lifecycle.breakout_candle_close_time_ms % step !== 0 ||
+          !Number.isSafeInteger(lifecycle.retest_window_bars) || lifecycle.retest_window_bars < 1 ||
+          !Number.isSafeInteger(lifecycle.confirmation_window_bars) || lifecycle.confirmation_window_bars < 1) {
+        return blocked('B2E_LIFECYCLE_INVALID', meta);
+      }
+      const breakoutEvent = b2c.events.find(event => event.event_id === lifecycle.breakout_event_id);
+      if (!breakoutEvent || breakoutEvent.direction !== lifecycle.direction ||
+          breakoutEvent.breaking_candle_open_time_ms !== lifecycle.breakout_candle_open_time_ms ||
+          breakoutEvent.breaking_candle_close_time_ms !== lifecycle.breakout_candle_close_time_ms ||
+          breakoutEvent.available_at_ms !== lifecycle.breakout_available_at_ms) {
+        return blocked('B2E_BREAKOUT_EVENT_LINK_MISMATCH', meta);
+      }
+      lifecycleIds.add(lifecycle.lifecycle_id);
+      if (lifecycle.touch && (!Number.isSafeInteger(lifecycle.touch.candle_close_time_ms) ||
+          lifecycle.touch.candle_close_time_ms <= lifecycle.breakout_candle_close_time_ms ||
+          lifecycle.touch.candle_close_time_ms + policy.finality_safety_lag_ms > asOf ||
+          lifecycle.touch.candle_close_time_ms % step !== 0)) {
+        return blocked('B2E_TOUCH_INVALID', meta);
+      }
+      if (lifecycle.confirmation && (!Number.isSafeInteger(lifecycle.confirmation.candle_close_time_ms) ||
+          !Number.isSafeInteger(lifecycle.confirmation.available_at_ms) ||
+          lifecycle.confirmation.available_at_ms !== lifecycle.confirmation.candle_close_time_ms + policy.finality_safety_lag_ms ||
+          lifecycle.confirmation.candle_close_time_ms % step !== 0 ||
+          lifecycle.confirmation.available_at_ms > asOf ||
+          (lifecycle.touch && lifecycle.confirmation.candle_close_time_ms < lifecycle.touch.candle_close_time_ms) ||
+          (!lifecycle.touch && lifecycle.confirmation.candle_close_time_ms <= lifecycle.breakout_candle_close_time_ms))) {
+        return blocked('B2E_CONFIRMATION_INVALID', meta);
+      }
+      const expectedRoleStatus = lifecycle.status === 'RETEST_SUCCESSFUL' ? 'CONFIRMED' :
+        lifecycle.status === 'RETEST_FAILED' ? 'REJECTED' :
+        lifecycle.status === 'RETEST_EXPIRED' || lifecycle.status === 'RETEST_UNRESOLVED' ? 'UNCONFIRMED' : 'PENDING';
+      const expectedEffectiveRole = lifecycle.status === 'RETEST_SUCCESSFUL' ? lifecycle.proposed_role : lifecycle.original_role;
+      if (lifecycle.role_transition_status !== expectedRoleStatus || lifecycle.effective_role !== expectedEffectiveRole ||
+          (lifecycle.status === 'RETEST_SUCCESSFUL' && (!lifecycle.touch || !lifecycle.confirmation || lifecycle.confirmation.outcome !== 'SUCCESS')) ||
+          (lifecycle.status === 'RETEST_FAILED' && (!lifecycle.confirmation || lifecycle.confirmation.outcome !== 'FAILURE')) ||
+          (['RETEST_EXPIRED', 'WAITING_RETEST'].includes(lifecycle.status) && (lifecycle.touch || lifecycle.confirmation)) ||
+          (['RETEST_UNRESOLVED', 'RETEST_PENDING_CONFIRMATION'].includes(lifecycle.status) && (!lifecycle.touch || lifecycle.confirmation))) {
+        return blocked('B2E_LIFECYCLE_STATE_MISMATCH', meta);
+      }
+      const visibleAt = lifecycleVisibleAt(lifecycle, step, policy.finality_safety_lag_ms);
+      if (!Number.isSafeInteger(visibleAt) || visibleAt > asOf) return blocked('B2E_LIFECYCLE_FUTURE_VISIBILITY', meta);
+      retestLifecycles.push({
+        id: lifecycle.lifecycle_id,
+        kind: 'RETEST_LIFECYCLE',
+        breakout_event_id: lifecycle.breakout_event_id,
+        breakout_event_type: lifecycle.breakout_event_type,
+        direction: lifecycle.direction,
+        status: lifecycle.status,
+        role_transition_status: lifecycle.role_transition_status,
+        original_role: lifecycle.original_role,
+        proposed_role: lifecycle.proposed_role,
+        effective_role: lifecycle.effective_role,
+        zone_lower_bound: lifecycle.historical_zone && lifecycle.historical_zone.lower_bound,
+        zone_upper_bound: lifecycle.historical_zone && lifecycle.historical_zone.upper_bound,
+        breakout_available_at_ms: lifecycle.breakout_available_at_ms,
+        touch: lifecycle.touch ? { ...lifecycle.touch } : null,
+        confirmation: lifecycle.confirmation ? { ...lifecycle.confirmation } : null,
+        visible_at_ms: visibleAt,
+        visibility_rule: 'SHOW_ONLY_AFTER_EVIDENCE_AVAILABLE'
+      });
+    }
+
+    return freezeDeep({
+      engine_version: ENGINE_VERSION,
+      policy_version: policy.version,
+      status: 'VALID',
+      admission: {
+        status: 'ADMITTED',
+        snapshot_id: snapshot.snapshot_id,
+        b1_validator_version: report.validator_version,
+        b1_quality_policy_version: report.policy_version,
+        b2a_engine_version: b2a.engine_version,
+        b2c_engine_version: b2c.engine_version,
+        b2d_engine_version: b2d.engine_version,
+        b2e_engine_version: b2e.engine_version,
+        b2f_engine_version: b2f ? b2f.engine_version : null
+      },
+      symbol,
+      market_type: snapshot.market_type,
+      timeframe,
+      snapshot_id: snapshot.snapshot_id,
+      analysis_as_of_ms: asOf,
+      swing_markers: sortByTimeAndId(swingMarkers, 'anchor_time_ms', 'id'),
+      superseded_pivots: sortByTimeAndId(supersededPivots, 'visible_at_ms', 'id'),
+      ambiguous_pivots: sortByTimeAndId(ambiguousPivots, 'visible_at_ms', 'id'),
+      structure_events: sortByTimeAndId(structureEvents, 'anchor_time_ms', 'id'),
+      zones: sortByTimeAndId(zones, 'visible_from_ms', 'id'),
+      candidate_levels: sortByTimeAndId(candidateLevels, 'visible_at_ms', 'id'),
+      retest_lifecycles: sortByTimeAndId(retestLifecycles, 'visible_at_ms', 'id'),
+      mtf_context: b2f ? {
+        structure_pattern: b2f.structure_pattern,
+        alignment_status: b2f.alignment_status,
+        alignment_context: b2f.alignment_context,
+        hierarchical_interpretation: b2f.hierarchical_interpretation,
+        lower_timeframe_consensus: b2f.lower_timeframe_consensus,
+        visible_at_ms: b2f.analysis_as_of_ms
+      } : null,
+      diagnostics: {
+        swing_marker_count: swingMarkers.length,
+        superseded_pivot_count: supersededPivots.length,
+        structure_event_count: structureEvents.length,
+        confirmed_zone_count: zones.length,
+        candidate_level_count: candidateLevels.length,
+        retest_lifecycle_count: retestLifecycles.length
+      }
+    });
+  }
+
+  return Object.freeze({ ENGINE_VERSION, TIMEFRAME_MS: STEP, analyze });
+});
+
+
+    const B2_POLICY_A = Object.freeze({
+      version: 'b2a-causal-swing-v1',
+      b1_contract_version: B1DataContract.VERSION,
+      b1_validator_version: B1QualityValidator.VERSION,
+      b1_quality_policy_version: B1_QUALITY_POLICY.version,
+      left_strength: 2,
+      right_strength: 2,
+      finality_safety_lag_ms: B1_QUALITY_POLICY.finality_safety_lag_ms,
+      price_equality_policy: 'EXACT_PRICE_V1'
+    });
+    const B2_POLICY_B = Object.freeze({
+      version: 'b2b-swing-sequence-v3',
+      same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      b2a_engine_version: '2.0.0-b2a',
+      b2a_policy_version: 'b2a-causal-swing-v1',
+      b1_validator_version: B1QualityValidator.VERSION,
+      b1_quality_policy_version: B1_QUALITY_POLICY.version,
+      price_equality_policy: 'EXACT_PRICE_V1'
+    });
+    const B2_POLICY_C = Object.freeze({
+      version: 'b2c-state-v2',
+      b2b_engine_version: '2.2.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v3',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      b2a_engine_version: '2.0.0-b2a',
+      b2a_policy_version: 'b2a-causal-swing-v1',
+      b1_contract_version: B1DataContract.VERSION,
+      b1_validator_version: B1QualityValidator.VERSION,
+      b1_quality_policy_version: B1_QUALITY_POLICY.version,
+      finality_safety_lag_ms: B1_QUALITY_POLICY.finality_safety_lag_ms,
+      price_equality_policy: 'EXACT_PRICE_V1',
+      break_buffer_policy: 'ZERO_BUFFER_V1'
+    });
+    const B2_POLICY_D = Object.freeze({
+      version: 'b2d-zone-engine-v1',
+      b2c_engine_version: '2.1.0-b2c',
+      b2c_policy_version: 'b2c-state-v2',
+      b2b_engine_version: '2.2.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v3',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      b2a_engine_version: '2.0.0-b2a',
+      b2a_policy_version: 'b2a-causal-swing-v1',
+      b1_contract_version: B1DataContract.VERSION,
+      b1_validator_version: B1QualityValidator.VERSION,
+      b1_quality_policy_version: B1_QUALITY_POLICY.version,
+      finality_safety_lag_ms: B1_QUALITY_POLICY.finality_safety_lag_ms,
+      price_equality_policy: 'EXACT_PRICE_V1'
+    });
+    const B2_POLICY_E = Object.freeze({
+      version: 'b2e-retest-engine-v1',
+      b2b_engine_version: '2.2.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v3',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      b2c_engine_version: '2.1.0-b2c',
+      b2c_policy_version: 'b2c-state-v2',
+      b2d_engine_version: '2.0.0-b2d',
+      b2d_policy_version: 'b2d-zone-engine-v1',
+      b2d_zone_policy_version: 'b2d-absolute-span-v1',
+      b1_contract_version: B1DataContract.VERSION,
+      b1_validator_version: B1QualityValidator.VERSION,
+      b1_quality_policy_version: B1_QUALITY_POLICY.version,
+      finality_safety_lag_ms: B1_QUALITY_POLICY.finality_safety_lag_ms,
+      price_equality_policy: 'EXACT_PRICE_V1'
+    });
+    const B2_POLICY_G = Object.freeze({
+      version: 'b2g-chart-projection-v1',
+      b1_contract_version: B1DataContract.VERSION,
+      b1_validator_version: B1QualityValidator.VERSION,
+      b1_quality_policy_version: B1_QUALITY_POLICY.version,
+      b2a_engine_version: '2.0.0-b2a',
+      b2a_policy_version: 'b2a-causal-swing-v1',
+      b2b_engine_version: '2.2.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v3',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      b2c_engine_version: '2.1.0-b2c',
+      b2c_policy_version: 'b2c-state-v2',
+      b2d_engine_version: '2.0.0-b2d',
+      b2d_policy_version: 'b2d-zone-engine-v1',
+      b2d_zone_policy_version: 'b2d-absolute-span-v1',
+      b2e_engine_version: '2.0.0-b2e',
+      b2e_policy_version: 'b2e-retest-engine-v1',
+      b2e_retest_policy_version: 'retest-policy-v1',
+      b2f_engine_version: '2.0.0-b2f',
+      b2f_policy_version: 'b2f-mtf-confluence-v1',
+      finality_safety_lag_ms: B1_QUALITY_POLICY.finality_safety_lag_ms
+    });
+
+    function medianB2(values) {
+      const sorted = values.filter(Number.isFinite).slice().sort((a, b) => a - b);
+      return sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+    }
+
+    function runB2Analysis(dataset) {
+      const snapshot = dataset && dataset.canonicalSnapshot;
+      const quality = dataset && dataset.qualityReport;
+      const timeframe = dataset && ({ '60': '1h', '240': '4h', D: '1d' })[dataset.interval];
+      const asOf = snapshot && snapshot.analysis_as_of_ms;
+      const blocked = (stage, result) => ({
+        status: 'BLOCKED',
+        stage,
+        reasons: result && result.admission && Array.isArray(result.admission.reasons)
+          ? result.admission.reasons.map(r => r.code || r.message || 'UNKNOWN').slice(0, 4)
+          : ['B2_STAGE_BLOCKED']
+      });
+      if (!snapshot || !quality || !timeframe || quality.status !== 'VALID') {
+        return { status: 'BLOCKED', stage: 'B1', reasons: [quality && quality.status ? 'B1_' + quality.status : 'B1_SNAPSHOT_OR_REPORT_MISSING'] };
+      }
+      const a = B2CausalSwingEngine.analyze({
+        snapshot, quality_report: quality, timeframe, analysis_as_of_ms: asOf, policy: B2_POLICY_A
+      });
+      if (a.status !== 'VALID') return blocked('B2-A', a);
+      const b = B2BSwingSequenceEngine.analyze({ b2a_result: a, policy: B2_POLICY_B });
+      if (b.status !== 'VALID') return blocked('B2-B', b);
+      const c = B2CSwingStructureEngine.analyze({
+        policy: B2_POLICY_C, snapshot, quality_report: quality,
+        b2a_result: a, b2b_result: b, analysis_as_of_ms: asOf, timeframe
+      });
+      if (c.status !== 'VALID') return blocked('B2-C', c);
+
+      const closes = (snapshot.candles_by_timeframe[timeframe] || []).map(row => row.close);
+      const priceScale = medianB2(closes);
+      if (!(priceScale > 0)) return { status: 'BLOCKED', stage: 'B2-D', reasons: ['B2_PRICE_SCALE_INVALID'] };
+      // Exploratory display thresholds only. They are not calibrated trading parameters.
+      const zonePolicy = {
+        version: 'b2d-absolute-span-v1',
+        instrument_symbol: snapshot.canonical_symbol,
+        timeframe,
+        cluster_method: 'MAX_TOTAL_SPAN_V1',
+        max_cluster_span_price: priceScale * 0.001,
+        min_independent_touches: 2
+      };
+      const d = B2DSupportResistanceEngine.analyze({
+        policy: B2_POLICY_D, zone_policy: zonePolicy, snapshot, quality_report: quality,
+        b2c_result: c, analysis_as_of_ms: asOf, timeframe
+      });
+      if (d.status !== 'VALID') return blocked('B2-D', d);
+
+      const retestPolicy = {
+        version: 'retest-policy-v1',
+        touch_method: 'RANGE_INTERSECTION_V1',
+        touch_tolerance_price: priceScale * 0.0005,
+        success_buffer_price: priceScale * 0.0005,
+        failure_buffer_price: priceScale * 0.0005,
+        retest_window_bars: 20,
+        confirmation_window_bars: 3
+      };
+      const policyE = {
+        ...B2_POLICY_E,
+        b2d_zone_policy_version: zonePolicy.version,
+        retest_policy: retestPolicy
+      };
+      const e = B2EBreakoutRetestEngine.analyze({
+        policy: policyE, snapshot, quality_report: quality, b2c_result: c,
+        b2d_result: d, analysis_as_of_ms: asOf, timeframe
+      });
+      if (e.status !== 'VALID') return blocked('B2-E', e);
+
+      const projection = B2GChartProjectionEngine.analyze({
+        policy: B2_POLICY_G, chart_timeframe: timeframe, snapshot, quality_report: quality,
+        b2a_result: a, b2c_result: c, b2d_result: d, b2e_result: e,
+        b2f_result: null
+      });
+      if (projection.status !== 'VALID') return blocked('B2-G', projection);
+      return {
+        status: 'VALID', timeframe, asOf, b2a: a, b2b: b, b2c: c, b2d: d, b2e: e,
+        projection, thresholds: { zone_span_pct: 0.1, retest_tolerance_pct: 0.05 }
+      };
+    }
+
+
     // =========================================================================
     // 2. БАЗОВОЕ АНАЛИТИЧЕСКОЕ ЯДРО (ЭТАП 1)
     // =========================================================================
@@ -4063,6 +6968,7 @@
         this.candles = [];
         this.closedCount = 0;
         this.analysis = null;
+        this.marketStructure = null;
         this.marketPrice = null;
         this.visibleCount = 80;
         this.offsetFromEnd = 0;
@@ -4079,8 +6985,14 @@
         this.candles = candles || [];
         this.closedCount = typeof closedCount === 'number' ? closedCount : this.candles.length;
         this.analysis = analysis;
+        this.marketStructure = null;
         this.marketPrice = typeof marketPrice === 'number' ? marketPrice : null;
         this.clampOffset();
+        this.render();
+      }
+
+      setMarketStructure(projection) {
+        this.marketStructure = projection && projection.status === 'VALID' ? projection : null;
         this.render();
       }
 
@@ -4353,6 +7265,15 @@
             maxP = Math.max(maxP, lvl);
           }
         }
+        const b2ZonesForScale = this.marketStructure && Array.isArray(this.marketStructure.zones)
+          ? this.marketStructure.zones : [];
+        for (const zone of b2ZonesForScale) {
+          if (Number.isFinite(zone.lower_bound) && Number.isFinite(zone.upper_bound) &&
+              zone.upper_bound >= minP * 0.985 && zone.lower_bound <= maxP * 1.015) {
+            minP = Math.min(minP, zone.lower_bound);
+            maxP = Math.max(maxP, zone.upper_bound);
+          }
+        }
 
         const span = Math.max(1e-9, maxP - minP);
         minP -= span * 0.06;
@@ -4380,6 +7301,35 @@
           ctx.lineTo(padLeft + plotW, y);
           ctx.stroke();
           ctx.fillText(fmtPrice(priceVal), padLeft + plotW + 6, y + 4);
+        }
+
+        const b2Zones = this.marketStructure && Array.isArray(this.marketStructure.zones)
+          ? this.marketStructure.zones : [];
+        for (const zone of b2Zones) {
+          if (!Number.isFinite(zone.lower_bound) || !Number.isFinite(zone.upper_bound) ||
+              !Number.isSafeInteger(zone.visible_from_ms) ||
+              zone.upper_bound < minP || zone.lower_bound > maxP) continue;
+          // Never backdate a confirmed zone: begin at the first candle whose
+          // open time is at or after the zone's causal availability timestamp.
+          let firstVisibleGlobalIdx = this.candles.findIndex(c => c.ts >= zone.visible_from_ms);
+          if (firstVisibleGlobalIdx < 0 || firstVisibleGlobalIdx >= endIdx) continue;
+          firstVisibleGlobalIdx = Math.max(startIdx, firstVisibleGlobalIdx);
+          const zoneStartX = padLeft + (firstVisibleGlobalIdx - startIdx) * stepX;
+          const zoneWidth = Math.max(0, padLeft + plotW - zoneStartX);
+          if (zoneWidth <= 0) continue;
+          const yTop = yForPrice(zone.upper_bound);
+          const yBottom = yForPrice(zone.lower_bound);
+          const isSupport = zone.role === 'SUPPORT';
+          ctx.save();
+          ctx.fillStyle = isSupport ? 'rgba(56, 189, 248, 0.075)' : 'rgba(245, 158, 11, 0.075)';
+          ctx.strokeStyle = isSupport ? 'rgba(56, 189, 248, 0.38)' : 'rgba(245, 158, 11, 0.38)';
+          ctx.lineWidth = 1;
+          ctx.fillRect(zoneStartX, yTop, zoneWidth, Math.max(1, yBottom - yTop));
+          ctx.strokeRect(zoneStartX, yTop, zoneWidth, Math.max(1, yBottom - yTop));
+          ctx.fillStyle = isSupport ? '#7dd3fc' : '#fcd34d';
+          ctx.font = '10px sans-serif';
+          ctx.fillText((isSupport ? 'SUP' : 'RES') + ' ' + fmtPrice(zone.representative_price), zoneStartX + 5, Math.max(padTop + 10, yTop + 11));
+          ctx.restore();
         }
 
         const drawLevelLine = (price, color, label) => {
@@ -4512,28 +7462,59 @@
           drawLineSeries(this.analysis.ema50, '#a855f7');
           drawLineSeries(this.analysis.ema200, '#eab308');
 
-          const swings = this.analysis.swings || { highs: [], lows: [] };
-          ctx.font = '10px sans-serif';
-          for (const hPt of swings.highs) {
-            if (!Number.isFinite(hPt.ts)) continue;
-            const gIdx = tsToGlobalIdx.get(hPt.ts);
-            if (gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx) {
-              const i = gIdx - startIdx;
-              const cx = padLeft + (i + 0.5) * stepX;
-              const cy = yForPrice(hPt.price) - 6;
-              ctx.fillStyle = '#f59e0b';
-              ctx.fillText('SH', cx - 6, cy);
+          if (!this.marketStructure) {
+            const swings = this.analysis.swings || { highs: [], lows: [] };
+            ctx.font = '10px sans-serif';
+            for (const hPt of swings.highs) {
+              if (!Number.isFinite(hPt.ts)) continue;
+              const gIdx = tsToGlobalIdx.get(hPt.ts);
+              if (gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx) {
+                const i = gIdx - startIdx;
+                const cx = padLeft + (i + 0.5) * stepX;
+                const cy = yForPrice(hPt.price) - 6;
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillText('SH', cx - 6, cy);
+              }
+            }
+            for (const lPt of swings.lows) {
+              if (!Number.isFinite(lPt.ts)) continue;
+              const gIdx = tsToGlobalIdx.get(lPt.ts);
+              if (gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx) {
+                const i = gIdx - startIdx;
+                const cx = padLeft + (i + 0.5) * stepX;
+                const cy = yForPrice(lPt.price) + 13;
+                ctx.fillStyle = '#38bdf8';
+                ctx.fillText('SL', cx - 5, cy);
+              }
             }
           }
-          for (const lPt of swings.lows) {
-            if (!Number.isFinite(lPt.ts)) continue;
-            const gIdx = tsToGlobalIdx.get(lPt.ts);
-            if (gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx) {
+
+          const projection = this.marketStructure;
+          if (projection) {
+            ctx.font = 'bold 9px sans-serif';
+            for (const marker of projection.swing_markers || []) {
+              const gIdx = tsToGlobalIdx.get(marker.anchor_time_ms);
+              if (gIdx === undefined || gIdx < startIdx || gIdx >= endIdx ||
+                  !Number.isFinite(marker.price)) continue;
+              const candle = this.candles[gIdx];
               const i = gIdx - startIdx;
               const cx = padLeft + (i + 0.5) * stepX;
-              const cy = yForPrice(lPt.price) + 13;
-              ctx.fillStyle = '#38bdf8';
-              ctx.fillText('SL', cx - 5, cy);
+              const isHigh = marker.pivot_type === 'SWING_HIGH';
+              const cy = yForPrice(marker.price) + (isHigh ? -8 : 15);
+              ctx.fillStyle = isHigh ? '#fbbf24' : '#7dd3fc';
+              ctx.fillText(marker.label || (isHigh ? 'SH' : 'SL'), cx - 9, cy);
+            }
+            ctx.font = 'bold 9px sans-serif';
+            for (const event of (projection.structure_events || []).slice(-30)) {
+              const gIdx = tsToGlobalIdx.get(event.anchor_time_ms);
+              if (gIdx === undefined || gIdx < startIdx || gIdx >= endIdx ||
+                  !Number.isFinite(event.level_price)) continue;
+              const i = gIdx - startIdx;
+              const cx = padLeft + (i + 0.5) * stepX;
+              const cy = yForPrice(event.level_price) + (event.direction === 'BULLISH' ? -10 : 17);
+              const label = String(event.event_type || '').replace('BULLISH_', '↑').replace('BEARISH_', '↓').replace('_', ' ');
+              ctx.fillStyle = event.direction === 'BULLISH' ? '#4ade80' : '#fb7185';
+              ctx.fillText(label.slice(0, 11), Math.max(padLeft, cx - 18), cy);
             }
           }
         }
@@ -4810,7 +7791,7 @@
     const chart = new CandleChart(document.getElementById('chartCanvas'));
     if (new URLSearchParams(window.location.search).get('test') === '1') {
       window.__CryptoAnalystTestHooks = Object.freeze({
-        chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient
+        chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient, runB2Analysis, renderB2Panel
       });
     }
 
@@ -4837,6 +7818,7 @@
       clearLiveDataState();
       setStaleBanner(null);
       resetMetricsUi();
+      resetB2Panel('Загрузка...');
       document.getElementById('chartTitle').textContent = `График — ${symbol} (${tfText})`;
       document.getElementById('lastUpdate').textContent = 'Загрузка...';
       setRestStatus(hasCachedSnapshot ? `обновление ${symbol} (${tfText})...` : `загрузка ${symbol} (${tfText})...`, 'status-warn');
@@ -4846,6 +7828,55 @@
           : `Загрузка данных для ${symbol} (${tfText})...`
       ]);
       chart.setData([], 0, null, null);
+    }
+
+    function resetB2Panel(message = 'Ожидание данных') {
+      const status = document.getElementById('b2Status');
+      const list = document.getElementById('b2StructureList');
+      if (!status || !list) return;
+      status.textContent = message;
+      status.className = 'meta status-warn';
+      renderKvRows(list, [
+        { k: 'Структура', v: '—' },
+        { k: 'Пивоты', v: '—' },
+        { k: 'BOS / CHoCH', v: '—' },
+        { k: 'Зоны S/R', v: '—' },
+        { k: 'Ретесты', v: '—' },
+        { k: 'MTF', v: 'Отключён до калибровки' }
+      ]);
+    }
+
+    function renderB2Panel(result) {
+      const status = document.getElementById('b2Status');
+      const list = document.getElementById('b2StructureList');
+      if (!status || !list) return;
+      if (!result || result.status !== 'VALID') {
+        status.textContent = result ? 'BLOCKED · ' + (result.stage || 'B2') : 'Нет результата';
+        status.className = 'meta status-err';
+        const reasons = result && Array.isArray(result.reasons) ? result.reasons.join(', ') : 'B2_RESULT_MISSING';
+        renderKvRows(list, [
+          { k: 'Допуск', v: 'Заблокирован', cls: 'status-err' },
+          { k: 'Причина', v: reasons, cls: 'status-warn' },
+          { k: 'MTF', v: 'Отключён до калибровки' }
+        ]);
+        return;
+      }
+      const p = result.projection;
+      const lastEvent = (p.structure_events || []).slice().sort((a, b) => b.visible_at_ms - a.visible_at_ms)[0];
+      const retestCounts = {};
+      for (const life of p.retest_lifecycles || []) retestCounts[life.status] = (retestCounts[life.status] || 0) + 1;
+      const retestSummary = Object.entries(retestCounts).map(([k, v]) => k.replace('RETEST_', '') + ': ' + v).join(' · ') || 'Нет подтверждённых событий';
+      status.textContent = 'VALID · ' + result.timeframe.toUpperCase();
+      status.className = 'meta status-ok';
+      renderKvRows(list, [
+        { k: 'Структура', v: result.b2c.structure_state || 'UNESTABLISHED' },
+        { k: 'Активные экстремумы', v: String(p.swing_markers.length) },
+        { k: 'Неоднозначные экстремумы', v: String(p.ambiguous_pivots.length) },
+        { k: 'Последнее событие', v: lastEvent ? lastEvent.event_type + ' · ' + (lastEvent.direction || '') : 'Нет подтверждённого BOS/CHoCH' },
+        { k: 'Зоны S/R', v: String(p.zones.length) + ' подтверждённых · ' + String(p.candidate_levels.length) + ' кандидатов' },
+        { k: 'Ретесты', v: retestSummary },
+        { k: 'MTF', v: 'Отключён: нужна live-калибровка provider-time spread', cls: 'status-warn' }
+      ]);
     }
 
     function renderSuccess(dataset, analysis) {
@@ -4938,8 +7969,16 @@
       ]);
 
       const live = freshLiveTicker(dataset.symbol);
+      let b2Result;
+      try {
+        b2Result = runB2Analysis(dataset);
+      } catch (error) {
+        b2Result = { status: 'BLOCKED', stage: 'B2-runtime', reasons: [error && error.message ? error.message : 'B2_RUNTIME_ERROR'] };
+      }
+      renderB2Panel(b2Result);
       chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis,
         live ? live.lastPrice : pInfo.currentMarketPrice);
+      chart.setMarketStructure(b2Result && b2Result.status === 'VALID' ? b2Result.projection : null);
       // A 30-second REST refresh replaces the chart array. Re-apply the newest
       // validated WS trade immediately so the forming OHLC does not snap back
       // to the older REST kline snapshot while the stream remains fresh.
@@ -4978,6 +8017,7 @@
       } else {
         setStaleBanner(null);
         resetMetricsUi();
+        resetB2Panel('Нет данных');
         document.getElementById('lastUpdate').textContent = 'Нет актуальных данных';
         renderReasonList(document.getElementById('decisionReasons'), [
           `Не удалось получить данные для ${symbol} (${tfText}): ${errorMsg}. Сохранённого снимка для этой пары и таймфрейма нет.`

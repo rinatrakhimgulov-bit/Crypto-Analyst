@@ -361,3 +361,109 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - Latest CI 45981507604: Stage A 50/50, contract 32/32, quality 72/72, MTF 20/20; 174/174 deterministic tests, desktop/mobile chart, transport cancellation, zero page errors.
 - Exact candidate HTML blob 39e42c223419bd8a599f6c513ef6e269df120fcc; harness blob 44b492f92ffbbbb58f6cb830375b6330a556d5c4. PR #9 draft, based on B1 integration branch; PR #8 remains draft. Main unchanged.
 - Live Bybit remains unverified: CI REST access is HTTP 403 and browser test uses controlled events, not a live exchange WebSocket. iPhone/Safari live verification and independent review remain required.
+
+
+### B2 Market Structure design artifacts
+- `docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md` — B2 design baseline and staged implementation scope.
+- `docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md` — unresolved design decisions and causal release gates.
+
+### B2 policy freeze update — 2026-11-27
+- docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md Section 15: frozen v1 policies for causal pivots, equality, plateaus, same-side replacement, structure state, protected swings, BOS/CHoCH boundary and event lifecycle.
+- docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md Section 7: resolution matrix for design blockers R1–R7. Internal design resolution only; not independent audit.
+- No application code changed. B2 remains gated on B1 acceptance.
+
+### B2-A isolated implementation candidate — 2026-11-27
+- src/analysis/b2-causal-swing-engine.js — pure causal raw pivot detector with exact B1 quality identity admission.
+- tests/b2a-causal-swing-engine.test.cjs — deterministic B2-A regression tests (11 cases).
+- .github/workflows/b2a-causal-pivots.yml — isolated Node test workflow.
+- B2 spec clarification: availableAt includes the B1 finality safety lag.
+- Candidate is not wired into the application; B1 production acceptance gate remains.
+
+
+## 24. B2-A isolated causal swing engine — 2026-11-27
+
+- `src/analysis/b2-causal-swing-engine.js`: isolated pure engine for closed-candle swing highs/lows; maximal equal-price plateau with rightmost representative; exact-price v1 equality; source, confirmation and availability timestamps; B1 finality safety lag.
+- Admission requires an exact matching `VALID` B1 quality report and policy version. Invalid provenance, timestamp grid/order, OHLC, finality, forming/unknown overlap, or insufficient history fails closed.
+- `tests/b2a-causal-swing-engine.test.cjs`: 13 deterministic tests; GitHub Actions run 46005202794 passed.
+- `.github/workflows/b2a-causal-pivots.yml`: dedicated Node CI workflow; run 46005202794 passed on candidate commit `f41c85a3d09cbbec602fe1eaef8902b5f52de685`.
+- Research candidate only. No UI/HTML, swing sequence, BOS/CHoCH, S/R, retests, directional decision, or main branch changes.
+
+
+### B2-A exact B1 version binding — 2026-11-27
+- Exact B1 contract (1.1.0), validator (1.1.0) and quality-policy version are now required by candidate policy.
+- Snapshot contract and quality report validator/policy identities are checked exactly; mismatches fail closed.
+- Added regression tests for stale validator and unsupported contract versions; suite 13/13, GitHub Actions run 46005202794 passed.
+- Candidate remains isolated and unmerged; no application HTML or `main` changes.
+
+
+### B2-A causal pivot edge-case hardening — 2026-11-27
+- `tests/b2a-causal-swing-engine.test.cjs`: expanded deterministic suite from 13 to 20 cases.
+- Added regression coverage for longer plateaus/right-window counting, non-contiguous equal highs, incomplete right confirmation, deeply immutable pivot evidence, duplicate timestamps, and out-of-order candles.
+- GitHub Actions run `46010999225` passed on commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
+- No engine source, application HTML, or main branch changed. Research-only; B1 acceptance remains required before production integration.
+
+
+### B2-B isolated swing sequence candidate — 2026-11-27
+- `src/analysis/b2b-swing-sequence-engine.js`: pure consumer of VALID B2-A raw pivots; exact B2-A/B1 identity binding; availability-order processing; immutable alternating sequence; same-side replacement; HH/LH/EQH/HL/LL/EQL labels.
+- `tests/b2b-swing-sequence-engine.test.cjs`: 19 deterministic cases covering sequence behavior, replacement symmetry, equality, causal ordering, fail-closed admission, immutability and determinism.
+- `.github/workflows/b2b-swing-sequence.yml`: isolated B2-B CI workflow. Run `46011622297` passed 19/19 on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
+- PR #13 is draft/unmerged and based on B2-A candidate. No main/app changes; B1 acceptance remains required before production integration.
+
+
+---
+
+## 2026-11-27 — B2-A through B2-G research modules
+
+| Module / file | Purpose | Current candidate status |
+|---|---|---|
+| `src/analysis/b2-causal-swing-engine.js` | B2-A causal swing pivots | Research candidate |
+| `src/analysis/b2b-swing-sequence-engine.js` | B2-B alternating sequence and immutable sequence history | 2.2.0-b2b |
+| `src/analysis/b2c-swing-structure-engine.js` | B2-C HH/HL/LH/LL, BOS/CHoCH and causal event replay | 2.1.0-b2c |
+| `src/analysis/b2d-support-resistance-engine.js` | B2-D S/R zones and candidate levels | Research candidate |
+| `src/analysis/b2e-breakout-retest-engine.js` | B2-E breakout/retest lifecycle | Research candidate |
+| `src/analysis/b2f-mtf-structure-confluence-engine.js` | B2-F 1D/4H/1H confluence | Research candidate |
+| `src/analysis/b2g-chart-projection-engine.js` | B2-G causal chart-neutral projection | Research candidate |
+| `tools/b2_historical_replay.cjs` | Full historical engine replay and prefix checks | Research harness |
+| `.github/workflows/b2-historical-replay.yml` | Historical replay CI workflow | Added |
+
+### Key contracts
+
+- B2-B excludes same-source-candle high/low pairs from active sequence and preserves them as ambiguous raw evidence.
+- B2-B sequence_history records each pivot when it becomes available; later replacement does not mutate the historical record.
+- B2-C events consume sequence_history; current active sequence remains a separate output.
+- B2-E and B2-G validate event source pivots against accepted-at-availability history.
+- B2-D may use ambiguous pivots as tagged S/R evidence but not as structure sequence pivots.
+
+### Verification
+
+- Integrated B2-A–B2-G CI: run 46031937203, 181/181 passed.
+- Historical replay: run 46032038435, passed; 18/18 prefix checks; six BTC/ETH timeframe series; 30 sampled B2-A–B2-E windows; two synchronized MTF projections.
+- Detailed metrics: `docs/audits/B2_PRELIMINARY_HISTORICAL_REPLAY_2026-11-27.md`.
+
+### Integration status
+
+All B2 modules remain isolated in the draft candidate PR #20. No app HTML or main branch changes. B1 is NOT ACCEPTED; independent audit, live MTF provider-time calibration, parameter calibration and iPhone/Safari acceptance remain required.
+
+
+
+### B2 app integration candidate — 2026-11-27
+- `CryptoAnalyst_StageA_S6_updated.html`: inlined B2-A…B2-G engines; added B2 panel; added causal swing/event/zone chart overlays; kept B2 isolated from LONG/SHORT/WAIT.
+- MTF B2-F intentionally disabled in app pending measured live Bybit provider-time spread.
+- Confirmed S/R zones draw only from `visible_from_ms`; no backdated zone overlay.
+- Added/fixed B2-G single-timeframe projection with explicit null MTF context.
+- `tests/b2-app-browser-integration.cjs`: verifies VALID B1→B2 runtime, stale-input fail-closed behavior, chart projection attachment, causal zone x-position and 390×844 mobile layout.
+- B2 app integration CI [46034275312](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034275312) passed all module and browser/mobile checks.
+- B1 browser/data CI [46034276646](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034276646) passed; live Bybit REST explicitly skipped due HTTP 403 from GitHub Actions.
+- Branch `integration/b2-market-structure-ui-2026-11-27`; no `main` merge. Awaiting iPhone/Safari and live MTF calibration.
+
+
+## 2026-11-27 — B2 application integration preview
+
+| File / component | Change | Status |
+|---|---|---|
+| `CryptoAnalyst_StageA_S6_updated.html` | Inlined B2-A–B2-G; selected-timeframe B2 pipeline; causal chart overlay; structure panel | Integration preview |
+| `src/analysis/b2g-chart-projection-engine.js` | Permit explicit absence of B2-F context while preserving fail-closed checks for supplied MTF results | Tested |
+| `tests/b2-app-browser-integration.cjs` | Synthetic B1-valid browser integration, stale gate, chart projection and mobile viewport checks | Passed |
+| `.github/workflows/b2-app-integration.yml` | B2-A–G suites plus Chromium/mobile integration | Passed |
+
+B2-F remains disabled in the live UI pending empirical provider-time spread calibration. The B2 preview does not generate or modify Stage A trade decisions. iPhone/Safari acceptance is still required. `main` is unchanged.

@@ -1,0 +1,24 @@
+name: B2-G causal chart projection tests
+
+on:
+  push:
+    branches:
+      - feature/b2g-chart-projection-contract-2026-11-27
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  b2g-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run deterministic B2-G tests
+        run: node tests/b2g-chart-projection-engine.test.cjs
