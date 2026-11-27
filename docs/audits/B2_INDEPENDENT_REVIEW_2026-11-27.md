@@ -29,19 +29,20 @@ These counts establish only that the synthetic test suites passed in their recor
 ## Positive findings
 
 1. B2-A uses symmetric pivot confirmation and records source, confirmation, and availability timestamps.
-2. B2-B derives alternating swing sequence labels and rejects invalid pivot availability ordering.
-3. B2-C evaluates closed candles chronologically, admits pivots only according to their availability time, and evaluates a candle's break before admitting pivots that become available at that candle close.
-4. B2-C includes explicit gap rejection and prefix-replay tests.
-5. B2-D and B2-E validate pivot provenance against source candles and reject candle gaps.
-6. B2-E records breakout, retest, and confirmation lifecycle timestamps rather than backdating confirmation.
-7. B2-F requires a common MTF cutoff, checks provider-time spread against a configured maximum, and validates timeframe snapshot/quality identity.
-8. B2-G separates chart anchor time from visible/available time and blocks future-dated pivots, events, zones, and retest confirmations.
+2. The current B2-B candidate excludes simultaneous same-candle high/low pivot pairs from the alternating sequence while preserving raw evidence. B2-C verifies this policy; B2-D rejects ambiguous pivots as zone inputs.
+3. B2-B derives alternating swing sequence labels and rejects invalid pivot availability ordering.
+4. B2-C evaluates closed candles chronologically, admits pivots only according to their availability time, and evaluates a candle's break before admitting pivots that become available at that candle close.
+5. B2-C includes explicit gap rejection and prefix-replay tests.
+6. B2-D and B2-E validate pivot provenance against source candles and reject candle gaps.
+7. B2-E records breakout, retest, and confirmation lifecycle timestamps rather than backdating confirmation.
+8. B2-F requires a common MTF cutoff, checks provider-time spread against a configured maximum, and validates timeframe snapshot/quality identity.
+9. B2-G separates chart anchor time from visible/available time and blocks future-dated pivots, events, zones, and retest confirmations.
 
 ## Blocking gaps before production integration
 
-### BLOCKER-1: no historical-market-data validation
+### BLOCKER-1: complete historical-market-data validation is not yet demonstrated
 
-The inspected workflows run deterministic synthetic fixtures. No workflow or committed report was found that runs the complete B2 pipeline over historical BTCUSDT and ETHUSDT Bybit Linear Perpetual candles across 1H, 4H, and 1D.
+A preliminary historical replay report already exists at `docs/audits/B2_PRELIMINARY_HISTORICAL_REPLAY_2026-11-27.md`. It checks third-party archived BTCUSDT/ETHUSDT OHLCV integrity and pivot sensitivity, but explicitly does not execute the complete B2-A→B2-G chain on the historical rows. The inspected CI workflows still run deterministic synthetic fixtures. A full historical engine-chain replay over BTCUSDT and ETHUSDT, 1H/4H/1D, remains outstanding.
 
 Required before integration:
 - fetch reproducible historical windows from Bybit V5 Linear Kline;
@@ -51,6 +52,10 @@ Required before integration:
 - report rejected windows, gaps, and quality failures;
 - compare results across trending, ranging, impulsive, reversal, and false-breakout periods;
 - save input hashes and output summaries for repeatability.
+
+### HIGH: simultaneous dual-pivot correction needs full historical regression
+
+The preliminary replay identified same-source-candle high+low pivots as ambiguous because OHLCV does not reveal intrabar order. The current B2-B candidate now implements `EXCLUDE_BOTH_FROM_SEQUENCE_V1`, preserves both raw observations with `AMBIGUOUS_FOR_SEQUENCE`, and B2-C independently verifies and excludes those pivots from the structure sequence. B2-D rejects ambiguous sequence statuses for zone construction. This is a substantive correction to the earlier replay report, not an unresolved code omission. However, the correction still needs a full B2-A→B2-G replay against the historical dataset, with explicit counts proving that no ambiguous pivot becomes a BOS/CHoCH source or S/R zone. Add regression coverage through B2-E and B2-G as well.
 
 ### BLOCKER-2: MTF provider-time spread is not empirically calibrated
 
