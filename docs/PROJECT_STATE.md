@@ -562,3 +562,18 @@ The isolated B2-A candidate now requires exact B1 version identity, not merely n
 The B2-A input remains one canonical timeframe snapshot per invocation. This is intentional and matches the B2 design contract; it does not mean the engine accepts an unsynchronized outer MTF object. MTF synthesis remains gated on B1 acceptance.
 
 Regression suite: 13/13. GitHub Actions run [46005202794](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46005202794) completed successfully on commit `f41c85a3d09cbbec602fe1eaef8902b5f52de685`. Candidate remains isolated, draft and unmerged. No application HTML or `main` changes.
+
+
+## Stage transition decision — 2026-11-27 (latest)
+
+The owner approved deferring Stage 1 visual/live-chart polish and prioritizing the fundamental analytical stage.
+
+- Stage 1 is **FROZEN FOR FEATURE WORK**, not abandoned. The live chart animation, exact live-price comparison, and remaining iPhone/Safari market-data diagnostics are deferred for a later return.
+- Data-integrity safeguards are not deferred: analytical modules must continue to require validated, closed-only B1 input and fail closed on non-VALID data.
+- Stage 2 / B2 Market Structure is the active research-development priority.
+- B1 remains **NOT ACCEPTED**. B2 candidates may be developed and tested in isolated research branches only; they must not be wired into the live app or directional LONG/SHORT path until B1 acceptance and explicit owner approval.
+- B2-A remains isolated in PR #12, draft and unmerged. Its 13-test baseline was expanded with seven edge-case regressions. GitHub Actions run 46010999225 passed **20/20** on commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
+- The expanded B2-A suite now explicitly checks longer plateaus, equal highs in non-contiguous left/right windows, incomplete right confirmation, deep immutability, duplicate timestamps, and out-of-order candles.
+- No application HTML, main branch, live decision path, or production analytics was changed by this test expansion.
+
+Next B2 work must remain staged: independently review B2-A's exact source and tests; only after that, develop B2-B swing-sequence labels as an isolated consumer of immutable B2-A pivots. BOS/CHoCH, zones, retests, MTF decision integration and UI remain later increments.
