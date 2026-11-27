@@ -640,3 +640,6 @@ Next: independent review of exact B2-A/B2-B source and tests; then B2-C protecte
 ### Latest correction — B2-G status transition timing
 
 Superseded and ambiguous pivot DTOs now carry both pivot visibility and status visibility timestamps. A superseded label becomes visible only when the replacement pivot is available; an ambiguous label becomes visible when the same-source pair is confirmed. B2-B/B2-G reject same-source dual pairs with mismatched confirmation times. This is covered by the latest 183-test suite.
+
+
+**Independent review handoff:** `docs/audits/B2_A_TO_G_INDEPENDENT_REVIEW_PROMPT_2026-11-27.md` (target source commit d6ec9698fa493d3f060424d93ecc9984574bfe1f).
