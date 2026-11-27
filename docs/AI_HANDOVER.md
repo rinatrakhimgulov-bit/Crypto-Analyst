@@ -1316,3 +1316,10 @@ Verified runs on commit `936ffb2f2425f440ab1650ddc706ed22617b01cb`:
 - B1 browser/data verification [46034276646](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034276646) passed. Live Bybit REST remains unverified because GitHub Actions was denied with HTTP 403 by both public hosts.
 
 Current integration branch head may have advanced beyond the CI-tested commit due documentation updates; re-run CI on the final head before presenting it as ready. iPhone/Safari live-feed verification and MTF provider-time calibration remain open. No merge to `main` without explicit owner approval.
+
+
+Latest branch-head verification (code and test blobs) on `e77e8be826c0e8a4641739752f94472e6ae7c1a5`:
+- B2 application integration: [run 46034502560](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034502560), passed.
+- B2 research module suite: [run 46034502583](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034502583), passed.
+- B1 browser/data suite: [run 46034502780](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034502780), passed; live Bybit REST skipped due runner HTTP 403.
+- Draft stacked integration PR: [#21](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/21), based on B1-D candidate PR #9. Do not merge until owner review and remaining acceptance gates.
