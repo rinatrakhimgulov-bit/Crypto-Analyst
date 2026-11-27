@@ -93,8 +93,8 @@ Implementation-specific binding:
 - B1 canonical snapshot contract: `1.1.0`.
 - B1 validator: `1.1.0`.
 - Actual B1 quality policy: `b1-quality-policy-2026-11-27-v1`.
-- B2-B engine/policy: `2.0.0-b2b` / `b2b-swing-sequence-v1`.
-- B2-C engine/policy: `2.0.0-b2c` / `b2c-state-v1`.
+- B2-B engine/policy: `2.2.0-b2b` / `b2b-swing-sequence-v3`.
+- B2-C engine/policy: `2.1.0-b2c` / `b2c-state-v2`.
 
 The B1 MTF outer `market_type` is a display label (currently `Linear Perpetual`), while each canonical snapshot uses `linear_perpetual`. B2-F preserves the display label separately and uses the canonical snapshot market type for identity checks. The outer raw symbol is likewise not substituted for the canonical snapshot symbol.
 

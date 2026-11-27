@@ -12,17 +12,20 @@ const SNAPSHOT_ID = 'fixture:BTCUSDT:1h:b2d';
 
 const POLICY = Object.freeze({
   version: 'b2d-zone-engine-v1',
-  b2c_engine_version: '2.0.0-b2c',
-  b2c_policy_version: 'b2c-state-v1',
-  b2b_engine_version: '2.0.0-b2b',
-  b2b_policy_version: 'b2b-swing-sequence-v1',
+  b2c_engine_version: '2.1.0-b2c',
+  b2c_policy_version: 'b2c-state-v2',
+  b2b_engine_version: '2.2.0-b2b',
+  b2b_policy_version: 'b2b-swing-sequence-v3',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
   b1_contract_version: '1.1.0',
   b1_validator_version: '1.1.0',
   b1_quality_policy_version: 'b1-quality-v1',
   finality_safety_lag_ms: LAG,
-  price_equality_policy: 'EXACT_PRICE_V1'
+  price_equality_policy: 'EXACT_PRICE_V1',
+  b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1'
 });
 
 const ZONE_POLICY = Object.freeze({
@@ -118,14 +121,16 @@ function fixture(rawPivots, options = {}) {
     },
     quality_report: report,
     b2c_result: {
-      engine_version: '2.0.0-b2c',
-      policy_version: 'b2c-state-v1',
+      engine_version: '2.1.0-b2c',
+      policy_version: 'b2c-state-v2',
       status: 'VALID',
       admission: {
         status: 'ADMITTED',
         snapshot_id: SNAPSHOT_ID,
-        b2b_engine_version: '2.0.0-b2b',
-        b2b_policy_version: 'b2b-swing-sequence-v1',
+        b2b_engine_version: '2.2.0-b2b',
+        b2b_policy_version: 'b2b-swing-sequence-v3',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
         b1_validator_version: '1.1.0',
         b1_quality_policy_version: 'b1-quality-v1'
       },
@@ -434,7 +439,8 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D chain builds support a
   const b2b = analyzeB2B({
     b2a_result: b2a,
     policy: {
-      version: 'b2b-swing-sequence-v1',
+      version: 'b2b-swing-sequence-v3',
+      same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
       b1_validator_version: '1.1.0',
@@ -445,9 +451,11 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D chain builds support a
   assert.equal(b2b.status, 'VALID');
   const b2c = analyzeB2C({
     policy: {
-      version: 'b2c-state-v1',
-      b2b_engine_version: '2.0.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v1',
+      version: 'b2c-state-v2',
+      b2b_engine_version: '2.2.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v3',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
       b1_contract_version: '1.1.0',
@@ -464,10 +472,12 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D chain builds support a
   const b2d = analyze({
     policy: {
       version: 'b2d-zone-engine-v1',
-      b2c_engine_version: '2.0.0-b2c',
-      b2c_policy_version: 'b2c-state-v1',
-      b2b_engine_version: '2.0.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v1',
+      b2c_engine_version: '2.1.0-b2c',
+      b2c_policy_version: 'b2c-state-v2',
+      b2b_engine_version: '2.2.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v3',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
       b1_contract_version: '1.1.0',

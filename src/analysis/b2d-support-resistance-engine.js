@@ -6,8 +6,8 @@
   'use strict';
 
   const ENGINE_VERSION = '2.0.0-b2d';
-  const REQUIRED_B2C_ENGINE_VERSION = '2.0.0-b2c';
-  const REQUIRED_B2B_ENGINE_VERSION = '2.0.0-b2b';
+  const REQUIRED_B2C_ENGINE_VERSION = '2.1.0-b2c';
+  const REQUIRED_B2B_ENGINE_VERSION = '2.2.0-b2b';
   const REQUIRED_B2A_ENGINE_VERSION = '2.0.0-b2a';
   const TIMEFRAME_MS = Object.freeze({ '1h': 3600000, '4h': 14400000, '1d': 86400000 });
   const CLOSED_STATES = new Set(['CONFIRMED', 'TIME_DERIVED']);
@@ -41,7 +41,8 @@
         typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
         typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
         !Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0 ||
-        policy.price_equality_policy !== 'EXACT_PRICE_V1') return 'B2D_UPSTREAM_POLICY_BINDING_INVALID';
+        policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
+        policy.b2b_same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1') return 'B2D_UPSTREAM_POLICY_BINDING_INVALID';
     if (!isObject(zonePolicy) || typeof zonePolicy.version !== 'string' || !zonePolicy.version.trim() ||
         zonePolicy.instrument_symbol !== symbol || zonePolicy.timeframe !== timeframe ||
         zonePolicy.cluster_method !== 'MAX_TOTAL_SPAN_V1' ||
@@ -64,7 +65,9 @@
   }
   function validatePivot(pivot, ids, asOf, equalityPolicy) {
     if (!isObject(pivot) || typeof pivot.pivot_id !== 'string' || !pivot.pivot_id.trim() || ids.has(pivot.pivot_id)) return 'PIVOT_ID_INVALID';
-    if (!['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE'].includes(pivot.sequence_status)) return 'PIVOT_SEQUENCE_STATUS_INVALID';
+    if (!['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE', 'AMBIGUOUS_FOR_SEQUENCE'].includes(pivot.sequence_status) ||
+        (pivot.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE' && pivot.exclusion_reason !== 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE') ||
+        (pivot.sequence_status !== 'AMBIGUOUS_FOR_SEQUENCE' && pivot.exclusion_reason != null)) return 'PIVOT_SEQUENCE_STATUS_INVALID';
     if (!['SWING_HIGH', 'SWING_LOW'].includes(pivot.type) || !Number.isFinite(pivot.price) || pivot.price <= 0) return 'PIVOT_VALUE_INVALID';
     for (const key of ['source_time_ms', 'confirmed_at_ms', 'available_at_ms']) {
       if (!Number.isSafeInteger(pivot[key]) || pivot[key] <= 0) return 'PIVOT_TIME_INVALID';
@@ -200,7 +203,8 @@
         source.admission.b1_validator_version !== policy.b1_validator_version ||
         source.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
         source.admission.b2b_engine_version !== policy.b2b_engine_version ||
-        source.admission.b2b_policy_version !== policy.b2b_policy_version) {
+        source.admission.b2b_policy_version !== policy.b2b_policy_version ||
+        source.admission.b2b_same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy) {
       return blocked('INVALID', 'B2C_ADMISSION_IDENTITY_MISMATCH', meta);
     }
 

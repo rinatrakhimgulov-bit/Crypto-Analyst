@@ -5,7 +5,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function createB2BSwingSequenceEngine() {
   'use strict';
 
-  const ENGINE_VERSION = '2.0.0-b2b';
+  const ENGINE_VERSION = '2.2.0-b2b';
   const REQUIRED_B2A_ENGINE_VERSION = '2.0.0-b2a';
   const VALID_TYPES = new Set(['SWING_HIGH', 'SWING_LOW']);
 
@@ -32,7 +32,8 @@
       analysis_as_of_ms: meta.analysisAsOfMs ?? null,
       raw_pivots: [],
       sequence: [],
-      diagnostics: { raw_pivot_count: 0, sequence_pivot_count: 0, superseded_count: 0 }
+      sequence_history: [],
+      diagnostics: { raw_pivot_count: 0, sequence_pivot_count: 0, sequence_history_count: 0, superseded_count: 0 }
     });
   }
 
@@ -90,7 +91,8 @@
         typeof policy.b2a_policy_version !== 'string' || !policy.b2a_policy_version.trim() ||
         typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
         typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
-        policy.price_equality_policy !== 'EXACT_PRICE_V1') {
+        policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
+        policy.same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1') {
       return blocked('INVALID', 'B2A_POLICY_BINDING_INVALID', { policyVersion: policy.version });
     }
 
@@ -138,10 +140,30 @@
       previousAvailableAt = pivot.available_at_ms;
     }
 
+    const typesBySourceTime = new Map();
+    const pivotsBySourceTime = new Map();
+    for (const pivot of source.pivots) {
+      if (!typesBySourceTime.has(pivot.source_time_ms)) typesBySourceTime.set(pivot.source_time_ms, new Set());
+      typesBySourceTime.get(pivot.source_time_ms).add(pivot.type);
+      if (!pivotsBySourceTime.has(pivot.source_time_ms)) pivotsBySourceTime.set(pivot.source_time_ms, []);
+      pivotsBySourceTime.get(pivot.source_time_ms).push(pivot);
+    }
+    const ambiguousSourceTimes = new Set([...typesBySourceTime.entries()]
+      .filter(([, types]) => types.has('SWING_HIGH') && types.has('SWING_LOW'))
+      .map(([sourceTime]) => sourceTime));
+    for (const sourceTime of ambiguousSourceTimes) {
+      const pair = pivotsBySourceTime.get(sourceTime) || [];
+      if (pair.length !== 2 || pair[0].confirmed_at_ms !== pair[1].confirmed_at_ms ||
+          pair[0].available_at_ms !== pair[1].available_at_ms) {
+        return blocked('INVALID', 'DUAL_PIVOT_CONFIRMATION_TIME_MISMATCH', meta);
+      }
+    }
+
     const raw = source.pivots.map(pivot => ({
       ...pivot,
       confirmation: { ...pivot.confirmation },
-      sequence_status: 'PENDING',
+      sequence_status: ambiguousSourceTimes.has(pivot.source_time_ms) ? 'AMBIGUOUS_FOR_SEQUENCE' : 'PENDING',
+      exclusion_reason: ambiguousSourceTimes.has(pivot.source_time_ms) ? 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE' : null,
       structure_label: null,
       comparison_pivot_id: null,
       price_delta: null,
@@ -149,9 +171,11 @@
       superseded_by: null
     }));
     const sequence = [];
+    const sequenceHistory = [];
 
     for (let i = 0; i < raw.length; i++) {
       const current = raw[i];
+      if (current.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE') continue;
       const last = sequence.length ? sequence[sequence.length - 1] : null;
 
       if (last && last.type === current.type) {
@@ -185,6 +209,14 @@
       current.price_delta = label.price_delta;
       current.relative_delta_pct = label.relative_delta_pct;
       sequence.push(current);
+      sequenceHistory.push({
+        ...current,
+        confirmation: { ...current.confirmation },
+        sequence_status: 'ACCEPTED_AT_AVAILABILITY',
+        exclusion_reason: null,
+        superseded_by: null,
+        sequence_index_at_availability: sequence.length - 1
+      });
     }
 
     const normalizedSequence = sequence.map((pivot, index) => ({
@@ -201,20 +233,24 @@
         snapshot_id: source.snapshot_id,
         b2a_engine_version: source.engine_version,
         b2a_policy_version: source.policy_version,
+        same_candle_dual_pivot_policy: policy.same_candle_dual_pivot_policy,
         b2a_quality_report: { ...source.admission.quality_report }
       },
       snapshot_id: source.snapshot_id,
       symbol: source.symbol,
       timeframe: source.timeframe,
       analysis_as_of_ms: source.analysis_as_of_ms,
-      sequence_order_basis: 'B2A_AVAILABLE_AT_ORDER_STABLE',
+      sequence_order_basis: 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS_WITH_HISTORY',
       comparison_policy: policy.price_equality_policy,
       raw_pivots: raw,
       sequence: normalizedSequence,
+      sequence_history: sequenceHistory,
       diagnostics: {
         raw_pivot_count: raw.length,
         sequence_pivot_count: normalizedSequence.length,
-        superseded_count: raw.filter(p => p.sequence_status === 'SUPERSEDED_FOR_SEQUENCE').length
+        sequence_history_count: sequenceHistory.length,
+        superseded_count: raw.filter(p => p.sequence_status === 'SUPERSEDED_FOR_SEQUENCE').length,
+        ambiguous_dual_pivot_count: raw.filter(p => p.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE').length
       }
     });
   }

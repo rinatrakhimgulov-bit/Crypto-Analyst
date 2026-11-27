@@ -5,12 +5,14 @@ const { analyze } = require('../src/analysis/b2b-swing-sequence-engine.js');
 const { analyze: analyzeB2A } = require('../src/analysis/b2-causal-swing-engine.js');
 
 const POLICY = Object.freeze({
-  version: 'b2b-swing-sequence-v1',
+  version: 'b2b-swing-sequence-v3',
+       same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
   b1_validator_version: '1.1.0',
   b1_quality_policy_version: 'b1-quality-v1',
-  price_equality_policy: 'EXACT_PRICE_V1'
+  price_equality_policy: 'EXACT_PRICE_V1',
+  same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1'
 });
 
 function pivot(id, type, price, availableAt, sourceTime = Math.max(1, availableAt - 1500)) {
@@ -87,6 +89,9 @@ run('a more extreme same-side high replaces the active sequence high but preserv
   assert.equal(result.raw_pivots[0].superseded_by, 'h2');
   assert.equal(result.sequence[2].structure_label, 'HH');
   assert.equal(result.sequence[2].comparison_pivot_id, 'h2');
+  assert.deepEqual(result.sequence_history.map(p => p.pivot_id), ['h1', 'h2', 'l1', 'h3']);
+  assert.equal(result.sequence_history[0].sequence_status, 'ACCEPTED_AT_AVAILABILITY');
+  assert.equal(result.sequence_history[0].superseded_by, null);
 });
 
 run('a less extreme same-side high is retained as raw evidence but excluded from sequence', () => {
@@ -138,7 +143,7 @@ run('availability order is preserved even when source times are not chronologica
     pivot('l-early-source', 'SWING_LOW', 90, 2000, 300)
   ]));
   assert.deepEqual(result.sequence.map(p => p.pivot_id), ['h-late-source', 'l-early-source']);
-  assert.equal(result.sequence_order_basis, 'B2A_AVAILABLE_AT_ORDER_STABLE');
+  assert.equal(result.sequence_order_basis, 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS_WITH_HISTORY');
 });
 
 run('non-monotonic availability order fails closed instead of silently reordering', () => {
@@ -148,6 +153,30 @@ run('non-monotonic availability order fails closed instead of silently reorderin
   ]));
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'B2A_PIVOT_AVAILABILITY_ORDER_INVALID');
+});
+
+run('same-candle high and low pivots remain raw but are excluded from the sequence', () => {
+  const sourceTime = 1500;
+  const result = analyze(makeInput([
+    pivot('dual-high', 'SWING_HIGH', 110, 3000, sourceTime),
+    pivot('dual-low', 'SWING_LOW', 90, 3000, sourceTime),
+    pivot('later-high', 'SWING_HIGH', 115, 5000, 3500)
+  ]));
+  assert.equal(result.status, 'VALID');
+  assert.deepEqual(result.sequence.map(p => p.pivot_id), ['later-high']);
+  assert.equal(result.raw_pivots[0].sequence_status, 'AMBIGUOUS_FOR_SEQUENCE');
+  assert.equal(result.raw_pivots[1].sequence_status, 'AMBIGUOUS_FOR_SEQUENCE');
+  assert.equal(result.raw_pivots[0].exclusion_reason, 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE');
+  assert.equal(result.diagnostics.ambiguous_dual_pivot_count, 2);
+});
+
+run('same-source dual pivots with different confirmation times fail closed', () => {
+  const result = analyze(makeInput([
+    pivot('dual-high', 'SWING_HIGH', 110, 3000, 1500),
+    pivot('dual-low', 'SWING_LOW', 90, 4000, 1500)
+  ]));
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'DUAL_PIVOT_CONFIRMATION_TIME_MISMATCH');
 });
 
 run('non-VALID B2-A input blocks and emits no sequence', () => {
@@ -341,7 +370,8 @@ run('B2-A to B2-B integration preserves causal swing sequence labels', () => {
   const b2b = analyze({
     b2a_result: b2a,
     policy: {
-      version: 'b2b-swing-sequence-v1',
+      version: 'b2b-swing-sequence-v3',
+       same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
       b1_validator_version: '1.1.0',

@@ -5,6 +5,7 @@ on:
     branches:
       - feature/b2e-breakout-retest-lifecycle-2026-11-27
       - feature/b2f-mtf-structure-confluence-2026-11-27
+      - feature/b2g-chart-projection-contract-2026-11-27
   workflow_dispatch:
 
 permissions:
@@ -34,3 +35,6 @@ jobs:
 
       - name: Run B2-F
         run: node tests/b2f-mtf-structure-confluence-engine.test.cjs
+
+      - name: Run B2-G
+        run: node tests/b2g-chart-projection-engine.test.cjs

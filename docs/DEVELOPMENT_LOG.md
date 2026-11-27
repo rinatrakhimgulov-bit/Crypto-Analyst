@@ -657,3 +657,54 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - No BOS/CHoCH, protected-swing state, zones, retests or trade recommendations.
 - No live Bybit or profitability claims.
 - B1 remains NOT ACCEPTED; production integration is prohibited until B1 acceptance and explicit owner approval.
+
+
+---
+
+## 2026-11-27 — B2-A–B2-G causal research chain and historical replay
+
+**Исполнитель:** ChatGPT (GitHub candidate branch; no external AI review claimed).
+
+**Цель:** завершить исследовательскую цепочку структурного анализа и проверить её на исторических рыночных данных до решения об интеграции в приложение.
+
+### Изменения
+
+- B2-B upgraded to 2.2.0 / policy v3. Added immutable sequence_history entries captured at pivot availability time; final active sequence remains separate.
+- B2-C upgraded to 2.1.0 / policy v2. Structure events are replayed from causal sequence history, preventing later same-side replacement from erasing earlier events.
+- Same-source-candle high/low pairs are retained as ambiguous raw pivots but excluded from alternating sequence and BOS/CHoCH source admission.
+- B2-D accepts these ambiguous pivots only as explicitly tagged S/R evidence.
+- B2-E and B2-G validate historical event source pivots against accepted-at-availability sequence history.
+- B2-F and B2-G bind to the updated B2-B/B2-C engine and policy versions.
+- Added `tools/b2_historical_replay.cjs` and `.github/workflows/b2-historical-replay.yml`.
+
+### Verification
+
+- Integrated deterministic CI run 46033092111: 183/183 tests passed.
+- Historical replay run 46033092259: passed.
+- Six historical series: BTCUSDT/ETHUSDT 1H/4H/1D.
+- Full B2-A/B/C replay, 30 sampled B2-A–B2-E windows, synchronized MTF B2-F/B2-G execution for both symbols.
+- 18/18 prefix cutoffs passed (72 comparisons across B2-A pivots, B2-B history, B2-C history and B2-C events) passed for B2-A pivot availability and B2-C event history.
+- The historical replay report is stored in the CI artifact `b2-historical-replay-report` and summarized in the B2 preliminary replay audit.
+
+### Problems found and corrected
+
+1. Same-candle dual high/low pivots had been ordered by a deterministic type sort even though OHLC cannot reveal their intrabar order. Both are now marked AMBIGUOUS_FOR_SEQUENCE and excluded from the active structure sequence.
+2. B2-C had consumed only B2-B's final active sequence, allowing future same-side replacement to alter earlier event history. B2-B now preserves sequence_history at availability time, and B2-C replays events from that history. B2-E/B2-G validate event sources against it.
+
+### Limitations / acceptance
+
+- Historical archive ends 2025-12-05 and is third-party data claiming Bybit USDT-M perpetual provenance.
+- Replay uses synthetic B1-valid wrappers and synthetic zero MTF provider-time spread; it does not replace B1 live acceptance.
+- Zone/retest settings and pivot strength are exploratory, not production-calibrated.
+- Independent exact-source audit and iPhone/Safari verification remain open.
+- B1 remains NOT ACCEPTED. No app HTML or main-branch changes. PR #20 remains draft/unmerged.
+
+
+## 2026-11-27 — B2-G status transition timing and replay sensitivity
+
+- Fixed backdated superseded/ambiguous status projection by separating pivot visibility from status visibility.
+- Added fail-closed parity checks for same-source dual-pivot confirmation times.
+- Expanded historical replay with B2-B/B2-C sequence-history prefix comparisons, 2/2 vs 3/3 vs 5/5 pivot-strength sensitivity, 4×3 zone/retest parameter grid, and repeated-sweep statistics.
+- Latest integrated CI: 183/183 passed (run 46033092111).
+- Latest historical replay: passed (run 46033092259); 18 historical cutoffs, 72 causal-prefix comparisons.
+- Remaining review items: sweep-event repetition policy, pivot-strength selection, zone/retest calibration, live B1 MTF spread and independent exact-source audit.

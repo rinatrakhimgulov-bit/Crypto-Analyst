@@ -408,3 +408,46 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - `tests/b2b-swing-sequence-engine.test.cjs`: 19 deterministic cases covering sequence behavior, replacement symmetry, equality, causal ordering, fail-closed admission, immutability and determinism.
 - `.github/workflows/b2b-swing-sequence.yml`: isolated B2-B CI workflow. Run `46011622297` passed 19/19 on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
 - PR #13 is draft/unmerged and based on B2-A candidate. No main/app changes; B1 acceptance remains required before production integration.
+
+
+---
+
+## 2026-11-27 — B2-A through B2-G research modules
+
+| Module / file | Purpose | Current candidate status |
+|---|---|---|
+| `src/analysis/b2-causal-swing-engine.js` | B2-A causal swing pivots | Research candidate |
+| `src/analysis/b2b-swing-sequence-engine.js` | B2-B alternating sequence and immutable sequence history | 2.2.0-b2b |
+| `src/analysis/b2c-swing-structure-engine.js` | B2-C HH/HL/LH/LL, BOS/CHoCH and causal event replay | 2.1.0-b2c |
+| `src/analysis/b2d-support-resistance-engine.js` | B2-D S/R zones and candidate levels | Research candidate |
+| `src/analysis/b2e-breakout-retest-engine.js` | B2-E breakout/retest lifecycle | Research candidate |
+| `src/analysis/b2f-mtf-structure-confluence-engine.js` | B2-F 1D/4H/1H confluence | Research candidate |
+| `src/analysis/b2g-chart-projection-engine.js` | B2-G causal chart-neutral projection | Research candidate |
+| `tools/b2_historical_replay.cjs` | Full historical engine replay and prefix checks | Research harness |
+| `.github/workflows/b2-historical-replay.yml` | Historical replay CI workflow | Added |
+
+### Key contracts
+
+- B2-B excludes same-source-candle high/low pairs from active sequence and preserves them as ambiguous raw evidence.
+- B2-B sequence_history records each pivot when it becomes available; later replacement does not mutate the historical record.
+- B2-C events consume sequence_history; current active sequence remains a separate output.
+- B2-E and B2-G validate event source pivots against accepted-at-availability history.
+- B2-D may use ambiguous pivots as tagged S/R evidence but not as structure sequence pivots.
+
+### Verification
+
+- Integrated B2-A–B2-G CI: run 46033092111, 183/183 passed.
+- Historical replay: run 46033092259, passed; 18/18 prefix cutoffs passed (72 comparisons); six BTC/ETH timeframe series; 30 sampled B2-A–B2-E windows; two synchronized MTF projections.
+- Detailed metrics: `docs/audits/B2_PRELIMINARY_HISTORICAL_REPLAY_2026-11-27.md`.
+
+### Integration status
+
+All B2 modules remain isolated in the draft candidate PR #20. No app HTML or main branch changes. B1 is NOT ACCEPTED; independent audit, live MTF provider-time calibration, parameter calibration and iPhone/Safari acceptance remain required.
+
+
+### B2-G causal status timing / sensitivity harness (2026-11-27)
+
+- Superseded pivots now include pivot-visible and status-visible timestamps.
+- Ambiguous pairs expose their own pivot visibility and pair-status visibility; impossible staggered same-source confirmations fail closed.
+- Historical replay now checks B2-A/B2-B/B2-C prefix invariance, pivot strength sensitivity, zone/retest grid sensitivity and repeated sweep levels.
+- Latest CI: 183/183, run 46033092111. Historical replay run 46033092259 passed.

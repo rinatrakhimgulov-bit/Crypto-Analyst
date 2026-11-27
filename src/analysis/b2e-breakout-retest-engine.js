@@ -7,8 +7,8 @@
 
   const ENGINE_VERSION = '2.0.0-b2e';
   const REQUIRED_B2D_ENGINE_VERSION = '2.0.0-b2d';
-  const REQUIRED_B2B_ENGINE_VERSION = '2.0.0-b2b';
-  const REQUIRED_B2C_ENGINE_VERSION = '2.0.0-b2c';
+  const REQUIRED_B2B_ENGINE_VERSION = '2.2.0-b2b';
+  const REQUIRED_B2C_ENGINE_VERSION = '2.1.0-b2c';
   const BREAK_TYPES = Object.freeze({
     INITIAL_BULLISH_BREAK: 'BULLISH',
     BULLISH_BOS: 'BULLISH',
@@ -50,7 +50,8 @@
         typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
         typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
         !Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0 ||
-        policy.price_equality_policy !== 'EXACT_PRICE_V1') return 'B2E_UPSTREAM_POLICY_BINDING_INVALID';
+        policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
+        policy.b2b_same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1') return 'B2E_UPSTREAM_POLICY_BINDING_INVALID';
     const rp = policy.retest_policy;
     if (!isObject(rp) || typeof rp.version !== 'string' || !rp.version.trim() ||
         rp.touch_method !== 'RANGE_INTERSECTION_V1' ||
@@ -322,9 +323,10 @@
         b2c.admission.status !== 'ADMITTED' || b2c.admission.snapshot_id !== snapshot.snapshot_id ||
         b2c.admission.b2b_engine_version !== policy.b2b_engine_version ||
         b2c.admission.b2b_policy_version !== policy.b2b_policy_version ||
+        b2c.admission.b2b_same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy ||
         b2c.admission.b1_validator_version !== policy.b1_validator_version ||
         b2c.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
-        !Array.isArray(b2c.raw_pivots) || !Array.isArray(b2c.events) || b2c.events.some(e => !isObject(e))) return blocked('INVALID', 'B2C_ADMISSION_IDENTITY_MISMATCH', meta);
+        !Array.isArray(b2c.raw_pivots) || !Array.isArray(b2c.sequence_history) || !Array.isArray(b2c.events) || b2c.events.some(e => !isObject(e))) return blocked('INVALID', 'B2C_ADMISSION_IDENTITY_MISMATCH', meta);
 
     if (b2d.status !== 'VALID' || b2d.engine_version !== policy.b2d_engine_version ||
         b2d.policy_version !== policy.b2d_policy_version ||
@@ -382,6 +384,26 @@
       pivotById.set(pivot.pivot_id, pivot);
     }
 
+    const eventPivotById = new Map();
+    let historyAvailableAt = -1;
+    for (const historyPivot of b2c.sequence_history) {
+      const rawPivot = historyPivot && pivotById.get(historyPivot.pivot_id);
+      if (!rawPivot || eventPivotById.has(historyPivot.pivot_id) ||
+          historyPivot.sequence_status !== 'ACCEPTED_AT_AVAILABILITY' ||
+          historyPivot.exclusion_reason !== null || historyPivot.superseded_by !== null ||
+          historyPivot.type !== rawPivot.type || historyPivot.price !== rawPivot.price ||
+          historyPivot.source_time_ms !== rawPivot.source_time_ms ||
+          historyPivot.confirmed_at_ms !== rawPivot.confirmed_at_ms ||
+          historyPivot.available_at_ms !== rawPivot.available_at_ms ||
+          !Number.isSafeInteger(historyPivot.sequence_index_at_availability) ||
+          historyPivot.sequence_index_at_availability < 0 ||
+          historyPivot.available_at_ms < historyAvailableAt) {
+        return blocked('INVALID', 'B2C_SEQUENCE_HISTORY_INVALID', meta);
+      }
+      eventPivotById.set(historyPivot.pivot_id, historyPivot);
+      historyAvailableAt = historyPivot.available_at_ms;
+    }
+
     const zoneIds = new Set();
     for (const zone of b2d.zones) {
       if (!isObject(zone) || typeof zone.zone_id !== 'string' || !zone.zone_id ||
@@ -433,7 +455,7 @@
           event.breaking_candle_close_time_ms < previousEventClose) return blocked('INVALID', 'B2C_EVENT_PROVENANCE_INVALID', meta);
       previousEventClose = event.breaking_candle_close_time_ms;
       if (event.source_pivot_id !== null) {
-        const evidencePivot = pivotById.get(event.source_pivot_id);
+        const evidencePivot = eventPivotById.get(event.source_pivot_id);
         if (!evidencePivot || event.level_price !== evidencePivot.price || evidencePivot.available_at_ms >= eventCandle.close_time_ms) {
           return blocked('INVALID', 'B2C_EVENT_PIVOT_PROVENANCE_INVALID', meta);
         }
@@ -449,7 +471,7 @@
     };
     for (const event of breakEvents) {
       const direction = BREAK_TYPES[event.event_type];
-      const pivot = pivotById.get(event.source_pivot_id);
+      const pivot = eventPivotById.get(event.source_pivot_id);
       const candleIndex = closeIndex.get(event.breaking_candle_close_time_ms);
       const breakingCandle = candleIndex === undefined ? null : candles[candleIndex];
       if (!pivot || !breakingCandle || event.direction !== direction ||
@@ -457,7 +479,7 @@
           event.breaking_candle_close !== breakingCandle.close ||
           event.confirmed_at_ms !== breakingCandle.close_time_ms ||
           event.available_at_ms !== breakingCandle.close_time_ms + policy.finality_safety_lag_ms ||
-          pivot.available_at_ms >= breakingCandle.close_time_ms || pivot.sequence_status !== 'ACCEPTED' ||
+          pivot.available_at_ms >= breakingCandle.close_time_ms || pivot.sequence_status !== 'ACCEPTED_AT_AVAILABILITY' ||
           event.prior_state !== expectedPriorState[event.event_type] ||
           event.transition !== (event.event_type === 'INITIAL_BULLISH_BREAK' || event.event_type === 'INITIAL_BEARISH_BREAK' || event.event_type === 'BULLISH_CHOCH' || event.event_type === 'BEARISH_CHOCH') ||
           event.confirmation_method !== 'CLOSED_CANDLE_CLOSE' || event.break_buffer_policy !== 'ZERO_BUFFER_V1' || event.break_buffer !== 0 ||
