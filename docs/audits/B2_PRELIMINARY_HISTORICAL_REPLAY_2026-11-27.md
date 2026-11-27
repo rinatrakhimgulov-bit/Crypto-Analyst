@@ -88,3 +88,69 @@ The current B2-A output sorts pivots sharing the same availability and source ti
 - This report does not claim that the B2-A through B2-G modules were executed against these full historical rows.
 - No LONG/SHORT decision, win rate, expectancy, drawdown or profitability result was measured.
 - B1 remains NOT ACCEPTED. Production integration remains blocked.
+
+
+## Finding B2-B/C-REPLAY-002 — final active sequence was being used as historical event input
+
+**Severity:** HIGH — causal event integrity.
+
+The first full-engine historical replay found a prefix-invariance mismatch on BTCUSDT 1H. A replay using only candles available at a historical cutoff produced a different B2-C event stream from the full-history replay filtered to that same cutoff. Root cause: B2-C consumed only B2-B's final active sequence. A later, more extreme same-side pivot can supersede and remove an earlier pivot from that final sequence, even though the earlier pivot was valid and available when an earlier BOS/CHoCH/sweep event occurred.
+
+**Correction implemented on this candidate branch:**
+- B2-B is now 2.2.0-b2b / b2b-swing-sequence-v3.
+- B2-B emits both the final active sequence and immutable sequence_history. Each accepted pivot is copied at its availability time as ACCEPTED_AT_AVAILABILITY; later replacement mutates only the raw/final active status, not the historical record.
+- B2-C is now 2.1.0-b2c / b2c-state-v2. It validates the sequence history against the raw pivots and independently reconstructs it, then replays structure events from that history. The final active sequence remains separate for current-state output.
+- B2-E validates breakout source pivots against accepted-at-availability history, not only the final active sequence.
+- B2-G validates event source provenance against the same history.
+- B2-D explicitly accepts AMBIGUOUS_FOR_SEQUENCE raw pivots as tagged S/R evidence, without admitting them to the alternating structure sequence.
+
+## Full historical replay result
+
+**GitHub Actions run:** 46032038435 — passed. The workflow uploaded b2_historical_replay_report.json as the b2-historical-replay-report artifact.
+
+Replay scope:
+- BTCUSDT and ETHUSDT, 1H/4H/1D.
+- Six archived Bybit USDT-M perpetual CSV series, 2020-03-25 through 2025-12-05 (ETH begins 2021-03-15).
+- Full B2-A/B/C execution on each full series.
+- Five 160-candle historical windows per symbol/timeframe, with B2-A through B2-E execution (30 windows total).
+- One synchronized 160-candle 1D/4H/1H window per symbol, then B2-F and B2-G execution.
+- Three historical prefix cutoffs per series. B2-A pivot availability and B2-C event histories matched full-history results filtered to each cutoff: **18/18 prefix checks passed**.
+
+Full-history engine counts:
+
+| Symbol | TF | Raw pivots | Active sequence | Ambiguous dual pivots | B2-C events |
+|---|---:|---:|---:|---:|---:|
+| BTCUSDT | 1H | 14,212 | 10,902 | 674 | 8,110 |
+| BTCUSDT | 4H | 3,587 | 2,640 | 226 | 2,058 |
+| BTCUSDT | 1D | 576 | 424 | 40 | 334 |
+| ETHUSDT | 1H | 11,771 | 8,992 | 550 | 7,049 |
+| ETHUSDT | 4H | 2,922 | 2,187 | 166 | 1,718 |
+| ETHUSDT | 1D | 475 | 369 | 24 | 272 |
+
+Synchronized archive cutoff: 2025-12-05T00:00:00.500Z. Both symbols produced UP|UP|DOWN across 1D/4H/1H and B2-F returned MIXED_STRUCTURE. B2-G produced:
+- BTCUSDT: 46 swing markers, 2 ambiguous markers, 33 structure events, 15 zones, 3 retest lifecycles.
+- ETHUSDT: 34 swing markers, 2 ambiguous markers, 28 structure events, 7 zones, 2 retest lifecycles.
+
+The 30 sampled B2-D/B2-E windows produced confirmed zones, breakout candidates and retest lifecycle states including successful, failed, expired and waiting cases. The exact per-window counts are retained in the CI artifact.
+
+## Current verification status and limitations
+
+The integrated deterministic B2-A→B2-G suite passed **181/181** tests in GitHub Actions run 46031937203:
+- B2-A 21
+- B2-B 21
+- B2-C 35
+- B2-D 21
+- B2-E 24
+- B2-F 30
+- B2-G 29
+
+This is meaningful evidence that the causal sequence correction and the full research chain execute on archived market data. It is not proof of trading profitability, and it does not close B1 acceptance.
+
+Important limits:
+- The historical archive ends on 2025-12-05, so it does not test 2026 market conditions.
+- The replay constructs a synthetic B1-valid wrapper after independently checking the archive rows. It does not execute the production B1 REST/WS adapters or the real B1 MTF provider-time contract.
+- The synchronized MTF replay uses a synthetic zero provider-time spread. Live Bybit spread calibration remains outstanding.
+- Zone span was set to 0.1% of median close and retest tolerance/buffers to 0.05% of median close for exploratory replay only. These are not calibrated production parameters.
+- The 2/2 pivot window remains a candidate setting, not a selected production setting.
+- Exact-source independent review and iPhone/Safari acceptance remain outstanding.
+- No main branch or main HTML integration has occurred. Integration remains blocked until B1 acceptance, independent review and parameter review are complete.
