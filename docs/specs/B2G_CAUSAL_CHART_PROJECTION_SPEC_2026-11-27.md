@@ -107,3 +107,12 @@ Actual chart rendering is a later B2-H UI integration step, gated by B1 acceptan
 ## 9. Release gates
 
 B2-G is research-only. The DTO may be implemented and tested in isolation. No application HTML or chart integration until B1 is formally accepted, exact B2-A through B2-G source commits are independently reviewed, and the owner explicitly approves integration.
+
+
+## 10. Integration-preview amendment: optional MTF context
+
+The chart projection remains valid when the selected-timeframe B2-A/B2-C/B2-D/B2-E inputs are valid and `b2f_result` is explicitly `null`. In this case the projection must return `mtf_context: null`. If a B2-F result is supplied, all existing B2-F identity, version, timeframe and selected-snapshot checks remain mandatory; an invalid supplied B2-F result still blocks projection.
+
+This optionality exists only to permit causal single-timeframe chart visualization while live provider-time spread calibration is outstanding. It does not authorize MTF directional decisions and does not weaken validation of a supplied MTF result.
+
+The prototype UI currently uses this single-timeframe mode. B2-F remains disabled until concurrent live 1D/4H/1H Bybit captures establish an empirical provider-time spread policy.
