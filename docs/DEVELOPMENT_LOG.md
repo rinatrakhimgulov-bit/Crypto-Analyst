@@ -775,3 +775,10 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B1 browser/data workflow 46034808544 passed; deterministic groups 50/50, 32/32, 72/72 and 20/20; zero page errors.
 - Live Bybit REST probe was skipped because GitHub runner requests to api.bybit.com and api.bytick.com returned HTTP 403. This remains unverified on live exchange from this environment.
 - Synthetic browser test covered 220 closed candles and 390px viewport without horizontal overflow. This is not a substitute for iPhone Safari owner verification.
+
+
+### Clean PR #22 CI refresh
+
+- B2 research suite run 46034803544: passed.
+- B2 app integration run 46034803848: passed. Causal S/R zone start-position assertion passed; stale B1 quality blocked the B2 pipeline; mobile 390×844 layout passed without horizontal overflow.
+- B1 browser run 46034803715: passed with zero page errors; live Bybit was skipped due runner HTTP 403.
