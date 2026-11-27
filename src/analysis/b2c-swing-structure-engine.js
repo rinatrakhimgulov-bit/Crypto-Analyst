@@ -280,8 +280,8 @@
         protectedLevel = { ...pivot, activated_by_transition_id: events.filter(e => e.direction === 'BEARISH' && e.transition).at(-1)?.event_id || null };
       }
 
-      if (state === 'UP' && pivot.type === 'SWING_HIGH' && pivot.available_at_ms > transitionAvailableAt) continuationLevel = pivot;
-      if (state === 'DOWN' && pivot.type === 'SWING_LOW' && pivot.available_at_ms > transitionAvailableAt) continuationLevel = pivot;
+      if (state === 'UP' && pivot.type === 'SWING_HIGH' && pivot.structure_label === 'HH' && pivot.available_at_ms > transitionAvailableAt) continuationLevel = pivot;
+      if (state === 'DOWN' && pivot.type === 'SWING_LOW' && pivot.structure_label === 'LL' && pivot.available_at_ms > transitionAvailableAt) continuationLevel = pivot;
     }
     function emit(type, direction, candle, pivot, extra = {}) {
       const eventId = ['B2C', type, candle.close_time_ms, pivot ? pivot.pivot_id : 'NO_LEVEL'].join(':');
