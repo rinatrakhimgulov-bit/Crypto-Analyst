@@ -426,3 +426,9 @@ This does not change release status: B1 remains unaccepted pending independent r
 ## Latest verification refresh — 2026-11-27
 
 After the preceding state entry, the MTF suite was expanded with explicit tests for required closed-candle history count and pending-finality context isolation. Latest candidate HTML blob is now `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest completed CI run `45966502044`: Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 18/18, B1 gate/UI and C1 chart assertions passed, zero browser page errors. Total named self-tests: 158/158. Live Bybit remains blocked by HTTP 403 from both public REST hosts on GitHub Actions. Current branch comparison: 66 commits ahead, 0 behind main. Main remains unchanged.
+
+
+
+## CI record correction — 2026-11-27
+
+A newer completed run, `45966700299`, supersedes the earlier run recorded above. It reports Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 65/65, B1 MTF 18/18, B1 gate/UI and C1 chart assertions passed, zero browser page errors; 159/159 named deterministic self-tests. The gate harness now also exercises a VALID-looking report with a mismatched `snapshot_id` and verifies it is rejected. Exact HTML blob remains `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes); current branch comparison is 85 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 from both REST hosts on GitHub Actions. This does not constitute live validation.
