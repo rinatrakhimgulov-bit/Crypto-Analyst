@@ -247,3 +247,9 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 - `src/analysis/b2b-swing-sequence-engine.js`: B2-B alternating sequence and HH/LH/EQH/HL/LL/EQL labels; exact upstream identity binding.
 - `tests/b2b-swing-sequence-engine.test.cjs`: 19 deterministic tests; run `46011622297` passed.
 - PR #12 and #13 remain draft/unmerged, research-only. B1 remains NOT ACCEPTED; no application or `main` integration.
+
+
+### B2-A → B2-B contract integration verification — 2026-11-27
+- B2-B suite: 20/20 deterministic cases, including actual B2-A engine output passed into B2-B.
+- GitHub Actions run `46012201698` passed on code commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`.
+- This confirms deterministic module contract only; no live Bybit or app integration.
