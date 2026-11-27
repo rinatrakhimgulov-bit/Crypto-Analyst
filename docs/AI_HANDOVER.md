@@ -1260,3 +1260,9 @@ Use PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`. Current HTML bl
 ## Latest transport test and artifact — 2026-11-27
 
 Current integration branch head `c9d207d6dd3f8194bcc97a4d600e284a85594e04`. HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); browser harness `70399a984b44f5f85024afcdf11289e4a73a6361` (32,071 bytes); probe `3b5df8f0feda730c7e6564808f40ad4526f0e44a`. CI `45968566553` passed 161/161 named tests, UI/chart/probe checks, zero page errors. Real Chromium fetch test confirms external cancellation and timeout close all 3 delayed HTTP requests. Timeout now has named `TimeoutError`. Live Bybit still blocked by runner HTTP 403. Branch 124 ahead / 0 behind main; main unchanged. Independent audit, live captures/spread calibration, Safari panel check and explicit acceptance remain open.
+
+
+
+## Final branch pointer — 2026-11-27
+
+Current PR #8 head after documentation sync: `5e94c29d1f5734e8b46200c04b6da51996ca9726`; draft and unmerged. Branch 131 ahead / 0 behind main. The exact tested code blobs remain HTML `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` and harness `70399a984b44f5f85024afcdf11289e4a73a6361`; no source changes after successful CI `45968566553`. Main HTML is unchanged.
