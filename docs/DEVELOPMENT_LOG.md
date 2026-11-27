@@ -368,3 +368,18 @@ Details: `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md`.
 ### B1-C gate identity binding and end-to-end regression hardening — 2026-11-27
 
 The mandatory gate now requires the current validator version and current policy version as well as status VALID. Mismatched or missing report identity fails closed as INVALID. The Playwright harness now exercises real normalization → canonical snapshot → validator → engine using deterministic synthetic Bybit-format rows: VALID yields 159 closed candles and populated EMA20/EMA50/ATR14; negative volume yields INVALID/WAIT with empty indicators; expired transport age yields STALE/WAIT with empty indicators. Latest Actions run passed Stage A 44/44, contract 32/32, validator 63/63, gate assertions, cleanup restoration, and zero page errors. Live API check was skipped because GitHub Actions receives HTTP 403 from both Bybit hosts. Candidate remains unmerged; latest UI still needs iPhone Safari verification.
+
+
+### Chart visualization C1 — EMA200 and volume pane — 2026-11-27
+
+**Branch:** `b1/contract-review` (candidate only; `main` untouched).
+
+- Source inspection found EMA20/EMA50 overlays and SH/SL markers were already drawn by `CandleChart`; these were preserved rather than duplicated.
+- Added EMA200 calculation to `BasicAnalyticsEngine` using closed candles only. The series is returned separately and does not alter existing LONG/SHORT/WAIT rules.
+- Increased the active REST kline request from 160 to 400 rows so the app can obtain at least 200 closed candles for EMA200 initialization and additional smoothing history.
+- Added EMA200 to the chart with its own legend entry. Visible EMA values are included in the price scale; EMA lines are clipped to the price pane.
+- Added a synchronized lower volume pane using Bybit linear base-asset `volume`; bar direction follows candle direction and the forming candle is muted. Volume bars use the same visible candle slice and horizontal positions as price candles.
+- Added Playwright checks for EMA200 warm-up (first valid value at index 199), EMA200 calculation, volume-bar rendering, muted forming-candle volume, and EMA200 alignment that excludes the forming candle.
+- No changes to the quality gate, existing trade-decision conditions, WebSocket behavior, or `main`.
+
+**Verification status:** implementation and CI assertions added; browser workflow result pending. iPhone Safari verification of this new chart layout remains pending. Do not mark C1 accepted until CI and user-side Safari checks pass.
