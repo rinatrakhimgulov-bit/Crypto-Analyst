@@ -6,8 +6,8 @@
   'use strict';
 
   const ENGINE_VERSION = '2.0.0-b2d';
-  const REQUIRED_B2C_ENGINE_VERSION = '2.0.0-b2c';
-  const REQUIRED_B2B_ENGINE_VERSION = '2.1.0-b2b';
+  const REQUIRED_B2C_ENGINE_VERSION = '2.1.0-b2c';
+  const REQUIRED_B2B_ENGINE_VERSION = '2.2.0-b2b';
   const REQUIRED_B2A_ENGINE_VERSION = '2.0.0-b2a';
   const TIMEFRAME_MS = Object.freeze({ '1h': 3600000, '4h': 14400000, '1d': 86400000 });
   const CLOSED_STATES = new Set(['CONFIRMED', 'TIME_DERIVED']);
