@@ -135,6 +135,17 @@ async function main() {
           emptyLevels: analysis.levels.resistance === null && analysis.levels.support === null
         };
       });
+      const emptyInsufficient = BasicAnalyticsEngine.analyze({
+        interval: '60',
+        canonicalSnapshot: { snapshot_id: 'empty-snapshot', candles_by_timeframe: { '1h': [] } },
+        closedCandles: [],
+        prices: { lastClosedPrice: null, formingClosePrice: null, tickerLastPrice: null, currentMarketPrice: null, currentPriceSource: 'none', priceWarning: null },
+        qualityReport: {
+          status: 'INSUFFICIENT', validator_version: B1QualityValidator.VERSION,
+          policy_version: B1_QUALITY_POLICY.version, snapshot_id: 'empty-snapshot',
+          reasons: [{ code: 'INSUFFICIENT_HISTORY' }]
+        }
+      });
       const missing = BasicAnalyticsEngine.analyze(base);
       const valid = BasicAnalyticsEngine.analyze({
         ...base, qualityReport: {
@@ -237,6 +248,7 @@ async function main() {
 
       return {
         blocked,
+        emptyInsufficient: { decision: emptyInsufficient.decision, status: emptyInsufficient.qualityGate && emptyInsufficient.qualityGate.status, blocked: emptyInsufficient.qualityGate && emptyInsufficient.qualityGate.blocked, reasonCodes: emptyInsufficient.qualityGate && emptyInsufficient.qualityGate.reasonCodes },
         missing: { decision: missing.decision, blocked: missing.qualityGate && missing.qualityGate.blocked },
         valid: {
           decision: valid.decision, blocked: valid.qualityGate && valid.qualityGate.blocked,
@@ -294,6 +306,7 @@ async function main() {
         x.decision !== 'WAIT' || x.blocked !== true || x.gateStatus !== x.status ||
         x.emptyIndicators !== true || x.emptyLevels !== true
       ),
+      ...(gate.emptyInsufficient.decision !== 'WAIT' || gate.emptyInsufficient.status !== 'INSUFFICIENT' || gate.emptyInsufficient.blocked !== true || !gate.emptyInsufficient.reasonCodes.includes('INSUFFICIENT_HISTORY') ? [{ case: 'empty-insufficient-series', ...gate.emptyInsufficient }] : []),
       ...(gate.missing.decision !== 'WAIT' || gate.missing.blocked !== true ? [{ case: 'missing-report', ...gate.missing }] : []),
       ...(gate.valid.blocked !== false || gate.valid.status !== 'VALID' ||
           gate.valid.ema20Count === 0 || gate.valid.ema50Count === 0 || gate.valid.atr14Count === 0
