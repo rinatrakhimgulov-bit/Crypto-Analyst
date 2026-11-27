@@ -577,3 +577,17 @@ The owner approved deferring Stage 1 visual/live-chart polish and prioritizing t
 - No application HTML, main branch, live decision path, or production analytics was changed by this test expansion.
 
 Next B2 work must remain staged: independently review B2-A's exact source and tests; only after that, develop B2-B swing-sequence labels as an isolated consumer of immutable B2-A pivots. BOS/CHoCH, zones, retests, MTF decision integration and UI remain later increments.
+
+
+## B2-B isolated swing-sequence candidate — 2026-11-27
+
+- New pure module: `src/analysis/b2b-swing-sequence-engine.js`.
+- Consumes only a VALID B2-A result and requires exact B2-A engine/policy identity plus the exact B1 validator and quality-policy identities carried by B2-A admission.
+- Retains every raw pivot. Produces a separate alternating sequence in B2-A `available_at_ms` order; it rejects non-monotonic availability rather than sorting by visual source time.
+- Implements symmetric same-side replacement: higher highs and lower lows replace the active same-side sequence pivot; less-extreme/equal pivots remain in raw evidence as `SUPERSEDED_FOR_SEQUENCE`.
+- Emits `INITIAL_HIGH`, `INITIAL_LOW`, `HH`, `LH`, `EQH`, `HL`, `LL`, `EQL`, comparison pivot IDs, price delta and relative delta percentage.
+- Output is deeply immutable without freezing nested objects owned by the upstream B2-A input.
+- GitHub Actions run 46011622297 passed **19/19** deterministic B2-B tests on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
+- PR #13 is draft and unmerged, based on the B2-A candidate branch. This code is research-only; it is not wired into the app or LONG/SHORT path. B1 remains NOT ACCEPTED.
+
+Next: independent review of exact B2-A/B2-B source and tests; then B2-C protected swings and BOS/CHoCH only as a separate isolated increment, still gated from production by B1 acceptance.
