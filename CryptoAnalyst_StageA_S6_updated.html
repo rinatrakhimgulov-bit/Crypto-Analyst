@@ -1815,7 +1815,7 @@
           expect(!result.directional_allowed && result.reasons.some(r => r.code === 'MTF_CLOSED_COVERAGE_INCOMPLETE'), 'short coverage was accepted');
         });
         test('09 exact finality boundary is accepted', () => {
-          const exactCutoff = cutoff + 500;
+          const exactCutoff = cutoff + 600;
           const data = {
             '1d': make('1d', exactCutoff),
             '4h': make('4h', exactCutoff),
