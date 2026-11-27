@@ -40,4 +40,16 @@ echo "Raw logs: $ORDERFLOW_PROBE_LOG_DIR"
 echo "Press Ctrl+C to stop."
 echo
 
-python tools/orderflow-cloud-test/runner.py
+# Run the third-party application with no inherited GitHub tokens or user CLI auth.
+mkdir -p "$ROOT/.cloud-test/probe-home"
+env -i \
+  PATH="$PATH" \
+  HOME="$ROOT/.cloud-test/probe-home" \
+  LANG="${LANG:-C.UTF-8}" \
+  TERM="${TERM:-xterm}" \
+  CODESPACE_NAME="${CODESPACE_NAME:-}" \
+  GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN="${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}" \
+  ORDERFLOW_REPO="$WORK" \
+  ORDERFLOW_PROBE_LOG_DIR="$ROOT/orderflow-cloud-test-output" \
+  PYTHONUNBUFFERED=1 \
+  python tools/orderflow-cloud-test/runner.py
