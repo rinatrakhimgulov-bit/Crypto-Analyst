@@ -54,3 +54,12 @@ Reason: the configured provider-time spread threshold has not been empirically c
 - `main` was not modified.
 - No PR has been merged.
 - This is an integration preview only. B2 output is not connected to LONG/SHORT/WAIT and is not a trading signal.
+
+
+## Clean PR snapshot
+
+The integration preview was repackaged on a branch directly based on current `main` to avoid carrying the entire research branch ancestry into the application PR.
+
+- Branch: `integration/b2-clean-preview-2026-11-27`
+- Draft PR #22: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/22
+- `main` is unchanged and the PR is not merged.
