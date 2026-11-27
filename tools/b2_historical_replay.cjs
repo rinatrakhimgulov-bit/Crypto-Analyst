@@ -28,14 +28,14 @@ const POLICY_A = {
   price_equality_policy: 'EXACT_PRICE_V1'
 };
 const POLICY_B = {
-  version: 'b2b-swing-sequence-v2', same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+  version: 'b2b-swing-sequence-v3', same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
   b2a_engine_version: '2.0.0-b2a', b2a_policy_version: 'b2a-causal-swing-v1',
   b1_validator_version: '1.1.0', b1_quality_policy_version: QUALITY,
   price_equality_policy: 'EXACT_PRICE_V1'
 };
 const POLICY_C = {
-  version: 'b2c-state-v1', b2b_engine_version: '2.1.0-b2b',
-  b2b_policy_version: 'b2b-swing-sequence-v2',
+  version: 'b2c-state-v2', b2b_engine_version: '2.2.0-b2b',
+  b2b_policy_version: 'b2b-swing-sequence-v3',
   b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
   b2a_engine_version: '2.0.0-b2a', b2a_policy_version: 'b2a-causal-swing-v1',
   b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
@@ -46,18 +46,18 @@ const POLICY_F = {
   version: 'b2f-mtf-confluence-v1', b1_mtf_contract_version: '1.0.0',
   b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
   b1_quality_policy_version: QUALITY,
-  b2b_engine_version: '2.1.0-b2b', b2b_policy_version: 'b2b-swing-sequence-v2',
+  b2b_engine_version: '2.2.0-b2b', b2b_policy_version: 'b2b-swing-sequence-v3',
   b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
-  b2c_engine_version: '2.0.0-b2c', b2c_policy_version: 'b2c-state-v1',
+  b2c_engine_version: '2.1.0-b2c', b2c_policy_version: 'b2c-state-v2',
   finality_safety_lag_ms: LAG, max_provider_time_spread_ms: 0
 };
 const POLICY_G = {
   version: 'b2g-chart-projection-v1', b1_contract_version: '1.1.0',
   b1_validator_version: '1.1.0', b1_quality_policy_version: QUALITY,
   b2a_engine_version: '2.0.0-b2a', b2a_policy_version: 'b2a-causal-swing-v1',
-  b2b_engine_version: '2.1.0-b2b', b2b_policy_version: 'b2b-swing-sequence-v2',
+  b2b_engine_version: '2.2.0-b2b', b2b_policy_version: 'b2b-swing-sequence-v3',
   b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
-  b2c_engine_version: '2.0.0-b2c', b2c_policy_version: 'b2c-state-v1',
+  b2c_engine_version: '2.1.0-b2c', b2c_policy_version: 'b2c-state-v2',
   b2d_engine_version: '2.0.0-b2d', b2d_policy_version: 'b2d-zone-engine-v1',
   b2d_zone_policy_version: 'b2d-absolute-span-v1',
   b2e_engine_version: '2.0.0-b2e', b2e_policy_version: 'b2e-retest-engine-v1',
@@ -155,9 +155,9 @@ function runZones(structure, symbol, timeframe) {
     min_independent_touches: 2
   };
   const policyD = {
-    version: 'b2d-zone-engine-v1', b2c_engine_version: '2.0.0-b2c',
-    b2c_policy_version: 'b2c-state-v1', b2b_engine_version: '2.1.0-b2b',
-    b2b_policy_version: 'b2b-swing-sequence-v2',
+    version: 'b2d-zone-engine-v1', b2c_engine_version: '2.1.0-b2c',
+    b2c_policy_version: 'b2c-state-v2', b2b_engine_version: '2.2.0-b2b',
+    b2b_policy_version: 'b2b-swing-sequence-v3',
     b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
     b2a_engine_version: '2.0.0-b2a', b2a_policy_version: 'b2a-causal-swing-v1',
     b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
@@ -177,10 +177,10 @@ function runZones(structure, symbol, timeframe) {
     retest_window_bars: 20, confirmation_window_bars: 3
   };
   const policyE = {
-    version: 'b2e-retest-engine-v1', b2b_engine_version: '2.1.0-b2b',
-    b2b_policy_version: 'b2b-swing-sequence-v2',
+    version: 'b2e-retest-engine-v1', b2b_engine_version: '2.2.0-b2b',
+    b2b_policy_version: 'b2b-swing-sequence-v3',
     b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
-    b2c_engine_version: '2.0.0-b2c', b2c_policy_version: 'b2c-state-v1',
+    b2c_engine_version: '2.1.0-b2c', b2c_policy_version: 'b2c-state-v2',
     b2d_engine_version: '2.0.0-b2d', b2d_policy_version: 'b2d-zone-engine-v1',
     b2d_zone_policy_version: zonePolicy.version,
     b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
