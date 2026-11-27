@@ -4,7 +4,7 @@
 **Дата актуализации:** 2026-11-27  
 **Основная ветка:** `main`  
 **Основной исходный файл:** `CryptoAnalyst_StageA_S6_updated.html`  
-**Текущий этап:** B2-A–B2-G research candidate implemented and historically replayed. B1 remains NOT ACCEPTED. Main HTML and `main` are unchanged; no production integration.
+**Текущее состояние:** B2-A–B2-G интегрированы в `main` через PR #22 (merge commit `d2b8220572ec407a62c5a359af3c0264919932b1`). Начат B3: переработка визуализации графика в отдельной ветке. B1/B2 аналитическое ядро не меняется в рамках B3.
 
 ---
 
@@ -741,3 +741,14 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - B2-D/B2-E were tested on five sampled 160-candle windows per series plus final synchronized MTF windows; this was not a full-series zone/retest replay.
 - Synthetic synchronized MTF outputs were UP|UP|DOWN / MIXED for BTC and ETH. Provider-time spread was artificially set to zero in the historical wrapper; live spread calibration remains open.
 - No profitability, expectancy, win-rate or current-2026 regime adaptation was tested. Archive ends 2025-12-05.
+
+
+## 2026-11-27 — B2 merge и старт B3
+
+- Исправлена устаревшая запись в заголовке документа: PR #22 действительно merged в `main`; merge commit `d2b8220572ec407a62c5a359af3c0264919932b1`.
+- Main HTML включает B2-A…B2-G и B2 chart projection. B2-F остаётся отключённым до live provider-time calibration; B2 не подключён к LONG/SHORT/WAIT.
+- B3 начат в ветке `feature/b3-chart-ui-redesign-2026-11-27`, созданной от merge commit выше.
+- Цель B3: увеличить мобильную рабочую область графика, добавить режимы Clean/Structure/Full и независимые переключатели слоёв, снизить плотность меток без изменения B1/B2 output.
+- Спецификация: `docs/specs/B3_CHART_UI_REDESIGN_SPEC_2026-11-27.md`.
+- Ветка-кандидат содержит изменения HTML, browser integration test и workflow trigger. JavaScript syntax check прошёл для обоих inline scripts. Полный browser/CI run и iPhone Safari acceptance пока не подтверждены.
+- B3 не merged; `main` остаётся неизменным относительно merge commit #22.
