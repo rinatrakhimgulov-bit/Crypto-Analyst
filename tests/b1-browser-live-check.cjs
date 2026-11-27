@@ -338,6 +338,34 @@ async function main() {
       throw new Error(`Chart overlay/volume visual checks failed: ${JSON.stringify(chartVisual)}`);
     }
 
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileChartVisual = await page.evaluate(() => {
+      const chart = window.__CryptoAnalystTestHooks && window.__CryptoAnalystTestHooks.chart;
+      if (!chart) throw new Error('Chart test hook unavailable in mobile viewport');
+      chart.render();
+      const rect = chart.canvas.getBoundingClientRect();
+      const metrics = chart.getPlotMetrics();
+      const pricePlotH = Math.max(50, metrics.plotH * 0.72);
+      const volumeTop = 16 + pricePlotH + 10;
+      const volumeBottom = 16 + metrics.plotH - 12;
+      return {
+        viewportWidth: window.innerWidth,
+        canvasWidth: chart.canvas.clientWidth,
+        canvasHeight: chart.canvas.clientHeight,
+        canvasRight: rect.right,
+        plotWidth: metrics.plotW,
+        volumePaneHeight: Math.max(10, volumeBottom - volumeTop)
+      };
+    });
+    if (mobileChartVisual.viewportWidth !== 390 ||
+        mobileChartVisual.canvasWidth < 280 ||
+        mobileChartVisual.canvasHeight < 280 ||
+        mobileChartVisual.canvasRight > mobileChartVisual.viewportWidth + 1 ||
+        mobileChartVisual.plotWidth < 200 ||
+        mobileChartVisual.volumePaneHeight < 30) {
+      throw new Error(`Mobile chart layout checks failed: ${JSON.stringify(mobileChartVisual)}`);
+    }
+
     const post = suites.stage.post || {};
     const requiredRestoration = [
       'fetchRestored', 'hooksRestored', 'configRestored',
@@ -423,6 +451,7 @@ async function main() {
       b1Quality: suites.quality.totals,
       b1Gate: gate,
       chartVisual,
+      mobileChartVisual,
       cleanup: post, browserFetchProbe, liveBybit, pageErrors
     }, null, 2));
   } finally {
