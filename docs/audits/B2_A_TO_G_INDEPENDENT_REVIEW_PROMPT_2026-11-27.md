@@ -3,7 +3,7 @@
 **Target repository:** rinatrakhimgulov-bit/Crypto-Analyst  
 **Target branch:** feature/b2g-chart-projection-contract-2026-11-27  
 **Draft PR:** #20 — B2-A–B2-G: causal market-structure research chain and historical replay  
-**Target head at prompt creation:** deff5e4d8f65b1c67f82989725af0a45227f7100  
+**Target source commit:** d6ec9698fa493d3f060424d93ecc9984574bfe1f (source/tests/replay code; later commits are documentation-only). **Current branch head:** 40c90090f1103801890d9ec43d24756f50d561ff  
 **Mode:** independent audit only. Do not modify files, push commits, or merge the PR.
 
 ## Required approach
