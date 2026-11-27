@@ -273,3 +273,8 @@ Crypto Analyst развивается как независимая от кон�
 - Validate EMA alignment, volume rendering, zoom/pan, and mobile layout.
 
 C1 is a chart-visualization task, not a claim that the market-structure engine is complete. B2 remains unstarted until B1 acceptance criteria are met.
+
+
+### B1-C UI observability closure — 2026-11-27
+
+**Статус: НА ПРОВЕРКЕ.** Quality panel now exposes validator status/version, reason codes, and explicit analysis blocked/WAIT state. Chromium DOM regression test and full CI passed (44/44 Stage A, 32/32 contract, 63/63 validator, zero page errors). GitHub runner live Bybit probe remains blocked with HTTP 403. The latest panel-detail change awaits a brief iPhone Safari visual check; independent B1 review and explicit acceptance remain prerequisites before B2 and merge.
