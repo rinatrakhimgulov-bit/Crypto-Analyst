@@ -398,3 +398,14 @@ GitHub Actions run `45965680821`: Stage A 44/44; B1 contract 32/32; B1 validator
 
 ### Global product architecture decisions
 The authoritative decision register is `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`. It fixes the initial product scope, Bybit/USDT linear market, BTC/ETH, 1D/4H/1H, REST-first + WS LOG-ONLY, closed-candle directional analysis, provider-neutral layered architecture, causal market-structure sequence, browser-first JavaScript runtime and no auto-execution. Backend/database/hosting vendor, framework migration, additional exchanges, news and order-flow are explicitly deferred until justified by a real requirement. These are deliberate deferrals, not blockers to building the analytical core.
+
+
+
+
+### B1-E regression expansion — latest verification 2026-11-27
+
+The MTF test suite was expanded from 12 to 16 cases. New assertions cover closed-only analysis slices (no forming/pending-finality candle leakage), provider-time spread exactly one millisecond above policy, multiple post-cutoff rows, and missing measured spread policy. Async tests cover sibling abort and superseded generation.
+
+Latest GitHub Actions run `45966127523` passed: Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 16/16, B1 gate/UI and C1 chart assertions passed, zero browser page errors. Live Bybit remains skipped/blocked by HTTP 403 from both public REST hosts.
+
+Exact current candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independent audit prompt has been pinned to this exact blob. No code change was made to main. B1 remains unaccepted; independent review, live spread calibration, actual network abort verification, latest quality-panel Safari check and owner acceptance remain open.
