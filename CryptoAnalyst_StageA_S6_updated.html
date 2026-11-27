@@ -1827,7 +1827,7 @@
             '1h': make('1h', exactCutoff)
           };
           const result = B1MtfEngine.assemble(data, exactCutoff + 1000, { maxProviderTimeSpreadMs: 0, closedCandleCount: count });
-          expect(result.timeframes['1h'].analysis_candles.some(c => c.close_time_ms + B1_QUALITY_POLICY.finality_safety_lag_ms <= exactCutoff), 'finality boundary candle missing');
+          expect(result.timeframes['1h'].analysis_candles.some(c => c.close_time_ms + B1_QUALITY_POLICY.finality_safety_lag_ms === exactCutoff), 'candle exactly at the 500 ms finality boundary was not admitted');
         });
         test('10 result and nested candles are deeply immutable', () => {
           const result = run();
@@ -1916,7 +1916,39 @@
           } catch (error) { rejected = error instanceof RangeError; }
           expect(rejected && fetchCalls === 0, 'missing closedCandleCount silently defaulted or started requests');
         }]);
-        asyncTests.push(['18 superseded MTF generation cannot publish late results', async () => {
+        asyncTests.push(['18 Bybit 1000-row cap rejects oversized history before network requests', async () => {
+          let fetchCalls = 0;
+          const adapter = { fetchMarketSnapshot() { fetchCalls++; return Promise.resolve(null); } };
+          let rejected = false;
+          try {
+            await B1MtfEngine.fetchAndAssemble(adapter, 'BTCUSDT', null, {
+              maxProviderTimeSpreadMs: 0, closedCandleCount: 999
+            });
+          } catch (error) { rejected = /1000-row maximum/.test(error.message); }
+          expect(rejected && fetchCalls === 0, 'oversized MTF history was truncated or sent to the adapter');
+        }]);
+        asyncTests.push(['19 external AbortSignal cancels all three timeframe requests', async () => {
+          const external = new AbortController();
+          const seen = [];
+          const adapter = {
+            fetchMarketSnapshot(_symbol, interval, signal) {
+              seen.push({ interval, signal });
+              return new Promise((resolve, reject) => {
+                signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+              });
+            }
+          };
+          const pending = B1MtfEngine.fetchAndAssemble(adapter, 'BTCUSDT', external.signal, {
+            maxProviderTimeSpreadMs: spread, closedCandleCount: count
+          });
+          await Promise.resolve();
+          external.abort(new Error('synthetic external cancellation'));
+          let rejected = false;
+          try { await pending; } catch (_) { rejected = true; }
+          expect(rejected && seen.length === 3 && seen.every(item => item.signal.aborted),
+            'external cancellation did not reach all timeframe requests');
+        }]);
+        asyncTests.push(['20 superseded MTF generation cannot publish late results', async () => {
           let requestCount = 0;
           const adapter = {
             fetchMarketSnapshot(_symbol, interval, signal) {
