@@ -1,10 +1,10 @@
 
 # Crypto Analyst — Project State
 
-**Дата актуализации:** 2026-11-26  
+**Дата актуализации:** 2026-11-27  
 **Основная ветка:** `main`  
 **Основной исходный файл:** `CryptoAnalyst_StageA_S6_updated.html`  
-**Текущий этап:** Stage A / S6; B0 аудит завершён. B1 — исследование data layer и review draft-контракта. Основной HTML не изменён.
+**Текущий этап:** B2-A–B2-G research candidate implemented and historically replayed. B1 remains NOT ACCEPTED. Main HTML and `main` are unchanged; no production integration.
 
 ---
 
@@ -591,3 +591,47 @@ Next B2 work must remain staged: independently review B2-A's exact source and te
 - PR #13 is draft and unmerged, based on the B2-A candidate branch. This code is research-only; it is not wired into the app or LONG/SHORT path. B1 remains NOT ACCEPTED.
 
 Next: independent review of exact B2-A/B2-B source and tests; then B2-C protected swings and BOS/CHoCH only as a separate isolated increment, still gated from production by B1 acceptance.
+
+
+---
+
+## 18. Current verified state — B2-A through B2-G (2026-11-27)
+
+**Candidate branch:** `feature/b2g-chart-projection-contract-2026-11-27`  
+**Draft PR:** #20, base `feature/b2f-mtf-structure-confluence-2026-11-27`  
+**Scope:** isolated analytical modules and research harness only. No application HTML or `main` changes.
+
+### Implemented candidate modules
+
+- B2-A: causal swing pivot detection, exact-price plateau policy, rightmost plateau representative, availability timestamps and fail-closed B1 admission.
+- B2-B 2.2.0: alternating swing sequence, explicit same-candle dual-pivot exclusion, immutable sequence history at availability time, final active sequence kept separately.
+- B2-C 2.1.0: HH/HL/LH/LL state, BOS/CHoCH/sweep event replay from causal sequence history, final active pivots separated from historical event pivots.
+- B2-D: support/resistance zones and candidate levels, with ambiguous dual pivots allowed only as explicitly tagged raw S/R evidence.
+- B2-E: breakout/retest lifecycle; source pivot provenance validated against accepted-at-availability history.
+- B2-F: 1D/4H/1H structure confluence against an MTF snapshot contract.
+- B2-G: causal chart-neutral projection DTOs; active, superseded and ambiguous pivots are distinct; event sources are checked against sequence history.
+
+### Verified test and historical replay evidence
+
+- Integrated GitHub Actions run `46031937203`: **181/181** deterministic tests passed (B2-A 21, B2-B 21, B2-C 35, B2-D 21, B2-E 24, B2-F 30, B2-G 29).
+- Historical replay run `46032038435`: full B2-A/B/C on BTCUSDT and ETHUSDT 1H/4H/1D archive series; 30 sampled 160-candle B2-A–B2-E windows; synchronized MTF B2-F/B2-G execution for both symbols.
+- Prefix invariance: 18/18 checks passed across the six symbol/timeframe series, comparing B2-A pivot availability and B2-C event history at three historical cutoffs.
+- The historical report is recorded in `docs/audits/B2_PRELIMINARY_HISTORICAL_REPLAY_2026-11-27.md`; CI artifact name: `b2-historical-replay-report`.
+
+### Critical limitations
+
+- Archive ends 2025-12-05; it is not current 2026 market data.
+- Historical replay used a synthetic B1-valid wrapper, not the production B1 REST/WS adapters.
+- MTF provider-time spread was synthetic zero; live Bybit spread calibration is still open.
+- Zone/retest tolerances and 2/2 pivot strength are exploratory settings, not calibrated production parameters.
+- Exact-source independent audit and iPhone/Safari acceptance remain outstanding.
+- B1 remains NOT ACCEPTED. B2 is not approved for production or app integration.
+- Do not merge PR #20 or change `main` without explicit owner approval.
+
+### Next gates before app integration
+
+1. Independent exact-source review of the current B2-A–B2-G branch and historical harness.
+2. Review and calibrate pivot strength, zone span and retest parameters on additional/out-of-sample data.
+3. Complete B1 live concurrent Bybit 1D/4H/1H capture and provider-time spread policy.
+4. Verify the current candidate on iPhone/Safari, including symbol/timeframe switches, reconnect and stale/fallback handling.
+5. Prepare a separate integration candidate only after all gates pass.
