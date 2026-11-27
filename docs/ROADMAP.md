@@ -284,3 +284,16 @@ Crypto Analyst развивается как независимая от кон�
 - Explicit absolute max-span policy scoped to instrument/timeframe; no implicit tolerance.
 - 20/20 deterministic tests passed in run 46014759139, including full B1 → B2-A → B2-B → B2-C → B2-D fixture.
 - PR #16 draft/unmerged. Absolute tolerance calibration against live market data remains outstanding.
+
+
+## 10. Stage 2 progress update — 2026-11-27
+
+Current isolated research candidates:
+- B2-A causal swing pivots: 21/21 tests, run 46014698432.
+- B2-B alternating sequence: 20/20 tests, run 46015818149.
+- B2-C structure/BOS/CHoCH: 33/33 tests, run 46015831238.
+- B2-D support/resistance zones: 21/21 tests, run 46015873986.
+
+Internal review fixes: B2-A candle-gap admission; B2-C HH/LL-only BOS continuation; protected-pivot re-arming for opposite CHoCH; exact B2-A-to-B2-B pivot-set binding. B2-D exposes freshness as unclassified and zone IDs as membership-derived; absolute tolerance requires per-instrument/timeframe calibration.
+
+All candidates are isolated, draft and unmerged. B1 remains NOT ACCEPTED. Next: finish B2-D design review, then specify B2-E breakout/retest/failure lifecycle with stable level lineage before implementation. No production integration until B1 acceptance and explicit owner approval.
