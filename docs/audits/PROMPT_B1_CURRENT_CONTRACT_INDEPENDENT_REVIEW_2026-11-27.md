@@ -80,3 +80,9 @@ Do not call this profitable trading logic. Do not infer live exchange correctnes
 ## Test suite expansion — 2026-11-27
 
 The current HTML blob includes 18 MTF tests. Additional cases assert: forming and pending-finality candles never enter the closed-only analysis slice; provider-time spread one millisecond above policy fails closed; multiple post-cutoff rows fail closed; missing measured spread policy fails closed; missing closed-candle count fails before network requests; and superseded requests cannot publish. The B1 validator now requires a stable canonical `snapshot_id`, includes it in each quality report, and the analytics gate checks that the report belongs to the exact dataset snapshot. Latest run 45966700299 passed Stage A 44/44, B1 contract 32/32, B1 validator 65/65, MTF 18/18, gate/UI/chart checks, with zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public REST hosts.
+
+
+
+## Artifact/test refresh — 2026-11-27
+
+The exact candidate HTML blob to audit is now `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). The latest completed CI run is `45966502044`: Stage A 44/44, contract 32/32, validator 64/64, MTF 18/18; 158/158 total named self-tests, gate/UI/chart assertions passed, zero page errors. The new MTF tests cover omitted closed-history count and pending-finality context separation. Please audit this newer exact blob, not the older SHA in the original prompt body. Live Bybit remains blocked from GitHub Actions by HTTP 403 from both REST hosts.
