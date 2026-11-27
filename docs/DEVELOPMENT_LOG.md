@@ -698,3 +698,36 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Zone/retest settings and pivot strength are exploratory, not production-calibrated.
 - Independent exact-source audit and iPhone/Safari verification remain open.
 - B1 remains NOT ACCEPTED. No app HTML or main-branch changes. PR #20 remains draft/unmerged.
+
+
+
+## 2026-11-27 — B2 app integration candidate
+
+**Branch:** `integration/b2-market-structure-ui-2026-11-27`  
+**Base:** B1-D candidate branch, not `main`.
+
+### Implementation
+
+- Inlined the B2-A…B2-G browser modules into the single-file HTML application.
+- Added a separate B2 panel and chart overlays for swing pivots, BOS/CHoCH events and S/R zones.
+- Added a fail-closed B2 runner: it requires the selected timeframe's B1 canonical snapshot and VALID quality report; B2-F MTF remains intentionally disconnected pending live provider-time calibration.
+- Kept B2 out of the existing LONG/SHORT/WAIT calculation path.
+- Fixed B2-D call wiring to pass `zone_policy: zonePolicy`.
+- Fixed B2-G optional MTF projection handling so a single-timeframe chart projection can be VALID with explicit null MTF context.
+- Fixed a chart look-ahead issue: confirmed S/R zones now begin at their causal `visible_from_ms` timestamp, not at the left edge of the chart.
+- Added browser regression coverage for single-timeframe projection, B1 stale fail-closed behavior, mobile layout and causal zone start position.
+
+### Verification
+
+- B2 app integration run [46034275312](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034275312) passed: B2-A…B2-G suites, browser integration and mobile layout checks.
+- Synthetic browser result: 220 closed candles, B1 VALID, B2 VALID, 33 pivots, 65 structure events, 2 zones, 2 retest lifecycles; projection attached; stale B1 input blocked.
+- Mobile viewport 390×844: B2 panel visible; no horizontal overflow; zero page errors.
+- B1 browser/data suite [46034276646](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034276646) passed. Live Bybit REST was skipped because GitHub Actions received HTTP 403 from both Bybit hosts.
+
+### Limits
+
+- Synthetic browser fixtures prove runtime wiring, not live market correctness or trading effectiveness.
+- MTF remains disabled in the application until provider-time spread calibration.
+- Zone/retest thresholds and pivot sensitivity remain exploratory.
+- No iPhone/Safari verification has been performed on this integration branch yet.
+- No merge to `main` was made.
