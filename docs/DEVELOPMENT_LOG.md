@@ -679,11 +679,11 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 
 ### Verification
 
-- Integrated deterministic CI run 46031937203: 181/181 tests passed.
-- Historical replay run 46032038435: passed.
+- Integrated deterministic CI run 46033092111: 183/183 tests passed.
+- Historical replay run 46033092259: passed.
 - Six historical series: BTCUSDT/ETHUSDT 1H/4H/1D.
 - Full B2-A/B/C replay, 30 sampled B2-A–B2-E windows, synchronized MTF B2-F/B2-G execution for both symbols.
-- 18/18 prefix-invariance checks passed for B2-A pivot availability and B2-C event history.
+- 18/18 prefix cutoffs passed (72 comparisons across B2-A pivots, B2-B history, B2-C history and B2-C events) passed for B2-A pivot availability and B2-C event history.
 - The historical replay report is stored in the CI artifact `b2-historical-replay-report` and summarized in the B2 preliminary replay audit.
 
 ### Problems found and corrected
@@ -698,3 +698,13 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Zone/retest settings and pivot strength are exploratory, not production-calibrated.
 - Independent exact-source audit and iPhone/Safari verification remain open.
 - B1 remains NOT ACCEPTED. No app HTML or main-branch changes. PR #20 remains draft/unmerged.
+
+
+## 2026-11-27 — B2-G status transition timing and replay sensitivity
+
+- Fixed backdated superseded/ambiguous status projection by separating pivot visibility from status visibility.
+- Added fail-closed parity checks for same-source dual-pivot confirmation times.
+- Expanded historical replay with B2-B/B2-C sequence-history prefix comparisons, 2/2 vs 3/3 vs 5/5 pivot-strength sensitivity, 4×3 zone/retest parameter grid, and repeated-sweep statistics.
+- Latest integrated CI: 183/183 passed (run 46033092111).
+- Latest historical replay: passed (run 46033092259); 18 historical cutoffs, 72 causal-prefix comparisons.
+- Remaining review items: sweep-event repetition policy, pivot-strength selection, zone/retest calibration, live B1 MTF spread and independent exact-source audit.
