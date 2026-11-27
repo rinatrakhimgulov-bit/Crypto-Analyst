@@ -452,3 +452,38 @@ A separate design specification is drafted in `docs/specs/B2E_BREAKOUT_RETEST_LI
 The design uses B2-C immutable event IDs as stable lifecycle identity, not B2-D membership-derived zone IDs. It defines explicit pivot-level retest tolerance, maximum closed-bar window, touch/success/failure/expiry transitions, strict equality boundaries, same-candle no-lookahead, optional B2-D zone context and prefix-replay requirements.
 
 B2-E is specification only; no implementation has been started. It does not authorize bypassing B1 acceptance. The v1 scope deliberately tracks retests of the broken B2-C pivot level, not full B2-D zone outer-boundary breakouts.
+
+
+## 21. B2-E breakout/retest/failure lifecycle — 2026-11-27
+
+B2-E has an isolated research candidate in PR #17. This section freezes the candidate's initial lifecycle policy; it does not authorize production integration.
+
+### 21.1 Breakout admission and historical zone
+- Consume only confirmed directional B2-C events: initial bullish/bearish break, BOS and CHoCH.
+- Bullish breakouts map to resistance zones; bearish breakouts map to support zones.
+- The broken pivot must be an accepted B2-B sequence pivot and must be available strictly before the breakout candle close.
+- Reconstruct the historical zone from only raw pivots available strictly before the breakout candle close, using the B2-D max-span and independent-touch policy.
+- Later pivots must not create, widen or otherwise alter the historical zone for an earlier breakout.
+- If no qualifying zone existed at the breakout time, emit an unmatched-breakout record; do not retroactively attach a later zone.
+
+### 21.2 Retest and outcome policy
+- Retest touch uses RANGE_INTERSECTION_V1: the closed candle range intersects the historical zone expanded by the explicit touch tolerance.
+- Touch tolerance, success buffer, failure buffer, retest window bars and confirmation window bars are required explicit policy inputs. No hidden defaults.
+- Bullish success: a post-touch closed candle closes strictly above zone upper bound plus success buffer. Bullish failure: it closes strictly below zone lower bound minus failure buffer.
+- Bearish success/failure are symmetric.
+- The touch candle itself may confirm success/failure if its wick intersects the zone and its close meets the corresponding strict outcome boundary.
+- If the retest window is incomplete, status remains WAITING_RETEST. If the confirmation window is incomplete, status remains RETEST_PENDING_CONFIRMATION.
+- A complete window with no touch is RETEST_EXPIRED. A complete confirmation window after a touch with no outcome is RETEST_UNRESOLVED.
+
+### 21.3 Role reversal
+- Bullish successful retest confirms RESISTANCE → SUPPORT.
+- Bearish successful retest confirms SUPPORT → RESISTANCE.
+- Failed retests reject the proposed role reversal. Expired and unresolved cases leave role reversal unconfirmed. The effective role remains the original role unless success is confirmed.
+- Multiple breakout events have independent lifecycle records.
+
+### 21.4 Candidate verification
+- PR #17: isolated and draft/unmerged.
+- 22/22 deterministic tests passed in GitHub Actions run [46016401705](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46016401705), including a full B1 → B2-A → B2-B → B2-C → B2-D → B2-E fixture.
+- Internal review is recorded in docs/audits/B2E_IMPLEMENTATION_REVIEW_2026-11-27.md; it is not an independent external audit.
+- Retest buffers and tolerances are synthetic explicit policy inputs and are not calibrated market facts.
+- B1 remains NOT ACCEPTED. No B2 candidate may be imported into the application or connected to directional decisions until B1 acceptance and explicit owner approval.
