@@ -1285,7 +1285,7 @@ After live browser evidence, perform an exact-blob independent review of the B1-
 ## 2026-11-27 current handover — B2 research candidate
 
 Current candidate branch: `feature/b2g-chart-projection-contract-2026-11-27`.
-Draft PR #20: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/20 (base `feature/b2f-mtf-structure-confluence-2026-11-27`). Current branch head: `6a4822273176ebcae92dd6a09c2c703084856965` (latest source changes were already present in the immediately preceding source commit; subsequent commits update audit and handover docs).
+Draft PR #20: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/20 (base `feature/b2f-mtf-structure-confluence-2026-11-27`). Current branch head: `40c90090f1103801890d9ec43d24756f50d561ff` (latest source changes were already present in the immediately preceding source commit; subsequent commits update audit and handover docs).
 
 B2-A through B2-G candidate modules are implemented on the research branch. B2-B 2.2.0 preserves immutable sequence history at availability time; B2-C 2.1.0 replays events from that history. Same-candle dual pivots are explicitly ambiguous and excluded from the active structure sequence. B2-E/B2-G validate event source pivots against sequence history. B2-D may retain ambiguous raw pivots as tagged S/R evidence.
 
