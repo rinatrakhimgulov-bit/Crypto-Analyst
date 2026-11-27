@@ -240,3 +240,10 @@ Adapter должен:
 - Решить, нужна ли 1m canonical base для resampling или достаточно нативных 1H/4H/1D с cross-check.
 
 **Текущий статус:** draft specification. Не считать B1 реализованным; не менять основной HTML до принятия контракта и тестовой матрицы.
+
+
+
+
+## Supersession note — 2026-11-27
+
+This is an early design draft. The implemented candidate contract is now version 1.1.0 and is defined by the current HTML implementation plus `docs/specs/B1B_QUALITY_VALIDATOR_SPEC_2026-11-27.md`, `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md`, and `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`. Do not treat this draft as the authoritative implementation contract where the documents differ.
