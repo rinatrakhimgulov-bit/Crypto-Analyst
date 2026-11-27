@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feature/b2b-swing-sequence-2026-11-27
+  pull_request:
+    branches:
+      - feature/b2a-causal-swing-engine-2026-11-27
   workflow_dispatch:
 
 permissions:
