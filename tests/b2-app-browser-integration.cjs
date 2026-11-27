@@ -137,6 +137,7 @@ async function main() {
         pivots: chart.displayLayers.pivots,
         events: chart.displayLayers.events,
         retests: chart.displayLayers.retests,
+        emas: chart.displayLayers.emas,
         activeMode: document.querySelector('[data-chart-mode="clean"]')?.getAttribute('aria-pressed')
       };
       document.querySelector('[data-chart-mode="structure"]').click();
@@ -164,7 +165,7 @@ async function main() {
       return { initial, structure, custom, full, cleanHeight, layerButtons: layers.length, modeButtons: modes.length };
     });
     if (displayChecks.initial.mode !== 'clean' || displayChecks.initial.zones !== true ||
-        displayChecks.initial.pivots !== true || displayChecks.initial.events !== false ||
+        displayChecks.initial.pivots !== true || displayChecks.initial.events !== false || displayChecks.initial.emas !== false ||
         displayChecks.initial.activeMode !== 'true' ||
         displayChecks.structure.mode !== 'structure' || displayChecks.structure.events !== true ||
         displayChecks.structure.retests !== true || displayChecks.structure.activeMode !== 'true' ||
