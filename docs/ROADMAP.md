@@ -376,3 +376,8 @@ Latest isolated V8 verification: B1-E 32/32 PASS; B1 Quality 65/65 PASS; both in
 The assembled MTF result and failure results are now deeply frozen, including nested per-timeframe diagnostics, canonical candle arrays, candle objects and quality reports. The provider-time-spread failure path was adjusted to preserve the immutable result contract.
 
 Latest HTML blob: 842c361a8386c358a68f22407814c376fd3bde1b. Final isolated V8 verification: B1-E 33/33 PASS; B1 Quality 65/65 PASS; both inline JavaScript blocks parse. This remains a candidate only: no live Bybit, browser/UI, Chrome/iPhone Safari or full StageASelfTest verification. MTFDataEngine is not connected to the UI/decision pipeline. PR #6 remains draft and unmerged; main unchanged.
+
+
+### B1-A/B/E independent audit — 2026-11-27
+
+External audit of the exact candidate returned **APPROVE WITH CONDITIONS**. B1-E 33/33 and B1 Quality 65/65 passed independently; no CRITICAL defect was found. The MTF library remains isolated and is suitable for controlled research/observability, not directional use. Remaining gates before directional integration: real/recorded concurrent Bybit 1D/4H/1H responses, measured and documented fail-closed `maxProviderTimeSpreadMs`, transport-level abort verification, and a forming-candle validation/non-consumption invariant. No production spread default is to be guessed. PR #6 remains draft pending the project's browser/live acceptance process. Full audit: `docs/audits/B1_A_B_E_INDEPENDENT_AUDIT_2026-11-27.md`.
