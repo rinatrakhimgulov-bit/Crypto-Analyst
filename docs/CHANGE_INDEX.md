@@ -293,3 +293,5 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 - `docs/audits/B2E_IMPLEMENTATION_REVIEW_2026-11-27.md`: internal exact-source review notes for B2-E candidate commit `493a15e8006784d2b78262770725c26bd05c2e85`; explicitly not an independent external audit.
 
 - Latest exact B2-A/B/C/D/E candidate heads and CI counts are recorded in the 2026-11-27 current-state section of PROJECT_STATE.md.
+
+- Final B2-A→B2-E combined verification: 119/119 passed in run 46017280701 on integrated head `b7fccbc232c8a2de573cbfb053ef06b10b2cf834`.
