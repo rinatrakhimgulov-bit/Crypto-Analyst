@@ -367,3 +367,16 @@ Latest integration candidate HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab
 ## Latest verification supersession — 2026-11-27
 
 Run `45966700299` supersedes earlier totals: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 18/18; gate/UI/chart assertions passed, zero browser page errors; 159/159 named tests. The quality-gate suite rejects a VALID-looking report with a mismatched `snapshot_id`. Candidate HTML blob `1cb41cfbc03534441774eeeaac08f36082f19ab9`; branch is 85 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 from both REST hosts. B1 acceptance gates remain open.
+
+
+
+
+## Latest B1 completion work — 2026-11-27
+
+- B1-C binds the quality report to the canonical snapshot ID and verifies the exact legacy closed-candle series and last-closed price consumed by analytics match that canonical validated series. Mismatch blocks with INVALID/WAIT; empty matching series preserve INSUFFICIENT.
+- B1-E suite: 20 tests, including explicit history count, pending-finality separation, 1000-row cap, external cancellation, sibling abort and supersession.
+- Added read-only Bybit live capture utility `tools/b1_live_probe.html` schema v3 and iPhone Safari procedure. CI smoke-checks the page without making external requests.
+
+Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20, gate/UI/chart/probe smoke passed, zero browser page errors. Live Bybit remains blocked by runner HTTP 403 from both public hosts. Exact current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`.
+
+B1 remains in review. Independent exact-artifact review, live 1D/4H/1H capture and measured spread policy, transport-level abort verification, latest Safari quality-panel check and owner approval remain mandatory. No merge to main; B2 remains gated.
