@@ -3687,11 +3687,41 @@
 
       analyze(dataset) {
         const qualityReport = dataset && dataset.qualityReport;
+        const canonicalSnapshot = dataset && dataset.canonicalSnapshot;
+        const timeframe = dataset && ({ '60': '1h', '240': '4h', D: '1d' })[dataset.interval];
+        const canonicalCandles = canonicalSnapshot && canonicalSnapshot.candles_by_timeframe &&
+          canonicalSnapshot.candles_by_timeframe[timeframe];
+        const analyticsCandles = dataset && dataset.closedCandles;
+        const candleSeriesMatches = Boolean(
+          Array.isArray(canonicalCandles) && Array.isArray(analyticsCandles) &&
+          canonicalCandles.length === analyticsCandles.length &&
+          canonicalCandles.every((c, i) => {
+            const a = analyticsCandles[i];
+            return a && c &&
+              a.ts === c.open_time_ms && a.closeTs === c.close_time_ms &&
+              a.open === c.open && a.high === c.high && a.low === c.low && a.close === c.close &&
+              a.volume === c.volume_base && (a.turnover ?? null) === (c.volume_quote ?? null);
+          })
+        );
+        const canonicalLastClose = canonicalCandles && canonicalCandles.length
+          ? canonicalCandles[canonicalCandles.length - 1].close : null;
+        const lastClosedPriceMatches = Boolean(
+          candleSeriesMatches && dataset.prices &&
+          Number.isFinite(canonicalLastClose) &&
+          dataset.prices.lastClosedPrice === canonicalLastClose
+        );
+        const analysisInputValid = candleSeriesMatches && lastClosedPriceMatches;
+        const snapshotIdentityMatches = Boolean(
+          qualityReport && canonicalSnapshot &&
+          typeof canonicalSnapshot.snapshot_id === 'string' &&
+          qualityReport.snapshot_id === canonicalSnapshot.snapshot_id
+        );
         const reportVersionValid = Boolean(
           qualityReport &&
           qualityReport.validator_version === B1QualityValidator.VERSION &&
           qualityReport.policy_version === B1_QUALITY_POLICY.version &&
-          Boolean(dataset && dataset.canonicalSnapshot && qualityReport.snapshot_id === dataset.canonicalSnapshot.snapshot_id)
+          snapshotIdentityMatches &&
+          analysisInputValid
         );
         if (!reportVersionValid || qualityReport.status !== 'VALID') {
           const prices = dataset && dataset.prices ? dataset.prices : {};
@@ -3699,10 +3729,13 @@
           const codes = Array.isArray(qualityReport && qualityReport.reasons)
             ? qualityReport.reasons.map(reason => reason && reason.code).filter(Boolean).slice(0, 5)
             : [];
-          if (qualityReport && !reportVersionValid) codes.unshift(
-            dataset && dataset.canonicalSnapshot && qualityReport.snapshot_id === dataset.canonicalSnapshot.snapshot_id
-              ? 'QUALITY_REPORT_VERSION_MISMATCH' : 'QUALITY_REPORT_SNAPSHOT_MISMATCH'
-          );
+          if (qualityReport && !reportVersionValid) {
+            codes.unshift(!snapshotIdentityMatches
+              ? 'QUALITY_REPORT_SNAPSHOT_MISMATCH'
+              : !analysisInputValid
+                ? 'ANALYTICS_CANDLE_DATA_MISMATCH'
+                : 'QUALITY_REPORT_VERSION_MISMATCH');
+          }
           const detail = codes.length ? ` Причины: ${codes.join(', ')}.` : '';
           return {
             decision: 'WAIT',
