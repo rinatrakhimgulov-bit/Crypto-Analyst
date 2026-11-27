@@ -1,0 +1,12 @@
+{
+  "name": "Crypto Analyst cloud diagnostics",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "OrderFlow live dashboard",
+      "onAutoForward": "notify",
+      "visibility": "private"
+    }
+  }
+}
