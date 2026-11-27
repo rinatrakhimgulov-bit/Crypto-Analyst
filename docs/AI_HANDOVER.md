@@ -1329,3 +1329,14 @@ Current integration branch head may have advanced beyond the CI-tested commit du
 - Historical archive ends 2025-12-05 and uses a synthetic B1-valid wrapper.
 - Next: user iPhone/Safari verification, live MTF capture/calibration, independent exact-source review, parameter/out-of-sample assessment.
 - Do not merge PR #22 without explicit owner approval.
+
+---
+## Current owner decisions — 2026-11-27 (supersedes older next-step sequences)
+
+B3 is merged into main and the user reports that the chart is significantly better. The next implementation stage is **B4: reliable Live Data Path**. Before coding, inspect the actual current main implementation; do not assume old handover descriptions remain current. Target behavior: one coherent REST bootstrap/history + WebSocket live path, accurate last price and forming-candle updates, closed-candle immutability, finality-aware reconciliation, reconnect/resubscribe and fallback, with quality gates blocking directional output on stale/invalid data. Live Bybit behavior must be checked on the user's iPhone/Safari; GitHub runner HTTP 403 is not a live-provider verdict.
+
+**B5 Market Journal is approved.** Schema design may run alongside B4, but first release should stay small: local browser persistence and JSON export/import, no backend requirement. Record timestamped immutable market snapshots with symbol/timeframes/price, source and provider timestamps, B1 quality/reason codes, algorithm/schema versions, structure/events available at capture time, user decision LONG/SHORT/WAIT/skip, optional entry/invalidation/SL/TP/risk plan, and later outcome. Record WAIT and skipped setups as well as executed trades. Explicitly distinguish paper observations from actual trades; pending outcomes remain pending; do not fabricate PnL or retroactively modify a snapshot using future information.
+
+Then proceed B6 analytical core, B7 a limited set of 2–3 explainable setups, B8 journal + historical/out-of-sample validation with costs and uncertainty, B9 explainable decisions and risk context. Avoid feature sprawl, premature public release, multi-exchange expansion, auto-trading and stack migration without demonstrated need.
+
+Long-term architecture principle: keep data adapters, quality, analytics, journal and UI behind stable contracts so the current HTML/JavaScript prototype can later move toward TypeScript/React and/or a backend without discarding validated algorithms and tests. UI/integration code may need rewriting; migration is not assumed to be zero-effort. The canonical detailed plan is docs/ROADMAP.md, section dated 2026-11-27.
