@@ -74,6 +74,7 @@
     const snapshot = input && input.snapshot;
     const report = input && input.quality_report;
     const source = input && input.b2b_result;
+    const b2aSource = input && input.b2a_result;
     const asOf = input && input.analysis_as_of_ms;
     const meta = {
       policyVersion: policy.version,
@@ -82,7 +83,7 @@
       timeframe: input && input.timeframe,
       analysisAsOfMs: asOf
     };
-    if (!isObject(snapshot) || !isObject(report) || !isObject(source)) return blocked('INVALID', 'B2C_INPUT_MISSING', meta);
+    if (!isObject(snapshot) || !isObject(report) || !isObject(source) || !isObject(b2aSource)) return blocked('INVALID', 'B2C_INPUT_MISSING', meta);
     if (!Number.isSafeInteger(asOf) || asOf <= 0 || snapshot.analysis_as_of_ms !== asOf ||
         snapshot.provider_server_time_ms !== asOf || !isObject(snapshot.provider_metadata) ||
         snapshot.provider_metadata.time_source !== 'provider') return blocked('INVALID', 'B1_ANALYSIS_CUTOFF_INVALID', meta);
@@ -104,6 +105,21 @@
       Number.isSafeInteger(report.checked_at_ms) && report.checked_at_ms >= 0;
     if (!reportMatches) return blocked('INVALID', 'B1_QUALITY_REPORT_IDENTITY_MISMATCH', meta);
     if (report.status !== 'VALID') return blocked('BLOCKED', 'B1_QUALITY_STATUS_NOT_VALID', meta);
+
+    if (b2aSource.status !== 'VALID' || b2aSource.engine_version !== REQUIRED_B2A_ENGINE_VERSION ||
+        b2aSource.policy_version !== policy.b2a_policy_version ||
+        b2aSource.snapshot_id !== snapshot.snapshot_id || b2aSource.symbol !== snapshot.canonical_symbol ||
+        b2aSource.timeframe !== timeframe || b2aSource.analysis_as_of_ms !== asOf ||
+        !isObject(b2aSource.admission) || b2aSource.admission.status !== 'ADMITTED' ||
+        b2aSource.admission.snapshot_id !== snapshot.snapshot_id ||
+        !isObject(b2aSource.admission.quality_report) ||
+        b2aSource.admission.quality_report.snapshot_id !== snapshot.snapshot_id ||
+        b2aSource.admission.quality_report.validator_version !== policy.b1_validator_version ||
+        b2aSource.admission.quality_report.policy_version !== policy.b1_quality_policy_version ||
+        b2aSource.admission.quality_report.checked_at_ms !== report.checked_at_ms ||
+        !Array.isArray(b2aSource.pivots)) {
+      return blocked('INVALID', 'B2A_ADMISSION_IDENTITY_MISMATCH', meta);
+    }
 
     if (source.status !== 'VALID' || source.engine_version !== REQUIRED_B2B_ENGINE_VERSION ||
         source.policy_version !== policy.b2b_policy_version ||
@@ -149,6 +165,25 @@
     }
 
     if (!Array.isArray(source.raw_pivots) || !Array.isArray(source.sequence)) return blocked('INVALID', 'B2B_SEQUENCE_SHAPE_INVALID', meta);
+    if (source.raw_pivots.length !== b2aSource.pivots.length) {
+      return blocked('INVALID', 'B2A_PIVOT_SET_MISMATCH', meta);
+    }
+    for (let i = 0; i < b2aSource.pivots.length; i++) {
+      const expected = b2aSource.pivots[i];
+      const actual = source.raw_pivots[i];
+      if (!actual || actual.pivot_id !== expected.pivot_id || actual.type !== expected.type ||
+          actual.price !== expected.price || actual.source_time_ms !== expected.source_time_ms ||
+          actual.source_index !== expected.source_index || actual.confirmed_at_ms !== expected.confirmed_at_ms ||
+          actual.available_at_ms !== expected.available_at_ms ||
+          !isObject(actual.confirmation) || !isObject(expected.confirmation) ||
+          actual.confirmation.method !== expected.confirmation.method ||
+          actual.confirmation.left_strength !== expected.confirmation.left_strength ||
+          actual.confirmation.right_strength !== expected.confirmation.right_strength ||
+          actual.confirmation.equality_policy !== expected.confirmation.equality_policy ||
+          actual.confirmation.finality_safety_lag_ms !== expected.confirmation.finality_safety_lag_ms) {
+        return blocked('INVALID', 'B2A_PIVOT_SET_MISMATCH', meta);
+      }
+    }
     const rawIds = new Set();
     let previousAvailable = -1;
     for (const pivot of source.raw_pivots) {
@@ -280,8 +315,8 @@
         protectedLevel = { ...pivot, activated_by_transition_id: events.filter(e => e.direction === 'BEARISH' && e.transition).at(-1)?.event_id || null };
       }
 
-      if (state === 'UP' && pivot.type === 'SWING_HIGH' && pivot.available_at_ms > transitionAvailableAt) continuationLevel = pivot;
-      if (state === 'DOWN' && pivot.type === 'SWING_LOW' && pivot.available_at_ms > transitionAvailableAt) continuationLevel = pivot;
+      if (state === 'UP' && pivot.type === 'SWING_HIGH' && pivot.structure_label === 'HH' && pivot.available_at_ms > transitionAvailableAt) continuationLevel = pivot;
+      if (state === 'DOWN' && pivot.type === 'SWING_LOW' && pivot.structure_label === 'LL' && pivot.available_at_ms > transitionAvailableAt) continuationLevel = pivot;
     }
     function emit(type, direction, candle, pivot, extra = {}) {
       const eventId = ['B2C', type, candle.close_time_ms, pivot ? pivot.pivot_id : 'NO_LEVEL'].join(':');
@@ -359,6 +394,9 @@
               ? { ...latestHigh, activated_by_transition_id: event.event_id }
               : null;
           }
+          // A pivot consumed in the prior regime may become the protected reversal level
+          // in the new regime. It must be eligible once in this new structural role.
+          if (protectedLevel) consumed.delete(protectedLevel.pivot_id);
           event.prior_state = priorState;
         } else {
           continuationLevel = null;
