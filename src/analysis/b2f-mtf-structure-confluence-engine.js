@@ -241,7 +241,8 @@
       for (const event of b2c.events) {
         if (!isObject(event) || typeof event.event_id !== 'string' || !event.event_id ||
             eventIds.has(event.event_id) ||
-            !Number.isSafeInteger(event.breaking_candle_close_time_ms) ||
+            !Number.isSafeInteger(event.breaking_candle_close_time_ms) || event.breaking_candle_close_time_ms <= 0 ||
+            event.breaking_candle_close_time_ms % STEP[tf] !== 0 ||
             !Number.isSafeInteger(event.available_at_ms) ||
             event.available_at_ms !== event.breaking_candle_close_time_ms + policy.finality_safety_lag_ms ||
             event.available_at_ms > cutoff ||
