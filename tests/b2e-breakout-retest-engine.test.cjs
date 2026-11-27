@@ -358,6 +358,7 @@ run('touch tolerance is explicit and can allow a near-zone wick', () => {
 
 run('zero touch tolerance does not count a wick that misses the zone', () => {
   const input = fixture({
+    count: 8,
     touchAt: 7,
     touch: { open: 102, high: 103, low: 101.5, close: 102 },
     retestPolicy: { touch_tolerance_price: 0 }
@@ -406,9 +407,8 @@ run('current B2D zone evidence is revalidated against raw pivot membership', () 
   assert.equal(result.admission.reasons[0].code, 'B2D_ZONE_EVIDENCE_MISMATCH');
 });
 
-run('zone available only after breakout is not retroactively used if no historical cluster existed', () => {
+run('zone formed only after breakout is not retroactively used', () => {
   const input = fixture({ delayFirstResistance: true });
-  input.b2d_result.zones[0].available_at_ms = input.analysis_as_of_ms;
   const result = analyze(input);
   assert.equal(result.lifecycles.length, 0);
   assert.equal(result.unmatched_breakouts.length, 1);
