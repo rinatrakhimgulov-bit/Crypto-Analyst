@@ -7408,7 +7408,7 @@
         minP -= span * 0.06;
         maxP += span * 0.06;
 
-        const pricePlotH = Math.max(50, plotH * 0.72);
+        const pricePlotH = Math.max(50, plotH * (this.displayLayers.volume ? 0.72 : 0.9));
         const volumeTop = padTop + pricePlotH + 10;
         const volumeBottom = padTop + plotH - 12;
         const volumeHeight = Math.max(10, volumeBottom - volumeTop);
