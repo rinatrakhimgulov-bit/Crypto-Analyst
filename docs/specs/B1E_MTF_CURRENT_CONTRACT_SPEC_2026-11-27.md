@@ -155,3 +155,21 @@ Latest completed CI run `45966502044`: Stage A 44/44, contract 32/32, validator 
 ## Latest full-suite verification supersession — 2026-11-27
 
 Run `45966700299` supersedes earlier counts: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18; gate/UI/chart checks passed, zero browser page errors; 159/159 named tests total. The gate harness includes a mismatched-`snapshot_id` regression. Exact HTML blob remains `1cb41cfbc03534441774eeeaac08f36082f19ab9`. Live Bybit remains blocked by HTTP 403 from the GitHub runner.
+
+
+
+
+## Current MTF acceptance hardening — 2026-11-27
+
+The deterministic MTF suite now contains 20 tests. In addition to common-cutoff, finality, coverage, provenance, immutable output and supersession, it verifies:
+- missing `closedCandleCount` fails before adapter/network requests;
+- a request that would exceed Bybit's 1000-row cap fails before adapter/network requests rather than being truncated;
+- an external AbortSignal reaches all three timeframe requests;
+- a failed timeframe aborts sibling requests;
+- pending-finality candles are retained separately and never enter the closed-only analysis slice.
+
+Each per-timeframe quality report must match both the current validator/policy versions and the exact canonical snapshot ID. The B1-C consumer separately verifies its legacy analysis candle array and last-closed price exactly match the canonical validated closed series; MTF already consumes canonical closed candles directly.
+
+Latest completed CI run `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; B1 gate/UI, chart, and live-probe page smoke checks passed, zero browser page errors. Live Bybit is blocked by HTTP 403 from both public hosts on the runner.
+
+Current exact HTML blob: `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes). Browser harness: `a23585f9688b9a04336c7f99da7a972513882f8e`. Live probe tool: `3b5df8f0feda730c7e6564808f40ad4526f0e44a`.
