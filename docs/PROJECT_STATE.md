@@ -432,3 +432,16 @@ After the preceding state entry, the MTF suite was expanded with explicit tests 
 ## CI record correction — 2026-11-27
 
 A newer completed run, `45966700299`, supersedes the earlier run recorded above. It reports Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 65/65, B1 MTF 18/18, B1 gate/UI and C1 chart assertions passed, zero browser page errors; 159/159 named deterministic self-tests. The gate harness now also exercises a VALID-looking report with a mismatched `snapshot_id` and verifies it is rejected. Exact HTML blob remains `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes); current branch comparison is 85 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 from both REST hosts on GitHub Actions. This does not constitute live validation.
+
+
+
+
+## Latest B1 integrity work — 2026-11-27
+
+B1-C now verifies the exact legacy candle array used by the analytical engine is identical to the canonical closed-candle series validated by B1-B, including timestamps, OHLCV, quote turnover and last-closed price. Snapshot ID mismatch or candle-series mismatch blocks with INVALID/WAIT. A matching empty series preserves INSUFFICIENT. MTF suite is now 20 tests and covers the Bybit 1000-row cap and external cancellation.
+
+Added `tools/b1_live_probe.html` schema v3 and `docs/specs/B1_LIVE_CAPTURE_PROCEDURE.md` with Windows-host/iPhone-Safari steps. The probe is read-only and stores captures locally. Chromium CI verifies its initial UI without contacting Bybit. Live capture is still pending because GitHub Actions receives HTTP 403 from both public hosts.
+
+Latest CI run `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20, gate/UI/chart/probe smoke passed, zero page errors. Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`, harness `a23585f9688b9a04336c7f99da7a972513882f8e`, probe `3b5df8f0feda730c7e6564808f40ad4526f0e44a`.
+
+B1 remains not accepted: exact-blob independent review, real concurrent Bybit captures and spread calibration, real transport-level abort test, latest iPhone Safari quality panel check, and explicit owner acceptance remain open. Main unchanged; B2 not started.
