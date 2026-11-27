@@ -274,6 +274,20 @@ run('same-candle dual pivots remain raw evidence but cannot become structure lev
   assert.equal(result.pivots.length, 0);
 });
 
+run('initial bullish break remains visible after a later same-side pivot replaces its source in the active sequence', () => {
+  const pivots = [
+    makePivot('l0', 'SWING_LOW', 90, 0, 2),
+    makePivot('h1', 'SWING_HIGH', 110, 1, 3),
+    makePivot('h2', 'SWING_HIGH', 115, 4, 6)
+  ];
+  const input = fixture(pivots, { 4: { open: 105, high: 115, low: 104, close: 112 } }, { count: 8 });
+  const result = analyze(input);
+  assert.equal(result.status, 'VALID', JSON.stringify(result.admission.reasons));
+  assert.ok(result.events.some(e => e.event_type === 'BULLISH_BOS' && e.source_pivot_id === 'h1'));
+  assert.ok(result.raw_pivots.some(p => p.pivot_id === 'h1' && p.sequence_status === 'SUPERSEDED_FOR_SEQUENCE'));
+  assert.ok(result.pivots.some(p => p.pivot_id === 'h2'));
+});
+
 run('initial bullish break is named once and initializes protected low', () => {
   const input = fixture(initialBull, { 3: { close: 105, high: 106, low: 95, open: 100 } });
   const result = analyze(input);
