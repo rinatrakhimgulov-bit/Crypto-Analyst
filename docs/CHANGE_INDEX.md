@@ -436,10 +436,18 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 
 ### Verification
 
-- Integrated B2-A–B2-G CI: run 46031937203, 181/181 passed.
-- Historical replay: run 46032038435, passed; 18/18 prefix checks; six BTC/ETH timeframe series; 30 sampled B2-A–B2-E windows; two synchronized MTF projections.
+- Integrated B2-A–B2-G CI: run 46033092111, 183/183 passed.
+- Historical replay: run 46033092259, passed; 18/18 prefix cutoffs passed (72 comparisons); six BTC/ETH timeframe series; 30 sampled B2-A–B2-E windows; two synchronized MTF projections.
 - Detailed metrics: `docs/audits/B2_PRELIMINARY_HISTORICAL_REPLAY_2026-11-27.md`.
 
 ### Integration status
 
 All B2 modules remain isolated in the draft candidate PR #20. No app HTML or main branch changes. B1 is NOT ACCEPTED; independent audit, live MTF provider-time calibration, parameter calibration and iPhone/Safari acceptance remain required.
+
+
+### B2-G causal status timing / sensitivity harness (2026-11-27)
+
+- Superseded pivots now include pivot-visible and status-visible timestamps.
+- Ambiguous pairs expose their own pivot visibility and pair-status visibility; impossible staggered same-source confirmations fail closed.
+- Historical replay now checks B2-A/B2-B/B2-C prefix invariance, pivot strength sensitivity, zone/retest grid sensitivity and repeated sweep levels.
+- Latest CI: 183/183, run 46033092111. Historical replay run 46033092259 passed.
