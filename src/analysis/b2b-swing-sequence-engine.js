@@ -141,13 +141,23 @@
     }
 
     const typesBySourceTime = new Map();
+    const pivotsBySourceTime = new Map();
     for (const pivot of source.pivots) {
       if (!typesBySourceTime.has(pivot.source_time_ms)) typesBySourceTime.set(pivot.source_time_ms, new Set());
       typesBySourceTime.get(pivot.source_time_ms).add(pivot.type);
+      if (!pivotsBySourceTime.has(pivot.source_time_ms)) pivotsBySourceTime.set(pivot.source_time_ms, []);
+      pivotsBySourceTime.get(pivot.source_time_ms).push(pivot);
     }
     const ambiguousSourceTimes = new Set([...typesBySourceTime.entries()]
       .filter(([, types]) => types.has('SWING_HIGH') && types.has('SWING_LOW'))
       .map(([sourceTime]) => sourceTime));
+    for (const sourceTime of ambiguousSourceTimes) {
+      const pair = pivotsBySourceTime.get(sourceTime) || [];
+      if (pair.length !== 2 || pair[0].confirmed_at_ms !== pair[1].confirmed_at_ms ||
+          pair[0].available_at_ms !== pair[1].available_at_ms) {
+        return blocked('INVALID', 'DUAL_PIVOT_CONFIRMATION_TIME_MISMATCH', meta);
+      }
+    }
 
     const raw = source.pivots.map(pivot => ({
       ...pivot,
