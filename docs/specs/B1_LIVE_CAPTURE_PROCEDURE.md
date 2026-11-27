@@ -75,3 +75,27 @@ The probe can be viewed and operated on the iPhone while the file is served by a
 The local server only serves the static HTML page. The iPhone browser still sends public read-only requests directly to Bybit. This depends on Bybit CORS behavior and the network used by the phone. If the short test fails with a browser CORS/network error, that is not proof that the exchange REST API itself is unavailable. Do not bypass browser security or install certificates to force it.
 
 The probe does not upload data to the repository or to ChatGPT. The user manually shares the exported JSON when ready. Keep Safari in the foreground and prevent the phone from locking during the capture.
+
+
+## Completed capture results — 2026-11-27
+
+The user completed and supplied two schema-v2 captures from iPhone Safari:
+- BTCUSDT: 30/30 concurrent 1D/4H/1H samples, finished 2026-11-27T04:53:54.371Z.
+- ETHUSDT: 30/30 concurrent 1D/4H/1H samples, finished 2026-11-27T04:58:52.740Z.
+
+Per symbol, all 90 timeframe requests returned HTTP 200, Bybit retCode 0, 200 rows each, and no errors before success. Across both symbols: 180 successful timeframe responses and 36,000 raw candle rows. All successful requests used api.bybit.com; api.bytick.com fallback was not exercised.
+
+Provider-time spread results:
+- BTCUSDT: min 0 ms, median 1 ms, p95 6 ms, max 140 ms.
+- ETHUSDT: min 0 ms, median 1 ms, p95 324 ms, max 325 ms.
+- Combined 60 samples: min 0 ms, median 1 ms, p95 321 ms, max 325 ms; 7/60 samples exceeded 100 ms, 5/60 exceeded 250 ms, none exceeded 500 ms.
+
+Request duration:
+- BTCUSDT: median 419 ms, p95 537 ms, max 931 ms.
+- ETHUSDT: median 485.5 ms, p95 891 ms, max 943 ms.
+
+An independent offline check of the captured raw rows applied the common cutoff (minimum of the three provider timestamps) and the 500 ms finality lag. For all 60 samples × 3 timeframes, the last 160 closed candles were present, contiguous and correctly aligned; the latest closed candle matched the expected common-cutoff boundary. All 36,000 rows passed OHLCV sanity and timestamp-grid checks: zero violations.
+
+**Interpretation:** a provisional `maxProviderTimeSpreadMs = 500` candidate would have admitted all 60 observed samples, leaving 175 ms above the observed maximum. This is evidence for a candidate test policy, not a production guarantee. The 500 ms candle-finality lag is a separate control and must not be treated as interchangeable with the provider-time spread threshold. The capture is one short session; repeat captures at different times/network conditions are still required before production calibration.
+
+**Next validation:** replay selected recorded raw responses through the exact current `BybitAdapter`, `B1DataContract`, `B1QualityValidator` and `B1MtfEngine` path. The offline Python integrity check above is not a substitute for that exact-code replay.
