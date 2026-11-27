@@ -3,7 +3,7 @@
 **Date:** 2026-11-27  
 **Review type:** Internal source review and deterministic verification  
 **Reviewed module:** `src/analysis/b2c-swing-structure-engine.js`  
-**Exact candidate commit:** `a58441aa4f39aa6e3b98650624f07a2041e7152a`  
+**Exact candidate commit:** `e9590ddb65c9f3a09a28279efdb064b6caa6a4a2`  
 **PR:** #15 (draft, unmerged)  
 **Independent external review:** Not performed
 
@@ -34,7 +34,7 @@ Controls present in the candidate:
 
 ## Verification
 
-GitHub Actions run [46013846058](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46013846058) passed **28/28** deterministic tests on the exact candidate commit.
+GitHub Actions run [46015831238](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46013846058) passed **33/33** deterministic tests on the exact candidate commit.
 
 The suite covers both initial directions, BOS and CHoCH symmetry, protected swing behavior, wick sweeps, strict equality boundary, same-candle no-lookahead, duplicate-level suppression, prefix replay, provenance tampering, forged B2-B sequence data, and an end-to-end deterministic B1 snapshot → B2-A → B2-B → B2-C execution.
 
