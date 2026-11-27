@@ -5,7 +5,7 @@ const { analyze } = require('../src/analysis/b2b-swing-sequence-engine.js');
 const { analyze: analyzeB2A } = require('../src/analysis/b2-causal-swing-engine.js');
 
 const POLICY = Object.freeze({
-  version: 'b2b-swing-sequence-v2',
+  version: 'b2b-swing-sequence-v3',
        same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
@@ -358,7 +358,7 @@ run('B2-A to B2-B integration preserves causal swing sequence labels', () => {
   const b2b = analyze({
     b2a_result: b2a,
     policy: {
-      version: 'b2b-swing-sequence-v2',
+      version: 'b2b-swing-sequence-v3',
        same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
