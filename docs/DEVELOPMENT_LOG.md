@@ -782,3 +782,6 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B2 research suite run 46034803544: passed.
 - B2 app integration run 46034803848: passed. Causal S/R zone start-position assertion passed; stale B1 quality blocked the B2 pipeline; mobile 390×844 layout passed without horizontal overflow.
 - B1 browser run 46034803715: passed with zero page errors; live Bybit was skipped due runner HTTP 403.
+
+
+- Final clean-branch historical replay run 46035136810: passed with the current B2-A–B2-G source set; report uploaded as the `b2-historical-replay-report` artifact. This remains archive-based synthetic-B1 replay, not live-provider validation.
