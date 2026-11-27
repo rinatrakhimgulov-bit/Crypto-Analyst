@@ -62,6 +62,28 @@ async function main() {
         qualityReport: { ...dataset.qualityReport, status: 'STALE' }
       };
       const blocked = hooks.runB2Analysis(blockedDataset);
+      const chart = hooks.chart;
+      const zone = analysis.projection.zones[0] || null;
+      let zoneDraw = { count: 0, x: null, expectedX: null, visibleFromMs: zone?.visible_from_ms ?? null };
+      if (zone) {
+        const ctx = chart.ctx;
+        const originalFillRect = ctx.fillRect.bind(ctx);
+        const metrics = chart.getPlotMetrics();
+        const endIdx = Math.max(1, chart.candles.length - chart.offsetFromEnd);
+        const startIdx = Math.max(0, endIdx - chart.visibleCount);
+        const firstVisible = chart.candles.findIndex(c => c.ts >= zone.visible_from_ms);
+        const visibleIdx = Math.max(startIdx, firstVisible);
+        const stepX = metrics.plotW / (endIdx - startIdx);
+        zoneDraw.expectedX = metrics.padLeft + (visibleIdx - startIdx) * stepX;
+        ctx.fillRect = function(x, y, w, height) {
+          if (String(this.fillStyle).includes('0.075')) {
+            zoneDraw.count++;
+            zoneDraw.x = x;
+          }
+          return originalFillRect(x, y, w, height);
+        };
+        try { chart.render(); } finally { ctx.fillRect = originalFillRect; }
+      }
       return {
         qualityStatus: dataset.qualityReport.status,
         closedCount: dataset.closedCandles.length,
@@ -74,6 +96,7 @@ async function main() {
         retests: analysis.projection?.retest_lifecycles?.length ?? 0,
         mtfContext: analysis.projection && Object.prototype.hasOwnProperty.call(analysis.projection, 'mtf_context') ? analysis.projection.mtf_context : 'MISSING',
         chartProjectionAttached: hooks.chart.marketStructure?.status === 'VALID',
+        zoneDraw,
         panelStatus: document.getElementById('b2Status')?.textContent,
         blockedQualityStatus: blocked.status,
         blockedStage: blocked.stage
@@ -83,7 +106,9 @@ async function main() {
         result.status !== 'VALID' || result.chartProjectionAttached !== true ||
         result.panelStatus !== 'VALID · 1H' ||
         result.blockedQualityStatus !== 'BLOCKED' || result.blockedStage !== 'B1' ||
-        result.mtfContext !== null) {
+        result.mtfContext !== null ||
+        (result.zones > 0 && (result.zoneDraw.count < 1 ||
+          Math.abs(result.zoneDraw.x - result.zoneDraw.expectedX) > 0.75))) {
       throw new Error('B2 browser integration assertions failed: ' + JSON.stringify(result));
     }
     await page.setViewportSize({ width: 390, height: 844 });
