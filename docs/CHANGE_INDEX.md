@@ -350,3 +350,14 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - Empty but matching candle series preserve INSUFFICIENT status and `INSUFFICIENT_HISTORY` rather than being mislabeled INVALID.
 - Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; 161/161 named tests, UI/chart checks passed, zero browser page errors.
 - Current candidate HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; PR #8 draft, main unchanged. Live Bybit remains blocked by runner HTTP 403.
+
+
+## 23. B1-D live Bybit market-data integration — 2026-11-27
+
+- CryptoAnalyst_StageA_S6_updated.html: existing Bybit V5 WS client now emits validated live ticker and kline events. Ticker display uses lastPrice only and enforces acknowledged subscription + snapshot readiness + 10-second freshness.
+- CryptoAnalyst_StageA_S6_updated.html: live price line and forming candle update without recalculating closed-candle analytics. Closed REST candles cannot be mutated; appending a next candle requires a confirmed predecessor. Invalid/gapped/conflicting/older data requests REST reconciliation.
+- CryptoAnalyst_StageA_S6_updated.html: REST remains bootstrap/history/recovery/reconciliation and retains 30-second background polling. WS confirm schedules delayed REST verification; it cannot bypass B1 finality/quality validation.
+- tests/b1-browser-live-check.cjs: six deterministic B1-D regressions plus browser-level live handler-to-DOM/chart integration.
+- Latest CI 45981279187: Stage A 50/50, contract 32/32, quality 72/72, MTF 20/20; 174/174 deterministic tests, desktop/mobile chart, transport cancellation, zero page errors.
+- Exact candidate HTML blob 3421588fa85c47c72b1b3aa6fadfb8aef0608518; harness blob 44b492f92ffbbbb58f6cb830375b6330a556d5c4. PR #9 draft, based on B1 integration branch; PR #8 remains draft. Main unchanged.
+- Live Bybit remains unverified: CI REST access is HTTP 403 and browser test uses controlled events, not a live exchange WebSocket. iPhone/Safari live verification and independent review remain required.
