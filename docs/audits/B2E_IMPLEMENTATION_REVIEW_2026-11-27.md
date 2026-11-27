@@ -3,7 +3,7 @@
 **Date:** 2026-11-27  
 **Review type:** Internal source review and deterministic verification  
 **Reviewed module:** `src/analysis/b2e-breakout-retest-engine.js`  
-**Exact candidate commit:** `493a15e8006784d2b78262770725c26bd05c2e85`  
+**Exact candidate commit:** `b7fccbc232c8a2de573cbfb053ef06b10b2cf834`  
 **PR:** #17 (draft, unmerged)  
 **Independent external review:** Not performed
 
@@ -38,9 +38,9 @@ Controls present:
 
 ## Verification
 
-GitHub Actions run [46016401705](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46016401705) passed **22/22** deterministic tests on the exact candidate commit.
+GitHub Actions run [46017280509](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46016401705) passed **24/24** deterministic tests on the exact candidate commit.
 
-The suite includes bullish and bearish successful role reversals, failed retest, expiry, pending/unresolved windows, explicit tolerance, future-zone exclusion, invalid event/zone provenance and an end-to-end B1 → B2-A → B2-B → B2-C → B2-D → B2-E fixture.
+The suite includes bullish and bearish successful role reversals, failed retest, expiry, pending/unresolved windows, explicit tolerance, future-zone exclusion, invalid event/zone provenance and an end-to-end B1 → B2-A → B2-B → B2-C → B2-D → B2-E fixture. The combined integrated suite [46017280701](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280701) also passed **119/119** tests across all five engines in one checkout.
 
 ## Limitations and remaining gates
 
