@@ -3,7 +3,7 @@
 **Repository:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst  
 **Branch:** `integration/b1-mtf-architecture-2026-11-27`  
 **Draft PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/8  
-**Exact HTML blob:** `d0e0d9f950ddd3b8b90b1d97006e9c542c7a6445` (306,725 bytes)  
+**Exact HTML blob:** `d9a20c7fd508b30bf1625aa1f3ab95308f84c44b` (306,725 bytes)  
 **Browser harness blob:** `70399a984b44f5f85024afcdf11289e4a73a6361`  
 **Read-only live probe blob:** `3b5df8f0feda730c7e6564808f40ad4526f0e44a`
 
@@ -52,7 +52,7 @@ Review the complete B1-A/B/C/E path and its interaction with Stage A:
 
 ## Reproducible verification evidence
 
-Latest completed pre-audit GitHub Actions run `45968566553` (baseline); rerun the latest branch-head workflow before issuing the verdict:
+Latest completed candidate GitHub Actions run `45978061875` on the exact HTML blob above: Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 72/72, B1 MTF 20/20 (168/168 total). Live Bybit was explicitly skipped because both public REST hosts returned HTTP 403 to the runner; do not treat it as a pass.
 - Stage A: 44/44
 - B1 Data Contract: 32/32
 - B1 Quality Validator: 65/65
