@@ -43,7 +43,7 @@ textarea{width:100%;min-height:180px;box-sizing:border-box;font:12px ui-monospac
     <button id="stop" disabled>Stop</button>
     <button id="export" disabled>Export JSON</button>
   </div>
-  <p class="small muted">Recommended initial run: BTCUSDT, 30 samples, 3000 ms delay, 200 rows. One sample makes three concurrent kline requests. If the primary host fails, the probe tries the configured backup host.</p>
+  <p class="small muted">Recommended initial run: BTCUSDT, 30 samples, 3000 ms delay, 200 rows. One sample makes three concurrent kline requests. If the primary host fails, the probe tries the configured backup host. Run this page from localhost HTTP, not by opening it as file://. If you press Stop during a sample, that incomplete sample is discarded; previously completed samples remain available for export.</p>
   <div id="status" class="status">Ready. No requests have been made.</div>
 </div>
 <div class="panel">
