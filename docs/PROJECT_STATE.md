@@ -635,3 +635,39 @@ Next: independent review of exact B2-A/B2-B source and tests; then B2-C protecte
 3. Complete B1 live concurrent Bybit 1D/4H/1H capture and provider-time spread policy.
 4. Verify the current candidate on iPhone/Safari, including symbol/timeframe switches, reconnect and stale/fallback handling.
 5. Prepare a separate integration candidate only after all gates pass.
+
+
+
+## 19. B2 application integration candidate — 2026-11-27
+
+**Integration branch:** `integration/b2-market-structure-ui-2026-11-27`  
+**Base for the integration candidate:** B1-D candidate `feature/b1-d-live-market-data-2026-11-27` (not `main`).  
+**Current integration commit:** `32bb3a875c4031bb171b935120ef174b68b828cc`.
+
+### App changes
+
+- Inlined B2-A through B2-G browser-compatible modules into the single-file HTML prototype, preserving the existing single-file delivery model.
+- Added a B2 Market Structure panel with structure state, active/ambiguous pivots, last BOS/CHoCH event, confirmed/candidate S/R counts, retest lifecycle summary and explicit MTF-disabled status.
+- Added chart overlays for causal swing markers, structure events and confirmed S/R zones.
+- Confirmed zones are rendered only from the first chart candle at or after `visible_from_ms`; they are not backdated onto candles that predate confirmation.
+- B2 remains display-only. It does not modify the existing LONG/SHORT/WAIT decision path.
+- B2-F MTF is deliberately not called by the app until live provider-time spread is measured and calibrated. B2-G emits an explicit null MTF context for this single-timeframe view.
+- Zone span and retest tolerances are explicitly exploratory display parameters, not calibrated trading settings.
+
+### Verified CI
+
+- B2 application integration run [46034275312](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034275312): all seven B2 module suites and the browser/mobile integration job passed.
+- Browser fixture: 220 closed synthetic 1H candles; B1 quality VALID; B2 output VALID; 33 swing markers, 65 structure events, 2 confirmed zones and 2 retest lifecycles; MTF context null as intended; projection attached to chart; B1 STALE input correctly blocked at B1 admission.
+- Mobile viewport check at 390×844: B2 panel visible, card width 366 px, chart width 334 px, no horizontal overflow; zero browser page errors.
+- B1 browser/data verification run [46034276646](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034276646) passed. Live Bybit REST check was explicitly SKIPPED_PROVIDER_BLOCKED because both public REST hosts returned HTTP 403 from the GitHub runner. This is not a live Bybit success.
+- B2 research suite run [46034274801](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034274801) passed all seven module test steps.
+
+### Remaining gates before owner iPhone review / production acceptance
+
+1. Re-run the exact latest integration commit through CI after the final chart availability-time overlay regression.
+2. Provide an iPhone/Safari preview of this branch and verify the actual Bybit feed, chart overlays, symbol/timeframe switching and reconnect/fallback behavior.
+3. Calibrate MTF provider-time spread from concurrent live Bybit 1D/4H/1H captures before enabling B2-F in the app.
+4. Review/calibrate 2/2 pivot strength, S/R zone span and retest tolerances on current and out-of-sample market data.
+5. Keep B2 display-only until a separate validation supports any later connection to directional decisions.
+
+No merge to `main` has been made. The integration branch and any PR remain unmerged pending owner review.
