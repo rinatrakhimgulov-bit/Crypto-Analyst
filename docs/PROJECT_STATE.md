@@ -515,3 +515,21 @@ After the documentation sync, PR #8 head is `5e94c29d1f5734e8b46200c04b6da51996c
 
 ### Current operating rule
 Do not merge PR #8, #9, or #10 automatically. Keep `main` untouched. Treat all branch candidates as unaccepted until their stated gates are closed.
+
+## B2 design policy freeze — 2026-11-27 (latest; supersedes prior B2 blocker status)
+
+The B2 specification now has Section 15, "Frozen implementation policy — v1", resolving the seven design ambiguities recorded in the internal review:
+- plateau detection uses a maximal contiguous equal-price run, rightmost representative, and right-strength candles counted after the plateau ends;
+- exact-price equality is explicitly versioned as EXACT_PRICE_V1; no guessed tick/ATR/percentage tolerance;
+- raw pivots remain immutable; same-side sequence replacement is deterministic and symmetric;
+- initial trend state, initial break naming, protected swing initialization/advancement, and provenance are explicit;
+- break policy is ZERO_BUFFER_V1, strict close beyond level; equality is not a break;
+- fixed per-candle event order prevents same-candle hindsight; consumed levels cannot emit duplicate break events;
+- S/R zones and retest/failure logic are explicitly deferred beyond B2-A/B/C.
+
+The design review has a resolution pass mapping R1–R7 to the new policy. This is an internal design closure, NOT an independent external audit and not empirical validation. Exact equality and zero buffer are baseline choices to be examined in replay fixtures.
+
+Current status remains unchanged at the release boundary:
+- B1 is NOT ACCEPTED. Its exact-source independent review, real concurrent Bybit 1D/4H/1H capture and spread calibration, actual iPhone/Safari lifecycle verification, and explicit owner acceptance remain open.
+- B2 production implementation remains NOT STARTED and blocked by B1 acceptance. After B1 acceptance, B2-A/B/C can be proposed as separate increments; no B2-D/E/F scope is bundled.
+- PR #10 remains documentation-only, draft and unmerged. main and the application HTML are unchanged.
