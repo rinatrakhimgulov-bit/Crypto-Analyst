@@ -227,6 +227,18 @@ function eventFollowThrough(events, rows) {
   const result = {};
   for (const horizon of horizons) {
     const grouped = new Map();
+    const baseline = { BULLISH: [], BEARISH: [] };
+    for (let i = 0; i + horizon < rows.length; i++) {
+      const entry = rows[i].close;
+      const futureClose = rows[i + horizon].close;
+      if (!Number.isFinite(entry) || entry <= 0 || !Number.isFinite(futureClose) || futureClose <= 0) continue;
+      baseline.BULLISH.push((futureClose / entry - 1) * 100);
+      baseline.BEARISH.push((entry / futureClose - 1) * 100);
+    }
+    const baselineSummary = Object.fromEntries(Object.entries(baseline).map(([direction, values]) => [direction, {
+      n: values.length, median_forward_close_return_pct: median(values),
+      favorable_close_pct: values.filter(x => x > 0).length / Math.max(1, values.length) * 100
+    }]));
     for (const event of events) {
       const direction = event.direction === 'BULLISH' ? 1 : event.direction === 'BEARISH' ? -1 : 0;
       const index = indexByOpen.get(event.breaking_candle_open_time_ms);
@@ -254,8 +266,14 @@ function eventFollowThrough(events, rows) {
       const closes = samples.map(x => x.closeReturn);
       const mfes = samples.map(x => x.mfe);
       const maes = samples.map(x => x.mae);
+      const direction = type.startsWith('BULLISH') ? 'BULLISH' : 'BEARISH';
+      const base = baselineSummary[direction];
       byType[type] = {
         n: samples.length,
+        baseline_median_forward_close_return_pct: base.median_forward_close_return_pct,
+        baseline_favorable_close_pct: base.favorable_close_pct,
+        excess_median_forward_close_return_pct: median(closes) - base.median_forward_close_return_pct,
+        excess_favorable_close_pct: samples.filter(x => x.closeReturn > 0).length / samples.length * 100 - base.favorable_close_pct,
         unique_source_pivots: new Set(samples.map(x => x.source).filter(Boolean)).size,
         median_forward_close_return_pct: median(closes),
         median_mfe_pct: median(mfes),
@@ -266,7 +284,7 @@ function eventFollowThrough(events, rows) {
         mfe_at_least_1_pct: samples.filter(x => x.mfe >= 1).length / samples.length * 100
       };
     }
-    result[horizon + '_bars'] = byType;
+    result[horizon + '_bars'] = { ...byType, baseline_by_direction: baselineSummary };
   }
   return result;
 }
