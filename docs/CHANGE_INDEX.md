@@ -273,3 +273,11 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 - PR #16 remains draft/unmerged. No app/main integration; B1 acceptance remains mandatory.
 
 - `docs/audits/B2D_IMPLEMENTATION_REVIEW_2026-11-27.md`: internal exact-source review notes for B2-D candidate commit `0574858db12dd2082d7449f5512fa8461fceac63`; explicitly not an independent external audit.
+
+
+### Stage 2 hardening and B2-D update — 2026-11-27
+- B2-A: candle-gap rejection added; 21/21 passed (run 46014698432).
+- B2-B: current branch includes B2-A gap fix; 20/20 passed (run 46015818149).
+- B2-C: HH/LL-only continuation, protected-pivot re-arming on state transition, exact B2-A pivot-set binding; 33/33 passed (run 46015831238).
+- B2-D: isolated S/R zone engine; 21/21 passed (run 46015873986). Absolute tolerance needs per-instrument/timeframe calibration; freshness unclassified; IDs membership-derived.
+- All remain research-only, draft and unmerged; B1 remains NOT ACCEPTED.
