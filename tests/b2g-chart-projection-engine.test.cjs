@@ -397,6 +397,30 @@ run('unresolved retest becomes visible at the end of confirmation window', () =>
   const result = analyze(input);
   assert.equal(result.retest_lifecycles[0].visible_at_ms, STEP * 12 + LAG);
 });
+run('waiting retest is visible once the breakout itself is available', () => {
+  const input = makeInput();
+  const life = input.b2e_result.lifecycles[0];
+  life.status = 'WAITING_RETEST';
+  life.role_transition_status = 'PENDING';
+  life.effective_role = life.original_role;
+  life.touch = null;
+  life.confirmation = null;
+  const result = analyze(input);
+  assert.equal(result.retest_lifecycles[0].visible_at_ms, life.breakout_available_at_ms);
+});
+run('failed retest is visible only after failure confirmation', () => {
+  const input = makeInput();
+  const life = input.b2e_result.lifecycles[0];
+  life.status = 'RETEST_FAILED';
+  life.role_transition_status = 'REJECTED';
+  life.effective_role = life.original_role;
+  life.confirmation.outcome = 'FAILURE';
+  life.confirmation.candle_close_time_ms = STEP * 12;
+  life.confirmation.available_at_ms = STEP * 12 + LAG;
+  const result = analyze(input);
+  assert.equal(result.retest_lifecycles[0].visible_at_ms, STEP * 12 + LAG);
+});
+
 run('MTF context is copied without inventing a directional score', () => {
   const result = analyze(makeInput());
   assert.equal(result.mtf_context.alignment_status, 'MIXED');
@@ -489,5 +513,5 @@ run('projection does not mutate inputs or emit candle/trade-decision data', () =
   }
 });
 
-console.log('B2-G TESTS: ' + passed + '/26 passed');
-if (passed !== 26) process.exitCode = 1;
+console.log('B2-G TESTS: ' + passed + '/28 passed');
+if (passed !== 28) process.exitCode = 1;
