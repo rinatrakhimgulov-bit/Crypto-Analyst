@@ -1,7 +1,7 @@
 # B1-E — MTF Common-Cutoff Assembly on Current B1 Contract
 
 **Date:** 2026-11-27  
-**Status:** Implemented on integration candidate; awaiting independent review, live calibration and owner acceptance.  
+**Status:** Implemented on integration candidate; initial 30-sample BTCUSDT and 30-sample ETHUSDT live captures completed. Observed provider-time spread max 325 ms; 500 ms is a provisional test threshold only. Exact-code recorded-response replay, repeat-session calibration, independent review and owner acceptance remain open.  
 **Implementation:** `B1MtfEngine` in `CryptoAnalyst_StageA_S6_updated.html`  
 **Contract:** B1 canonical contract 1.1.0; validator 1.1.0; current quality policy remains version `b1-quality-policy-2026-11-27-v1`.  
 **Branch:** `integration/b1-mtf-architecture-2026-11-27`  
@@ -179,3 +179,10 @@ Current exact HTML blob: `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 byt
 ## Current full-suite verification — 2026-11-27
 
 Latest CI run `45967551538`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 20/20; UI/gate/chart checks passed, zero browser page errors; 161/161 named tests. Current PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`; HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes). Live Bybit remains blocked by HTTP 403 from both public REST hosts on GitHub Actions. The MTF implementation remains isolated and not connected to directional output.
+
+
+## 9. Initial live spread evidence (2026-11-27)
+
+The supplied iPhone Safari captures completed 30 concurrent 1D/4H/1H samples for BTCUSDT and 30 for ETHUSDT. All 180 timeframe requests returned HTTP 200 and retCode 0; every response contained 200 rows. Provider-time spread was 0–140 ms for BTCUSDT (median 1 ms, p95 6 ms) and 0–325 ms for ETHUSDT (median 1 ms, p95 324 ms). Combined maximum was 325 ms. A provisional 500 ms max-spread test threshold would admit all 60 observed samples, but this single short capture session is not sufficient for a production guarantee.
+
+The raw capture rows independently passed common-cutoff/finality checks for 160 contiguous closed candles per timeframe, but this check has not yet run through the exact production adapter/contract/validator/MTF engine path. See B1_LIVE_CAPTURE_PROCEDURE.md for full capture statistics and limitations.
