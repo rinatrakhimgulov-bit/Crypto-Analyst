@@ -4736,7 +4736,9 @@
 
     const chart = new CandleChart(document.getElementById('chartCanvas'));
     if (new URLSearchParams(window.location.search).get('test') === '1') {
-      window.__CryptoAnalystTestHooks = Object.freeze({ chart });
+      window.__CryptoAnalystTestHooks = Object.freeze({
+        chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient
+      });
     }
 
     function tfLabel(interval) {
