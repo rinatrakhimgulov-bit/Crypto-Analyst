@@ -288,3 +288,88 @@ B2 implementation may begin only after B1's outstanding gates are closed and the
 B2 is complete only when all B2-A through B2-F increments are accepted, the engine is reproducible from versioned inputs and policies, historical replay shows no lookahead, and the UI presents the evidence and its confirmation timing without implying guaranteed trade outcomes.
 
 **Current status:** Specification drafted. No B2 production code has been added. B1 remains a prerequisite for implementation and merge.
+
+
+---
+
+## 15. Frozen implementation policy — v1 (2026-11-27)
+
+This section resolves the implementation ambiguities identified in the B2 design review. It applies only to the first causal swing/structure/BOS increments. It does **not** waive the B1 acceptance gate.
+
+### 15.1 Price equality and pivot comparison
+
+- v1 uses `EXACT_PRICE_V1`: equality means numerically identical canonical prices after parsing the provider's decimal representation. No implicit percentage, ATR, or dollar tolerance is permitted.
+- A value that differs by even one representable price unit is not equal under this policy. Instrument tick-size-aware tolerance is deferred until tick-size metadata is part of the accepted canonical contract.
+- The policy ID and comparison values must be present in every result. Missing/invalid price values reject the input; the engine must not guess a tolerance.
+
+### 15.2 Plateau pivot detection
+
+- A plateau is a maximal contiguous run of candles whose candidate high (for pivot highs) or low (for pivot lows) is exactly equal under `EXACT_PRICE_V1`.
+- The representative is the **rightmost candle** in that contiguous run. The raw pivot retains plateau start/end timestamps and indices.
+- A pivot-high plateau is valid only when its price is strictly greater than every one of the `leftStrength` closed candles immediately preceding the plateau start and every one of the `rightStrength` closed candles immediately following the plateau end. Pivot lows use the strict inverse.
+- Confirmation occurs only after all `rightStrength` candles following the **end** of the plateau have closed. `sourceTime` points to the representative candle; `confirmedAt` and `availableAt` are the close time of the final required right-side candle.
+- A plateau touching either edge of available history is not confirmed unless the full left and right windows exist. No partial-window pivot is emitted.
+
+### 15.3 Raw pivots and alternating structural sequence
+
+- Every confirmed raw pivot is immutable and retained in evidence.
+- The structural sequence alternates high/low. If a second same-type pivot arrives before an opposite-type pivot, compare it with the current sequence pivot:
+  - highs: retain the higher pivot;
+  - lows: retain the lower pivot;
+  - exact equality: retain the earlier pivot.
+- A non-retained raw pivot is marked `SUPERSEDED_FOR_SEQUENCE`; it is not deleted and cannot retroactively alter an already emitted event.
+- A pivot can enter the sequence only after its `availableAt`. The engine must not reorder pivots by source candle time in a way that makes a later-confirmed pivot appear available earlier.
+
+### 15.4 Initial trend and structure state
+
+The state machine starts at `UNESTABLISHED`.
+
+- A closed candle strictly above the latest eligible confirmed swing-high level emits `INITIAL_BULLISH_BREAK` and moves state to `UP`.
+- A closed candle strictly below the latest eligible confirmed swing-low level emits `INITIAL_BEARISH_BREAK` and moves state to `DOWN`.
+- If the same candle qualifies for both directions because the input/levels are contradictory, emit a blocked `AMBIGUOUS_BREAK` diagnostic and do not choose a direction.
+- Initial breaks are never relabeled as BOS after more history arrives.
+- In `UP`, a close above a new eligible continuation swing-high level emits bullish BOS. In `DOWN`, a close below a new eligible continuation swing-low level emits bearish BOS.
+- A close through the active protected opposing swing emits CHoCH and changes the state to the opposite direction.
+
+### 15.5 Protected swing selection
+
+- On transition into `UP`, initialize protected low from the latest accepted confirmed swing low whose `availableAt` is strictly earlier than the transition candle close. On transition into `DOWN`, initialize protected high symmetrically.
+- While in `UP`, only an accepted `HL` confirmed after the last transition may advance protected low. An `LL` never lowers it. While in `DOWN`, only a post-transition `LH` may advance protected high; an `HH` never raises it.
+- A pivot confirmed on candle T is processed **after** break evaluation for T. It cannot protect, invalidate, or trigger a break on T.
+- Every protected level exposes its source pivot ID, source time, confirmation/availability time, and the transition that activated it.
+- If no eligible protected swing exists, the engine must expose `PROTECTED_LEVEL_UNAVAILABLE`; it must not substitute a visually convenient pivot.
+
+### 15.6 Break boundary, wick sweeps and event lifecycle
+
+- v1 uses `ZERO_BUFFER_V1`: bullish break iff `close > level`; bearish break iff `close < level`. A close exactly equal to the level is not a break.
+- Intrabar wick penetration without a qualifying close emits `SWEEP` evidence only; it is not BOS/CHoCH.
+- If the candle opens beyond the level and closes beyond it, set `gapThrough=true`; the event remains close-confirmed and records the gap condition.
+- Each source level can produce at most one initial/continuation break event. Once consumed, repeated closes beyond it do not create duplicate events.
+- Re-crossing a consumed level may create a separate return/retest observation in a later increment, but cannot recreate the original break.
+- Per-candle processing order is fixed:
+  1. evaluate breaks/sweeps using levels available before this candle;
+  2. emit at most one directional transition; contradictory candidates produce an ambiguity diagnostic;
+  3. consume a broken level and update state/protected-level transition metadata;
+  4. confirm pivots whose required right-side window ends on this candle;
+  5. update the structural sequence and protected levels for subsequent candles.
+- Event history is append-only. Later candles may add follow-through or invalidation events, but cannot rewrite the original event type, timestamp, level, or source pivot ID.
+
+### 15.7 Scope boundary for v1
+
+The first production implementation scope, after B1 acceptance, is limited to:
+1. B2-A: validated input admission and causal raw pivot detection;
+2. B2-B: immutable alternating sequence and swing labels;
+3. B2-C: explicit structure state, protected swings, initial breaks, BOS/CHoCH and wick-sweep evidence.
+
+B2-D zones, B2-E retest/failure lifecycle, and B2-F chart integration remain separate later increments. No zone clustering, touch score, retest window, confidence percentage, or trade recommendation may be smuggled into B2-A/B/C.
+
+### 15.8 Additional mandatory regression properties
+
+- Plateau confirmation uses the end of the plateau, not its first candle.
+- Exact equality at a break level is not a break; one representable unit beyond is.
+- Same-side replacement is symmetric for highs/lows and retains superseded raw evidence.
+- A pivot confirmed on the same candle as a break cannot participate in that break.
+- Initial breaks remain initial events in every longer-history replay.
+- Consumed levels cannot emit duplicate BOS/CHoCH on repeated closes.
+- A contradictory candle cannot arbitrarily choose bullish or bearish direction.
+- Protected swing metadata always resolves to a pivot available before the transition that activated it.
