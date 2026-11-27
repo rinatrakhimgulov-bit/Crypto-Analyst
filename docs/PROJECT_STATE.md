@@ -420,3 +420,9 @@ The current integration candidate adds exact quality-report-to-snapshot binding.
 Latest completed GitHub Actions run `45966700299`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 18/18, B1 gate/UI and C1 chart assertions passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public REST hosts. Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Test harness blob: `8700f7ebedf6f4091b37d5e7d4c04ba22c2d92a8`.
 
 This does not change release status: B1 remains unaccepted pending independent review of this exact blob, recorded live concurrent Bybit capture and spread calibration, transport-level abort test, latest iPhone Safari quality-panel check, and explicit owner acceptance. Main is unchanged; B2 remains not started.
+
+
+
+## Latest verification refresh — 2026-11-27
+
+After the preceding state entry, the MTF suite was expanded with explicit tests for required closed-candle history count and pending-finality context isolation. Latest candidate HTML blob is now `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest completed CI run `45966502044`: Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 18/18, B1 gate/UI and C1 chart assertions passed, zero browser page errors. Total named self-tests: 158/158. Live Bybit remains blocked by HTTP 403 from both public REST hosts on GitHub Actions. Current branch comparison: 66 commits ahead, 0 behind main. Main remains unchanged.
