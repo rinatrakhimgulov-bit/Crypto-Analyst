@@ -26,6 +26,8 @@
   function validatePolicy(policy) {
     if (!isObject(policy)) return 'POLICY_MISSING';
     if (typeof policy.version !== 'string' || !policy.version.trim()) return 'POLICY_VERSION_INVALID';
+    if (typeof policy.b1_contract_version !== 'string' || !policy.b1_contract_version.trim()) return 'B1_CONTRACT_VERSION_MISSING';
+    if (typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim()) return 'B1_VALIDATOR_VERSION_MISSING';
     if (typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim()) return 'B1_QUALITY_POLICY_VERSION_MISSING';
     if (!Number.isSafeInteger(policy.left_strength) || policy.left_strength < 1 || policy.left_strength > 50) return 'LEFT_STRENGTH_INVALID';
     if (!Number.isSafeInteger(policy.right_strength) || policy.right_strength < 1 || policy.right_strength > 50) return 'RIGHT_STRENGTH_INVALID';
@@ -100,7 +102,7 @@
     if (!Number.isSafeInteger(asOf) || asOf <= 0 || snapshot.analysis_as_of_ms !== asOf || snapshot.provider_server_time_ms !== asOf || !snapshot.provider_metadata || snapshot.provider_metadata.time_source !== 'provider') {
       return blocked('INVALID', [{ code: 'ANALYSIS_CUTOFF_INVALID', severity: 'CRITICAL' }], meta);
     }
-    if (typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id || typeof snapshot.contract_version !== 'string' ||
+    if (typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id || snapshot.contract_version !== policy.b1_contract_version ||
         typeof snapshot.canonical_symbol !== 'string' || !snapshot.canonical_symbol || typeof snapshot.market_type !== 'string' || !snapshot.market_type) {
       return blocked('INVALID', [{ code: 'SNAPSHOT_IDENTITY_INVALID', severity: 'CRITICAL' }], meta);
     }
@@ -110,7 +112,7 @@
     if (!stepMs) return blocked('INVALID', [{ code: 'TIMEFRAME_SCOPE_INVALID', severity: 'CRITICAL' }], meta);
     const reportMatches = report.snapshot_id === snapshot.snapshot_id && report.symbol === snapshot.canonical_symbol &&
       report.timeframe === timeframe && report.analysis_as_of_ms === asOf && report.policy_version === policy.b1_quality_policy_version &&
-      typeof report.validator_version === 'string' && report.validator_version.length > 0 &&
+      report.validator_version === policy.b1_validator_version &&
       typeof report.policy_version === 'string' && report.policy_version.length > 0 &&
       Number.isSafeInteger(report.checked_at_ms) && report.checked_at_ms >= 0;
     if (!reportMatches) return blocked('INVALID', [{ code: 'QUALITY_REPORT_IDENTITY_MISMATCH', severity: 'CRITICAL' }], meta);
