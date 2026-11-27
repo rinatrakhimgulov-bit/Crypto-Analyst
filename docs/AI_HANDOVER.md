@@ -1175,3 +1175,6 @@ Owner decision: Stage 1 visual/live-chart polish is frozen temporarily; Stage 2 
 B1 is NOT ACCEPTED and remains unmerged. PR #8 and #9 are draft candidates; real Bybit capture/spread calibration and other acceptance gates remain open. No B2 code may be connected to the live application or directional LONG/SHORT path before B1 acceptance and explicit owner approval.
 
 B2-A isolated candidate: PR #12, 20/20 deterministic tests passed in GitHub Actions run 46010999225 on code commit 8583d5d58158a183a3185fb1397abb3cbe8cb233. B2-B isolated candidate: PR #13, 19/19 deterministic tests passed in run 46011622297 on code commit eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8. Both are research-only, draft/unmerged and not imported by the app HTML. Next: independent exact-source review, then B2-C as a separate isolated increment. Do not merge PRs #8–#13 automatically.
+
+
+B2-B verification update: the isolated B2-B suite is now 20/20, including a direct deterministic integration fixture that executes the actual B2-A engine and passes its VALID result to B2-B. GitHub Actions run 46012201698 passed on code commit 9c102e8f3984daccf0d7d94bcb8807c549e0dcf1. No live-market or production-app validation is implied.
