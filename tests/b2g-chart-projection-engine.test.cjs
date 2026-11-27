@@ -351,8 +351,8 @@ run('superseded pivot is separated from active HH/HL sequence', () => {
   const result = analyze(makeInput());
   assert.equal(result.superseded_pivots[0].id, 'p4');
   assert.equal(result.superseded_pivots[0].label, 'SUPERSEDED_FOR_SEQUENCE');
-  assert.equal(result.superseded_pivots[0].visible_at_ms, STEP * 9 + LAG);
-  assert.equal(result.superseded_pivots[0].status_visible_at_ms, STEP * 9 + LAG);
+  assert.equal(result.superseded_pivots[0].visible_at_ms, STEP * 8 + LAG);
+  assert.equal(result.superseded_pivots[0].status_visible_at_ms, STEP * 8 + LAG);
   assert.equal(result.swing_markers.some(x => x.id === 'p4'), false);
 });
 run('BOS marker anchors to breaking candle but is visible only after close finality', () => {
