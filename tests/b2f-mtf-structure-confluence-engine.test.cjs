@@ -196,7 +196,7 @@ run('full bearish alignment is symmetric', () => {
 run('partial bullish alignment preserves unestablished timeframe', () => {
   const result = analyze(makeInput({ '1d': 'UP', '4h': 'UNESTABLISHED', '1h': 'UP' }));
   assert.equal(result.alignment_status, 'PARTIAL_BULLISH');
-  assert.equal(result.alignment_context, 'BULLISH_STRUCTURE');
+  assert.equal(result.alignment_context, 'PARTIAL_BULLISH_STRUCTURE');
 });
 run('partial bearish alignment preserves unestablished timeframe', () => {
   const result = analyze(makeInput({ '1d': 'DOWN', '4h': 'DOWN', '1h': 'UNESTABLISHED' }));
