@@ -415,3 +415,19 @@ The isolated candidate is implemented in `src/analysis/b2b-swing-sequence-engine
 - Deterministic suite: 19/19 passed in GitHub Actions run 46011622297 on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
 
 This remains an isolated research candidate in draft PR #13, based on the B2-A candidate branch. It does not implement BOS/CHoCH, protected swings, zones, retests, MTF, UI or trading decisions. B1 formal acceptance remains mandatory before production integration.
+
+
+## Causal sequence-history contract (B2-B 2.2.0 / policy v3)
+
+The B2-B output contains two distinct views:
+
+1. `sequence`: final active alternating sequence for current structure classification.
+2. `sequence_history`: immutable record of every pivot accepted at its availability time, including pivots later superseded. A history record uses `ACCEPTED_AT_AVAILABILITY` and stores its sequence index and comparison label as they were known at that time. Later replacement may update the raw pivot's final status, but must not mutate the historical record.
+
+B2-C must replay structure events from `sequence_history`, not from the final active sequence. Otherwise a future same-side replacement can erase a pivot that was valid when an earlier event occurred.
+
+### Same-source dual-pivot timing
+
+A same-source high/low pair is excluded from the active sequence and retained as ambiguous raw evidence. Under B2-A's symmetric right-confirmation contract, both pivots for the same source candle must have identical confirmation and availability timestamps. B2-B fails closed if they differ. B2-G separately carries pivot visibility and status visibility timestamps so an ambiguous/superseded label is never backdated.
+
+B2-D may use ambiguous raw pivots as explicitly tagged S/R evidence, but B2-C must never use them as structure sequence pivots or event sources.
