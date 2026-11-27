@@ -314,8 +314,8 @@ run('consumed initial level cannot emit duplicate events on repeated closes', ()
 
 run('contradictory latest levels produce AMBIGUOUS_BREAK without choosing direction', () => {
   const pivots = [
-    makePivot('h90', 'SWING_HIGH', 90, 0, 1),
-    makePivot('l100', 'SWING_LOW', 100, 3, 4)
+    makePivot('l100', 'SWING_LOW', 100, 3, 4),
+    makePivot('h90', 'SWING_HIGH', 90, 0, 5)
   ];
   const input = fixture(pivots, { 6: { open: 95, close: 95, high: 96, low: 94 } });
   const result = analyze(input);
