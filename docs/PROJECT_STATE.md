@@ -720,3 +720,10 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - Live Bybit REST was skipped as `SKIPPED_PROVIDER_BLOCKED` because GitHub runner requests to both public REST hosts received HTTP 403. No live Bybit pass is claimed.
 - Synthetic mobile viewport 390px: no horizontal overflow. iPhone Safari remains untested.
 - PR #22 is still draft and unmerged. `main` is unchanged.
+
+
+### Clean PR #22 verification refresh
+
+- Clean-branch B2 research suite: run `46034803544`, passed.
+- Clean-branch B2 app browser/mobile integration: run `46034803848`, passed. The browser test also verifies that a confirmed S/R zone starts at its causal `visible_from_ms` position rather than being backdated across the chart.
+- Clean-branch B1 browser suite: run `46034803715`, passed with zero page errors. Live Bybit capture was skipped due GitHub runner HTTP 403.
