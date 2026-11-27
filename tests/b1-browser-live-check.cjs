@@ -129,7 +129,7 @@ async function main() {
           await BybitAdapter.fetchJsonWithTimeout(window.location.origin + '/slow', null, 75);
           timeoutOutcome = { aborted: false };
         } catch (error) {
-          timeoutOutcome = { aborted: error.name === 'AbortError', name: error.name };
+          timeoutOutcome = { aborted: error.name === 'TimeoutError', name: error.name, message: error.message };
         }
         const timeoutElapsedMs = performance.now() - timeoutStartedAt;
         return { adapterAbort: outcome, adapterElapsedMs: elapsedMs, timeout: timeoutOutcome, timeoutElapsedMs };
