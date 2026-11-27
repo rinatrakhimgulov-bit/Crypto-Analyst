@@ -75,8 +75,8 @@ The integrated implementation adds the three presets, six layer toggles, respons
 - B2-A, B2-B, B2-C, B2-D, B2-E, B2-F, B2-G deterministic suites: PASS.
 - B1 browser/live-data verification workflow: PASS.
 - Mobile viewport assertions include 390×844, minimum 440 px chart canvas, no horizontal overflow, three display presets and independent layer toggles.
-- Latest test-only cleanup and documentation commits are newer than the successful run; CI must be green on the final PR HEAD before requesting owner review.
-- iPhone Safari visual acceptance remains outstanding.
+- The final PR HEAD `e65715efea1fa97527f03ccb7e883cc8d6737e58` was verified by B1 workflow `46039070502` and B2 workflow `46039070648`; both completed SUCCESS.
+- iPhone Safari visual acceptance remains outstanding after integration.
 
 
 ## 8. Final integration status (2026-11-27)
