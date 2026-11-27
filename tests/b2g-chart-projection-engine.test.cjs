@@ -161,6 +161,8 @@ function makeInput() {
     structure_state: 'UP',
     raw_pivots: raw,
     pivots: active,
+    sequence_history: active.map((p, index) => ({ ...p, sequence_status: 'ACCEPTED_AT_AVAILABILITY',
+      exclusion_reason: null, superseded_by: null, sequence_index_at_availability: index })),
     events: [event]
   };
   const b2d = {
