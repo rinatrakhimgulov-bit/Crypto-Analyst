@@ -338,7 +338,7 @@
       state_policy: 'PROTECTED_SWING_HL_LH_V1',
       break_buffer_policy: policy.break_buffer_policy,
       price_equality_policy: policy.price_equality_policy,
-      events, pivots,
+      events, raw_pivots: source.raw_pivots.map(p => ({ ...p, confirmation: { ...p.confirmation } })), pivots,
       protected_level: protectedLevel ? {
         pivot_id: protectedLevel.pivot_id, price: protectedLevel.price,
         source_time_ms: protectedLevel.source_time_ms,
@@ -353,7 +353,8 @@
       diagnostics: {
         candle_count: candles.length, pivot_count: pivots.length, event_count: events.length,
         consumed_level_count: consumed.size,
-        protected_level_unavailable: state !== 'UNESTABLISHED' && !protectedLevel
+        protected_level_unavailable: state !== 'UNESTABLISHED' && !protectedLevel,
+        protected_level_status: state === 'UNESTABLISHED' ? 'NOT_APPLICABLE' : protectedLevel ? 'AVAILABLE' : 'PROTECTED_LEVEL_UNAVAILABLE'
       }
     });
   }
