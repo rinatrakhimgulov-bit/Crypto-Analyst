@@ -107,3 +107,10 @@ B2-F validates unique per-timeframe snapshot IDs, exact per-timeframe candle map
 - The full three-timeframe fixture uses actual B2-A/B/C engines over synthetic per-timeframe snapshots and a synthetic B1-E-shaped common-cutoff result. The actual B1MtfEngine is statically inspected but not invoked by this Node test suite.
 - No live Bybit MTF data run, iPhone/Safari integration, MTF zone/retest confluence, chart overlay or directional trade decision is included.
 - B1 remains NOT ACCEPTED. B2-F is research-only and not imported into application HTML.
+
+
+## 14. Final policy hardening — 2026-11-27
+
+B2-F policy now requires an explicit `max_provider_time_spread_ms` and verifies that the B1-E result carries the exact same maximum. The actual provider-time spread is recomputed from all three per-timeframe provider timestamps; a forged or overly permissive aggregate value is rejected. The output preserves the measured and configured spread in its admission record.
+
+The exposed overall context is categorical structure context (for example `BULLISH_STRUCTURE`, `PARTIAL_BEARISH_STRUCTURE`, `MIXED_STRUCTURE`), not an order direction.
