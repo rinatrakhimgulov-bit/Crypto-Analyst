@@ -285,7 +285,7 @@
         return blocked('B2D_ZONE_INVALID', meta);
       }
       const zonePivots = zone.pivot_ids.map(id => b2c.raw_pivots.find(p => p.pivot_id === id));
-      if (zonePivots.some(p => !p || (zone.role === 'SUPPORT' ? p.type !== 'SWING_LOW' : p.type !== 'SWING_HIGH')) ||
+      if (new Set(zone.pivot_ids).size !== zone.pivot_ids.length || zone.evidence_status !== 'CONFIRMED_CLUSTER' || zonePivots.some(p => !p || (zone.role === 'SUPPORT' ? p.type !== 'SWING_LOW' : p.type !== 'SWING_HIGH')) ||
           Math.min(...zonePivots.map(p => p.price)) !== zone.lower_bound ||
           Math.max(...zonePivots.map(p => p.price)) !== zone.upper_bound ||
           Math.max(...zonePivots.map(p => p.available_at_ms)) !== zone.available_at_ms ||
@@ -321,12 +321,16 @@
           !Number.isSafeInteger(candidate.available_at_ms) || candidate.available_at_ms > asOf) {
         return blocked('B2D_CANDIDATE_INVALID', meta);
       }
-      if (!Array.isArray(candidate.pivot_ids) || candidate.pivot_ids.length < 1) return blocked('B2D_CANDIDATE_EVIDENCE_MISMATCH', meta);
+      if (!Array.isArray(candidate.pivot_ids) || candidate.pivot_ids.length < 1 ||
+          new Set(candidate.pivot_ids).size !== candidate.pivot_ids.length ||
+          !['SUPPORT', 'RESISTANCE'].includes(candidate.role) ||
+          candidate.evidence_status !== 'INSUFFICIENT_INDEPENDENT_TOUCHES') return blocked('B2D_CANDIDATE_EVIDENCE_MISMATCH', meta);
       const candidatePivots = candidate.pivot_ids.map(id => b2c.raw_pivots.find(p => p.pivot_id === id));
       if (candidatePivots.some(p => !p || (candidate.role === 'SUPPORT' ? p.type !== 'SWING_LOW' : p.type !== 'SWING_HIGH')) ||
           Math.min(...candidatePivots.map(p => p.price)) !== candidate.lower_bound ||
           Math.max(...candidatePivots.map(p => p.price)) !== candidate.upper_bound ||
-          Math.max(...candidatePivots.map(p => p.available_at_ms)) !== candidate.available_at_ms) {
+          Math.max(...candidatePivots.map(p => p.available_at_ms)) !== candidate.available_at_ms ||
+          new Set(candidatePivots.map(p => p.source_time_ms)).size !== candidate.touch_count) {
         return blocked('B2D_CANDIDATE_EVIDENCE_MISMATCH', meta);
       }
       candidateIds.add(candidate.candidate_id);
@@ -353,11 +357,15 @@
           !['BULLISH', 'BEARISH'].includes(lifecycle.direction) ||
           !['SUPPORT', 'RESISTANCE'].includes(lifecycle.original_role) ||
           !['SUPPORT', 'RESISTANCE'].includes(lifecycle.proposed_role) ||
+          lifecycle.proposed_role !== (lifecycle.direction === 'BULLISH' ? 'SUPPORT' : 'RESISTANCE') ||
+          lifecycle.original_role !== (lifecycle.direction === 'BULLISH' ? 'RESISTANCE' : 'SUPPORT') ||
           !isObject(lifecycle.historical_zone) || lifecycle.historical_zone.role !== lifecycle.original_role ||
+          !Number.isFinite(lifecycle.historical_zone.lower_bound) || !Number.isFinite(lifecycle.historical_zone.upper_bound) ||
           !Number.isSafeInteger(lifecycle.breakout_available_at_ms) ||
           lifecycle.breakout_available_at_ms > asOf ||
           lifecycle.breakout_available_at_ms !== lifecycle.breakout_candle_close_time_ms + policy.finality_safety_lag_ms ||
           !Number.isSafeInteger(lifecycle.breakout_candle_close_time_ms) ||
+          lifecycle.breakout_candle_close_time_ms <= 0 || lifecycle.breakout_candle_close_time_ms % step !== 0 ||
           !Number.isSafeInteger(lifecycle.retest_window_bars) || lifecycle.retest_window_bars < 1 ||
           !Number.isSafeInteger(lifecycle.confirmation_window_bars) || lifecycle.confirmation_window_bars < 1) {
         return blocked('B2E_LIFECYCLE_INVALID', meta);
@@ -366,6 +374,7 @@
       if (lifecycle.touch && (!Number.isSafeInteger(lifecycle.touch.candle_close_time_ms) ||
           lifecycle.touch.candle_close_time_ms <= lifecycle.breakout_candle_close_time_ms ||
           lifecycle.touch.candle_close_time_ms + policy.finality_safety_lag_ms > asOf ||
+          lifecycle.touch.candle_close_time_ms + policy.finality_safety_lag_ms !== lifecycle.touch.candle_close_time_ms + policy.finality_safety_lag_ms ||
           lifecycle.touch.candle_close_time_ms % step !== 0)) {
         return blocked('B2E_TOUCH_INVALID', meta);
       }
@@ -373,7 +382,8 @@
           !Number.isSafeInteger(lifecycle.confirmation.available_at_ms) ||
           lifecycle.confirmation.available_at_ms !== lifecycle.confirmation.candle_close_time_ms + policy.finality_safety_lag_ms ||
           lifecycle.confirmation.available_at_ms > asOf ||
-          (lifecycle.touch && lifecycle.confirmation.candle_close_time_ms < lifecycle.touch.candle_close_time_ms))) {
+          (lifecycle.touch && lifecycle.confirmation.candle_close_time_ms < lifecycle.touch.candle_close_time_ms) ||
+          (!lifecycle.touch && lifecycle.confirmation.candle_close_time_ms <= lifecycle.breakout_candle_close_time_ms))) {
         return blocked('B2E_CONFIRMATION_INVALID', meta);
       }
       const expectedRoleStatus = lifecycle.status === 'RETEST_SUCCESSFUL' ? 'CONFIRMED' :
