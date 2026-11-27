@@ -34,7 +34,7 @@
       timeframes: {},
       structure_pattern: null,
       alignment_status: 'BLOCKED',
-      alignment_direction: 'UNKNOWN',
+      alignment_context: 'UNAVAILABLE',
       hierarchical_interpretation: 'BLOCKED',
       lower_timeframe_consensus: 'BLOCKED',
       diagnostics: { timeframe_count: 0, event_count: 0 }
@@ -89,13 +89,13 @@
     const allUp = values.every(v => v === 'UP');
     const allDown = values.every(v => v === 'DOWN');
     const allUnestablished = values.every(v => v === 'UNESTABLISHED');
-    if (allUp) return { status: 'FULL_BULLISH', direction: 'BULLISH' };
-    if (allDown) return { status: 'FULL_BEARISH', direction: 'BEARISH' };
-    if (hasUp && hasDown) return { status: 'MIXED', direction: 'CONFLICT' };
-    if (hasUp) return { status: 'PARTIAL_BULLISH', direction: 'BULLISH' };
-    if (hasDown) return { status: 'PARTIAL_BEARISH', direction: 'BEARISH' };
-    if (allUnestablished) return { status: 'UNESTABLISHED', direction: 'UNESTABLISHED' };
-    return { status: 'UNESTABLISHED', direction: 'UNESTABLISHED' };
+    if (allUp) return { status: 'FULL_BULLISH', context: 'BULLISH_STRUCTURE' };
+    if (allDown) return { status: 'FULL_BEARISH', context: 'BEARISH_STRUCTURE' };
+    if (hasUp && hasDown) return { status: 'MIXED', context: 'MIXED_STRUCTURE' };
+    if (hasUp) return { status: 'PARTIAL_BULLISH', context: 'PARTIAL_BULLISH_STRUCTURE' };
+    if (hasDown) return { status: 'PARTIAL_BEARISH', context: 'PARTIAL_BEARISH_STRUCTURE' };
+    if (allUnestablished) return { status: 'UNESTABLISHED', context: 'UNESTABLISHED_STRUCTURE' };
+    return { status: 'UNESTABLISHED', context: 'UNESTABLISHED_STRUCTURE' };
   }
   function interpretation(pattern, alignmentStatus) {
     const exact = {
@@ -156,6 +156,7 @@
     const states = {};
     const timeframeOutput = {};
     const snapshotIds = {};
+    const seenSnapshotIds = new Set();
     let totalEvents = 0;
 
     for (const tf of REQUIRED) {
@@ -174,6 +175,7 @@
       if (!isObject(snapshot) || !isObject(report) ||
           snapshot.contract_version !== policy.b1_contract_version ||
           typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id ||
+          seenSnapshotIds.has(snapshot.snapshot_id) ||
           typeof snapshot.canonical_symbol !== 'string' || !snapshot.canonical_symbol ||
           typeof snapshot.market_type !== 'string' || !snapshot.market_type ||
           snapshot.analysis_as_of_ms !== cutoff || snapshot.provider_server_time_ms !== cutoff ||
@@ -194,10 +196,10 @@
       }
 
       const closedMap = snapshot.candles_by_timeframe;
-      if (!isObject(closedMap) || !Array.isArray(closedMap[tf]) ||
-          !isObject(snapshot.forming_candle_by_timeframe) ||
+      if (!isObject(closedMap) || Object.keys(closedMap).length !== 1 || !Array.isArray(closedMap[tf]) ||
+          !isObject(snapshot.forming_candle_by_timeframe) || Object.keys(snapshot.forming_candle_by_timeframe).length !== 1 ||
           !Object.prototype.hasOwnProperty.call(snapshot.forming_candle_by_timeframe, tf) ||
-          !isObject(snapshot.unclassified_candles_by_timeframe) ||
+          !isObject(snapshot.unclassified_candles_by_timeframe) || Object.keys(snapshot.unclassified_candles_by_timeframe).length !== 1 ||
           !Array.isArray(snapshot.unclassified_candles_by_timeframe[tf])) {
         return blocked('INVALID', 'B1_MTF_CANONICAL_CANDLES_INVALID', meta);
       }
@@ -213,6 +215,7 @@
             c.open_time_ms !== expectedStart + i * step)) {
         return blocked('INVALID', 'B1_MTF_ANALYSIS_WINDOW_MISMATCH', meta);
       }
+      seenSnapshotIds.add(snapshot.snapshot_id);
       snapshotIds[tf] = snapshot.snapshot_id;
 
       if (b2c.status !== 'VALID' || b2c.engine_version !== policy.b2c_engine_version ||
@@ -236,6 +239,7 @@
             eventIds.has(event.event_id) ||
             !Number.isSafeInteger(event.breaking_candle_close_time_ms) ||
             !Number.isSafeInteger(event.available_at_ms) ||
+            event.available_at_ms !== event.breaking_candle_close_time_ms + policy.finality_safety_lag_ms ||
             event.available_at_ms > cutoff ||
             event.breaking_candle_close_time_ms < previousClose) {
           return blocked('INVALID', 'B2C_EVENT_HISTORY_INVALID', meta);
@@ -289,7 +293,7 @@
       timeframes: timeframeOutput,
       structure_pattern: pattern,
       alignment_status: aligned.status,
-      alignment_direction: aligned.direction,
+      alignment_context: aligned.context,
       hierarchical_interpretation: interpretation(pattern, aligned.status),
       lower_timeframe_consensus: lower,
       diagnostics: {
