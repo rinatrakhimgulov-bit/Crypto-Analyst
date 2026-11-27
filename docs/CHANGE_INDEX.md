@@ -341,3 +341,12 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - `tests/b1-browser-live-check.cjs`: live-probe initial UI smoke check, no automatic external requests; quality gate series mismatch and empty-insufficient assertions.
 - Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; gate/UI/chart/probe smoke passed, zero page errors. Live Bybit blocked by runner HTTP 403.
 - Exact current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; main unchanged.
+
+
+
+## 22. B1-C analytics-input integrity guard — 2026-11-27
+
+- `BasicAnalyticsEngine.analyze()` now verifies the legacy closed-candle series and last-closed price consumed by indicators match the exact canonical snapshot that passed B1 validation. Divergence forces WAIT.
+- Empty but matching candle series preserve INSUFFICIENT status and `INSUFFICIENT_HISTORY` rather than being mislabeled INVALID.
+- Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; 161/161 named tests, UI/chart checks passed, zero browser page errors.
+- Current candidate HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; PR #8 draft, main unchanged. Live Bybit remains blocked by runner HTTP 403.
