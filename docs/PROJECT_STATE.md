@@ -642,7 +642,7 @@ Next: independent review of exact B2-A/B2-B source and tests; then B2-C protecte
 
 **Integration branch:** `integration/b2-market-structure-ui-2026-11-27`  
 **Base for the integration candidate:** B1-D candidate `feature/b1-d-live-market-data-2026-11-27` (not `main`).  
-**Current integration commit:** `32bb3a875c4031bb171b935120ef174b68b828cc`.
+**Draft integration PR:** [#21](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/21), head `e77e8be826c0e8a4641739752f94472e6ae7c1a5` at the time of latest full verification.
 
 ### App changes
 
