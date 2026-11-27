@@ -374,13 +374,13 @@
       if (lifecycle.touch && (!Number.isSafeInteger(lifecycle.touch.candle_close_time_ms) ||
           lifecycle.touch.candle_close_time_ms <= lifecycle.breakout_candle_close_time_ms ||
           lifecycle.touch.candle_close_time_ms + policy.finality_safety_lag_ms > asOf ||
-          lifecycle.touch.candle_close_time_ms + policy.finality_safety_lag_ms !== lifecycle.touch.candle_close_time_ms + policy.finality_safety_lag_ms ||
           lifecycle.touch.candle_close_time_ms % step !== 0)) {
         return blocked('B2E_TOUCH_INVALID', meta);
       }
       if (lifecycle.confirmation && (!Number.isSafeInteger(lifecycle.confirmation.candle_close_time_ms) ||
           !Number.isSafeInteger(lifecycle.confirmation.available_at_ms) ||
           lifecycle.confirmation.available_at_ms !== lifecycle.confirmation.candle_close_time_ms + policy.finality_safety_lag_ms ||
+          lifecycle.confirmation.candle_close_time_ms % step !== 0 ||
           lifecycle.confirmation.available_at_ms > asOf ||
           (lifecycle.touch && lifecycle.confirmation.candle_close_time_ms < lifecycle.touch.candle_close_time_ms) ||
           (!lifecycle.touch && lifecycle.confirmation.candle_close_time_ms <= lifecycle.breakout_candle_close_time_ms))) {
