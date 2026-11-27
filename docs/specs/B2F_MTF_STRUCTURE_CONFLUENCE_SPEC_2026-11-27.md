@@ -82,3 +82,28 @@ Return B1 MTF identity/common cutoff, B2-F engine/policy version, per-timeframe 
 B2-F v1 does not combine S/R zones or B2-E retest lifecycles across timeframes, weight signals, draw charts or create a trade decision. Those remain separate increments.
 
 B2-F may be developed as an isolated research candidate only. B1 formal acceptance, independent exact-source review and explicit owner approval remain mandatory before production integration.
+
+
+## 12. Implementation candidate and contract audit — 2026-11-27
+
+The isolated implementation is in `src/analysis/b2f-mtf-structure-confluence-engine.js`, draft PR #19.
+
+Implementation-specific binding:
+- B1 MTF contract: `1.0.0`.
+- B1 canonical snapshot contract: `1.1.0`.
+- B1 validator: `1.1.0`.
+- Actual B1 quality policy: `b1-quality-policy-2026-11-27-v1`.
+- B2-B engine/policy: `2.0.0-b2b` / `b2b-swing-sequence-v1`.
+- B2-C engine/policy: `2.0.0-b2c` / `b2c-state-v1`.
+
+The B1 MTF outer `market_type` is a display label (currently `Linear Perpetual`), while each canonical snapshot uses `linear_perpetual`. B2-F preserves the display label separately and uses the canonical snapshot market type for identity checks. The outer raw symbol is likewise not substituted for the canonical snapshot symbol.
+
+B2-F validates unique per-timeframe snapshot IDs, exact per-timeframe candle maps, selected analysis-window candle equality, provider-time spread recomputation, B2-C event uniqueness/order and exact finality availability (`break close + 500 ms`). The output uses `alignment_context` values such as `BULLISH_STRUCTURE`, not a LONG/SHORT recommendation.
+
+## 13. Verification and limitations
+
+- 28/28 B2-F deterministic tests passed in GitHub Actions run [46019688038](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46019688038) on head `df1170785112ca7f2f513788ab69c86358b6f4b4`.
+- Integrated B2-A through B2-F suite: 147/147 passed in run [46019688084](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46019688084).
+- The full three-timeframe fixture uses actual B2-A/B/C engines over synthetic per-timeframe snapshots and a synthetic B1-E-shaped common-cutoff result. The actual B1MtfEngine is statically inspected but not invoked by this Node test suite.
+- No live Bybit MTF data run, iPhone/Safari integration, MTF zone/retest confluence, chart overlay or directional trade decision is included.
+- B1 remains NOT ACCEPTED. B2-F is research-only and not imported into application HTML.
