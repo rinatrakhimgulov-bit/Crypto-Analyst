@@ -343,3 +343,24 @@ B1 находится в исследовании. Основной HTML не и
 Предложен минимальный план B1: сохранить текущий JS adapter как первый provider, добавить canonical mapping + pure validator + mandatory gate + stale suppression, затем common cutoff и только потом второй provider. Предварительная рекомендация: не мигрировать на Python backend до доказанной необходимости.
 
 Подробности: `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`. Код приложения не изменён.
+
+
+## Stage 2 transition and isolated B2-A/B candidates — 2026-11-27
+
+The owner approved freezing Stage 1 visual/live-chart feature work temporarily and prioritizing the analytical Market Structure stage. The first-stage issues (live forming-candle animation, precise live-price comparison and remaining real iPhone/Safari market-data diagnostics) are deferred, not discarded. B1 data-quality requirements remain mandatory.
+
+### B2-A
+- Isolated pure causal raw swing-high/swing-low engine in `src/analysis/b2-causal-swing-engine.js`.
+- Exact B1 snapshot/report and version binding; closed-candle provenance, timeframe alignment, finality, ordering and OHLC checks; plateau-aware pivots with rightmost representative and causal timestamps.
+- Expanded deterministic tests: 20/20 passed in GitHub Actions run [46010999225](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46010999225), code commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
+- PR #12 is draft/unmerged and not connected to the application.
+
+### B2-B
+- Isolated pure swing-sequence engine in `src/analysis/b2b-swing-sequence-engine.js`.
+- Consumes only VALID B2-A output; preserves raw pivots; builds availability-ordered alternating sequence; implements symmetric same-side replacement and HH/LH/EQH/HL/LL/EQL labels.
+- Exact B2-A and B1 identity binding; deep immutable output without freezing upstream-owned objects.
+- Deterministic tests: 19/19 passed in GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46011622297), code commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
+- PR #13 is draft/unmerged and based on the B2-A candidate branch.
+
+### Acceptance boundary
+B1 remains NOT ACCEPTED. B2-A/B are isolated research candidates only. No application HTML, `main`, chart, MTF directional path or LONG/SHORT decision logic changed. No live Bybit or profitability claim is made. B2-C and later increments remain separate work and must not be connected to the app before B1 acceptance and explicit owner approval.
