@@ -256,3 +256,13 @@ CI results: 44/44 Stage A, 32/32 B1 contract, 63/63 B1 validator; gate assertion
 * `BasicAnalyticsEngine.analyze()`: requires exact active validator and policy version identity, otherwise fail-closed INVALID/WAIT.
 * `tests/b1-browser-live-check.cjs`: end-to-end synthetic normalization/contract/validator/engine checks for VALID, INVALID, STALE; verifies indicator arrays only appear for VALID.
 * Latest CI: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, gate/cleanup checks passed; live Bybit probe skipped on runner HTTP 403.
+
+
+## 16. Chart visualization C1 — 2026-11-27
+
+- `BasicAnalyticsEngine.calcEMA()` is reused for EMA200; `analyze()` now returns `ema200` and `metrics.lastEma200`.
+- Active `loadAndAnalyze()` requests 400 Bybit kline rows to supply EMA200 warm-up history.
+- `CandleChart.render()` draws EMA200, scales/clips moving-average overlays to the price pane, and renders synchronized volume bars in a separate lower pane.
+- Chart legend documents EMA200 and base-asset volume.
+- `tests/b1-browser-live-check.cjs` adds EMA200 warm-up and chart-rendering assertions.
+- Candidate branch only; test status pending.
