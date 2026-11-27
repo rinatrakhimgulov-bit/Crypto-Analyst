@@ -176,7 +176,7 @@ run('duplicate pivot IDs are rejected', () => {
 
 run('invalid pivot causal timestamps are rejected', () => {
   const p = pivot('h1', 'SWING_HIGH', 100, 1000);
-  p.available_at_ms = 2400;
+  p.available_at_ms = 400;
   const result = analyze(makeInput([p]));
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'PIVOT_CAUSAL_TIME_INVALID');
