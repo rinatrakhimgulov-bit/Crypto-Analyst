@@ -401,3 +401,10 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - Added regression coverage for longer plateaus/right-window counting, non-contiguous equal highs, incomplete right confirmation, deeply immutable pivot evidence, duplicate timestamps, and out-of-order candles.
 - GitHub Actions run `46010999225` passed on commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
 - No engine source, application HTML, or main branch changed. Research-only; B1 acceptance remains required before production integration.
+
+
+### B2-B isolated swing sequence candidate — 2026-11-27
+- `src/analysis/b2b-swing-sequence-engine.js`: pure consumer of VALID B2-A raw pivots; exact B2-A/B1 identity binding; availability-order processing; immutable alternating sequence; same-side replacement; HH/LH/EQH/HL/LL/EQL labels.
+- `tests/b2b-swing-sequence-engine.test.cjs`: 19 deterministic cases covering sequence behavior, replacement symmetry, equality, causal ordering, fail-closed admission, immutability and determinism.
+- `.github/workflows/b2b-swing-sequence.yml`: isolated B2-B CI workflow. Run `46011622297` passed 19/19 on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
+- PR #13 is draft/unmerged and based on B2-A candidate. No main/app changes; B1 acceptance remains required before production integration.
