@@ -7601,28 +7601,31 @@
 
           if (!this.marketStructure && this.displayLayers.pivots) {
             const swings = this.analysis.swings || { highs: [], lows: [] };
+            const visibleLimit = this.displayMode === 'clean' ? 3 : this.displayMode === 'structure' ? 7 : Infinity;
+            const visibleHighs = swings.highs.filter(point => {
+              const idx = tsToGlobalIdx.get(point.ts);
+              return Number.isFinite(point.ts) && idx !== undefined && idx >= startIdx && idx < endIdx;
+            }).slice(-visibleLimit);
+            const visibleLows = swings.lows.filter(point => {
+              const idx = tsToGlobalIdx.get(point.ts);
+              return Number.isFinite(point.ts) && idx !== undefined && idx >= startIdx && idx < endIdx;
+            }).slice(-visibleLimit);
             ctx.font = '10px sans-serif';
-            for (const hPt of swings.highs) {
-              if (!Number.isFinite(hPt.ts)) continue;
+            for (const hPt of visibleHighs) {
               const gIdx = tsToGlobalIdx.get(hPt.ts);
-              if (gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx) {
-                const i = gIdx - startIdx;
-                const cx = padLeft + (i + 0.5) * stepX;
-                const cy = yForPrice(hPt.price) - 6;
-                ctx.fillStyle = '#f59e0b';
-                ctx.fillText('SH', cx - 6, cy);
-              }
+              const i = gIdx - startIdx;
+              const cx = padLeft + (i + 0.5) * stepX;
+              const cy = yForPrice(hPt.price) - 6;
+              ctx.fillStyle = '#f59e0b';
+              ctx.fillText('SH', cx - 6, cy);
             }
-            for (const lPt of swings.lows) {
-              if (!Number.isFinite(lPt.ts)) continue;
+            for (const lPt of visibleLows) {
               const gIdx = tsToGlobalIdx.get(lPt.ts);
-              if (gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx) {
-                const i = gIdx - startIdx;
-                const cx = padLeft + (i + 0.5) * stepX;
-                const cy = yForPrice(lPt.price) + 13;
-                ctx.fillStyle = '#38bdf8';
-                ctx.fillText('SL', cx - 5, cy);
-              }
+              const i = gIdx - startIdx;
+              const cx = padLeft + (i + 0.5) * stepX;
+              const cy = yForPrice(lPt.price) + 13;
+              ctx.fillStyle = '#38bdf8';
+              ctx.fillText('SL', cx - 5, cy);
             }
           }
 
