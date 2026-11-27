@@ -109,3 +109,21 @@ These results apply to the candidate branch and the relevant recorded CI commits
 This consolidation does not start B2 Market Structure. It removes the remaining data synchronization and architecture uncertainty so B2 can consume a stable, synchronized, provider-neutral closed-candle dataset.
 
 No code in `main` was changed by this audit.
+
+
+
+
+## Integration execution update — 2026-11-27
+
+The controlled port described above has now been implemented on `integration/b1-mtf-architecture-2026-11-27`. This supersedes the earlier "Immediate work plan" item that described the port as future work.
+
+- Current candidate HTML blob: `3f1a739b90e3a187292b29cd9f0ca5c1beafbd5c` (295,555 bytes).
+- The current implementation is `B1MtfEngine` and uses B1 canonical contract 1.1.0 / B1QualityValidator 1.1.0, not legacy DataQualityEngine.
+- Explicit `excluded_after_cutoff_count` accounting is part of the versioned canonical schema.
+- The MTF self-test suite is wired into the browser CI harness and currently reports 12/12.
+- Latest completed CI run `45965680821`: Stage A 44/44, contract 32/32, validator 64/64, MTF 12/12, gate/UI/chart assertions passed, zero browser page errors.
+- Live Bybit is not verified: GitHub runner receives HTTP 403 from both REST hosts.
+
+The current branch is 48 commits ahead of main and 0 behind. Main HTML blob remains `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf`. No merge has occurred.
+
+**Current audit status: implementation port complete; integration review still open.** The older independent review does not cover this current blob. The exact-artifact review request is in `docs/audits/PROMPT_B1_CURRENT_CONTRACT_INDEPENDENT_REVIEW_2026-11-27.md`. Remaining gates: independent review, live concurrent capture and spread calibration, browser transport abort verification, latest iPhone Safari panel check, owner acceptance. B2 remains gated.
