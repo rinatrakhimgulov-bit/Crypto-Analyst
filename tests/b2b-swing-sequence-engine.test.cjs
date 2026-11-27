@@ -89,6 +89,9 @@ run('a more extreme same-side high replaces the active sequence high but preserv
   assert.equal(result.raw_pivots[0].superseded_by, 'h2');
   assert.equal(result.sequence[2].structure_label, 'HH');
   assert.equal(result.sequence[2].comparison_pivot_id, 'h2');
+  assert.deepEqual(result.sequence_history.map(p => p.pivot_id), ['h1', 'h2', 'l1', 'h3']);
+  assert.equal(result.sequence_history[0].sequence_status, 'ACCEPTED_AT_AVAILABILITY');
+  assert.equal(result.sequence_history[0].superseded_by, null);
 });
 
 run('a less extreme same-side high is retained as raw evidence but excluded from sequence', () => {
@@ -140,7 +143,7 @@ run('availability order is preserved even when source times are not chronologica
     pivot('l-early-source', 'SWING_LOW', 90, 2000, 300)
   ]));
   assert.deepEqual(result.sequence.map(p => p.pivot_id), ['h-late-source', 'l-early-source']);
-  assert.equal(result.sequence_order_basis, 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS');
+  assert.equal(result.sequence_order_basis, 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS_WITH_HISTORY');
 });
 
 run('non-monotonic availability order fails closed instead of silently reordering', () => {
