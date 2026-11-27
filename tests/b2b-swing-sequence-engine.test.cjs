@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const { analyze } = require('../src/analysis/b2b-swing-sequence-engine.js');
+const { analyze: analyzeB2A } = require('../src/analysis/b2-causal-swing-engine.js');
 
 const POLICY = Object.freeze({
   version: 'b2b-swing-sequence-v1',
@@ -252,4 +253,104 @@ run('output freezing does not freeze nested objects owned by B2-A input', () => 
   assert.equal(Object.isFrozen(sourceQualityReport), false);
   assert.ok(Object.isFrozen(result.raw_pivots[0].confirmation));
   assert.ok(Object.isFrozen(result.admission.b2a_quality_report));
+});
+
+
+run('B2-A to B2-B integration preserves causal swing sequence labels', () => {
+  const step = 3600000;
+  const lag = 500;
+  const base = Math.floor(1700000000000 / step) * step;
+  const candles = [];
+  for (let i = 0; i < 20; i++) {
+    candles.push({
+      provider_id: 'bybit-v5-rest',
+      venue: 'bybit',
+      market_type: 'linear_perpetual',
+      canonical_symbol: 'BTC/USDT',
+      provider_symbol: 'BTCUSDT',
+      timeframe: '1h',
+      open_time_ms: base + i * step,
+      close_time_ms: base + (i + 1) * step,
+      open: 9.5,
+      high: 10,
+      low: 9,
+      close: 9.7,
+      volume_base: 1,
+      volume_quote: 9.7,
+      closed_state: 'TIME_DERIVED',
+      provider_event_time_ms: null,
+      received_at_ms: null,
+      normalizer_version: 'bybit-rest-v1'
+    });
+  }
+  candles[2].high = 12;
+  candles[6].high = 14;
+  candles[10].high = 13;
+  candles[4].low = 7;
+  candles[8].low = 8;
+  candles[12].low = 6;
+  const asOf = candles[19].close_time_ms + lag;
+  for (const candle of candles) {
+    candle.provider_event_time_ms = asOf;
+    candle.received_at_ms = asOf;
+  }
+  const snapshotId = 'integration:BTCUSDT:1h:' + asOf;
+  const snapshot = {
+    contract_version: '1.1.0',
+    snapshot_id: snapshotId,
+    canonical_symbol: 'BTC/USDT',
+    market_type: 'linear_perpetual',
+    analysis_as_of_ms: asOf,
+    provider_server_time_ms: asOf,
+    provider_metadata: { provider_id: 'bybit-v5-rest', venue: 'bybit', provider_symbol: 'BTCUSDT', host: 'api.bybit.com', time_source: 'provider' },
+    received_at_ms: asOf,
+    candles_by_timeframe: { '1h': candles },
+    forming_candle_by_timeframe: { '1h': null },
+    unclassified_candles_by_timeframe: { '1h': [] }
+  };
+  const qualityReport = {
+    validator_version: '1.1.0',
+    policy_version: 'b1-quality-policy-2026-11-27-v1',
+    snapshot_id: snapshotId,
+    status: 'VALID',
+    symbol: 'BTC/USDT',
+    timeframe: '1h',
+    analysis_as_of_ms: asOf,
+    valid_count: candles.length,
+    closed_count: candles.length,
+    insufficient_history: false,
+    checked_at_ms: asOf
+  };
+  const b2a = analyzeB2A({
+    snapshot,
+    quality_report: qualityReport,
+    timeframe: '1h',
+    analysis_as_of_ms: asOf,
+    policy: {
+      version: 'b2a-causal-swing-v1',
+      b1_contract_version: '1.1.0',
+      b1_validator_version: '1.1.0',
+      b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
+      left_strength: 2,
+      right_strength: 2,
+      finality_safety_lag_ms: lag,
+      price_equality_policy: 'EXACT_PRICE_V1'
+    }
+  });
+  assert.equal(b2a.status, 'VALID');
+  const b2b = analyze({
+    b2a_result: b2a,
+    policy: {
+      version: 'b2b-swing-sequence-v1',
+      b2a_engine_version: '2.0.0-b2a',
+      b2a_policy_version: 'b2a-causal-swing-v1',
+      b1_validator_version: '1.1.0',
+      b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
+      price_equality_policy: 'EXACT_PRICE_V1'
+    }
+  });
+  assert.equal(b2b.status, 'VALID');
+  assert.deepEqual(b2b.sequence.map(p => p.structure_label), [
+    'INITIAL_HIGH', 'INITIAL_LOW', 'HH', 'HL', 'LH'
+  ]);
 });
