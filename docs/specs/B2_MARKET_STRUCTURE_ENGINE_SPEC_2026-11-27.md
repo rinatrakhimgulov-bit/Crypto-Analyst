@@ -393,3 +393,39 @@ These are isolated research candidates, not accepted production modules. They ar
 - B2-F: chart integration of accepted engine output.
 
 Before B2-D, perform an independent exact-source review of the B2-A/B/C candidate commits. Internal deterministic tests and internal source review are not substitutes for independent review, real market-data verification or owner acceptance.
+
+
+## 20. B2-D zone policy and isolated candidate status — 2026-11-27
+
+B2-D has an isolated research candidate in PR #16. This section freezes the candidate's initial clustering contract; it does not authorize production integration.
+
+### 20.1 Zone inputs and roles
+- Consume only raw confirmed pivots from a VALID B2-C result with exact B1/B2-A/B2-B/B2-C identity bindings.
+- SWING_LOW contributes support evidence; SWING_HIGH contributes resistance evidence.
+- Support and resistance clusters are never merged, even if their price bands overlap.
+- Every contributing pivot ID, source time, confirmation time and availability time remains in the output.
+
+### 20.2 Explicit tolerance policy
+- The canonical B1 contract currently does not guarantee tick-size metadata.
+- Therefore B2-D v1 requires an explicit positive max_cluster_span_price, scoped to the exact canonical instrument and timeframe.
+- No implicit percentage, ATR, fixed-dollar default or guessed tick-size fallback is permitted.
+- The absolute span is a configuration input, not a calibrated market truth. It must be reviewed against live BTC/ETH data before production use.
+
+### 20.3 Clustering rule
+- MAX_TOTAL_SPAN_V1: sort same-role pivots by price and form a cluster only while cluster_max_price - cluster_min_price <= max_cluster_span_price.
+- This bounds the entire cluster and prevents transitive chaining where adjacent pairs are close but the overall group is too wide.
+- A minimum independent-touch count is explicit in the zone policy and must be at least two.
+- Multiple same-role pivots from one source candle fail closed; one candle cannot inflate touch count.
+- A cluster below the required touch count remains a candidate level, not a confirmed zone.
+- Zone bounds are the observed min/max pivot prices; representative price is the deterministic median. No hidden padding is added.
+- Zone availability is the latest availableAt among member pivots. Touch freshness is reported as age from the latest source-candle time.
+- No probability-like strength score is emitted.
+
+### 20.4 Exclusions
+Role reversal, breakout/retest/failure lifecycle, MTF synthesis, chart overlays and LONG/SHORT decisions remain outside B2-D. Role reversal and retest state are later B2-E work.
+
+### 20.5 Candidate verification
+- PR #16: isolated and draft/unmerged.
+- 20/20 deterministic tests passed in GitHub Actions run [46014759139](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014759139), including a full B1 → B2-A → B2-B → B2-C → B2-D fixture.
+- Internal review is recorded in docs/audits/B2D_IMPLEMENTATION_REVIEW_2026-11-27.md; it is not an independent external audit.
+- B1 remains NOT ACCEPTED. No B2 candidate may be imported into the application or connected to directional decisions until B1 acceptance and explicit owner approval.
