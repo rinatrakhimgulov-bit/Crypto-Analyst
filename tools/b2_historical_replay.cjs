@@ -310,7 +310,7 @@ async function main() {
       policy: POLICY_G, snapshot: selected.snapshot, quality_report: selected.quality,
       b2a_result: selected.a, b2c_result: selected.c,
       b2d_result: selectedZones.d, b2e_result: selectedZones.e,
-      b2f_result: b2f, analysis_as_of_ms: cutoff, timeframe: '1h'
+      b2f_result: b2f, analysis_as_of_ms: cutoff, chart_timeframe: '1h'
     });
     assert(b2g.status === 'VALID', symbol + ' B2-G blocked: ' + JSON.stringify(b2g.admission.reasons));
     output.symbols[symbol] = {
