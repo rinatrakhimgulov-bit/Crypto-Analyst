@@ -1832,7 +1832,42 @@
             Object.isFrozen(result.timeframes['1d'].analysis_candles) &&
             Object.isFrozen(result.timeframes['1d'].analysis_candles[0]), 'MTF result is not deeply immutable');
         });
-        asyncTests.push(['11 failed timeframe request aborts sibling fetches', async () => {
+        test('11 forming and pending-finality candles never enter the closed-only analysis slice', () => {
+          const result = run();
+          for (const tf of REQUIRED) {
+            expect(result.timeframes[tf].analysis_candles.every(c =>
+              c.closed_state === 'TIME_DERIVED' &&
+              c.open_time_ms <= result.analysis_as_of_ms &&
+              c.close_time_ms + B1_QUALITY_POLICY.finality_safety_lag_ms <= result.analysis_as_of_ms
+            ), tf + ' analysis slice contains non-final candle data');
+          }
+        });
+        test('12 provider-time spread one millisecond above policy fails closed', () => {
+          const data = set();
+          data['1h'].providerServerTimeMs = cutoff + spread + 1;
+          const result = run(data);
+          expect(!result.directional_allowed &&
+            result.reasons.some(r => r.code === 'MTF_PROVIDER_TIME_SPREAD_EXCEEDED'),
+            'spread above policy by one millisecond was accepted');
+        });
+        test('13 multiple post-cutoff rows fail closed', () => {
+          const data = set();
+          data['1h'].allCandles.push({
+            ts: cutoff + step['1h'], closeTs: cutoff + 2 * step['1h'],
+            open: 100, high: 102, low: 99, close: 101, volume: 10, turnover: 1010
+          });
+          const result = run(data);
+          expect(!result.directional_allowed &&
+            result.reasons.some(r => r.code === 'MTF_MULTIPLE_POST_CUTOFF_ROWS'),
+            'multiple post-cutoff rows were accepted');
+        });
+        test('14 missing measured provider-time spread policy fails closed', () => {
+          const result = B1MtfEngine.assemble(set(), now, { closedCandleCount: count });
+          expect(result.status === 'INVALID' && !result.directional_allowed &&
+            result.reasons.some(r => r.code === 'MTF_PROVIDER_TIME_POLICY_MISSING'),
+            'missing spread policy did not fail closed');
+        });
+        asyncTests.push(['15 failed timeframe request aborts sibling fetches', async () => {
           const seen = [];
           const adapter = {
             fetchMarketSnapshot(_symbol, interval, signal) {
@@ -1852,7 +1887,7 @@
           expect(rejected && seen.length === 3 && seen.every(item => item.signal.aborted),
             'failed timeframe did not abort all sibling requests');
         }]);
-        asyncTests.push(['12 superseded MTF generation cannot publish late results', async () => {
+        asyncTests.push(['16 superseded MTF generation cannot publish late results', async () => {
           let requestCount = 0;
           const adapter = {
             fetchMarketSnapshot(_symbol, interval, signal) {
