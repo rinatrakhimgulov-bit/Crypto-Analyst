@@ -114,3 +114,13 @@ B2-F validates unique per-timeframe snapshot IDs, exact per-timeframe candle map
 B2-F policy now requires an explicit `max_provider_time_spread_ms` and verifies that the B1-E result carries the exact same maximum. The actual provider-time spread is recomputed from all three per-timeframe provider timestamps; a forged or overly permissive aggregate value is rejected. The output preserves the measured and configured spread in its admission record.
 
 The exposed overall context is categorical structure context (for example `BULLISH_STRUCTURE`, `PARTIAL_BEARISH_STRUCTURE`, `MIXED_STRUCTURE`), not an order direction.
+
+
+## 15. Final deterministic verification — 2026-11-27
+
+Latest B2-F head: `fe11e2819c590489ecc618ad0f23023eefee62e7`.
+
+- B2-F: **30/30** deterministic tests passed in [run 46020066819](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46020066819).
+- Integrated B2-A through B2-F research suite: **149/149** passed in [run 46020066749](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46020066749).
+
+Final additional guard: every B2-C event close timestamp must be positive, aligned to its own timeframe boundary, and its availability must equal the close timestamp plus the exact B1 finality lag.
