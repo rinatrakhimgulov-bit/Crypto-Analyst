@@ -399,3 +399,17 @@ This candidate does not implement B2-B swing sequencing, B2-C BOS/CHoCH, zones, 
 B2-A admission now binds to the exact accepted B1 canonical contract and validator versions, in addition to the exact B1 quality-policy version. The candidate policy must explicitly declare `b1_contract_version` and `b1_validator_version`; the snapshot contract version and quality report validator version must match those values exactly. A merely non-empty validator version is insufficient. Missing policy versions or mismatched snapshot/report versions fail closed.
 
 The B2-A regression suite now contains 13 deterministic cases, including explicit rejection of an unsupported canonical contract version and a stale/mismatched validator version. This is still isolated research code. It does not waive B1 acceptance or authorize application integration.
+
+
+## 18. B2-B isolated swing-sequence candidate (2026-11-27)
+
+The isolated candidate is implemented in `src/analysis/b2b-swing-sequence-engine.js` and is not imported by the application HTML.
+
+- Admission requires a VALID B2-A result with exact B2-A engine/policy identity and exact B1 validator/quality-policy identity from the B2-A admission record.
+- Raw pivots are preserved as immutable evidence. The derived sequence processes the B2-A availability order and rejects non-monotonic availability; it does not sort by source candle time.
+- Consecutive same-type pivots use the frozen symmetric replacement rule: retain the higher high or lower low; exact equality retains the earlier pivot. Superseded raw pivots remain in the evidence output.
+- Sequence labels include INITIAL_HIGH/INITIAL_LOW, HH/LH/EQH and HL/LL/EQL, with comparison pivot ID, price delta and relative percentage delta.
+- The module returns a deeply immutable result without freezing nested objects owned by the upstream B2-A input.
+- Deterministic suite: 19/19 passed in GitHub Actions run 46011622297 on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
+
+This remains an isolated research candidate in draft PR #13, based on the B2-A candidate branch. It does not implement BOS/CHoCH, protected swings, zones, retests, MTF, UI or trading decisions. B1 formal acceptance remains mandatory before production integration.
