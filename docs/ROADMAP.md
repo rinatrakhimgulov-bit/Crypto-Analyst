@@ -261,3 +261,15 @@ Crypto Analyst развивается как независимая от кон�
 Завершить приёмку candidate-ветки B1-A/B/C: проверить latest B1-C UI на iPhone Safari (B1 status row и WAIT при заблокированном качестве), провести независимый review интеграции quality gate и получить свежую воспроизводимую проверку REST Bybit из среды, которую провайдер не блокирует. После явного принятия перенести проверенный candidate в `main` и обновить этот Roadmap. До этого B2 не начинать.
 
 **Текущая проверка не равна merge/acceptance: `main` остаётся нетронутым.**
+
+
+### C1 — Chart visualization completion
+**Статус: В РАБОТЕ (candidate branch; CI and iPhone Safari checks pending).**
+
+- Preserve existing EMA20/EMA50 and SH/SL overlays.
+- Add EMA200 with sufficient closed-candle warm-up history.
+- Add a synchronized lower volume histogram with forming-candle distinction.
+- Keep visualization separate from trade-decision logic until the market-structure and scenario engines are developed.
+- Validate EMA alignment, volume rendering, zoom/pan, and mobile layout.
+
+C1 is a chart-visualization task, not a claim that the market-structure engine is complete. B2 remains unstarted until B1 acceptance criteria are met.
