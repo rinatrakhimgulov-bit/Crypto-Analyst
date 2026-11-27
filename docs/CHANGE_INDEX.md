@@ -295,3 +295,17 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 - Latest exact B2-A/B/C/D/E candidate heads and CI counts are recorded in the 2026-11-27 current-state section of PROJECT_STATE.md.
 
 - Final B2-A→B2-E combined verification: 119/119 passed in run 46017280701 on integrated head `b7fccbc232c8a2de573cbfb053ef06b10b2cf834`.
+
+
+## Latest Stage 2 status — 2026-11-27
+
+B2-E candidate hardening completed:
+- Rejects a gap-through close beyond the failure boundary before any later retest can be considered.
+- Requires the breakout candle to clear the full historical zone outer boundary, not merely one pivot inside that zone.
+- Candidate branch synchronized with current B2-A/B/C/D modules and test suites; full B2-A result is passed into B2-C in the integrated fixture.
+- B2-E 24/24 tests passed in run 46017280509 on head b7fccbc232c8a2de573cbfb053ef06b10b2cf834.
+- Integrated B2 research suite 119/119 passed in run 46017280701.
+
+B2-E v1 produces one lifecycle per breakout event; it does not persist zone-role state across later breakouts or invalidate a prior successful role reversal. Same-candle range-touch plus close beyond the success boundary is accepted as an OHLC bar-level convention, not intrabar tick-path evidence. Thresholds remain uncalibrated synthetic inputs.
+
+PR #18 was closed as a duplicate design draft. PR #17 is the active B2-E candidate. All B2 PRs #12/#13/#15/#16/#17 remain draft/unmerged; B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no app HTML integration.
