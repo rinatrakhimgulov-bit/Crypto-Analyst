@@ -1166,3 +1166,166 @@ B1 adapter mapping update — 26.11.2026:
 * `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps the exact Stage A `BybitAdapter` (lines 546–857) to the proposed canonical contract and lists 11 gaps.
 * Keep current JS adapter as first provider; do not rewrite or migrate to Python before proving need. Proposed B1 first pass: canonical mapping → pure validator → quality gate → stale-cache suppression → MTF cutoff → second provider.
 * This is a specification only; canonical HTML remains unchanged.
+
+
+
+## B1 candidate handover — 2026-11-27
+
+* Candidate branch: `b1/contract-review`. Never assume candidate changes are in `main`; main remains the source of truth until explicit acceptance and merge.
+* B1-A/B/C are implemented on the candidate. B1-C now gates `BasicAnalyticsEngine.analyze()`: only quality status VALID permits directional calculations; all other statuses and missing reports return WAIT.
+* Runtime policy: `b1-quality-policy-2026-11-27-v1`; 500 ms finality lag, 30 s future tolerance, 120 s transport age, two-interval market-series lag, 100 closed candles minimum, identical duplicates accepted as evidence but remain DEGRADED and therefore blocked.
+* Cached data after a failed REST refresh is revalidated and forced STALE unless INVALID. The chart can remain visible; directional analysis must be WAIT.
+* GitHub Actions Chromium verification passed: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, B1 gate cases passed, cleanup restored, zero page errors.
+* GitHub Actions could not access live Bybit: both `api.bybit.com` and `api.bytick.com` returned HTTP 403; browser fetch failed from runner. Do not describe this as live API success. User's iPhone Safari check passed on the pre-B1-C candidate; the latest B1-C build needs a final iPhone retest. Earlier capture logs predate final hardening.
+* Do not merge until independent review of B1-C and a fresh reproducible live REST capture from a non-blocked environment. Do not start B2 yet.
+* Full specification: `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md`.
+
+
+### B1-C gate hardening — 2026-11-27
+
+The engine requires exact `validator_version` and `policy_version` identity in addition to `status: VALID`. A hand-built or outdated report cannot pass. The latest browser harness exercises actual synthetic adapter → canonical → validator → engine flow; VALID produces populated EMA/ATR arrays, while INVALID negative volume and STALE transport age produce WAIT with no indicators. Latest Actions: 44/44 Stage A, 32/32 contract, 63/63 validator; gate and cleanup passed; no page errors. GitHub-hosted runner is blocked by Bybit HTTP 403 on both public REST hosts. Latest B1-C status-row/blocked-WAIT behavior still requires user-side iPhone Safari confirmation. Do not merge or start B2 until acceptance conditions are satisfied.
+
+
+
+
+## Handover update — architecture baseline and B1 consolidation — 2026-11-27
+
+The canonical architecture baseline is `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`. The detailed branch analysis is `docs/audits/B1_BRANCH_CONSOLIDATION_AUDIT_2026-11-27.md`.
+
+Current working branch: `integration/b1-mtf-architecture-2026-11-27`, created from `b1/contract-review`. Keep `main` unchanged until explicit user acceptance.
+
+Important: do not merge `impl/b1-quality-contract-2026-11-26` wholesale. Its B1-E MTF engine uses the legacy `DataQualityEngine` contract and is not directly compatible with current `B1DataContract` / `B1QualityValidator` / B1-C version identity. Port the common-cutoff semantics into the current contract and preserve fail-closed behavior.
+
+The older B1-E artifact received an external conditional audit (33/33 MTF, 65/65 legacy quality). The audit withheld directional MTF approval pending live provider-time spread measurements, replay of recorded Bybit responses, transport abort testing, and a tested invariant that forming candles cannot affect directional features. It does not cover the latest B1-C/C1 candidate.
+
+Current candidate browser CI evidence: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate checks passed, no browser page errors. User verified the C1 chart on iPhone. The newest B1-C reason-code / blocked-WAIT panel detail still needs Safari visual verification. GitHub Actions live Bybit access is blocked by HTTP 403 from both public REST hosts. Do not describe this as live verification.
+
+B1 remains unaccepted. B2 remains not started. Next work is the controlled MTF port and tests, then independent review of the exact integrated artifact, live capture/calibration, iPhone check of the latest panel, and explicit owner acceptance before main merge.
+
+
+
+
+## Handover update — B1-E current-contract port — 2026-11-27
+
+Current integration branch now includes isolated `B1MtfEngine` ported to the current B1 canonical contract. Do not copy the older `impl/b1-quality-contract-2026-11-26` branch wholesale. Its MTF engine depended on legacy `DataQualityEngine` and was adapted to current `B1DataContract` / `B1QualityValidator`.
+
+Canonical contract and validator versions: 1.1.0. `source_diagnostics.excluded_after_cutoff_count` is now required; it records normalized rows excluded because they open after the common cutoff and participates in raw-row accounting. B1 policy version remains `b1-quality-policy-2026-11-27-v1`.
+
+Latest CI run `45965680821`: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 12/12, gate/UI/chart checks passed, zero browser page errors. Live Bybit probe remains blocked by HTTP 403 from both public hosts on GitHub Actions.
+
+MTF is isolated and not connected to directional decision output. No production provider-time spread default exists. Real concurrent Bybit capture/spread calibration, independent review of exact current-contract HTML, actual network abort verification, and latest quality-panel iPhone Safari check remain open. C1 chart was already user-verified on iPhone. B1 not accepted, B2 not started, main unchanged.
+
+Spec: `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
+
+
+
+
+### Latest B1-E verification update — 2026-11-27
+
+The current-contract MTF suite contains 16 tests. Latest GitHub Actions run `45966127523` passed: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 16/16, gate/UI/chart assertions passed, zero browser page errors. Live Bybit was skipped/blocked by HTTP 403 from both hosts.
+
+Exact current HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. The independent audit prompt is pinned to this exact blob at `docs/audits/PROMPT_B1_CURRENT_CONTRACT_INDEPENDENT_REVIEW_2026-11-27.md`. This prompt is prepared but an external reviewer has not yet returned a verdict. Main remains unchanged; B1 is not accepted; B2 is not started.
+
+
+
+
+## Handover update — snapshot-bound B1 candidate — 2026-11-27
+
+Current exact HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Browser harness blob: `8700f7ebedf6f4091b37d5e7d4c04ba22c2d92a8`. Latest CI run `45966700299` passed Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18, gate/UI/chart assertions, zero browser page errors. Live Bybit still blocked by HTTP 403 from both public REST hosts.
+
+Recent hardening: canonical snapshot ID is mandatory and carried by quality reports; B1-C and B1-E reject reports not bound to the exact snapshot. MTF requires explicit closed history count, exposes pending-finality context separately, and keeps it out of closed-only analysis candles. The browser harness tests snapshot mismatch. MTF suite 18/18.
+
+The exact-artifact independent review prompt is `docs/audits/PROMPT_B1_CURRENT_CONTRACT_INDEPENDENT_REVIEW_2026-11-27.md`. It must be handed to an actual independent reviewer; a prepared prompt is not an audit result. Remaining gates: independent review of this exact blob, real concurrent Bybit capture and spread calibration, transport-level abort verification, latest iPhone Safari quality-panel check, owner acceptance. Main unchanged; B1 not accepted; B2 not started.
+
+
+
+## Latest B1-E test refresh — 2026-11-27
+
+Current integration HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64, MTF 18/18; gate/UI/chart checks passed, zero page errors; 158/158 total named tests. Added fail-before-network behavior for missing closed-candle count and explicit pending-finality context separation. Branch 66 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 on GitHub runners. Independent review, live concurrent capture/spread calibration, transport abort verification, Safari panel check and owner acceptance remain open. Main unchanged.
+
+
+
+## Latest handover correction — 2026-11-27
+
+Correct current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest completed CI run `45966700299`: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18; 159/159 named tests, UI/chart checks passed, zero page errors. Gate tests reject a VALID-looking report with a mismatched `snapshot_id`. Branch is 85 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 from both hosts. Main unchanged; independent review and acceptance gates remain open.
+
+
+
+## Current artifact and verification — 2026-11-27
+
+Use PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`. Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes); browser harness blob `a23585f9688b9a04336c7f99da7a972513882f8e` (29,130 bytes). Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; total 161/161 named tests, UI/chart checks passed, zero browser page errors. B1-C verifies canonical/legacy candle equivalence and preserves INSUFFICIENT for an empty matching series. Branch 101 ahead / 0 behind main. Live Bybit blocked by runner HTTP 403. Independent review, live capture/spread calibration, transport abort, Safari panel check and owner acceptance remain outstanding. Main unchanged.
+
+
+
+## Latest transport test and artifact — 2026-11-27
+
+Current integration branch head `c9d207d6dd3f8194bcc97a4d600e284a85594e04`. HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); browser harness `70399a984b44f5f85024afcdf11289e4a73a6361` (32,071 bytes); probe `3b5df8f0feda730c7e6564808f40ad4526f0e44a`. CI `45968566553` passed 161/161 named tests, UI/chart/probe checks, zero page errors. Real Chromium fetch test confirms external cancellation and timeout close all 3 delayed HTTP requests. Timeout now has named `TimeoutError`. Live Bybit still blocked by runner HTTP 403. Branch 124 ahead / 0 behind main; main unchanged. Independent audit, live captures/spread calibration, Safari panel check and explicit acceptance remain open.
+
+
+
+## Final branch pointer — 2026-11-27
+
+Current PR #8 head after documentation sync: `5e94c29d1f5734e8b46200c04b6da51996ca9726`; draft and unmerged. Branch 131 ahead / 0 behind main. The exact tested code blobs remain HTML `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` and harness `70399a984b44f5f85024afcdf11289e4a73a6361`; no source changes after successful CI `45968566553`. Main HTML is unchanged.
+
+
+## Handover — B1-D live market-data candidate — 2026-11-27
+
+Current B1-D PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/9 (DRAFT, NOT MERGED). It targets integration/b1-mtf-architecture-2026-11-27 and depends on draft PR #8. Main remains unchanged. Do not merge automatically.
+
+Latest source commit verified by CI: 1b013781a8a7e507915bf73ae760d6ecbbbca0be; subsequent PR commits are documentation-only. Use PR #9 for the current branch head. Exact HTML blob: 39e42c223419bd8a599f6c513ef6e269df120fcc (329,008 bytes). Browser harness blob: 44b492f92ffbbbb58f6cb830375b6330a556d5c4 (35,635 bytes). Spec: docs/specs/B1_D_LIVE_MARKET_DATA_INTEGRATION_2026-11-27.md.
+
+B1-D implementation is in place: validated Bybit WS ticker/kline callbacks (non-price-only ticker deltas do not refresh lastPrice), live lastPrice/price-line update, forming-candle upsert, strict closed-candle boundary, REST reconciliation and 30-second REST fallback. A confirmed WS candle does not directly enter analytics; it triggers delayed REST reconciliation after the finality lag. Closed REST candles are immutable to WS updates. Symbol switches clear the prior ticker cache.
+
+Latest CI run 45981507604 passed: Stage A 50/50, contract 32/32, quality 72/72, MTF 20/20; 174/174 deterministic tests. Browser handler-to-UI integration, desktop/mobile chart checks, REST abort/timeout checks passed; zero browser page errors.
+
+Important: CI does NOT prove live Bybit connectivity. GitHub Actions REST calls return HTTP 403 and the live provider test is correctly marked SKIPPED_PROVIDER_BLOCKED. The browser UI integration uses synthetic events. Next required work is a real iPhone/Safari test from a network that can reach Bybit: confirm current last traded price matches Bybit, the forming candle moves without manual refresh, and test BTC/ETH + 1H/4H/1D switches and reconnect/fallback. If the branch candidate cannot be run on iPhone without merging, arrange a temporary preview; do not merge merely to test.
+
+After live browser evidence, perform an exact-blob independent review of the B1-D source and complete the B1 live MTF spread gates. B1 remains NOT ACCEPTED until the separate independent-review/live MTF spread gates and owner acceptance are satisfied.
+
+## 2026-11-27 current handover — B2 research candidate
+
+Current candidate branch: `feature/b2g-chart-projection-contract-2026-11-27`.
+Draft PR #20: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/20 (base `feature/b2f-mtf-structure-confluence-2026-11-27`). Current head at the time of this handover: `04473be79584bdf9be7cd70b16017cd7444fc341`.
+
+B2-A through B2-G candidate modules are implemented on the research branch. B2-B 2.2.0 preserves immutable sequence history at availability time; B2-C 2.1.0 replays events from that history. Same-candle dual pivots are explicitly ambiguous and excluded from the active structure sequence. B2-E/B2-G validate event source pivots against sequence history. B2-D may retain ambiguous raw pivots as tagged S/R evidence.
+
+Verification:
+- Integrated B2-A–B2-G CI run 46031937203 passed 181/181 deterministic tests.
+- Historical replay run 46032038435 passed on BTCUSDT/ETHUSDT 1H/4H/1D archive data through 2025-12-05.
+- 18/18 prefix-invariance checks passed; 30 sampled B2-A–B2-E windows and two synchronized MTF B2-F/B2-G projections completed.
+- Full metrics and limitations are in `docs/audits/B2_PRELIMINARY_HISTORICAL_REPLAY_2026-11-27.md`; CI artifact: `b2-historical-replay-report`.
+
+Critical limits: historical replay used a synthetic B1-valid wrapper and synthetic zero MTF provider-time spread. Zone/retest parameters and 2/2 pivot strength are exploratory, not production-calibrated. The archive is third-party and ends 2025-12-05. No profitability claim is supported.
+
+Next gates before integration: exact-source independent audit; review/calibrate pivot strength, zone span and retest parameters; complete live Bybit concurrent 1D/4H/1H provider-time calibration; verify the current candidate on iPhone/Safari. B1 remains NOT ACCEPTED. No app HTML or `main` changes. Do not merge PR #20 without explicit owner approval.
+
+
+
+## 2026-11-27 current handover — B2 app integration
+
+Current integration branch: `integration/b2-market-structure-ui-2026-11-27`. Base branch for a future integration PR is B1-D candidate `feature/b1-d-live-market-data-2026-11-27`, not `main`.
+
+B2-A…B2-G are now inlined into the single-file app candidate. A separate B2 panel reports structure state, pivots, BOS/CHoCH, S/R zones and retest lifecycle. Chart overlays show causal pivots/events/zones. B2 is display-only and does not change LONG/SHORT/WAIT. B2-F MTF is deliberately disabled in the app pending live Bybit provider-time spread calibration.
+
+Important chart-causality fix: confirmed zones start drawing at their `visible_from_ms` time, not retroactively across earlier candles. Browser regression verifies the first rendered x-position.
+
+Verified runs on commit `936ffb2f2425f440ab1650ddc706ed22617b01cb`:
+- B2 application integration [46034275312](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034275312): all B2-A…B2-G suites plus browser integration/mobile layout passed.
+- Browser synthetic fixture: 220 closed 1H candles, quality VALID, B2 VALID, 33 pivots, 65 events, 2 zones, 2 retests; explicit null MTF context; stale B1 input blocked; chart projection attached.
+- Mobile viewport 390×844: B2 card visible, chart fits, no horizontal overflow, zero page errors.
+- B1 browser/data verification [46034276646](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034276646) passed. Live Bybit REST remains unverified because GitHub Actions was denied with HTTP 403 by both public hosts.
+
+Current integration branch head may have advanced beyond the CI-tested commit due documentation updates; re-run CI on the final head before presenting it as ready. iPhone/Safari live-feed verification and MTF provider-time calibration remain open. No merge to `main` without explicit owner approval.
+
+
+## 2026-11-27 B2 app integration preview handover
+
+- Current clean integration branch: `integration/b2-clean-preview-2026-11-27`.
+- Draft PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/22.
+- B2-A/B/C/D/E selected-timeframe pipeline and B2-G chart projection are embedded in the single-file HTML.
+- B2-F is intentionally not invoked in the live UI until empirical concurrent Bybit 1D/4H/1H provider-time spread calibration.
+- B2 projection is research-only and does not feed Stage A LONG/SHORT/WAIT.
+- B2 suite passed 182/182; Chromium/mobile browser integration passed on synthetic fixtures; B1 browser suite passed but live Bybit was skipped due runner HTTP 403.
+- Historical archive ends 2025-12-05 and uses a synthetic B1-valid wrapper.
+- Next: user iPhone/Safari verification, live MTF capture/calibration, independent exact-source review, parameter/out-of-sample assessment.
+- Do not merge PR #22 without explicit owner approval.

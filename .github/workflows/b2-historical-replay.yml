@@ -1,0 +1,32 @@
+name: B2 historical market replay
+
+on:
+  push:
+    branches:
+      - feature/b2g-chart-projection-contract-2026-11-27
+      - integration/b2-clean-preview-2026-11-27
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  historical-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Replay B2-A through B2-G on historical BTC/ETH perpetual candles
+        run: node tools/b2_historical_replay.cjs
+      - name: Upload replay report
+        uses: actions/upload-artifact@v4
+        with:
+          name: b2-historical-replay-report
+          path: b2_historical_replay_report.json
+          if-no-files-found: error
+          retention-days: 30

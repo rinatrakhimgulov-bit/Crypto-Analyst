@@ -1,0 +1,24 @@
+name: B2-A causal swing engine tests
+
+on:
+  push:
+    branches:
+      - feature/b2a-causal-swing-engine-2026-11-27
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  b2a-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run deterministic B2-A tests
+        run: node tests/b2a-causal-swing-engine.test.cjs
