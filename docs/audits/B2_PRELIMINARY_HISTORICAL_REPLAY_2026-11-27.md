@@ -154,3 +154,32 @@ Important limits:
 - The 2/2 pivot window remains a candidate setting, not a selected production setting.
 - Exact-source independent review and iPhone/Safari acceptance remain outstanding.
 - No main branch or main HTML integration has occurred. Integration remains blocked until B1 acceptance, independent review and parameter review are complete.
+
+
+## Finding B2-G-PROJECTION-003 — final pivot statuses were projected too early
+
+**Severity:** HIGH — historical chart causality.
+
+The projection originally exposed a superseded or ambiguous status using only the pivot's own availability time. That could backdate a status that is not knowable until a later replacement/pair member becomes available.
+
+**Correction implemented:**
+- Superseded pivot DTOs now preserve both `visible_at_ms` (when the pivot itself became known) and `status_visible_at_ms = max(pivot.available_at_ms, replacement.available_at_ms)` (when the superseded status became knowable).
+- Ambiguous dual-pivot DTOs preserve each pivot's own visibility time and the pair's ambiguity visibility time.
+- B2-B and B2-G now fail closed if a same-source high/low pair has different confirmation/availability times. Under the B2-A symmetric right-window contract, a valid same-source pair must share its confirmation time.
+- B2-G tests cover both status transition timestamps and rejection of impossible staggered same-source pairs.
+
+## Latest verification after projection-status correction
+
+- Integrated B2-A–B2-G suite: GitHub Actions run `46033092111`, **183/183** passed: B2-A 21, B2-B 22, B2-C 35, B2-D 21, B2-E 24, B2-F 30, B2-G 30.
+- Historical replay: GitHub Actions run `46033092259`, passed. Artifact: `b2-historical-replay-report`.
+- Prefix replay now compares four independent outputs at each of 18 historical cutoffs: B2-A pivots, B2-B sequence history, B2-C sequence history and B2-C events. All comparisons passed (72 comparisons across 18 cutoffs).
+
+## Parameter sensitivity and event-density observations
+
+The expanded replay tested B2-A pivot strengths 2/2, 3/3 and 5/5 on all six full-history series. Higher strengths reduce both pivot and event density, but the replay does not establish which setting has better predictive value. Example BTCUSDT 1H counts: 14,212 / 10,172 / 6,541 raw pivots and 8,110 / 6,162 / 4,289 B2-C events for 2/2, 3/3 and 5/5 respectively.
+
+The B2-D/B2-E replay evaluated 4 zone-span ratios (0.05%, 0.1%, 0.25%, 0.5% of median close) and 3 retest tolerance/buffer ratios (0.025%, 0.05%, 0.1%) across 30 sampled windows. Average zone counts changed materially with span ratio. For example, BTCUSDT 1H averaged 6.0, 8.4, 10.8 and 10.6 zones; ETHUSDT 1D averaged 0.8, 2.4, 4.2 and 7.2. This sensitivity is too large to call the current 0.1% span production-calibrated.
+
+Sweep event density also deserves review. BTCUSDT 1H produced 4,119 sweeps across 2,622 source-level/event-type combinations; 970 combinations repeated, accounting for 2,467 events, with up to 9 sweeps per level. ETHUSDT 1H produced 3,686 sweeps across 2,290 combinations; 904 repeated combinations accounted for 2,300 events, with up to 8 per level. Repeated wicks can be legitimate separate attempts, so this is not automatically a defect, but the UI may need event aggregation or a clearly defined re-sweep policy.
+
+**Decision:** no production parameter has been selected. Pivot strength, repeated-sweep treatment, zone span and retest thresholds remain calibration items. The current engine chain is more causally coherent, but it is not yet ready for integration.
