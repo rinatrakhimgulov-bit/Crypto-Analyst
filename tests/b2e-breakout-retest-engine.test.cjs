@@ -517,7 +517,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
       price_equality_policy: 'EXACT_PRICE_V1'
     }
   });
-  assert.equal(b2a.status, 'VALID');
+  assert.equal(b2a.status, 'VALID', JSON.stringify(b2a.admission.reasons));
   const b2b = analyzeB2B({
     b2a_result: b2a,
     policy: {
@@ -526,7 +526,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
       b1_quality_policy_version: 'b1-quality-v1', price_equality_policy: 'EXACT_PRICE_V1'
     }
   });
-  assert.equal(b2b.status, 'VALID');
+  assert.equal(b2b.status, 'VALID', JSON.stringify(b2b.admission.reasons));
   const b2c = analyzeB2C({
     policy: {
       version: 'b2c-state-v1', b2b_engine_version: '2.0.0-b2b',
@@ -539,7 +539,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
     snapshot, quality_report: qualityReport, b2a_result: b2a, b2b_result: b2b,
     analysis_as_of_ms: asOf, timeframe: '1h'
   });
-  assert.equal(b2c.status, 'VALID');
+  assert.equal(b2c.status, 'VALID', JSON.stringify(b2c.admission.reasons));
   assert.ok(b2c.events.some(e => e.event_type === 'INITIAL_BULLISH_BREAK'));
   const b2d = analyzeB2D({
     policy: {
@@ -557,7 +557,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
     },
     snapshot, quality_report: qualityReport, b2c_result: b2c, analysis_as_of_ms: asOf, timeframe: '1h'
   });
-  assert.equal(b2d.status, 'VALID');
+  assert.equal(b2d.status, 'VALID', JSON.stringify(b2d.admission.reasons));
   const b2e = analyze({
     policy: {
       version: 'b2e-retest-engine-v1', b2b_engine_version: '2.0.0-b2b',
@@ -576,7 +576,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
     snapshot, quality_report: qualityReport, b2c_result: b2c, b2d_result: b2d,
     analysis_as_of_ms: asOf, timeframe: '1h'
   });
-  assert.equal(b2e.status, 'VALID');
+  assert.equal(b2e.status, 'VALID', JSON.stringify(b2e.admission.reasons));
   assert.equal(b2e.lifecycles.length, 1);
   assert.equal(b2e.lifecycles[0].status, 'RETEST_SUCCESSFUL');
   assert.equal(b2e.lifecycles[0].effective_role, 'SUPPORT');
