@@ -1166,3 +1166,12 @@ B1 adapter mapping update — 26.11.2026:
 * `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps the exact Stage A `BybitAdapter` (lines 546–857) to the proposed canonical contract and lists 11 gaps.
 * Keep current JS adapter as first provider; do not rewrite or migrate to Python before proving need. Proposed B1 first pass: canonical mapping → pure validator → quality gate → stale-cache suppression → MTF cutoff → second provider.
 * This is a specification only; canonical HTML remains unchanged.
+
+
+## Current handover update — 2026-11-27
+
+Owner decision: Stage 1 visual/live-chart polish is frozen temporarily; Stage 2 / B2 Market Structure is the active research priority. Deferred Stage 1 items are live forming-candle animation, precise live-price comparison and remaining real iPhone/Safari market-data diagnostics. They are deferred, not cancelled. Data quality/finality gates remain mandatory for all analytics.
+
+B1 is NOT ACCEPTED and remains unmerged. PR #8 and #9 are draft candidates; real Bybit capture/spread calibration and other acceptance gates remain open. No B2 code may be connected to the live application or directional LONG/SHORT path before B1 acceptance and explicit owner approval.
+
+B2-A isolated candidate: PR #12, 20/20 deterministic tests passed in GitHub Actions run 46010999225 on code commit 8583d5d58158a183a3185fb1397abb3cbe8cb233. B2-B isolated candidate: PR #13, 19/19 deterministic tests passed in run 46011622297 on code commit eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8. Both are research-only, draft/unmerged and not imported by the app HTML. Next: independent exact-source review, then B2-C as a separate isolated increment. Do not merge PRs #8–#13 automatically.
