@@ -535,12 +535,7 @@ async function main() {
       const lastClosedCenterX = metrics.padLeft + 78.5 * stepX;
       return {
         ...stats,
-        emaLayerSetResult,
-        emaLayerEnabled: chart.displayLayers.emas,
-        chartDisplayMode: chart.displayMode,
-        ema200SeriesLength: chart.analysis.ema200.length,
-        ema200VisibleFinite: chart.analysis.ema200.filter(Number.isFinite).length,
-        closedTimestampMatches: closed.filter(candle => Number.isFinite(chart.analysis.ema200[closed.findIndex(x => x.ts === candle.ts)])).length,
+        emaLayerEnabled: emaLayerSetResult && chart.displayLayers.emas === true,
         expectedMinimumVolumeBars: 70,
         ema200StayedOnClosedCandles: stats.ema200MaxX <= lastClosedCenterX + 0.5,
         canvasWidth: canvas.clientWidth,
@@ -549,6 +544,7 @@ async function main() {
     });
     if (chartVisual.volumeBars < chartVisual.expectedMinimumVolumeBars ||
         chartVisual.formingVolumeMuted < 1 ||
+        chartVisual.emaLayerEnabled !== true ||
         chartVisual.ema200Strokes < 1 ||
         chartVisual.ema200StayedOnClosedCandles !== true ||
         chartVisual.canvasWidth < 100 || chartVisual.canvasHeight < 100) {
