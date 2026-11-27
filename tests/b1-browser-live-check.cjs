@@ -57,7 +57,7 @@ async function main() {
   page.on('pageerror', error => pageErrors.push(error.message));
 
   try {
-    await page.goto(`http://127.0.0.1:${PORT}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(`http://127.0.0.1:${PORT}?test=1`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForFunction(() =>
       window.StageASelfTest &&
       window.B1DataContractSelfTest &&
@@ -128,6 +128,28 @@ async function main() {
           policy_version: B1_QUALITY_POLICY.version, reasons: []
         }
       });
+      const longCandles = Array.from({ length: 260 }, (_, i) => {
+        const close = 200 + i * 0.15 + Math.sin(i / 7);
+        return {
+          ts: 1701000000000 + i * 3600000,
+          closeTs: 1701000000000 + (i + 1) * 3600000,
+          open: close - 0.2, high: close + 0.8, low: close - 0.9,
+          close, volume: 80 + (i % 11) * 4, turnover: close * (80 + (i % 11) * 4)
+        };
+      });
+      const ema200Probe = BasicAnalyticsEngine.analyze({
+        ...base,
+        closedCandles: longCandles,
+        prices: {
+          ...base.prices,
+          lastClosedPrice: longCandles[259].close,
+          currentMarketPrice: longCandles[259].close
+        },
+        qualityReport: {
+          status: 'VALID', validator_version: B1QualityValidator.VERSION,
+          policy_version: B1_QUALITY_POLICY.version, reasons: []
+        }
+      });
       const mismatched = BasicAnalyticsEngine.analyze({
         ...base, qualityReport: {
           status: 'VALID', validator_version: 'old-validator',
@@ -179,6 +201,12 @@ async function main() {
           status: valid.qualityGate && valid.qualityGate.status,
           ema20Count: valid.ema20.length, ema50Count: valid.ema50.length, atr14Count: valid.atr14.length
         },
+        ema200Probe: {
+          count: ema200Probe.ema200.length,
+          warmupNull: ema200Probe.ema200[198] === null,
+          firstValueFinite: Number.isFinite(ema200Probe.ema200[199]),
+          lastValueFinite: Number.isFinite(ema200Probe.ema200[259])
+        },
         mismatched: { decision: mismatched.decision, blocked: mismatched.qualityGate && mismatched.qualityGate.blocked, status: mismatched.qualityGate && mismatched.qualityGate.status, reasonCodes: mismatched.qualityGate && mismatched.qualityGate.reasonCodes },
         policyMismatched: {
           decision: policyMismatched.decision,
@@ -215,6 +243,9 @@ async function main() {
       ...(gate.valid.blocked !== false || gate.valid.status !== 'VALID' ||
           gate.valid.ema20Count === 0 || gate.valid.ema50Count === 0 || gate.valid.atr14Count === 0
         ? [{ case: 'valid-report', ...gate.valid }] : []),
+      ...(gate.ema200Probe.count !== 260 || gate.ema200Probe.warmupNull !== true ||
+          gate.ema200Probe.firstValueFinite !== true || gate.ema200Probe.lastValueFinite !== true
+        ? [{ case: 'ema200-calculation', ...gate.ema200Probe }] : []),
       ...(gate.mismatched.decision !== 'WAIT' || gate.mismatched.blocked !== true ||
           gate.mismatched.status !== 'INVALID' || !gate.mismatched.reasonCodes.includes('QUALITY_REPORT_VERSION_MISMATCH')
           ? [{ case: 'validator-version-mismatch', ...gate.mismatched }] : []),
@@ -234,6 +265,78 @@ async function main() {
         ? [{ case: 'stale-validation-gate', ...gate.stale }] : [])
     ];
     if (gateFailures.length) throw new Error(`B1 mandatory gate failures: ${JSON.stringify(gateFailures)}`);
+
+    const chartVisual = await page.evaluate(() => {
+      const chart = window.__CryptoAnalystTestHooks && window.__CryptoAnalystTestHooks.chart;
+      if (!chart) throw new Error('Chart test hook was not exposed');
+      const closed = Array.from({ length: 260 }, (_, i) => {
+        const close = 300 + i * 0.1 + Math.sin(i / 5);
+        return {
+          ts: 1710000000000 + i * 3600000,
+          closeTs: 1710000000000 + (i + 1) * 3600000,
+          open: close - 0.15, high: close + 0.7, low: close - 0.8,
+          close, volume: 100 + (i % 9) * 10, turnover: close * (100 + (i % 9) * 10)
+        };
+      });
+      const formingClose = closed[259].close + 0.3;
+      const forming = {
+        ts: closed[259].ts + 3600000, closeTs: closed[259].closeTs + 3600000,
+        open: closed[259].close, high: formingClose + 0.4,
+        low: closed[259].close - 0.3, close: formingClose,
+        volume: 145, turnover: formingClose * 145
+      };
+      const ema = (offset, start) => closed.map((c, i) => i < start ? null : c.close + offset);
+      const canvas = chart.canvas;
+      const ctx = chart.ctx;
+      const originalFillRect = ctx.fillRect.bind(ctx);
+      const originalStroke = ctx.stroke.bind(ctx);
+      const originalLineTo = ctx.lineTo.bind(ctx);
+      const stats = { volumeBars: 0, formingVolumeMuted: 0, ema200Strokes: 0, ema200MaxX: -Infinity };
+      ctx.fillRect = function(x, y, w, h) {
+        const style = String(this.fillStyle);
+        if (style.includes('34, 197, 94') || style.includes('239, 68, 68')) stats.volumeBars++;
+        if (style.includes('148, 163, 184, 0.35')) stats.formingVolumeMuted++;
+        return originalFillRect(x, y, w, h);
+      };
+      ctx.stroke = function() {
+        if (this.strokeStyle === '#eab308') stats.ema200Strokes++;
+        return originalStroke();
+      };
+      ctx.lineTo = function(x, y) {
+        if (this.strokeStyle === '#eab308') stats.ema200MaxX = Math.max(stats.ema200MaxX, x);
+        return originalLineTo(x, y);
+      };
+      chart.visibleCount = 80;
+      chart.offsetFromEnd = 0;
+      chart.setData([...closed, forming], closed.length, {
+        closedCandlesRef: closed,
+        ema20: ema(-1.5, 19),
+        ema50: ema(-0.5, 49),
+        ema200: ema(0.5, 199),
+        swings: { highs: [], lows: [] },
+        levels: { support: null, resistance: null }
+      }, forming.close);
+      ctx.fillRect = originalFillRect;
+      ctx.stroke = originalStroke;
+      ctx.lineTo = originalLineTo;
+      const metrics = chart.getPlotMetrics();
+      const stepX = metrics.plotW / 80;
+      const lastClosedCenterX = metrics.padLeft + 78.5 * stepX;
+      return {
+        ...stats,
+        expectedMinimumVolumeBars: 70,
+        ema200StayedOnClosedCandles: stats.ema200MaxX <= lastClosedCenterX + 0.5,
+        canvasWidth: canvas.clientWidth,
+        canvasHeight: canvas.clientHeight
+      };
+    });
+    if (chartVisual.volumeBars < chartVisual.expectedMinimumVolumeBars ||
+        chartVisual.formingVolumeMuted < 1 ||
+        chartVisual.ema200Strokes < 1 ||
+        chartVisual.ema200StayedOnClosedCandles !== true ||
+        chartVisual.canvasWidth < 100 || chartVisual.canvasHeight < 100) {
+      throw new Error(`Chart overlay/volume visual checks failed: ${JSON.stringify(chartVisual)}`);
+    }
 
     const post = suites.stage.post || {};
     const requiredRestoration = [
@@ -319,6 +422,7 @@ async function main() {
       b1Contract: suites.contract.totals,
       b1Quality: suites.quality.totals,
       b1Gate: gate,
+      chartVisual,
       cleanup: post, browserFetchProbe, liveBybit, pageErrors
     }, null, 2));
   } finally {
