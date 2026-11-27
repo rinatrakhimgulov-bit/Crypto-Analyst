@@ -198,6 +198,9 @@ function fixture(options = {}) {
     },
     snapshot_id: SNAPSHOT_ID, symbol: 'BTCUSDT', timeframe: '1h',
     analysis_as_of_ms: asOf, raw_pivots: raw,
+    sequence_history: raw.filter(p => p.sequence_status === 'ACCEPTED').map((p, index) => ({ ...p,
+      sequence_status: 'ACCEPTED_AT_AVAILABILITY', exclusion_reason: null,
+      superseded_by: null, sequence_index_at_availability: index })),
     events: [{
       event_id: 'B2C:INITIAL_' + direction + '_BREAK:' + rows[breakIndex].close_time_ms + ':' + breakoutPivotId,
       event_type: direction === 'BULLISH' ? 'INITIAL_BULLISH_BREAK' : 'INITIAL_BEARISH_BREAK',
