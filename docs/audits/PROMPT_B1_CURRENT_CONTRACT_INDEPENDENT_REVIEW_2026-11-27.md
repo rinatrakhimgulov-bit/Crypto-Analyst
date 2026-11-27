@@ -97,3 +97,9 @@ Current audited target is HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (
 The B1-C gate now verifies not only validator/policy/snapshot identity but also exact equality between the canonical closed-candle series and the legacy candle series plus last-closed price consumed by the analytics engine. A deliberate candle-series mismatch is verified to produce WAIT/INVALID. Empty but matching series preserve INSUFFICIENT rather than being mislabeled as an identity mismatch.
 
 The MTF suite has 20 tests, including the 1000-row cap and external AbortSignal cancellation. Latest completed CI run `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; live-probe UI smoke, B1 gate/UI and chart checks passed, zero page errors. Live Bybit remains blocked by HTTP 403 from both hosts in GitHub Actions.
+
+
+
+## Current exact artifact supersession — 2026-11-27
+
+Audit the current PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`, HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes), and harness blob `a23585f9688b9a04336c7f99da7a972513882f8e`. Latest CI `45967551538`: 161/161 named tests (Stage A 44, contract 32, validator 65, MTF 20), gate/UI/chart assertions passed, zero browser page errors. Review the additional B1-C guard that checks exact equivalence between validated canonical candles and the legacy series/last-closed price consumed by analytics; verify empty matching series preserve INSUFFICIENT. The live Bybit probe remains blocked by HTTP 403 from both public hosts on GitHub Actions.
