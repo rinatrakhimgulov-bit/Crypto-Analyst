@@ -1,0 +1,37 @@
+name: B2 application integration verification
+
+on:
+  push:
+    branches:
+      - integration/b2-market-structure-ui-2026-11-27
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  b2-application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout integrated candidate
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run B2-A through B2-G deterministic suites
+        run: |
+          node tests/b2a-causal-swing-engine.test.cjs
+          node tests/b2b-swing-sequence-engine.test.cjs
+          node tests/b2c-swing-structure-engine.test.cjs
+          node tests/b2d-support-resistance-engine.test.cjs
+          node tests/b2e-breakout-retest-engine.test.cjs
+          node tests/b2f-mtf-structure-confluence-engine.test.cjs
+          node tests/b2g-chart-projection-engine.test.cjs
+      - name: Run browser integration and mobile layout checks
+        run: node tests/b2-app-browser-integration.cjs
