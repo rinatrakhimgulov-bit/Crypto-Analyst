@@ -263,3 +263,11 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 - PR #15 is draft/unmerged. Research-only; no main/app integration. B1 acceptance remains mandatory.
 
 - `docs/audits/B2C_IMPLEMENTATION_REVIEW_2026-11-27.md`: internal exact-source review notes for B2-C candidate commit `a58441aa4f39aa6e3b98650624f07a2041e7152a`; explicitly not an independent external audit.
+
+
+### B2-D support/resistance zones — 2026-11-27
+- `src/analysis/b2d-support-resistance-engine.js`: isolated support/resistance clustering from confirmed raw swing pivots.
+- Explicit instrument/timeframe-scoped absolute max-span policy; MAX_TOTAL_SPAN_V1; independent source-candle touch counting; candidate levels for insufficient touches.
+- `tests/b2d-support-resistance-engine.test.cjs`: 20 deterministic tests including full B1 → B2-A → B2-B → B2-C → B2-D execution.
+- GitHub Actions run `46014759139` passed 20/20 on commit `0574858db12dd2082d7449f5512fa8461fceac63`.
+- PR #16 remains draft/unmerged. No app/main integration; B1 acceptance remains mandatory.
