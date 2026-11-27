@@ -514,3 +514,16 @@ B3 was merged into `main` via PR #23 (merge commit `7d34a3539c9a655bca546bbb7b0c
 - B2-A…B2-G deterministic suites and Chromium/mobile browser assertions passed. B1 suite passed; live Bybit REST was skipped/blocked due HTTP 403 from both public hosts on the GitHub runner.
 - Main HTML blob: `6b5521195454bc3d3be3e18cc7f4fb10682ee48b` (511,597 bytes).
 - iPhone/Safari owner visual acceptance remains pending after integration.
+
+## Product roadmap update — 2026-11-27 (post-B3)
+
+| Area / planned component | Purpose | Status |
+|---|---|---|
+| B4 Live Data Path | REST bootstrap + WS live updates, current price/forming candle, finality/reconciliation, reconnect/fallback, quality gate | Next planned stage; not yet implemented/accepted |
+| B5 Market Journal | Immutable market snapshots, data provenance/quality, user decision, optional plan and outcome; local storage + JSON export/import | Approved product stage; schema/design may proceed alongside B4; not implemented |
+| B6 Analytical Core | Audited and validated market structure/features | Planned |
+| B7 Setup Scenarios | Maximum 2–3 explainable, testable setup classes | Planned |
+| B8 Validation | Journal-based, historical and out-of-sample evaluation with costs and uncertainty | Planned |
+| B9 Explainable Decisions | LONG/SHORT/WAIT with reasons, invalidation and risk context | Planned |
+
+Market Journal must include WAIT and skipped observations, distinguish paper observations from actual trades, preserve snapshot-time information, and leave unresolved outcomes as pending. Do not claim profitability from UI, synthetic tests or small samples. Full current plan: docs/ROADMAP.md.
