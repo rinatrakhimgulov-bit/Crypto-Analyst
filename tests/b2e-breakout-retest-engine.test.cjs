@@ -526,7 +526,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
       timeframe: '1h', cluster_method: 'MAX_TOTAL_SPAN_V1',
       max_cluster_span_price: 2, min_independent_touches: 2
     },
-    snapshot, quality_report, b2c_result: b2c, analysis_as_of_ms: asOf, timeframe: '1h'
+    snapshot, quality_report: qualityReport, b2c_result: b2c, analysis_as_of_ms: asOf, timeframe: '1h'
   });
   assert.equal(b2d.status, 'VALID');
   const b2e = analyze({
