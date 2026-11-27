@@ -553,3 +553,12 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
   assert.equal(b2e.lifecycles[0].status, 'RETEST_SUCCESSFUL');
   assert.equal(b2e.lifecycles[0].effective_role, 'SUPPORT');
 });
+
+
+run('forged B2-C prior-state or break-buffer metadata fails closed', () => {
+  const input = fixture();
+  input.b2c_result.events[0].prior_state = 'DOWN';
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'B2C_BREAK_EVENT_PROVENANCE_MISMATCH');
+});
