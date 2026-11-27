@@ -341,3 +341,17 @@ The current-contract MTF regression suite now contains 16 cases. Additional cove
 Latest CI run `45966127523`: Stage A 44/44, B1 contract 32/32, validator 64/64, MTF 16/16, gate/UI/chart checks passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public hosts. Exact current HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`.
 
 This strengthens candidate evidence but does not close B1 acceptance. Independent review, recorded live capture and measured spread policy, transport-level abort verification, iPhone Safari check of the latest quality panel, and owner acceptance remain prerequisites. B2 stays not started.
+
+
+
+
+## Latest integration verification — 2026-11-27
+
+Additional safety hardening on the integration branch:
+- B1 reports are bound to a non-empty canonical `snapshot_id`; B1-C and B1-E reject mismatched report/snapshot identity.
+- MTF requires an explicit closed-candle history count and rejects omission before network requests.
+- Pending-finality candles remain explicit context and cannot enter the closed-only analysis slice.
+
+Latest completed CI run `45966700299`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, MTF 18/18, gate/UI/chart assertions passed, zero browser page errors. Live Bybit remains blocked by runner HTTP 403 from both public hosts. Exact current HTML blob `1cb41cfbc03534441774eeeaac08f36082f19ab9`.
+
+B1 remains in review, not accepted. Independent exact-blob review, live spread calibration, actual network abort verification, latest Safari quality-panel check and owner approval remain mandatory. No merge to main; B2 remains gated.
