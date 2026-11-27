@@ -391,3 +391,14 @@ https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/18
 B2-E uses B2-C event IDs as stable lifecycle identity, not B2-D membership-derived zone IDs. It defines pivot-level retest tolerance, a maximum closed-bar window, touch/success/failure/expiry states, strict equality handling, same-candle no-lookahead and prefix replay. B2-D zone membership is contextual only in v1; full zone-edge breakouts and role reversal are deferred.
 
 B2-E is specification only; no implementation or app integration. B1 remains NOT ACCEPTED.
+
+
+### B2-E — Breakout/retest/failure lifecycle (2026-11-27)
+- Isolated engine in `src/analysis/b2e-breakout-retest-engine.js`, consuming VALID B2-C events, B2-D zones and the exact B1 snapshot.
+- Reconstructs the historical zone using only pivots available strictly before the breakout candle close. Later pivots cannot create or widen a zone retroactively.
+- Maps bullish breaks to resistance zones and bearish breaks to support zones; unmatched events are explicitly reported if no zone existed at break time.
+- Uses explicit retest policy values: touch tolerance, success/failure close buffers, retest window and confirmation window. No hidden defaults.
+- Separates successful, failed, expired, unresolved and pending retests. Role reversal is confirmed only after a successful retest.
+- Independently validates B2-C break semantics and B2-D zone evidence.
+- 22/22 deterministic tests passed in GitHub Actions run [46016401705](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46016401705) on commit `493a15e8006784d2b78262770725c26bd05c2e85`, including full B1 → B2-A → B2-B → B2-C → B2-D → B2-E execution.
+- PR #17 is draft/unmerged. Retest thresholds are synthetic explicit inputs, not calibrated market facts.
