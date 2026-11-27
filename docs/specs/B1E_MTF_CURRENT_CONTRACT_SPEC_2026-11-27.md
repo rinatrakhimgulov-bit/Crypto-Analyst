@@ -139,3 +139,13 @@ Exact current HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`.
 **Latest completed run:** GitHub Actions `45966700299` passed Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 65/65, B1 MTF 18/18, B1 gate/UI and C1 chart assertions, with zero browser page errors. Live Bybit remained blocked by HTTP 403 from both public REST hosts.
 
 Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Browser harness blob: `8700f7ebedf6f4091b37d5e7d4c04ba22c2d92a8`. Main remains unchanged. Independent review, live concurrent capture/spread calibration, transport-level abort verification, latest Safari quality-panel check and owner acceptance remain open.
+
+
+
+## Latest test expansion — 2026-11-27
+
+The MTF self-test suite now contains 18 cases (previously 12). Added:
+- missing `closedCandleCount` is rejected before any adapter/network call;
+- pending-finality candles are retained in `pending_finality_context` and excluded from `analysis_candles`.
+
+Latest completed CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64, MTF 18/18, gate/UI/chart checks passed, zero browser page errors. Total: 158/158 named self-tests. Exact candidate HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). GitHub Actions still cannot verify live Bybit: both public REST hosts return HTTP 403 to the runner.
