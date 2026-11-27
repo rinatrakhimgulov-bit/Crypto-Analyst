@@ -72,7 +72,7 @@ async function main() {
         events: analysis.projection?.structure_events?.length ?? 0,
         zones: analysis.projection?.zones?.length ?? 0,
         retests: analysis.projection?.retest_lifecycles?.length ?? 0,
-        mtfContext: analysis.projection?.mtf_context ?? 'MISSING',
+        mtfContext: analysis.projection && Object.prototype.hasOwnProperty.call(analysis.projection, 'mtf_context') ? analysis.projection.mtf_context : 'MISSING',
         chartProjectionAttached: hooks.chart.marketStructure?.status === 'VALID',
         panelStatus: document.getElementById('b2Status')?.textContent,
         blockedQualityStatus: blocked.status,
