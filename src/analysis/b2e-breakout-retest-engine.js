@@ -41,6 +41,8 @@
     if (policy.b2d_engine_version !== REQUIRED_B2D_ENGINE_VERSION ||
         typeof policy.b2d_policy_version !== 'string' || !policy.b2d_policy_version.trim() ||
         typeof policy.b2d_zone_policy_version !== 'string' || !policy.b2d_zone_policy_version.trim() ||
+        policy.b2b_engine_version !== REQUIRED_B2D_ENGINE_VERSION.replace('2.0.0-b2d', '2.0.0-b2b') ||
+        typeof policy.b2b_policy_version !== 'string' || !policy.b2b_policy_version.trim() ||
         policy.b2c_engine_version !== REQUIRED_B2C_ENGINE_VERSION ||
         typeof policy.b2c_policy_version !== 'string' || !policy.b2c_policy_version.trim() ||
         typeof policy.b1_contract_version !== 'string' || !policy.b1_contract_version.trim() ||
@@ -287,9 +289,11 @@
         b2c.symbol !== snapshot.canonical_symbol || b2c.timeframe !== timeframe ||
         b2c.analysis_as_of_ms !== asOf || !isObject(b2c.admission) ||
         b2c.admission.status !== 'ADMITTED' || b2c.admission.snapshot_id !== snapshot.snapshot_id ||
+        b2c.admission.b2b_engine_version !== policy.b2b_engine_version ||
+        b2c.admission.b2b_policy_version !== policy.b2b_policy_version ||
         b2c.admission.b1_validator_version !== policy.b1_validator_version ||
         b2c.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
-        !Array.isArray(b2c.raw_pivots) || !Array.isArray(b2c.events)) return blocked('INVALID', 'B2C_ADMISSION_IDENTITY_MISMATCH', meta);
+        !Array.isArray(b2c.raw_pivots) || !Array.isArray(b2c.events) || b2c.events.some(e => !isObject(e))) return blocked('INVALID', 'B2C_ADMISSION_IDENTITY_MISMATCH', meta);
 
     if (b2d.status !== 'VALID' || b2d.engine_version !== policy.b2d_engine_version ||
         b2d.policy_version !== policy.b2d_policy_version ||
@@ -330,6 +334,7 @@
 
     const pivotIds = new Set();
     const pivotById = new Map();
+    const sourceTimesByRole = { SWING_HIGH: new Set(), SWING_LOW: new Set() };
     let previousAvailable = -1;
     for (const pivot of b2c.raw_pivots) {
       const error = validatePivot(pivot, pivotIds, asOf, policy.price_equality_policy);
@@ -341,6 +346,8 @@
       const expectedPrice = sourceCandle && (pivot.type === 'SWING_HIGH' ? sourceCandle.high : sourceCandle.low);
       if (!sourceCandle || !confirmationCandle || expectedPrice !== pivot.price ||
           pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms) return blocked('INVALID', 'B2C_PIVOT_PROVENANCE_MISMATCH', meta);
+      if (sourceTimesByRole[pivot.type].has(pivot.source_time_ms)) return blocked('INVALID', 'DUPLICATE_PIVOT_TOUCH_SOURCE_TIME', meta);
+      sourceTimesByRole[pivot.type].add(pivot.source_time_ms);
       pivotById.set(pivot.pivot_id, pivot);
     }
 
@@ -359,25 +366,53 @@
       const prices = members.map(p => p.price);
       const touchTimes = members.map(p => p.source_time_ms);
       const availableTimes = members.map(p => p.available_at_ms);
-      if (new Set(touchTimes).size !== members.length ||
+      const sortedIds = [...zone.pivot_ids].sort();
+      const orderedMembers = [...members].sort((a, b) => a.source_time_ms - b.source_time_ms || a.pivot_id.localeCompare(b.pivot_id));
+      const expectedZoneId = ['B2D', zone.role, sortedIds[0], sortedIds[sortedIds.length - 1]].join(':');
+      if (JSON.stringify(sortedIds) !== JSON.stringify(zone.pivot_ids) || zone.zone_id !== expectedZoneId ||
+          new Set(touchTimes).size !== members.length ||
           zone.lower_bound !== Math.min(...prices) || zone.upper_bound !== Math.max(...prices) ||
           zone.representative_price !== median(prices) ||
           zone.cluster_span_price !== zone.upper_bound - zone.lower_bound ||
           zone.cluster_span_price > b2d.max_cluster_span_price ||
           zone.touch_count !== members.length ||
           zone.available_at_ms !== Math.max(...availableTimes) ||
-          zone.touches.length !== members.length) return blocked('INVALID', 'B2D_ZONE_EVIDENCE_MISMATCH', meta);
+          zone.first_touch_time_ms !== Math.min(...touchTimes) ||
+          zone.last_touch_time_ms !== Math.max(...touchTimes) ||
+          zone.touches.length !== members.length ||
+          zone.evidence_status !== 'CONFIRMED_CLUSTER' ||
+          zone.touches.some((t, i) => t.pivot_id !== orderedMembers[i].pivot_id ||
+            t.price !== orderedMembers[i].price || t.source_time_ms !== orderedMembers[i].source_time_ms ||
+            t.confirmed_at_ms !== orderedMembers[i].confirmed_at_ms || t.available_at_ms !== orderedMembers[i].available_at_ms)) {
+        return blocked('INVALID', 'B2D_ZONE_EVIDENCE_MISMATCH', meta);
+      }
     }
 
     const closeIndex = new Map(candles.map((c, i) => [c.close_time_ms, i]));
     const eventIds = new Set();
+    let previousEventClose = -1;
+    for (const event of b2c.events) {
+      if (typeof event.event_id !== 'string' || !event.event_id || eventIds.has(event.event_id)) return blocked('INVALID', 'B2C_EVENT_ID_INVALID', meta);
+      eventIds.add(event.event_id);
+      const eventIndex = closeIndex.get(event.breaking_candle_close_time_ms);
+      const eventCandle = eventIndex === undefined ? null : candles[eventIndex];
+      if (!eventCandle || event.breaking_candle_open_time_ms !== eventCandle.open_time_ms ||
+          event.breaking_candle_close !== eventCandle.close || event.confirmed_at_ms !== eventCandle.close_time_ms ||
+          event.available_at_ms !== eventCandle.close_time_ms + policy.finality_safety_lag_ms ||
+          event.breaking_candle_close_time_ms < previousEventClose) return blocked('INVALID', 'B2C_EVENT_PROVENANCE_INVALID', meta);
+      previousEventClose = event.breaking_candle_close_time_ms;
+      if (event.source_pivot_id !== null) {
+        const evidencePivot = pivotById.get(event.source_pivot_id);
+        if (!evidencePivot || event.level_price !== evidencePivot.price || evidencePivot.available_at_ms >= eventCandle.close_time_ms) {
+          return blocked('INVALID', 'B2C_EVENT_PIVOT_PROVENANCE_INVALID', meta);
+        }
+      }
+    }
     const lifecycles = [];
     const unmatched = [];
     const breakEvents = b2c.events.filter(e => Object.prototype.hasOwnProperty.call(BREAK_TYPES, e.event_type));
 
     for (const event of breakEvents) {
-      if (!isObject(event) || typeof event.event_id !== 'string' || !event.event_id || eventIds.has(event.event_id)) return blocked('INVALID', 'B2C_BREAK_EVENT_ID_INVALID', meta);
-      eventIds.add(event.event_id);
       const direction = BREAK_TYPES[event.event_type];
       const pivot = pivotById.get(event.source_pivot_id);
       const candleIndex = closeIndex.get(event.breaking_candle_close_time_ms);
