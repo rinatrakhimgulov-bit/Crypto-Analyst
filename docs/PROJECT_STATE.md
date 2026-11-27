@@ -311,3 +311,8 @@ The owner approved pausing Stage 1 visual/live-chart polish and prioritizing the
 ### Source-of-truth protection
 - `main` and the canonical HTML remain unchanged by the Stage 2 candidate work.
 - PRs #8–#13 are not to be merged automatically. Explicit owner acceptance is required for any merge or production integration.
+
+
+### B2-B integrated verification refresh — 2026-11-27
+
+B2-B now has 20 deterministic tests, including a direct integration fixture that executes the actual B2-A engine and feeds its VALID output into B2-B. GitHub Actions run 46012201698 passed 20/20 on code commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`. This remains deterministic research verification only; no live Bybit or production-app validation.
