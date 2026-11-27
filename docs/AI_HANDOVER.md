@@ -1298,3 +1298,21 @@ Verification:
 Critical limits: historical replay used a synthetic B1-valid wrapper and synthetic zero MTF provider-time spread. Zone/retest parameters and 2/2 pivot strength are exploratory, not production-calibrated. The archive is third-party and ends 2025-12-05. No profitability claim is supported.
 
 Next gates before integration: exact-source independent audit; review/calibrate pivot strength, zone span and retest parameters; complete live Bybit concurrent 1D/4H/1H provider-time calibration; verify the current candidate on iPhone/Safari. B1 remains NOT ACCEPTED. No app HTML or `main` changes. Do not merge PR #20 without explicit owner approval.
+
+
+
+## 2026-11-27 current handover — B2 app integration
+
+Current integration branch: `integration/b2-market-structure-ui-2026-11-27`. Base branch for a future integration PR is B1-D candidate `feature/b1-d-live-market-data-2026-11-27`, not `main`.
+
+B2-A…B2-G are now inlined into the single-file app candidate. A separate B2 panel reports structure state, pivots, BOS/CHoCH, S/R zones and retest lifecycle. Chart overlays show causal pivots/events/zones. B2 is display-only and does not change LONG/SHORT/WAIT. B2-F MTF is deliberately disabled in the app pending live Bybit provider-time spread calibration.
+
+Important chart-causality fix: confirmed zones start drawing at their `visible_from_ms` time, not retroactively across earlier candles. Browser regression verifies the first rendered x-position.
+
+Verified runs on commit `936ffb2f2425f440ab1650ddc706ed22617b01cb`:
+- B2 application integration [46034275312](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034275312): all B2-A…B2-G suites plus browser integration/mobile layout passed.
+- Browser synthetic fixture: 220 closed 1H candles, quality VALID, B2 VALID, 33 pivots, 65 events, 2 zones, 2 retests; explicit null MTF context; stale B1 input blocked; chart projection attached.
+- Mobile viewport 390×844: B2 card visible, chart fits, no horizontal overflow, zero page errors.
+- B1 browser/data verification [46034276646](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034276646) passed. Live Bybit REST remains unverified because GitHub Actions was denied with HTTP 403 by both public hosts.
+
+Current integration branch head may have advanced beyond the CI-tested commit due documentation updates; re-run CI on the final head before presenting it as ready. iPhone/Safari live-feed verification and MTF provider-time calibration remain open. No merge to `main` without explicit owner approval.
