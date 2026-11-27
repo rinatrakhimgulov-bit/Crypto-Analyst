@@ -81,3 +81,27 @@ B2-G produces causally timed chart projection data. It does not itself wire swin
 **NOT READY FOR MAIN-APPLICATION INTEGRATION.**
 
 Continue with a dedicated historical-data validation harness and live MTF acquisition calibration. Keep all B2 code isolated from `main`. Do not merge PRs #12–#20 or enable B2 directional decisions until the blockers above are closed and the target runtime is verified.
+
+
+## Follow-up deterministic CI verification — 2026-11-27
+
+A dedicated workflow was added on the audit branch:
+- Workflow: `.github/workflows/b2-audit-full-suite.yml`
+- Successful run: [#46032422972](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46032422972)
+- Audited commit: `5af559abedd49f0764c8c5815f543eee814375c3`
+- Result: all seven B2 deterministic suites passed, 180/180 tests total:
+  - B2-A: 21/21
+  - B2-B: 21/21
+  - B2-C: 34/34
+  - B2-D: 21/21
+  - B2-E: 24/24
+  - B2-F: 30/30
+  - B2-G: 29/29
+
+The first full-chain run exposed stale test expectations and integration fixtures that had not been updated to the explicit same-candle dual-pivot policy. Those test-only inconsistencies were corrected. The B2 implementation modules were not changed in this follow-up. The complete deterministic suite then passed.
+
+This CI result upgrades confidence in internal deterministic consistency only. It does **not** close the historical replay, live MTF calibration, browser B1-to-B2 runtime, or UI integration blockers described above.
+
+## Updated decision
+
+**Still NOT READY for main-application integration.** The deterministic chain is now verified as 180/180 passing. The next required work remains the full historical B2-A→B2-G replay on BTCUSDT and ETHUSDT across 1H/4H/1D, empirical MTF provider-time spread calibration, and target-runtime integration checks. Keep the production `main` branch unchanged until those gates are closed.
