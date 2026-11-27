@@ -316,3 +316,31 @@ The owner approved pausing Stage 1 visual/live-chart polish and prioritizing the
 ### B2-B integrated verification refresh — 2026-11-27
 
 B2-B now has 20 deterministic tests, including a direct integration fixture that executes the actual B2-A engine and feeds its VALID output into B2-B. GitHub Actions run 46012201698 passed 20/20 on code commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`. This remains deterministic research verification only; no live Bybit or production-app validation.
+
+
+## Stage 2 current state — 2026-11-27 (supersedes earlier status entries)
+
+Stage 1 visual/live-chart refinement is frozen temporarily. The deferred items remain forming-candle animation, exact live-price comparison against the exchange chart, and remaining real iPhone/Safari live-feed lifecycle verification. B1 data-quality/finality controls remain mandatory; only visual polish is deferred.
+
+B1 is **NOT ACCEPTED** and remains unmerged. PR #8 and #9 remain draft candidates. B2 candidates are permitted only as isolated research modules; no B2 code may be connected to the running application or LONG/SHORT path before B1 acceptance and explicit owner approval.
+
+### B2-A
+- Isolated causal raw swing engine in `src/analysis/b2-causal-swing-engine.js`.
+- 20/20 deterministic tests passed in GitHub Actions run [46010999225](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46010999225), tested commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
+- PR #12 remains draft/unmerged.
+
+### B2-B
+- Isolated alternating swing sequence with same-side replacement and HH/HL/LH/LL/EQH/EQL labels.
+- 20/20 deterministic tests, including actual B2-A → B2-B integration, passed in run [46012309171](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46012309171).
+- PR #13 remains draft/unmerged.
+
+### B2-C
+- Isolated structure-state engine: initial bullish/bearish breaks, BOS, protected-swing CHoCH, wick sweeps, gap-through annotation, strict zero-buffer close boundary and consumed-level deduplication.
+- Revalidates B1/B2 version and snapshot identity, candle continuity/provenance/finality, source-candle pivot prices, and independently reconstructs B2-B sequence from raw pivots.
+- 28/28 deterministic tests passed in run [46013846058](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46013846058) on exact head commit `a58441aa4f39aa6e3b98650624f07a2041e7152a`.
+- Includes a full deterministic B1 snapshot → B2-A → B2-B → B2-C integration fixture.
+- PR #15 is draft/unmerged.
+
+All three B2 increments remain research-only. None is imported by the application HTML. No MTF directional integration, zones, retests, chart overlays, trade scenarios or LONG/SHORT recommendations are implemented. The tests are deterministic fixtures, not live Bybit evidence or proof of trading profitability.
+
+Next: independent review of exact B2-A/B/C source blobs and tests. Only after that should B2-D support/resistance zones be designed as a separate increment. Do not merge PRs #8–#15 without explicit owner approval.
