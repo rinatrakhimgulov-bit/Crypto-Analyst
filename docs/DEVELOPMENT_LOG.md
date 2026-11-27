@@ -523,3 +523,15 @@ Latest suites: B1-E 32/32 PASS, B1 Quality 65/65 PASS; both inline scripts parse
 The assembled MTF result and failure results are now deeply frozen, including nested per-timeframe diagnostics, canonical candle arrays, candle objects and quality reports. The provider-time-spread failure path was adjusted to preserve the immutable result contract.
 
 Latest HTML blob: 842c361a8386c358a68f22407814c376fd3bde1b. Final isolated V8 verification: B1-E 33/33 PASS; B1 Quality 65/65 PASS; both inline JavaScript blocks parse. This remains a candidate only: no live Bybit, browser/UI, Chrome/iPhone Safari or full StageASelfTest verification. MTFDataEngine is not connected to the UI/decision pipeline. PR #6 remains draft and unmerged; main unchanged.
+
+
+### Independent B1-A/B/E audit — 2026-11-27
+
+- Exact candidate audited: HTML blob `842c361a8386c358a68f22407814c376fd3bde1b`; spec blob `0481400d46be50ff353b73783c769e220ca60bda`.
+- External verdict: **APPROVE WITH CONDITIONS**.
+- Independent execution: B1-E 33/33 PASS; B1 Quality 65/65 PASS; V5-shaped normalize→assemble probes, boundary/short-response/multiple-forming/deep-freeze probes passed.
+- No CRITICAL defect found for current isolated MTF API.
+- Confirmed source-level AbortSignal path reaches `fetch(url, { signal: controller.signal })`; transport-level cancellation still needs a test.
+- Outstanding: live/recorded Bybit 1D/4H/1H integration, measured spread policy, browser regression, full Stage A self-test. Forming-candle validation/invariant is required before directional integration, not for current isolated library stage.
+- PR #6 remains draft/unmerged. MTF is not connected to directional decisions. Directional MTF remains blocked pending live validation and policy.
+- Full report: `docs/audits/B1_A_B_E_INDEPENDENT_AUDIT_2026-11-27.md`.
