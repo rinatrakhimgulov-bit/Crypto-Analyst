@@ -2,6 +2,10 @@
 
 const assert = require('node:assert/strict');
 const { analyze } = require('../src/analysis/b2e-breakout-retest-engine.js');
+const { analyze: analyzeB2A } = require('../src/analysis/b2-causal-swing-engine.js');
+const { analyze: analyzeB2B } = require('../src/analysis/b2b-swing-sequence-engine.js');
+const { analyze: analyzeB2C } = require('../src/analysis/b2c-swing-structure-engine.js');
+const { analyze: analyzeB2D } = require('../src/analysis/b2d-support-resistance-engine.js');
 
 const STEP = 3600000;
 const LAG = 500;
@@ -433,4 +437,118 @@ run('retest analysis does not mutate B1, B2-C or B2-D inputs', () => {
 run('identical inputs produce deterministic lifecycle IDs and statuses', () => {
   const input = fixture({ touchAt: 7 });
   assert.deepEqual(analyze(input), analyze(input));
+});
+
+
+run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a historical retest', () => {
+  const base = Math.floor(1700000000000 / STEP) * STEP;
+  const candles = [];
+  for (let i = 0; i < 20; i++) {
+    candles.push({
+      provider_id: 'bybit-v5-rest', venue: 'bybit', market_type: 'linear_perpetual',
+      canonical_symbol: 'BTC/USDT', provider_symbol: 'BTCUSDT', timeframe: '1h',
+      open_time_ms: base + i * STEP, close_time_ms: base + (i + 1) * STEP,
+      open: 9.5, high: 10, low: 9, close: 9.7,
+      volume_base: 1, volume_quote: 9.7, closed_state: 'TIME_DERIVED',
+      provider_event_time_ms: null, received_at_ms: null, normalizer_version: 'bybit-rest-v1'
+    });
+  }
+  candles[2].high = 12;
+  candles[6].high = 14;
+  candles[4].low = 7;
+  candles[8].low = 8;
+  candles[10] = { ...candles[10], open: 14, close: 15.5, high: 16, low: 13 };
+  candles[11] = { ...candles[11], open: 15, close: 15.5, high: 16, low: 13.5 };
+  const asOf = candles[19].close_time_ms + LAG;
+  for (const row of candles) {
+    row.provider_event_time_ms = asOf;
+    row.received_at_ms = asOf;
+  }
+  const snapshotId = 'integration:b2e:BTCUSDT:1h:' + asOf;
+  const snapshot = {
+    contract_version: '1.1.0', snapshot_id: snapshotId, canonical_symbol: 'BTC/USDT',
+    market_type: 'linear_perpetual', analysis_as_of_ms: asOf, provider_server_time_ms: asOf,
+    provider_metadata: { provider_id: 'bybit-v5-rest', venue: 'bybit', provider_symbol: 'BTCUSDT', host: 'api.bybit.com', time_source: 'provider' },
+    received_at_ms: asOf, candles_by_timeframe: { '1h': candles },
+    forming_candle_by_timeframe: { '1h': null }, unclassified_candles_by_timeframe: { '1h': [] }
+  };
+  const qualityReport = {
+    validator_version: '1.1.0', policy_version: 'b1-quality-v1', snapshot_id: snapshotId,
+    status: 'VALID', reasons: [], symbol: 'BTC/USDT', timeframe: '1h',
+    analysis_as_of_ms: asOf, received_at_ms: asOf, valid_count: candles.length,
+    closed_count: candles.length, forming_count: 0, unknown_finality_count: 0,
+    insufficient_history: false, checked_at_ms: asOf
+  };
+  const b2a = analyzeB2A({
+    snapshot, quality_report: qualityReport, timeframe: '1h', analysis_as_of_ms: asOf,
+    policy: {
+      version: 'b2a-causal-swing-v1', b1_contract_version: '1.1.0',
+      b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-v1',
+      left_strength: 2, right_strength: 2, finality_safety_lag_ms: LAG,
+      price_equality_policy: 'EXACT_PRICE_V1'
+    }
+  });
+  assert.equal(b2a.status, 'VALID');
+  const b2b = analyzeB2B({
+    b2a_result: b2a,
+    policy: {
+      version: 'b2b-swing-sequence-v1', b2a_engine_version: '2.0.0-b2a',
+      b2a_policy_version: 'b2a-causal-swing-v1', b1_validator_version: '1.1.0',
+      b1_quality_policy_version: 'b1-quality-v1', price_equality_policy: 'EXACT_PRICE_V1'
+    }
+  });
+  assert.equal(b2b.status, 'VALID');
+  const b2c = analyzeB2C({
+    policy: {
+      version: 'b2c-state-v1', b2b_engine_version: '2.0.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v1', b2a_engine_version: '2.0.0-b2a',
+      b2a_policy_version: 'b2a-causal-swing-v1', b1_contract_version: '1.1.0',
+      b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-v1',
+      finality_safety_lag_ms: LAG, price_equality_policy: 'EXACT_PRICE_V1',
+      break_buffer_policy: 'ZERO_BUFFER_V1'
+    },
+    snapshot, quality_report: qualityReport, b2b_result: b2b,
+    analysis_as_of_ms: asOf, timeframe: '1h'
+  });
+  assert.equal(b2c.status, 'VALID');
+  assert.ok(b2c.events.some(e => e.event_type === 'INITIAL_BULLISH_BREAK'));
+  const b2d = analyzeB2D({
+    policy: {
+      version: 'b2d-zone-engine-v1', b2c_engine_version: '2.0.0-b2c',
+      b2c_policy_version: 'b2c-state-v1', b2b_engine_version: '2.0.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v1', b2a_engine_version: '2.0.0-b2a',
+      b2a_policy_version: 'b2a-causal-swing-v1', b1_contract_version: '1.1.0',
+      b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-v1',
+      finality_safety_lag_ms: LAG, price_equality_policy: 'EXACT_PRICE_V1'
+    },
+    zone_policy: {
+      version: 'b2d-absolute-span-v1', instrument_symbol: 'BTC/USDT',
+      timeframe: '1h', cluster_method: 'MAX_TOTAL_SPAN_V1',
+      max_cluster_span_price: 2, min_independent_touches: 2
+    },
+    snapshot, quality_report, b2c_result: b2c, analysis_as_of_ms: asOf, timeframe: '1h'
+  });
+  assert.equal(b2d.status, 'VALID');
+  const b2e = analyze({
+    policy: {
+      version: 'b2e-retest-engine-v1', b2b_engine_version: '2.0.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v1', b2c_engine_version: '2.0.0-b2c',
+      b2c_policy_version: 'b2c-state-v1', b2d_engine_version: '2.0.0-b2d',
+      b2d_policy_version: 'b2d-zone-engine-v1', b2d_zone_policy_version: 'b2d-absolute-span-v1',
+      b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
+      b1_quality_policy_version: 'b1-quality-v1', finality_safety_lag_ms: LAG,
+      price_equality_policy: 'EXACT_PRICE_V1',
+      retest_policy: {
+        version: 'retest-policy-v1', touch_method: 'RANGE_INTERSECTION_V1',
+        touch_tolerance_price: 0, success_buffer_price: 0, failure_buffer_price: 0,
+        retest_window_bars: 3, confirmation_window_bars: 2
+      }
+    },
+    snapshot, quality_report: qualityReport, b2c_result: b2c, b2d_result: b2d,
+    analysis_as_of_ms: asOf, timeframe: '1h'
+  });
+  assert.equal(b2e.status, 'VALID');
+  assert.equal(b2e.lifecycles.length, 1);
+  assert.equal(b2e.lifecycles[0].status, 'RETEST_SUCCESSFUL');
+  assert.equal(b2e.lifecycles[0].effective_role, 'SUPPORT');
 });
