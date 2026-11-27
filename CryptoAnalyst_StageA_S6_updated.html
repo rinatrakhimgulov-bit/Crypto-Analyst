@@ -6457,7 +6457,7 @@
         b2c_engine_version: b2c.engine_version,
         b2d_engine_version: b2d.engine_version,
         b2e_engine_version: b2e.engine_version,
-        b2f_engine_version: b2f.engine_version
+        b2f_engine_version: b2f ? b2f.engine_version : null
       },
       symbol,
       market_type: snapshot.market_type,
@@ -7960,7 +7960,12 @@
       ]);
 
       const live = freshLiveTicker(dataset.symbol);
-      const b2Result = runB2Analysis(dataset);
+      let b2Result;
+      try {
+        b2Result = runB2Analysis(dataset);
+      } catch (error) {
+        b2Result = { status: 'BLOCKED', stage: 'B2-runtime', reasons: [error && error.message ? error.message : 'B2_RUNTIME_ERROR'] };
+      }
       renderB2Panel(b2Result);
       chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis,
         live ? live.lastPrice : pInfo.currentMarketPrice);
@@ -8003,6 +8008,7 @@
       } else {
         setStaleBanner(null);
         resetMetricsUi();
+        resetB2Panel('Нет данных');
         document.getElementById('lastUpdate').textContent = 'Нет актуальных данных';
         renderReasonList(document.getElementById('decisionReasons'), [
           `Не удалось получить данные для ${symbol} (${tfText}): ${errorMsg}. Сохранённого снимка для этой пары и таймфрейма нет.`
