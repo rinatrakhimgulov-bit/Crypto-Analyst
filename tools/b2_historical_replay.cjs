@@ -263,7 +263,7 @@ async function main() {
           structure_events: full.c.events.length,
           structure_state: full.c.structure_state,
           prefix_invariance_checks: prefixChecks.length },
-        160_candle_windows: windowResults
+        '160_candle_windows': windowResults
       };
     }
 
