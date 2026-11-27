@@ -671,3 +671,32 @@ Next: independent review of exact B2-A/B2-B source and tests; then B2-C protecte
 5. Keep B2 display-only until a separate validation supports any later connection to directional decisions.
 
 No merge to `main` has been made. The integration branch and any PR remain unmerged pending owner review.
+
+
+## 2026-11-27 — B2 application integration preview
+
+A separate integration-preview branch now embeds B2-A through B2-G into the single-file HTML prototype. This is a research/visualization preview, not production acceptance.
+
+- Branch: `integration/b2-market-structure-ui-2026-11-27`.
+- B2-A/B/C/D/E run against the existing B1 canonical snapshot and quality report for the selected chart timeframe.
+- B2-G creates the chart projection. The UI renders causal swing labels, structure events, and confirmed support/resistance zones; a separate panel summarizes structure, events, zones, and retest lifecycle.
+- B2-F remains embedded as a research module but is not invoked in the live UI. The B2-G projection contract now permits an explicit null MTF result and returns `mtf_context: null`; this is not MTF approval and does not create directional permission.
+- Zone span (0.1% of median close) and retest tolerance/buffers (0.05%) are provisional visualization parameters only. They are not optimized or validated trading parameters.
+- B2 output does not feed the Stage A LONG/SHORT/WAIT decision. The panel explicitly identifies the B2 layer as research-only.
+
+### Verified integration evidence
+
+- B2 research suite run `46034125614`: 182/182 deterministic tests passed (B2-A 21, B2-B 21, B2-C 35, B2-D 21, B2-E 24, B2-F 30, B2-G 30).
+- B2 app integration run `46034125941`: passed. Browser fixture used 220 closed synthetic candles and produced 33 active swing markers, 65 structure events, 2 confirmed zones and 2 retest lifecycles. Invalid/stale B1 quality blocked B2 at the B1 admission gate.
+- Mobile viewport check at 390×844: B2 card visible, chart width 334 px, no horizontal overflow.
+- B1 browser suite run `46034125888`: passed with zero browser page errors. Live Bybit capture was explicitly skipped because the GitHub runner was denied by the provider (HTTP 403); this is not a live-market pass.
+- Historical replay remains separate: run `46032038435`, six BTC/ETH timeframe series, 18/18 prefix-invariance checks. Archive ends 2025-12-05 and the replay uses a synthetic B1-valid wrapper.
+
+### Remaining acceptance gates
+
+1. Owner visual/functional verification on iPhone Safari.
+2. Live concurrent Bybit 1D/4H/1H provider-time capture and measured spread policy before enabling B2-F.
+3. Independent exact-source review of the final integrated HTML and modules.
+4. Calibration/out-of-sample review of pivot, zone and retest parameters before any trading-decision use.
+
+`main` remains unchanged. No PR has been merged. This preview must not be treated as an approved trading signal source.
