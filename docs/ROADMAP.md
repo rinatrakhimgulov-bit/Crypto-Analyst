@@ -330,3 +330,14 @@ Latest completed browser CI run `45965680821`: Stage A 44/44, B1 contract 32/32,
 **B1 status remains IN REVIEW / NOT ACCEPTED.** Outstanding: independent audit of the exact current candidate blob, live concurrent Bybit 1D/4H/1H capture and measured provider-time spread tolerance, actual transport-level cancellation verification, latest quality-panel Safari check, explicit owner approval. Do not merge to main until all gates pass.
 
 **B2 Market Structure remains NOT STARTED** until B1 acceptance. The global architecture decisions are recorded in `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`; do not reopen decisions without new evidence or a concrete requirement.
+
+
+
+
+### B1-E test-matrix refresh — 2026-11-27
+
+The current-contract MTF regression suite now contains 16 cases. Additional coverage verifies that forming/pending-finality candles never enter the closed-only analysis slice, spread one millisecond above policy fails closed, multiple post-cutoff rows fail closed, and missing measured spread policy fails closed. Async tests cover sibling abort and superseded generations.
+
+Latest CI run `45966127523`: Stage A 44/44, B1 contract 32/32, validator 64/64, MTF 16/16, gate/UI/chart checks passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public hosts. Exact current HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`.
+
+This strengthens candidate evidence but does not close B1 acceptance. Independent review, recorded live capture and measured spread policy, transport-level abort verification, iPhone Safari check of the latest quality panel, and owner acceptance remain prerequisites. B2 stays not started.
