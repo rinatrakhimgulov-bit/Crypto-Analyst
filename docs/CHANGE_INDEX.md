@@ -361,3 +361,13 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - Latest CI 45981507604: Stage A 50/50, contract 32/32, quality 72/72, MTF 20/20; 174/174 deterministic tests, desktop/mobile chart, transport cancellation, zero page errors.
 - Exact candidate HTML blob 39e42c223419bd8a599f6c513ef6e269df120fcc; harness blob 44b492f92ffbbbb58f6cb830375b6330a556d5c4. PR #9 draft, based on B1 integration branch; PR #8 remains draft. Main unchanged.
 - Live Bybit remains unverified: CI REST access is HTTP 403 and browser test uses controlled events, not a live exchange WebSocket. iPhone/Safari live verification and independent review remain required.
+
+
+### B2 Market Structure design artifacts
+- `docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md` — B2 design baseline and staged implementation scope.
+- `docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md` — unresolved design decisions and causal release gates.
+
+### B2 policy freeze update — 2026-11-27
+- docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md Section 15: frozen v1 policies for causal pivots, equality, plateaus, same-side replacement, structure state, protected swings, BOS/CHoCH boundary and event lifecycle.
+- docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md Section 7: resolution matrix for design blockers R1–R7. Internal design resolution only; not independent audit.
+- No application code changed. B2 remains gated on B1 acceptance.
