@@ -795,3 +795,14 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B2-D/E lifecycle behavior was exercised across five sampled 160-candle windows per series and a final synchronized MTF window. Do not describe this as a full-series B2-D/E replay.
 - Synthetic MTF fixture used zero provider-time spread; this does not calibrate live Bybit timing.
 - The archive ends 2025-12-05. No trading edge, profitability or 2026 adaptation has been established.
+
+
+## 2026-11-27 — B3 chart UI redesign started
+
+- Created branch `feature/b3-chart-ui-redesign-2026-11-27` from main after PR #22 merge commit `d2b8220572ec407a62c5a359af3c0264919932b1`.
+- Updated `CryptoAnalyst_StageA_S6_updated.html`: responsive 440–640 px mobile chart area; Clean/Structure/Full display presets; independent controls for S/R zones, extrema, BOS/CHoCH, retests, EMA and volume; custom mode after manual layer changes.
+- Clean preset hides EMA overlays and BOS/CHoCH/retest labels, limits recent B2 extrema to six and softens zone fills/labels. Structure limits extrema to 14 and events/retests to eight; Full exposes all supported overlays and legacy levels.
+- Retest annotations are placed at the first candle at or after lifecycle `visible_at_ms`, preserving causal availability rather than backdating the status to breakout.
+- Updated `tests/b2-app-browser-integration.cjs` with assertions for mobile chart height, all three presets, custom layer toggles and button state. Updated `.github/workflows/b2-app-integration.yml` to run on the B3 branch.
+- Added `docs/specs/B3_CHART_UI_REDESIGN_SPEC_2026-11-27.md`.
+- JavaScript syntax check: both inline scripts PASS. Browser test/CI and owner iPhone Safari review are not yet confirmed. Candidate only; no merge.
