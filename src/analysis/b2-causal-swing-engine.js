@@ -129,12 +129,16 @@
     if (report.closed_count !== candles.length || report.valid_count < candles.length || report.insufficient_history === true) {
       return blocked('INVALID', [{ code: 'QUALITY_CANDLE_COUNT_MISMATCH', severity: 'CRITICAL' }], meta);
     }
+    for (let i = 1; i < candles.length; i++) {
+      if (candles[i].open_time_ms <= candles[i - 1].open_time_ms) {
+        return blocked('INVALID', [{ code: 'CANDLE_ORDER_INVALID', severity: 'CRITICAL', index: i }], meta);
+      }
+    }
     const seen = new Set();
     for (let i = 0; i < candles.length; i++) {
       const error = validateCandle(candles[i], snapshot, timeframe, stepMs, asOf, policy.finality_safety_lag_ms);
       if (error) return blocked('INVALID', [{ code: error, severity: 'CRITICAL', index: i }], meta);
       if (seen.has(candles[i].open_time_ms)) return blocked('INVALID', [{ code: 'CANDLE_DUPLICATE_TIMESTAMP', severity: 'CRITICAL', timestamp_ms: candles[i].open_time_ms }], meta);
-      if (i > 0 && candles[i].open_time_ms <= candles[i - 1].open_time_ms) return blocked('INVALID', [{ code: 'CANDLE_ORDER_INVALID', severity: 'CRITICAL', index: i }], meta);
       if (i > 0 && candles[i].open_time_ms - candles[i - 1].open_time_ms !== stepMs) return blocked('INVALID', [{ code: 'CANDLE_GAP_DETECTED', severity: 'CRITICAL', index: i, expected_step_ms: stepMs, actual_step_ms: candles[i].open_time_ms - candles[i - 1].open_time_ms }], meta);
       seen.add(candles[i].open_time_ms);
     }
