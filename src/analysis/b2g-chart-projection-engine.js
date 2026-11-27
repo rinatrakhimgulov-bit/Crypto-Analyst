@@ -7,7 +7,6 @@
 
   const ENGINE_VERSION = '2.0.0-b2g';
   const STEP = Object.freeze({ '1h': 3600000, '4h': 14400000, '1d': 86400000 });
-  const CLOSED_STATES = new Set(['CONFIRMED', 'TIME_DERIVED']);
 
   function freezeDeep(value) {
     if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -44,6 +43,8 @@
       b1_validator_version: '1.1.0',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
+      b2b_engine_version: '2.0.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v1',
       b2c_engine_version: '2.0.0-b2c',
       b2c_policy_version: 'b2c-state-v1',
       b2d_engine_version: '2.0.0-b2d',
@@ -114,7 +115,8 @@
         !Number.isSafeInteger(asOf) || asOf <= 0 ||
         snapshot.provider_server_time_ms !== asOf ||
         !isObject(snapshot.candles_by_timeframe) ||
-        !Array.isArray(snapshot.candles_by_timeframe[timeframe]) ||
+        !Array.isArray(snapshot.candles_by_timeframe[timeframe]) || snapshot.candles_by_timeframe[timeframe].length < 1 ||
+        typeof snapshot.market_type !== 'string' || !snapshot.market_type ||
         !isObject(snapshot.forming_candle_by_timeframe) ||
         !Object.prototype.hasOwnProperty.call(snapshot.forming_candle_by_timeframe, timeframe) ||
         !isObject(snapshot.unclassified_candles_by_timeframe) ||
@@ -125,7 +127,10 @@
         report.symbol !== symbol || report.timeframe !== timeframe ||
         report.analysis_as_of_ms !== asOf ||
         report.validator_version !== policy.b1_validator_version ||
-        report.policy_version !== policy.b1_quality_policy_version) {
+        report.policy_version !== policy.b1_quality_policy_version ||
+        report.closed_count !== snapshot.candles_by_timeframe[timeframe].length ||
+        !Number.isSafeInteger(report.valid_count) || report.valid_count < report.closed_count ||
+        report.insufficient_history === true) {
       return blocked('B1_QUALITY_REPORT_MISMATCH', meta);
     }
     const baseIdentity = (result, engineVersion, policyVersion) =>
@@ -136,10 +141,16 @@
     if (!baseIdentity(b2a, policy.b2a_engine_version, policy.b2a_policy_version) ||
         !isObject(b2a.admission) || b2a.admission.status !== 'ADMITTED' ||
         b2a.admission.snapshot_id !== snapshot.snapshot_id ||
+        !isObject(b2a.admission.quality_report) ||
+        b2a.admission.quality_report.snapshot_id !== snapshot.snapshot_id ||
+        b2a.admission.quality_report.validator_version !== policy.b1_validator_version ||
+        b2a.admission.quality_report.policy_version !== policy.b1_quality_policy_version ||
         !Array.isArray(b2a.pivots)) return blocked('B2A_RESULT_MISMATCH', meta);
     if (!baseIdentity(b2c, policy.b2c_engine_version, policy.b2c_policy_version) ||
         !isObject(b2c.admission) || b2c.admission.status !== 'ADMITTED' ||
         b2c.admission.snapshot_id !== snapshot.snapshot_id ||
+        b2c.admission.b2b_engine_version !== policy.b2b_engine_version ||
+        b2c.admission.b2b_policy_version !== policy.b2b_policy_version ||
         b2c.admission.b1_validator_version !== policy.b1_validator_version ||
         b2c.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
         !Array.isArray(b2c.raw_pivots) || !Array.isArray(b2c.pivots) ||
@@ -171,8 +182,12 @@
         b2f.policy_version !== policy.b2f_policy_version ||
         b2f.symbol !== symbol || b2f.analysis_as_of_ms !== asOf ||
         !isObject(b2f.admission) || b2f.admission.status !== 'ADMITTED' ||
+        b2f.admission.b1_contract_version !== policy.b1_contract_version ||
         b2f.admission.b1_validator_version !== policy.b1_validator_version ||
         b2f.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
+        b2f.admission.b2c_engine_version !== policy.b2c_engine_version ||
+        b2f.admission.b2c_policy_version !== policy.b2c_policy_version ||
+        b2f.market_type !== snapshot.market_type ||
         !isObject(b2f.admission.snapshot_ids) ||
         b2f.admission.snapshot_ids[timeframe] !== snapshot.snapshot_id ||
         !isObject(b2f.timeframes) || !isObject(b2f.timeframes[timeframe]) ||
@@ -185,8 +200,8 @@
     for (const pivot of b2a.pivots) {
       if (!isObject(pivot) || typeof pivot.pivot_id !== 'string' || !pivot.pivot_id || b2aById.has(pivot.pivot_id) ||
           !['SWING_HIGH', 'SWING_LOW'].includes(pivot.type) || !Number.isFinite(pivot.price) ||
-          !Number.isSafeInteger(pivot.source_time_ms) || pivot.source_time_ms % step !== 0 ||
-          !Number.isSafeInteger(pivot.confirmed_at_ms) || pivot.confirmed_at_ms % step !== 0 ||
+          !Number.isSafeInteger(pivot.source_time_ms) || pivot.source_time_ms <= 0 || pivot.source_time_ms % step !== 0 ||
+          !Number.isSafeInteger(pivot.confirmed_at_ms) || pivot.confirmed_at_ms <= 0 || pivot.confirmed_at_ms % step !== 0 ||
           !Number.isSafeInteger(pivot.available_at_ms) ||
           pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms ||
           pivot.available_at_ms > asOf) return blocked('B2A_PIVOT_EVIDENCE_INVALID', meta);
@@ -256,7 +271,7 @@
           event.available_at_ms !== event.breaking_candle_close_time_ms + policy.finality_safety_lag_ms ||
           event.available_at_ms > asOf || !Number.isSafeInteger(event.breaking_candle_open_time_ms) ||
           !Number.isSafeInteger(event.breaking_candle_close_time_ms) ||
-          event.breaking_candle_open_time_ms % step !== 0 ||
+          event.breaking_candle_open_time_ms <= 0 || event.breaking_candle_open_time_ms % step !== 0 ||
           event.breaking_candle_close_time_ms - event.breaking_candle_open_time_ms !== step ||
           (event.source_pivot_id !== null && event.source_pivot_id !== undefined && !rawIds.has(event.source_pivot_id))) {
         return blocked('B2C_EVENT_INVALID', meta);
@@ -283,7 +298,7 @@
       if (!isObject(zone) || typeof zone.zone_id !== 'string' || !zone.zone_id ||
           zoneIds.has(zone.zone_id) || !Number.isFinite(zone.lower_bound) ||
           !Number.isFinite(zone.upper_bound) || zone.lower_bound > zone.upper_bound ||
-          !Number.isSafeInteger(zone.available_at_ms) || zone.available_at_ms > asOf ||
+          !Number.isSafeInteger(zone.available_at_ms) || zone.available_at_ms <= 0 || zone.available_at_ms > asOf ||
           !Array.isArray(zone.pivot_ids) || zone.pivot_ids.length < 2 || zone.freshness_status !== 'NOT_CLASSIFIED' ||
           !['SUPPORT', 'RESISTANCE'].includes(zone.role)) {
         return blocked('B2D_ZONE_INVALID', meta);
@@ -322,12 +337,14 @@
       if (!isObject(candidate) || typeof candidate.candidate_id !== 'string' || !candidate.candidate_id ||
           candidateIds.has(candidate.candidate_id) || !Number.isFinite(candidate.lower_bound) ||
           !Number.isFinite(candidate.upper_bound) || candidate.lower_bound > candidate.upper_bound ||
-          !Number.isSafeInteger(candidate.available_at_ms) || candidate.available_at_ms > asOf) {
+          !Number.isSafeInteger(candidate.available_at_ms) || candidate.available_at_ms <= 0 || candidate.available_at_ms > asOf) {
         return blocked('B2D_CANDIDATE_INVALID', meta);
       }
       if (!Array.isArray(candidate.pivot_ids) || candidate.pivot_ids.length < 1 ||
           new Set(candidate.pivot_ids).size !== candidate.pivot_ids.length ||
           !['SUPPORT', 'RESISTANCE'].includes(candidate.role) ||
+          !Number.isSafeInteger(candidate.touch_count) || candidate.touch_count < 1 ||
+          !Number.isSafeInteger(candidate.required_touch_count) || candidate.required_touch_count <= candidate.touch_count ||
           candidate.evidence_status !== 'INSUFFICIENT_INDEPENDENT_TOUCHES') return blocked('B2D_CANDIDATE_EVIDENCE_MISMATCH', meta);
       const candidatePivots = candidate.pivot_ids.map(id => b2c.raw_pivots.find(p => p.pivot_id === id));
       if (candidatePivots.some(p => !p || (candidate.role === 'SUPPORT' ? p.type !== 'SWING_LOW' : p.type !== 'SWING_HIGH')) ||
