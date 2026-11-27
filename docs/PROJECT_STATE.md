@@ -467,3 +467,9 @@ B1 remains not accepted: exact-blob independent review, real concurrent Bybit ca
 - Latest CI run `45968566553` passed: Stage A 44/44, B1 contract 32/32, validator 65/65, MTF 20/20; 161/161 named tests, gate/UI/C1/probe checks passed, zero browser page errors. Transport cancellation: 3 requests started / 3 sockets closed. Live Bybit remains SKIPPED because both public hosts return HTTP 403 to GitHub Actions.
 - Current HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); test harness blob `70399a984b44f5f85024afcdf11289e4a73a6361` (32,071 bytes); probe blob `3b5df8f0feda730c7e6564808f40ad4526f0e44a` (12,446 bytes). Current branch head `c9d207d6dd3f8194bcc97a4d600e284a85594e04`, 124 ahead / 0 behind main. Main HTML unchanged at `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf`.
 - PR #8 remains draft and unmerged. Independent review, live Bybit captures/spread calibration, iPhone Safari panel check, and explicit owner acceptance remain open. MTF remains isolated from UI/directional decisions.
+
+
+
+## Final branch-position refresh — 2026-11-27
+
+After the documentation sync, PR #8 head is `5e94c29d1f5734e8b46200c04b6da51996ca9726`, still DRAFT / NOT MERGED. The code artifact remains HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); test harness `70399a984b44f5f85024afcdf11289e4a73a6361`. Branch comparison is now 131 ahead / 0 behind main (the additional commits are documentation/PR metadata refreshes; no change to the tested HTML/harness after CI run `45968566553`). Main HTML remains `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf` (188,954 bytes), unchanged.
