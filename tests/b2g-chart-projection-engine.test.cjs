@@ -438,6 +438,15 @@ run('MTF context is copied without inventing a directional score', () => {
   assert.equal(result.mtf_context.alignment_context, 'MIXED_STRUCTURE');
   assert.equal(Object.prototype.hasOwnProperty.call(result.mtf_context, 'score'), false);
 });
+run('single-timeframe chart projection remains available while MTF is explicitly unavailable', () => {
+  const input = makeInput();
+  input.b2f_result = null;
+  const result = analyze(input);
+  assert.equal(result.status, 'VALID');
+  assert.equal(result.mtf_context, null);
+  assert.equal(result.swing_markers.length, 3);
+  assert.equal(result.structure_events.length, 1);
+});
 run('B2F selected timeframe snapshot mismatch blocks', () => {
   const input = makeInput();
   input.b2f_result.admission.snapshot_ids['1h'] = 'wrong';
