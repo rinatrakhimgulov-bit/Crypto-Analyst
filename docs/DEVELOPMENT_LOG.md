@@ -731,3 +731,31 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Zone/retest thresholds and pivot sensitivity remain exploratory.
 - No iPhone/Safari verification has been performed on this integration branch yet.
 - No merge to `main` was made.
+
+
+## 2026-11-27 — B2 application integration preview
+
+- Created isolated branch `integration/b2-market-structure-ui-2026-11-27`; did not modify `main`.
+- Inlined B2-A through B2-G source modules into the single-file app so the prototype remains usable as one HTML file.
+- Connected B2-A/B/C/D/E to the current B1 canonical snapshot and quality report for the selected chart timeframe.
+- Connected B2-G to the chart as a causal projection DTO. Added HH/HL/LH/LL markers, BOS/CHoCH event labels, confirmed S/R zones, and a B2 summary panel.
+- Added a fail-closed UI path: stale/non-valid B1 quality prevents B2 analysis; runtime exceptions are isolated from the existing Stage A render path.
+- B2-G now accepts an explicit null B2-F result and emits `mtf_context: null`. B2-F remains disabled in the live UI pending empirical provider-time spread calibration.
+- Added browser/mobile integration tests using synthetic B1-valid candles. The tests verify the complete B2 selected-timeframe pipeline, projection attachment, stale-quality blocking, and mobile overflow behavior.
+- Provisional zone/retest thresholds are marked exploratory in the UI and are not used for trading decisions.
+
+### Verification
+
+- B2 research suite run 46034125614: 182/182 passed.
+- B2 app integration run 46034125941: passed; 220 closed synthetic candles, 33 swing markers, 65 structure events, 2 zones, 2 retest lifecycles; stale quality blocked at B1.
+- Mobile 390×844: no horizontal overflow.
+- B1 browser suite run 46034125888: passed; live Bybit verification skipped due runner-side HTTP 403.
+- Historical replay run 46032038435 remains a separate archive-based research result, not live Bybit proof.
+
+### Remaining limitations
+
+- iPhone/Safari visual and functional acceptance is pending.
+- MTF provider-time spread has not been empirically calibrated; B2-F remains disabled in the app.
+- Historical archive ends 2025-12-05 and uses a synthetic B1-valid wrapper.
+- Pivot strength, zone span and retest tolerance are not production-calibrated.
+- No B2 output is connected to LONG/SHORT/WAIT.
