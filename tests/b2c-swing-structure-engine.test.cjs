@@ -94,7 +94,22 @@ function fixture(pivots, overrides = {}, options = {}) {
       low: Math.min(values.low ?? base.low, open, close)
     };
   }
-  for (const p of pivots) {\n    const sourceIndex = Math.round(p.source_time_ms / STEP) - 1;\n    const row = rows[sourceIndex];\n    if (p.type === 'SWING_HIGH') {\n      if (row.open > p.price) row.open = p.price;\n      if (row.close > p.price) row.close = p.price;\n      row.high = p.price;\n      row.low = Math.min(row.low, row.open, row.close);\n    } else {\n      if (row.open < p.price) row.open = p.price;\n      if (row.close < p.price) row.close = p.price;\n      row.low = p.price;\n      row.high = Math.max(row.high, row.open, row.close);\n    }\n  }\n  const asOf = rows[rows.length - 1].close_time_ms + LAG;
+  for (const p of pivots) {
+    const sourceIndex = Math.round(p.source_time_ms / STEP) - 1;
+    const row = rows[sourceIndex];
+    if (p.type === 'SWING_HIGH') {
+      if (row.open > p.price) row.open = p.price;
+      if (row.close > p.price) row.close = p.price;
+      row.high = p.price;
+      row.low = Math.min(row.low, row.open, row.close);
+    } else {
+      if (row.open < p.price) row.open = p.price;
+      if (row.close < p.price) row.close = p.price;
+      row.low = p.price;
+      row.high = Math.max(row.high, row.open, row.close);
+    }
+  }
+  const asOf = rows[rows.length - 1].close_time_ms + LAG;
   const sequence = labelSequence(pivots);
   const report = {
     snapshot_id: SNAPSHOT_ID,
