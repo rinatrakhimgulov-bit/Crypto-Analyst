@@ -7088,7 +7088,7 @@
 
       setDisplayMode(mode) {
         const presets = {
-          clean: { zones: true, pivots: true, events: false, retests: false, emas: true, volume: true, legacyLevels: false },
+          clean: { zones: true, pivots: true, events: false, retests: false, emas: false, volume: true, legacyLevels: false },
           structure: { zones: true, pivots: true, events: true, retests: true, emas: true, volume: true, legacyLevels: false },
           full: { zones: true, pivots: true, events: true, retests: true, emas: true, volume: true, legacyLevels: true }
         };
@@ -7369,15 +7369,15 @@
 
         let minP = Infinity;
         let maxP = -Infinity;
+        const visibleEmaSeries = this.displayLayers.emas && this.analysis
+          ? [this.analysis.ema20, this.analysis.ema50, this.analysis.ema200]
+          : [];
         for (const c of slice) {
           if (c.low < minP) minP = c.low;
           if (c.high > maxP) maxP = c.high;
           const closedIdx = tsToClosedIdx.get(c.ts);
-          if (closedIdx !== undefined && this.analysis) {
-            const visibleEmaSeries = this.displayLayers.emas
-          ? [this.analysis.ema20, this.analysis.ema50, this.analysis.ema200]
-          : [];
-        for (const series of visibleEmaSeries) {
+          if (closedIdx !== undefined) {
+            for (const series of visibleEmaSeries) {
               const value = Array.isArray(series) ? series[closedIdx] : null;
               if (Number.isFinite(value)) {
                 minP = Math.min(minP, value);
