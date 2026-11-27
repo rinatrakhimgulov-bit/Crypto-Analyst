@@ -592,8 +592,17 @@ B2 design review is recorded with blockers. Production implementation remains NO
 - Added a dedicated GitHub Actions workflow for the B2-A Node test file.
 
 ### Verification and limits
-- 11/11 deterministic test cases passed in the current development JavaScript harness.
-- GitHub Actions status has not yet been confirmed.
+- 13/13 deterministic test cases passed.
+- GitHub Actions run 46005202794 passed on commit f41c85a3d09cbbec602fe1eaef8902b5f52de685.
 - This is isolated B2-A research code. It is not imported by the app HTML and does not affect current analytics or decisions.
 - B2-B sequence labels, B2-C BOS/CHoCH, zones, retests and chart integration are not implemented.
 - B1 formal acceptance remains required before production integration. No main branch changes or merges.
+
+
+### B2-A exact B1 version-binding hardening — 2026-11-27
+
+- Added explicit policy bindings for B1 canonical contract version 1.1.0 and validator version 1.1.0, alongside the exact B1 quality-policy version.
+- The engine now rejects snapshots with a different contract version and reports with a different validator version. This closes the gap where any non-empty validator version could previously pass admission.
+- Added two regression cases: unsupported canonical contract and mismatched validator version. Total B2-A tests: 13/13.
+- GitHub Actions run 46005202794 passed on commit `f41c85a3d09cbbec602fe1eaef8902b5f52de685`.
+- B2-A remains one-timeframe-per-invocation, isolated research code. No UI/HTML or LONG/SHORT connection. B1 formal acceptance remains mandatory before production integration.
