@@ -53,3 +53,15 @@ The suite includes an end-to-end deterministic B1 snapshot → B2-A → B2-B →
 ## Recommendation
 
 Keep PR #16 draft and isolated. Calibrate the explicit zone policy only after the canonical instrument metadata/data acceptance is settled. Proceed to B2-E retest/failure lifecycle as a separate research increment only after independent exact-source review of B2-A/B/C/D. Do not merge automatically.
+
+
+## Addendum — final review state (2026-11-27)
+
+The current B2-D head is `9012e514a29b755ac9208f1f495c3f560638b0a1`; GitHub Actions run [46015873986](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015873986) passed 21/21 deterministic tests, including the complete B1 → B2-A → B2-B → B2-C → B2-D fixture.
+
+Additional output transparency is now explicit:
+- every touch includes its B2-B sequence status, so superseded raw pivots are not hidden;
+- freshness is `NOT_CLASSIFIED`, not silently assumed active;
+- zone identity scope is membership-derived, not a persistent event/lifecycle identity.
+
+B2-E draft spec PR #18 uses B2-C `event_id` as lifecycle identity and treats B2-D zones as optional context only. It deliberately does not rely on the current B2-D `zone_id` across snapshots.
