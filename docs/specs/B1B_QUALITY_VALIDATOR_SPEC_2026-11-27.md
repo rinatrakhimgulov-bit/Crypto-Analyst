@@ -478,3 +478,16 @@ See `B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md` for full flow, recovery sema
 The analytics gate additionally verifies exact `validator_version` and `policy_version` values against the active validator and policy. Missing or mismatched identity is treated as INVALID with `QUALITY_REPORT_VERSION_MISMATCH`; a manually constructed report containing only `status: VALID` cannot pass.
 
 The latest Chromium harness validates the real synthetic adapter → canonical contract → validator → engine path. A VALID fixture produced 159 validated closed candles and non-empty EMA20/EMA50/ATR14 arrays. Negative volume produced INVALID and WAIT with no indicators. An expired transport-age report produced STALE and WAIT with no indicators. Latest totals remain Stage A 44/44, contract 32/32, validator 63/63, with gate and cleanup assertions passing. Live Bybit probe is skipped due HTTP 403 from both hosts on GitHub Actions.
+
+
+
+
+## 21. B1-E common-cutoff integration addendum — 2026-11-27
+
+The canonical data contract and validator are now version 1.1.0. The validator requires the exact supported `contract_version`; unsupported versions fail closed with `SNAPSHOT_SCHEMA_INVALID`.
+
+Canonical `source_diagnostics` now requires non-negative integer `excluded_after_cutoff_count`. This is used by MTF common-cutoff assembly when a later provider response contains a normalized candle whose open time is after the selected common cutoff. The raw-row accounting invariant now subtracts this explicit exclusion count in addition to invalid rows, duplicate extras, and one quarantined representative per conflicting timestamp group. The raw response count itself is preserved and is not rewritten to make the filtered snapshot appear complete.
+
+B1 validator version is 1.1.0. The quality policy thresholds and policy identifier remain unchanged. Current MTF integration and acceptance gates are documented in `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
+
+Latest candidate CI run 45965680821: validator 64/64, MTF 12/12, Stage A 44/44, contract 32/32, browser gate/chart checks passed, zero page errors. Live Bybit remains blocked from GitHub Actions by HTTP 403; no live MTF calibration is claimed.
