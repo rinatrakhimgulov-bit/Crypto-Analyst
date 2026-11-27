@@ -132,3 +132,19 @@ The quality gate now requires all three identity conditions before admitting dir
 A report from a different snapshot is rejected as INVALID with reason code `QUALITY_REPORT_SNAPSHOT_MISMATCH`, resulting in WAIT and empty directional indicators/levels. The validator itself requires a non-empty canonical snapshot ID and includes it in its report. The MTF aggregate applies the same per-timeframe report-to-snapshot binding.
 
 Browser regression coverage now includes a VALID-looking report with a deliberately mismatched snapshot ID. Latest CI run `45966700299` passed the gate/UI assertions and all suites: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18, zero browser page errors.
+
+
+
+
+## Exact analytics-input binding — 2026-11-27
+
+The B1-C gate now verifies that the exact data consumed by the analytical calculations is the data validated by B1-B. Before admitting directional calculations it checks:
+- canonical snapshot exists and its ID matches the quality report;
+- the selected timeframe's canonical closed candles and `dataset.closedCandles` have equal length and identical open/close timestamps, OHLC, base volume and quote turnover;
+- `dataset.prices.lastClosedPrice` equals the final canonical closed-candle close (or is null when both matching series are empty).
+
+A mismatch fails closed with `ANALYTICS_CANDLE_DATA_MISMATCH`, decision WAIT, and empty indicators/levels. This closes a separate boundary gap: previously the validator inspected `canonicalSnapshot` while the engine calculated from the parallel legacy `closedCandles` array. The arrays were normally derived from the same adapter response, but that relationship was assumed rather than enforced.
+
+Browser regression tests deliberately alter the legacy candle close while keeping the canonical snapshot and VALID report unchanged; the gate returns WAIT/INVALID. A separate empty-series fixture confirms that genuine INSUFFICIENT history remains labelled INSUFFICIENT.
+
+Latest CI run `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; gate/UI/chart and live-probe UI smoke passed, zero browser page errors.
