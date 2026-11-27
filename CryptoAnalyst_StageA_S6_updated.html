@@ -5397,6 +5397,8 @@
             const tickerLowMoved = chart.updateFormingCandleFromTicker(8.5);
             assert(tickerLowMoved && chart.candles[1].low === 8.5 && chart.candles[1].close === 8.5,
               'Ticker price must extend the forming candle low and update close');
+            // Restore the REST baseline before testing an independent kline update.
+            chart.setData(base, 1, null, 10);
             const updated = chart.upsertLiveCandle({
               ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: false
             }, 1000);
