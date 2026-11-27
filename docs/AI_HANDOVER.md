@@ -1272,11 +1272,11 @@ Current PR #8 head after documentation sync: `5e94c29d1f5734e8b46200c04b6da51996
 
 Current B1-D PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/9 (DRAFT, NOT MERGED). It targets integration/b1-mtf-architecture-2026-11-27 and depends on draft PR #8. Main remains unchanged. Do not merge automatically.
 
-Implementation branch head: a591f651e63f3bec60be6b71d22f8d162f8024a7. Exact HTML blob: 3421588fa85c47c72b1b3aa6fadfb8aef0608518 (328,399 bytes). Browser harness blob: 44b492f92ffbbbb58f6cb830375b6330a556d5c4 (35,635 bytes). Spec: docs/specs/B1_D_LIVE_MARKET_DATA_INTEGRATION_2026-11-27.md.
+Latest branch head: d6d841e5c1c6207699ba714fc78a877418974c1a; tested source commit: 1b013781a8a7e507915bf73ae760d6ecbbbca0be. Exact HTML blob: 39e42c223419bd8a599f6c513ef6e269df120fcc (329,008 bytes). Browser harness blob: 44b492f92ffbbbb58f6cb830375b6330a556d5c4 (35,635 bytes). Spec: docs/specs/B1_D_LIVE_MARKET_DATA_INTEGRATION_2026-11-27.md.
 
-B1-D implementation is in place: validated Bybit WS ticker/kline callbacks, live lastPrice/price-line update, forming-candle upsert, strict closed-candle boundary, REST reconciliation and 30-second REST fallback. A confirmed WS candle does not directly enter analytics; it triggers delayed REST reconciliation after the finality lag. Closed REST candles are immutable to WS updates. Symbol switches clear the prior ticker cache.
+B1-D implementation is in place: validated Bybit WS ticker/kline callbacks (non-price-only ticker deltas do not refresh lastPrice), live lastPrice/price-line update, forming-candle upsert, strict closed-candle boundary, REST reconciliation and 30-second REST fallback. A confirmed WS candle does not directly enter analytics; it triggers delayed REST reconciliation after the finality lag. Closed REST candles are immutable to WS updates. Symbol switches clear the prior ticker cache.
 
-Latest CI run 45981279187 passed: Stage A 50/50, contract 32/32, quality 72/72, MTF 20/20; 174/174 deterministic tests. Browser handler-to-UI integration, desktop/mobile chart checks, REST abort/timeout checks passed; zero browser page errors.
+Latest CI run 45981507604 passed: Stage A 50/50, contract 32/32, quality 72/72, MTF 20/20; 174/174 deterministic tests. Browser handler-to-UI integration, desktop/mobile chart checks, REST abort/timeout checks passed; zero browser page errors.
 
 Important: CI does NOT prove live Bybit connectivity. GitHub Actions REST calls return HTTP 403 and the live provider test is correctly marked SKIPPED_PROVIDER_BLOCKED. The browser UI integration uses synthetic events. Next required work is a real iPhone/Safari test from a network that can reach Bybit: confirm current last traded price matches Bybit, the forming candle moves without manual refresh, and test BTC/ETH + 1H/4H/1D switches and reconnect/fallback. If the branch candidate cannot be run on iPhone without merging, arrange a temporary preview; do not merge merely to test.
 
