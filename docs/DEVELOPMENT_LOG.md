@@ -507,3 +507,11 @@ Ported and hardened `tools/b1_live_probe.html` schema v3: strict positive safe-i
 Latest CI run `45967551538`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 20/20, gate/UI/chart and probe smoke passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public hosts on GitHub Actions.
 
 Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; harness `a23585f9688b9a04336c7f99da7a972513882f8e`; probe `3b5df8f0feda730c7e6564808f40ad4526f0e44a`. Main unchanged. B1 acceptance gates remain open.
+
+
+
+## B1-C analytics-input integrity hardening — 2026-11-27
+
+Added a fail-closed equivalence check between the canonical closed-candle series that passed B1 validation and the legacy candle series/last-closed price consumed by `BasicAnalyticsEngine`. If timestamps, OHLCV, turnover, count or last-closed price diverge, the engine returns WAIT and does not calculate directional indicators. Added handling so an empty but internally matching candle series preserves the validator's INSUFFICIENT status and `INSUFFICIENT_HISTORY` reason rather than being mislabeled INVALID.
+
+Latest CI run `45967551538`: Stage A 44/44, B1 contract 32/32, validator 65/65, MTF 20/20; gate/UI/chart checks passed, zero browser page errors; 161/161 named tests. Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes); browser harness blob `a23585f9688b9a04336c7f99da7a972513882f8e` (29,130 bytes). PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`; main unchanged. Live Bybit remains blocked by HTTP 403 from both public hosts on GitHub Actions.
