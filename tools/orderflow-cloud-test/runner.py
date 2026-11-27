@@ -20,10 +20,12 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(REPO))
 
 from orderflow_system.config.settings import DASHBOARD, DataSource, get_btcusd_config  # noqa: E402
+from orderflow_system.data.bybit_feed import BybitFeed  # noqa: E402
 from orderflow_system.main import OrderflowSystem, setup_logging  # noqa: E402
 
 TICK_LOG = LOG_DIR / "ticks.jsonl"
 SAMPLE_LOG = LOG_DIR / "samples.jsonl"
+WS_LOG = LOG_DIR / "ws_control.jsonl"
 REST_TICKER = "https://api.bybit.com/v5/market/tickers"
 REST_KLINE = "https://api.bybit.com/v5/market/kline"
 
@@ -114,6 +116,19 @@ async def run() -> None:
     DASHBOARD.port = 8080
     DASHBOARD.enabled = True
 
+    # Capture subscription acknowledgements, which the candidate otherwise ignores.
+    original_message_handler = BybitFeed._handle_message
+
+    async def traced_message_handler(feed: BybitFeed, message: dict) -> None:
+        if "op" in message or "success" in message:
+            append_jsonl(WS_LOG, {
+                "local_receive_time_ms": int(time.time() * 1000),
+                "control_message": message,
+            })
+        await original_message_handler(feed, message)
+
+    BybitFeed._handle_message = traced_message_handler
+
     system = OrderflowSystem(
         instruments=[get_btcusd_config()],
         data_source=DataSource.BYBIT,
@@ -154,6 +169,7 @@ async def run() -> None:
     print(f"Candidate source: {REPO}", flush=True)
     print(f"Tick log: {TICK_LOG}", flush=True)
     print(f"REST/candle samples: {SAMPLE_LOG}", flush=True)
+    print(f"WebSocket control messages: {WS_LOG}", flush=True)
 
     try:
         await system.start()
