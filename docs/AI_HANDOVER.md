@@ -1178,3 +1178,17 @@ B2-A isolated candidate: PR #12, 20/20 deterministic tests passed in GitHub Acti
 
 
 B2-B verification update: the isolated B2-B suite is now 20/20, including a direct deterministic integration fixture that executes the actual B2-A engine and passes its VALID result to B2-B. GitHub Actions run 46012201698 passed on code commit 9c102e8f3984daccf0d7d94bcb8807c549e0dcf1. No live-market or production-app validation is implied.
+
+
+## Stage 2 handover refresh — 2026-11-27
+
+Stage 1 visual/live-chart polish is frozen temporarily. Deferred items: forming-candle animation, precise live-price comparison, and remaining real iPhone/Safari live-feed lifecycle checks. They are deferred, not cancelled. B1 quality/finality remains a hard gate.
+
+B1 remains NOT ACCEPTED and unmerged. B2-A/B/C exist only as isolated research candidates:
+- B2-A PR #12: 20/20 deterministic tests, run 46010999225.
+- B2-B PR #13: 20/20 deterministic tests including actual B2-A → B2-B flow, run 46012309171.
+- B2-C PR #15: 28/28 deterministic tests including full B1 → B2-A → B2-B → B2-C flow, run 46013846058 on head a58441aa4f39aa6e3b98650624f07a2041e7152a.
+
+B2-C covers initial breaks, BOS, protected-swing CHoCH, wick sweeps and strict close confirmation. No candidate is imported by the app HTML; no MTF, zones, retests, UI or LONG/SHORT integration. No live Bybit evidence or profitability claim.
+
+Next: independent exact-source review of B2-A/B/C, then B2-D zones as a separate research increment. Never merge PRs #8–#15 without explicit owner approval.
