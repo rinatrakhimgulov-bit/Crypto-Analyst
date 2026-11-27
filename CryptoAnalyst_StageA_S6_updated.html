@@ -117,10 +117,10 @@
 
     .seg {
       display: inline-flex;
-      background: var(--panel-2);
+      background: linear-gradient(180deg, #142238, #101c30);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 2px;
+      border-radius: 10px;
+      padding: 3px;
     }
 
     .seg button, .btn {
@@ -136,8 +136,9 @@
     }
 
     .seg button.active {
-      background: var(--accent);
-      color: #061018;
+      background: linear-gradient(135deg, #9aa8ff, #7487f5);
+      color: #091225;
+      box-shadow: 0 3px 12px rgba(139, 156, 255, 0.25);
     }
 
     .btn {
@@ -146,7 +147,13 @@
       border: 1px solid var(--border);
     }
 
-    .btn:hover { border-color: var(--accent); }
+    .btn:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(139, 156, 255, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .btn:active { transform: translateY(0); }
 
     .price-box {
       display: flex;
@@ -198,10 +205,11 @@
     }
 
     .card {
-      background: var(--panel);
+      background: linear-gradient(160deg, rgba(18, 31, 51, 0.98), rgba(13, 22, 38, 0.98));
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px;
+      border-radius: 15px;
+      padding: 15px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
     }
 
     .card-header {
@@ -224,10 +232,11 @@
       position: relative;
       width: 100%;
       height: 410px;
-      border-radius: 8px;
+      border-radius: 11px;
       overflow: hidden;
-      background: #0d1320;
-      border: 1px solid #1c263b;
+      background: linear-gradient(180deg, #0d1728, #0a1220);
+      border: 1px solid #2a3c59;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
       touch-action: none;
     }
 
@@ -442,7 +451,12 @@
           <button type="button" data-tf="D">1D</button>
         </div>
 
-        <button type="button" class="btn" id="refreshBtn">Обновить</button>
+        <button type="button" class="btn" id="refreshBtn">
+          <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-3px;margin-right:5px">
+            <path d="M20 7V3M20 7H16M20 7A8 8 0 1 0 21 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Обновить
+        </button>
       </div>
 
       <div class="price-box">
