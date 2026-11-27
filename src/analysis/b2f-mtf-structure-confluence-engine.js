@@ -175,7 +175,7 @@
           snapshot.contract_version !== policy.b1_contract_version ||
           typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id ||
           typeof snapshot.canonical_symbol !== 'string' || !snapshot.canonical_symbol ||
-          snapshot.market_type !== mtf.market_type ||
+          typeof snapshot.market_type !== 'string' || !snapshot.market_type ||
           snapshot.analysis_as_of_ms !== cutoff || snapshot.provider_server_time_ms !== cutoff ||
           report.snapshot_id !== snapshot.snapshot_id ||
           report.symbol !== snapshot.canonical_symbol ||
@@ -283,6 +283,7 @@
       },
       symbol: canonicalSymbol,
       market_type: marketType,
+      source_market_type_label: mtf.market_type,
       analysis_as_of_ms: cutoff,
       required_timeframes: REQUIRED.slice(),
       timeframes: timeframeOutput,
