@@ -730,3 +730,14 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 
 
 - Clean-branch full historical replay: run `46035136810`, passed on the final B2 module set. The report explicitly identifies the replay as archive-based with a synthetic B1-valid wrapper and no live-provider or trading-edge claim.
+
+
+### Full B2 historical replay completed
+
+- Report: `docs/audits/B2_HISTORICAL_REPLAY_RESULT_2026-11-27.md`.
+- Workflow: [46035136810](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46035136810), successful; artifact ID 15216436698.
+- Full-series B2-A/B/C replay completed on six BTCUSDT/ETHUSDT 1H/4H/1D series; integrity checks found zero invalid rows, duplicates, gaps or off-grid timestamps.
+- 18/18 prefix-invariance checks passed.
+- B2-D/B2-E were tested on five sampled 160-candle windows per series plus final synchronized MTF windows; this was not a full-series zone/retest replay.
+- Synthetic synchronized MTF outputs were UP|UP|DOWN / MIXED for BTC and ETH. Provider-time spread was artificially set to zero in the historical wrapper; live spread calibration remains open.
+- No profitability, expectancy, win-rate or current-2026 regime adaptation was tested. Archive ends 2025-12-05.
