@@ -226,6 +226,11 @@
       });
     }
 
+    const expectedActiveIds = b2c.raw_pivots.filter(p => p.sequence_status === 'ACCEPTED').map(p => p.pivot_id).sort();
+    const actualActiveIds = [...activeIds].sort();
+    if (expectedActiveIds.length !== actualActiveIds.length || expectedActiveIds.some((id, i) => id !== actualActiveIds[i])) {
+      return blocked('B2C_ACTIVE_PIVOT_SET_MISMATCH', meta);
+    }
     const superseded = b2c.raw_pivots.filter(p => p.sequence_status === 'SUPERSEDED_FOR_SEQUENCE');
     const supersededPivots = superseded.map(p => ({
       id: p.pivot_id,
@@ -275,8 +280,17 @@
           zoneIds.has(zone.zone_id) || !Number.isFinite(zone.lower_bound) ||
           !Number.isFinite(zone.upper_bound) || zone.lower_bound > zone.upper_bound ||
           !Number.isSafeInteger(zone.available_at_ms) || zone.available_at_ms > asOf ||
-          !Array.isArray(zone.pivot_ids) || zone.freshness_status !== 'NOT_CLASSIFIED') {
+          !Array.isArray(zone.pivot_ids) || zone.pivot_ids.length < 2 || zone.freshness_status !== 'NOT_CLASSIFIED' ||
+          !['SUPPORT', 'RESISTANCE'].includes(zone.role)) {
         return blocked('B2D_ZONE_INVALID', meta);
+      }
+      const zonePivots = zone.pivot_ids.map(id => b2c.raw_pivots.find(p => p.pivot_id === id));
+      if (zonePivots.some(p => !p || (zone.role === 'SUPPORT' ? p.type !== 'SWING_LOW' : p.type !== 'SWING_HIGH')) ||
+          Math.min(...zonePivots.map(p => p.price)) !== zone.lower_bound ||
+          Math.max(...zonePivots.map(p => p.price)) !== zone.upper_bound ||
+          Math.max(...zonePivots.map(p => p.available_at_ms)) !== zone.available_at_ms ||
+          new Set(zonePivots.map(p => p.source_time_ms)).size !== zone.touch_count) {
+        return blocked('B2D_ZONE_EVIDENCE_MISMATCH', meta);
       }
       zoneIds.add(zone.zone_id);
       zones.push({
@@ -307,6 +321,14 @@
           !Number.isSafeInteger(candidate.available_at_ms) || candidate.available_at_ms > asOf) {
         return blocked('B2D_CANDIDATE_INVALID', meta);
       }
+      if (!Array.isArray(candidate.pivot_ids) || candidate.pivot_ids.length < 1) return blocked('B2D_CANDIDATE_EVIDENCE_MISMATCH', meta);
+      const candidatePivots = candidate.pivot_ids.map(id => b2c.raw_pivots.find(p => p.pivot_id === id));
+      if (candidatePivots.some(p => !p || (candidate.role === 'SUPPORT' ? p.type !== 'SWING_LOW' : p.type !== 'SWING_HIGH')) ||
+          Math.min(...candidatePivots.map(p => p.price)) !== candidate.lower_bound ||
+          Math.max(...candidatePivots.map(p => p.price)) !== candidate.upper_bound ||
+          Math.max(...candidatePivots.map(p => p.available_at_ms)) !== candidate.available_at_ms) {
+        return blocked('B2D_CANDIDATE_EVIDENCE_MISMATCH', meta);
+      }
       candidateIds.add(candidate.candidate_id);
       candidateLevels.push({
         id: candidate.candidate_id,
@@ -326,9 +348,15 @@
     const retestLifecycles = [];
     for (const lifecycle of b2e.lifecycles) {
       if (!isObject(lifecycle) || typeof lifecycle.lifecycle_id !== 'string' || !lifecycle.lifecycle_id ||
-          lifecycleIds.has(lifecycle.lifecycle_id) ||
+          lifecycleIds.has(lifecycle.lifecycle_id) || !eventIds.has(lifecycle.breakout_event_id) ||
+          !['RETEST_SUCCESSFUL', 'RETEST_FAILED', 'RETEST_EXPIRED', 'RETEST_UNRESOLVED', 'WAITING_RETEST', 'RETEST_PENDING_CONFIRMATION'].includes(lifecycle.status) ||
+          !['BULLISH', 'BEARISH'].includes(lifecycle.direction) ||
+          !['SUPPORT', 'RESISTANCE'].includes(lifecycle.original_role) ||
+          !['SUPPORT', 'RESISTANCE'].includes(lifecycle.proposed_role) ||
+          !isObject(lifecycle.historical_zone) || lifecycle.historical_zone.role !== lifecycle.original_role ||
           !Number.isSafeInteger(lifecycle.breakout_available_at_ms) ||
           lifecycle.breakout_available_at_ms > asOf ||
+          lifecycle.breakout_available_at_ms !== lifecycle.breakout_candle_close_time_ms + policy.finality_safety_lag_ms ||
           !Number.isSafeInteger(lifecycle.breakout_candle_close_time_ms) ||
           !Number.isSafeInteger(lifecycle.retest_window_bars) || lifecycle.retest_window_bars < 1 ||
           !Number.isSafeInteger(lifecycle.confirmation_window_bars) || lifecycle.confirmation_window_bars < 1) {
@@ -337,14 +365,27 @@
       lifecycleIds.add(lifecycle.lifecycle_id);
       if (lifecycle.touch && (!Number.isSafeInteger(lifecycle.touch.candle_close_time_ms) ||
           lifecycle.touch.candle_close_time_ms <= lifecycle.breakout_candle_close_time_ms ||
-          lifecycle.touch.candle_close_time_ms + policy.finality_safety_lag_ms > asOf)) {
+          lifecycle.touch.candle_close_time_ms + policy.finality_safety_lag_ms > asOf ||
+          lifecycle.touch.candle_close_time_ms % step !== 0)) {
         return blocked('B2E_TOUCH_INVALID', meta);
       }
       if (lifecycle.confirmation && (!Number.isSafeInteger(lifecycle.confirmation.candle_close_time_ms) ||
           !Number.isSafeInteger(lifecycle.confirmation.available_at_ms) ||
           lifecycle.confirmation.available_at_ms !== lifecycle.confirmation.candle_close_time_ms + policy.finality_safety_lag_ms ||
-          lifecycle.confirmation.available_at_ms > asOf)) {
+          lifecycle.confirmation.available_at_ms > asOf ||
+          (lifecycle.touch && lifecycle.confirmation.candle_close_time_ms < lifecycle.touch.candle_close_time_ms))) {
         return blocked('B2E_CONFIRMATION_INVALID', meta);
+      }
+      const expectedRoleStatus = lifecycle.status === 'RETEST_SUCCESSFUL' ? 'CONFIRMED' :
+        lifecycle.status === 'RETEST_FAILED' ? 'REJECTED' :
+        lifecycle.status === 'RETEST_EXPIRED' || lifecycle.status === 'RETEST_UNRESOLVED' ? 'UNCONFIRMED' : 'PENDING';
+      const expectedEffectiveRole = lifecycle.status === 'RETEST_SUCCESSFUL' ? lifecycle.proposed_role : lifecycle.original_role;
+      if (lifecycle.role_transition_status !== expectedRoleStatus || lifecycle.effective_role !== expectedEffectiveRole ||
+          (lifecycle.status === 'RETEST_SUCCESSFUL' && (!lifecycle.touch || !lifecycle.confirmation || lifecycle.confirmation.outcome !== 'SUCCESS')) ||
+          (lifecycle.status === 'RETEST_FAILED' && (!lifecycle.confirmation || lifecycle.confirmation.outcome !== 'FAILURE')) ||
+          (['RETEST_EXPIRED', 'WAITING_RETEST'].includes(lifecycle.status) && (lifecycle.touch || lifecycle.confirmation)) ||
+          (['RETEST_UNRESOLVED', 'RETEST_PENDING_CONFIRMATION'].includes(lifecycle.status) && (!lifecycle.touch || lifecycle.confirmation))) {
+        return blocked('B2E_LIFECYCLE_STATE_MISMATCH', meta);
       }
       const visibleAt = lifecycleVisibleAt(lifecycle, step, policy.finality_safety_lag_ms);
       if (!Number.isSafeInteger(visibleAt) || visibleAt > asOf) return blocked('B2E_LIFECYCLE_FUTURE_VISIBILITY', meta);
