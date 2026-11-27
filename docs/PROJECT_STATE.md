@@ -306,3 +306,13 @@ Canonical implementation spec: `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-
 * Browser integration harness now tests the actual adapter → canonical snapshot → validator → engine path with synthetic Bybit rows. VALID produced 159 closed candles and populated EMA20/EMA50/ATR14; negative volume → INVALID/WAIT/no indicators; expired transport age → STALE/WAIT/no indicators.
 * Latest Actions run passed: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, gate tests, cleanup restoration, zero page errors.
 * Live Bybit remains unverified from GitHub Actions because both hosts return HTTP 403 to the runner. Latest B1-C UI still needs the user's iPhone Safari retest of the new status row and blocked-data WAIT behavior.
+
+
+### Chart visualization C1 — in progress (2026-11-27)
+
+- Existing chart already rendered EMA20/EMA50 and local SH/SL markers; these were retained.
+- Candidate branch now adds EMA200 to the analytical output and chart overlay. EMA200 is calculated from closed candles and has a 200-candle SMA seed; the active REST request is 400 rows to provide warm-up history.
+- Candidate chart now has a lower volume histogram synchronized to the same candle slice. It uses Bybit linear base-asset `volume`; the forming candle's bar is visually muted.
+- EMA lines are clipped to the price pane, and visible EMA values participate in price-axis scaling.
+- This visualization work does not yet change the LONG/SHORT/WAIT decision rules and does not make the analytics a validated trading strategy.
+- Candidate only: `b1/contract-review`; `main` remains unchanged. CI and iPhone Safari verification of the new layout are pending.
