@@ -19,7 +19,8 @@ const POLICY = {
   b2b_policy_version: 'b2b-swing-sequence-v1',
   b2c_engine_version: '2.0.0-b2c',
   b2c_policy_version: 'b2c-state-v1',
-  finality_safety_lag_ms: LAG
+  finality_safety_lag_ms: LAG,
+  max_provider_time_spread_ms: 50
 };
 const CUTOFF = 1700000000000;
 let passed = 0;
@@ -252,6 +253,12 @@ run('B1 MTF directional permission false blocks', () => {
   input.mtf_result.directional_allowed = false;
   assert.equal(analyze(input).admission.reasons[0].code, 'B1_MTF_DIRECTIONAL_PERMISSION_FALSE');
 });
+run('MTF maximum provider-time spread must match the B2-F policy', () => {
+  const input = makeInput();
+  input.mtf_result.max_provider_time_spread_ms = 100;
+  assert.equal(analyze(input).admission.reasons[0].code, 'B1_MTF_METADATA_INVALID');
+});
+
 run('common cutoff mismatch in one snapshot blocks', () => {
   const input = makeInput();
   input.mtf_result.timeframes['4h'].snapshot.analysis_as_of_ms -= 1;
@@ -429,5 +436,5 @@ run('full B1-E three-timeframe snapshot plus actual B2-A/B/C engines yields UP|U
   assert.equal(result.hierarchical_interpretation, '1H_PULLBACK_AGAINST_BULLISH_1D_4H');
 });
 
-console.log('B2-F TESTS: ' + passed + '/28 passed');
-if (passed !== 28) process.exitCode = 1;
+console.log('B2-F TESTS: ' + passed + '/29 passed');
+if (passed !== 29) process.exitCode = 1;
