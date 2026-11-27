@@ -58,6 +58,9 @@
     if (!Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0) {
       return 'B2F_FINALITY_POLICY_INVALID';
     }
+    if (!Number.isSafeInteger(policy.max_provider_time_spread_ms) || policy.max_provider_time_spread_ms < 0) {
+      return 'B2F_MTF_SPREAD_POLICY_INVALID';
+    }
     return null;
   }
   function sameCandle(a, b) {
@@ -138,7 +141,8 @@
         !Number.isSafeInteger(mtf.requested_closed_count) || mtf.requested_closed_count < 1 ||
         !Number.isSafeInteger(mtf.provider_time_spread_ms) || mtf.provider_time_spread_ms < 0 ||
         !Number.isSafeInteger(mtf.max_provider_time_spread_ms) || mtf.max_provider_time_spread_ms < 0 ||
-        mtf.provider_time_spread_ms > mtf.max_provider_time_spread_ms) {
+        mtf.provider_time_spread_ms > mtf.max_provider_time_spread_ms ||
+        mtf.max_provider_time_spread_ms !== policy.max_provider_time_spread_ms) {
       return blocked('INVALID', 'B1_MTF_METADATA_INVALID', meta);
     }
     if (!isObject(mtf.timeframes) || !REQUIRED.every(tf => Object.prototype.hasOwnProperty.call(mtf.timeframes, tf)) ||
@@ -283,6 +287,8 @@
         b2c_engine_version: policy.b2c_engine_version,
         b2c_policy_version: policy.b2c_policy_version,
         analysis_as_of_ms: cutoff,
+        provider_time_spread_ms: mtf.provider_time_spread_ms,
+        max_provider_time_spread_ms: mtf.max_provider_time_spread_ms,
         snapshot_ids: snapshotIds
       },
       symbol: canonicalSymbol,
