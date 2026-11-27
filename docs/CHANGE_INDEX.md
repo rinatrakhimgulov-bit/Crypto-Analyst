@@ -374,7 +374,7 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 
 ### B2-A isolated implementation candidate — 2026-11-27
 - src/analysis/b2-causal-swing-engine.js — pure causal raw pivot detector with exact B1 quality identity admission.
-- tests/b2a-causal-swing-engine.test.cjs — deterministic B2-A regression tests (10 cases).
+- tests/b2a-causal-swing-engine.test.cjs — deterministic B2-A regression tests (11 cases).
 - .github/workflows/b2a-causal-pivots.yml — isolated Node test workflow.
 - B2 spec clarification: availableAt includes the B1 finality safety lag.
 - Candidate is not wired into the application; B1 production acceptance gate remains.
