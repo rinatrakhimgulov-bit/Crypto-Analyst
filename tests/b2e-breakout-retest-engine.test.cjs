@@ -536,7 +536,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E confirms a hi
       finality_safety_lag_ms: LAG, price_equality_policy: 'EXACT_PRICE_V1',
       break_buffer_policy: 'ZERO_BUFFER_V1'
     },
-    snapshot, quality_report: qualityReport, b2b_result: b2b,
+    snapshot, quality_report: qualityReport, b2a_result: b2a, b2b_result: b2b,
     analysis_as_of_ms: asOf, timeframe: '1h'
   });
   assert.equal(b2c.status, 'VALID');
