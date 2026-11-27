@@ -1210,3 +1210,6 @@ Hardening fixed: missing candle intervals admitted by B2-A; LH/HL false BOS in B
 B2-D limitations: absolute price tolerance must be calibrated per instrument/timeframe; freshness is not classified; zone IDs depend on current cluster membership and are not persistent identifiers. B2-E must design its own stable lineage and must not rely on these IDs as lifecycle keys.
 
 All PRs remain draft/unmerged. B1 is NOT ACCEPTED. No code is connected to app HTML or LONG/SHORT. Stage 1 visual/live-chart polish remains frozen, not cancelled.
+
+
+B2-E is now implemented as a separate isolated breakout/retest lifecycle: PR #17, 22/22 deterministic tests passed in GitHub Actions run 46016401705 on commit 493a15e8006784d2b78262770725c26bd05c2e85. It reconstructs historical zones only from pivots available strictly before the breakout close, then tracks pending/successful/failed/expired/unresolved retests. Role reversal is confirmed only after a successful retest. Includes full B1 → B2-A → B2-B → B2-C → B2-D → B2-E integration fixture. Thresholds remain synthetic and uncalibrated. No app integration; B1 remains NOT ACCEPTED.
