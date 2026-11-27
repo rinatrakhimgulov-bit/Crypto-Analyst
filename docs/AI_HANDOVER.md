@@ -1272,7 +1272,7 @@ Current PR #8 head after documentation sync: `5e94c29d1f5734e8b46200c04b6da51996
 
 Current B1-D PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/9 (DRAFT, NOT MERGED). It targets integration/b1-mtf-architecture-2026-11-27 and depends on draft PR #8. Main remains unchanged. Do not merge automatically.
 
-Latest branch head: d6d841e5c1c6207699ba714fc78a877418974c1a; tested source commit: 1b013781a8a7e507915bf73ae760d6ecbbbca0be. Exact HTML blob: 39e42c223419bd8a599f6c513ef6e269df120fcc (329,008 bytes). Browser harness blob: 44b492f92ffbbbb58f6cb830375b6330a556d5c4 (35,635 bytes). Spec: docs/specs/B1_D_LIVE_MARKET_DATA_INTEGRATION_2026-11-27.md.
+Latest branch head: 896f2dfe8b4d3f70ea3ef8e4544748fb16218c57; tested source commit: 1b013781a8a7e507915bf73ae760d6ecbbbca0be. Exact HTML blob: 39e42c223419bd8a599f6c513ef6e269df120fcc (329,008 bytes). Browser harness blob: 44b492f92ffbbbb58f6cb830375b6330a556d5c4 (35,635 bytes). Spec: docs/specs/B1_D_LIVE_MARKET_DATA_INTEGRATION_2026-11-27.md.
 
 B1-D implementation is in place: validated Bybit WS ticker/kline callbacks (non-price-only ticker deltas do not refresh lastPrice), live lastPrice/price-line update, forming-candle upsert, strict closed-candle boundary, REST reconciliation and 30-second REST fallback. A confirmed WS candle does not directly enter analytics; it triggers delayed REST reconciliation after the finality lag. Closed REST candles are immutable to WS updates. Symbol switches clear the prior ticker cache.
 
