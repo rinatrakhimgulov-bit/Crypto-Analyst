@@ -478,3 +478,11 @@ Additional MTF hardening:
 Browser harness fixtures now bind reports to their canonical snapshots and include a deliberate snapshot-ID mismatch case. Latest completed GitHub Actions run `45966700299`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 18/18, gate/UI and C1 chart checks passed, zero browser page errors. Total across named self-test suites: 159/159. Live Bybit remains blocked by HTTP 403 from both public REST hosts.
 
 Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`; browser harness blob: `8700f7ebedf6f4091b37d5e7d4c04ba22c2d92a8`. Main unchanged. B1 not accepted pending independent exact-blob review, live concurrent capture/spread calibration, transport abort verification, latest Safari panel check and owner approval.
+
+
+
+## B1-E hardening follow-up — 2026-11-27
+
+Added an explicit required `closedCandleCount` contract to `fetchAndAssemble()`; omission now throws before any adapter/network request. Added a regression proving pending-finality candles remain visible only as context and cannot enter the closed-only analysis slice. The MTF result now exposes `pending_finality_context` separately from `forming_context` and `analysis_candles`.
+
+Latest completed CI run `45966502044`: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 18/18, gate/UI/chart checks passed, zero browser page errors; 158/158 named self-tests. Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`, 299,978 bytes. Live Bybit remains blocked by HTTP 403 from both hosts on GitHub Actions. This is not live exchange verification.
