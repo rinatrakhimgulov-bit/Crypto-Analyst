@@ -1248,3 +1248,9 @@ Current integration HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,9
 ## Latest handover correction — 2026-11-27
 
 Correct current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest completed CI run `45966700299`: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18; 159/159 named tests, UI/chart checks passed, zero page errors. Gate tests reject a VALID-looking report with a mismatched `snapshot_id`. Branch is 85 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 from both hosts. Main unchanged; independent review and acceptance gates remain open.
+
+
+
+## Current artifact and verification — 2026-11-27
+
+Use PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`. Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes); browser harness blob `a23585f9688b9a04336c7f99da7a972513882f8e` (29,130 bytes). Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; total 161/161 named tests, UI/chart checks passed, zero browser page errors. B1-C verifies canonical/legacy candle equivalence and preserves INSUFFICIENT for an empty matching series. Branch 101 ahead / 0 behind main. Live Bybit blocked by runner HTTP 403. Independent review, live capture/spread calibration, transport abort, Safari panel check and owner acceptance remain outstanding. Main unchanged.
