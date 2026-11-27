@@ -592,7 +592,7 @@ B2 design review is recorded with blockers. Production implementation remains NO
 - Added a dedicated GitHub Actions workflow for the B2-A Node test file.
 
 ### Verification and limits
-- 10/10 deterministic test cases passed in the current development JavaScript harness.
+- 11/11 deterministic test cases passed in the current development JavaScript harness.
 - GitHub Actions status has not yet been confirmed.
 - This is isolated B2-A research code. It is not imported by the app HTML and does not affect current analytics or decisions.
 - B2-B sequence labels, B2-C BOS/CHoCH, zones, retests and chart integration are not implemented.
