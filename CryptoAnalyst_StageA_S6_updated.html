@@ -3596,11 +3596,19 @@
 
       setSubscription(symbol, interval) {
         const s = this.state;
+        const previousSymbol = s.symbol;
         const nextSymbol = String(symbol || s.symbol).toUpperCase();
         const nextInterval = this.supportedIntervals.has(interval) ? interval : s.interval;
         const prevTopics = s.topics.slice();
         const nextTopics = this.buildTopics(nextSymbol, nextInterval);
 
+        if (nextSymbol !== previousSymbol) {
+          const nextTicker = this._getTickerEntry(nextSymbol);
+          nextTicker.state = null;
+          nextTicker.snapshotReceived = false;
+          nextTicker.ready = false;
+          nextTicker.csLast = null;
+        }
         s.symbol = nextSymbol;
         s.interval = nextInterval;
         this._setActiveTopics(nextTopics);
