@@ -483,6 +483,22 @@
         });
         continue;
       }
+      const zoneBoundaryCleared = direction === 'BULLISH'
+        ? breakingCandle.close > zone.upper_bound
+        : breakingCandle.close < zone.lower_bound;
+      if (!zoneBoundaryCleared) {
+        unmatched.push({
+          breakout_event_id: event.event_id,
+          event_type: event.event_type,
+          source_pivot_id: event.source_pivot_id,
+          reason: 'ZONE_BOUNDARY_NOT_CLEARED_AT_BREAK',
+          zone_lower_bound: zone.lower_bound,
+          zone_upper_bound: zone.upper_bound,
+          break_close: breakingCandle.close,
+          break_close_time_ms: breakingCandle.close_time_ms
+        });
+        continue;
+      }
       lifecycles.push(makeLifecycle(event, zone, candles, candleIndex, policy));
     }
 
