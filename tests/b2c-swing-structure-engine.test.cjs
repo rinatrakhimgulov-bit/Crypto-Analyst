@@ -10,9 +10,9 @@ const LAG = 500;
 const SNAPSHOT_ID = 'fixture:BTCUSDT:1h:b2c';
 
 const POLICY = Object.freeze({
-  version: 'b2c-state-v1',
-  b2b_engine_version: '2.1.0-b2b',
-  b2b_policy_version: 'b2b-swing-sequence-v2',
+  version: 'b2c-state-v2',
+  b2b_engine_version: '2.2.0-b2b',
+  b2b_policy_version: 'b2b-swing-sequence-v3',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
   b1_contract_version: '1.1.0',
@@ -174,8 +174,8 @@ function fixture(pivots, overrides = {}, options = {}) {
     unclassified_candles_by_timeframe: { '1h': [] }
   };
   const b2b = {
-    engine_version: '2.1.0-b2b',
-    policy_version: 'b2b-swing-sequence-v2',
+    engine_version: '2.2.0-b2b',
+    policy_version: 'b2b-swing-sequence-v3',
       same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
     status: 'VALID',
     admission: {
@@ -736,7 +736,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C chain emits a causal initial br
   const b2b = analyzeB2B({
     b2a_result: b2a,
     policy: {
-      version: 'b2b-swing-sequence-v2',
+      version: 'b2b-swing-sequence-v3',
       same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
@@ -748,9 +748,9 @@ run('full B1 snapshot → B2-A → B2-B → B2-C chain emits a causal initial br
   assert.equal(b2b.status, 'VALID');
   const b2c = analyze({
     policy: {
-      version: 'b2c-state-v1',
-      b2b_engine_version: '2.1.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v2',
+      version: 'b2c-state-v2',
+      b2b_engine_version: '2.2.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v3',
       b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
