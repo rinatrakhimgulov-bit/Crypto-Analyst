@@ -3,7 +3,7 @@
 **Date:** 2026-11-27  
 **Review type:** Internal source review and deterministic verification  
 **Reviewed module:** `src/analysis/b2d-support-resistance-engine.js`  
-**Exact candidate commit:** `0574858db12dd2082d7449f5512fa8461fceac63`  
+**Exact candidate commit:** `9012e514a29b755ac9208f1f495c3f560638b0a1`  
 **PR:** #16 (draft, unmerged)  
 **Independent external review:** Not performed
 
@@ -37,7 +37,7 @@ Controls present:
 
 ## Verification
 
-GitHub Actions run [46014759139](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014759139) passed **20/20** deterministic tests on the exact candidate commit.
+GitHub Actions run [46015873986](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014759139) passed **21/21** deterministic tests on the exact candidate commit.
 
 The suite includes an end-to-end deterministic B1 snapshot → B2-A → B2-B → B2-C → B2-D execution.
 
