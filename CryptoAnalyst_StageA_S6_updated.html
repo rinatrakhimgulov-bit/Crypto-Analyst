@@ -5017,7 +5017,7 @@
         // ---- Сохранение исходного окружения (до любых изменений; сами сохранения не имеют побочных эффектов) ----
         const OrigWS = window.WebSocket;
         const origFetch = BybitAdapter.fetchMarketSnapshot;           // исходная ссылка, без bind
-        const origHooks = { onStatus: BybitWsClient.hooks.onStatus, onRecovered: BybitWsClient.hooks.onRecovered };
+        const origHooks = { onStatus: BybitWsClient.hooks.onStatus, onRecovered: BybitWsClient.hooks.onRecovered, onTicker: BybitWsClient.hooks.onTicker, onKline: BybitWsClient.hooks.onKline };
         const CFG_KEYS = ['pingIntervalMs', 'pongTimeoutMs', 'streamAliveMs', 'stallMs', 'degradedMisses', 'timerGapMs', 'resumeGraceMs',
           'connectTimeoutMs', 'stableResetMs', 'lateWindowMs', 'maxTimedOutPings', 'subAckTimeoutMs', 'subRetryMax',
           'reconnectBaseMs', 'reconnectMaxMs', 'maxAbandonedTracked'];
@@ -5174,6 +5174,8 @@
           MockWebSocket.closeMode = 'sync';
           BybitWsClient.state = freshClientState();
           BybitWsClient.hooks.onStatus = null;
+          BybitWsClient.hooks.onTicker = null;
+          BybitWsClient.hooks.onKline = null;
           BybitWsClient.hooks.onRecovered = origHooks.onRecovered;     // настоящий хук приложения → настоящий loadAndAnalyze
           for (const k of CFG_KEYS) BybitWsClient[k] = origCfg[k];
           BybitWsClient.configure({ pingIntervalMs: 20000, pongTimeoutMs: 5000, stallMs: 30000, reconnectBaseMs: 100, reconnectMaxMs: 1000, subAckTimeoutMs: 2000, subRetryMax: 2, timerGapMs: 3000, resumeGraceMs: 0 });
@@ -5215,6 +5217,8 @@
           envChanged = true;
           const realSockets = [origClientState.ws, ...Array.from(origClientState.abandoned)].filter(Boolean);
           BybitWsClient.hooks.onStatus = null;
+          BybitWsClient.hooks.onTicker = null;
+          BybitWsClient.hooks.onKline = null;
           if (state.activeController) { state.activeController.abort(new Error('Запущен StageASelfTest')); state.activeController = null; }
           stopPeriodicPoll();
           BybitWsClient.stop(true);
@@ -5225,6 +5229,108 @@
           BybitAdapter.fetchMarketSnapshot = mockFetch;
           clock.reset();
           clock.install();
+
+          // ===================== B1-D: live market-data transport =====================
+          await record('B1-D. Ticker snapshot and delta emit only validated lastPrice', () => {
+            const events = [];
+            BybitWsClient.hooks.onTicker = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 10, ts: Date.now() + 1,
+              data: { symbol: 'BTCUSDT', lastPrice: '60000', markPrice: '60010', indexPrice: '60020' }
+            });
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'delta', cs: 11, ts: Date.now() + 2,
+              data: { lastPrice: '60001' }
+            });
+            assert(events.length === 2, 'Ожидались snapshot и delta');
+            assert(events[0].lastPrice === 60000 && events[1].lastPrice === 60001, 'В callback должен попадать lastPrice');
+            assert(events[1].symbol === 'BTCUSDT' && events[1].connGen === S().connGen, 'Должны сохраняться symbol и generation');
+          });
+
+          await record('B1-D. Ticker delta before snapshot is not emitted', () => {
+            const events = [];
+            BybitWsClient.hooks.onTicker = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'delta', cs: 1, ts: Date.now() + 1,
+              data: { lastPrice: '60001' }
+            });
+            assert(events.length === 0, 'Delta до snapshot не должна попасть в live bridge');
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 2, ts: Date.now() + 2,
+              data: { symbol: 'BTCUSDT', lastPrice: '60002' }
+            });
+            assert(events.length === 1 && events[0].lastPrice === 60002, 'После snapshot должен прийти валидный ticker');
+          });
+
+          await record('B1-D. Valid kline event is normalized with finality but not promoted to analytics', () => {
+            const events = [];
+            BybitWsClient.hooks.onKline = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            const step = BybitAdapter.intervalToMs('240');
+            const start = Math.floor(Date.now() / step) * step;
+            ws.triggerMessage({
+              topic: 'kline.240.BTCUSDT', type: 'snapshot', ts: Date.now(),
+              data: [{ start: String(start), end: String(start + step - 1), interval: '240',
+                open: '60000', high: '60100', low: '59900', close: '60050',
+                volume: '12', turnover: '720600', confirm: false }]
+            });
+            assert(events.length === 1 && events[0].valid, 'Валидная свеча должна быть передана');
+            assert(events[0].candle.ts === start && events[0].candle.confirmed === false, 'Нужны timestamp и явный статус незакрытой свечи');
+            assert(events[0].candle.closeTs === start + step, 'closeTs должен быть эксклюзивной границей свечи');
+          });
+
+          await record('B1-D. Malformed kline is rejected and requests reconciliation', () => {
+            const events = [];
+            BybitWsClient.hooks.onKline = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            const step = BybitAdapter.intervalToMs('240');
+            const start = Math.floor(Date.now() / step) * step;
+            ws.triggerMessage({
+              topic: 'kline.240.BTCUSDT', type: 'snapshot', ts: Date.now(),
+              data: [{ start: String(start), end: String(start + step - 1), interval: '240',
+                open: '60000', high: '59900', low: '60100', close: '60050',
+                volume: '12', turnover: '720600', confirm: false }]
+            });
+            assert(events.length === 1 && events[0].valid === false, 'OHLC contradiction must be rejected');
+            assert(S().invalidStreamMessages === 1, 'Invalid stream counter must increase');
+          });
+
+          await record('B1-D. Chart live upsert changes forming candle without changing closed count', (restoreList) => {
+            const saved = {
+              candles: chart.candles.slice(), closedCount: chart.closedCount, analysis: chart.analysis,
+              marketPrice: chart.marketPrice, visibleCount: chart.visibleCount, offsetFromEnd: chart.offsetFromEnd
+            };
+            restoreList.push(() => {
+              chart.setData(saved.candles, saved.closedCount, saved.analysis, saved.marketPrice);
+              chart.visibleCount = saved.visibleCount;
+              chart.offsetFromEnd = saved.offsetFromEnd;
+              chart.render();
+            });
+            const base = [
+              { ts: 1000, closeTs: 2000, open: 10, high: 11, low: 9, close: 10, volume: 1, turnover: 10 },
+              { ts: 2000, closeTs: 3000, open: 10, high: 11, low: 9, close: 10, volume: 1, turnover: 10 }
+            ];
+            chart.setData(base, 1, null, 10);
+            const updated = chart.upsertLiveCandle({
+              ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: false
+            }, 1000);
+            assert(updated.status === 'updated' && chart.candles[1].close === 11, 'Текущая свеча должна обновиться');
+            assert(chart.closedCount === 1, 'WS update не должен менять число закрытых свечей для аналитики');
+            const appended = chart.upsertLiveCandle({
+              ts: 3000, closeTs: 4000, open: 11, high: 12, low: 10, close: 11.5, volume: 1, turnover: 11.5, confirmed: false
+            }, 1000);
+            assert(appended.status === 'appended' && chart.candles.length === 3, 'Следующая последовательная свеча должна добавиться');
+            assert(chart.closedCount === 1, 'Добавление новой свечи не должно продвигать аналитическую границу закрытых свечей');
+            assert(chart.upsertLiveCandle({
+              ts: 5000, closeTs: 6000, open: 11.5, high: 12, low: 11, close: 11.7, volume: 1, turnover: 11.7, confirmed: false
+            }, 1000).status === 'gap', 'Пропуск свечи должен потребовать REST reconciliation');
+          });
 
           // ===================== 1–4: ACK =====================
           await record('1. ACK с правильным req_id и op подтверждает подписку', () => {
@@ -5888,7 +5994,7 @@
           step('window.WebSocket', () => { window.WebSocket = OrigWS; });
           step('fetchMarketSnapshot', () => { BybitAdapter.fetchMarketSnapshot = origFetch; });
           step('config', () => { for (const k of CFG_KEYS) BybitWsClient[k] = origCfg[k]; });
-          step('hooks', () => { BybitWsClient.hooks.onStatus = origHooks.onStatus; BybitWsClient.hooks.onRecovered = origHooks.onRecovered; });
+          step('hooks', () => { BybitWsClient.hooks.onStatus = origHooks.onStatus; BybitWsClient.hooks.onRecovered = origHooks.onRecovered; BybitWsClient.hooks.onTicker = origHooks.onTicker; BybitWsClient.hooks.onKline = origHooks.onKline; });
           step('descriptors', () => {
             if (JSON.stringify(Object.getOwnPropertyDescriptor(document, 'visibilityState')) !== JSON.stringify(origVisDesc)) {
               if (origVisDesc) Object.defineProperty(document, 'visibilityState', origVisDesc); else delete document.visibilityState;
