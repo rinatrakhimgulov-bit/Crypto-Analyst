@@ -3315,8 +3315,12 @@
           cs: msg.cs,
           recvAt
         });
+        // A delta that changes only non-price fields must not refresh the displayed
+        // last-traded price or its freshness clock using an inherited value.
+        const hasLastPriceUpdate = msg.type === 'snapshot' ||
+          Object.prototype.hasOwnProperty.call(data, 'lastPrice');
         const lastPrice = Number(entry.state && entry.state.lastPrice);
-        if (Number.isFinite(lastPrice) && lastPrice > 0) {
+        if (hasLastPriceUpdate && Number.isFinite(lastPrice) && lastPrice > 0) {
           const event = Object.freeze({
             symbol: sym,
             lastPrice,
@@ -5285,9 +5289,14 @@
             });
             ws.triggerMessage({
               topic: 'tickers.BTCUSDT', type: 'delta', cs: 11, ts: Date.now() + 2,
+              data: { volume24h: '12345' }
+            });
+            assert(events.length === 1, 'Delta без lastPrice не должна создавать новое событие цены');
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'delta', cs: 12, ts: Date.now() + 3,
               data: { lastPrice: '60001' }
             });
-            assert(events.length === 2, 'Ожидались snapshot и delta');
+            assert(events.length === 2, 'Ожидались snapshot и delta с новым lastPrice');
             assert(events[0].lastPrice === 60000 && events[1].lastPrice === 60001, 'В callback должен попадать lastPrice');
             assert(events[1].symbol === 'BTCUSDT' && events[1].connGen === S().connGen, 'Должны сохраняться symbol и generation');
           });
