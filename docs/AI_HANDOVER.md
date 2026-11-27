@@ -1195,3 +1195,18 @@ Next: independent exact-source review of B2-A/B/C, then B2-D zones as a separate
 
 
 B2-D has now been added as a separate isolated support/resistance zone engine: PR #16, 20/20 deterministic tests passed in GitHub Actions run 46014759139 on commit 0574858db12dd2082d7449f5512fa8461fceac63. It clusters confirmed swing lows/highs into separate support/resistance groups using an explicit instrument/timeframe-scoped absolute max-span policy; no hidden default tolerance is used. A full B1 → B2-A → B2-B → B2-C → B2-D fixture passed. The tolerance has not been calibrated against live BTC/ETH data. No app integration; B1 remains NOT ACCEPTED.
+
+
+## Stage 2 current handover — 2026-11-27
+
+B2-A/B/C/D isolated candidates now exist. Latest deterministic verification:
+- B2-A 21/21, run 46014698432, head bb13960e647d399b6b05ee12c21f5a2fdeb8265d.
+- B2-B 20/20, run 46015818149, head b209293212ac1bd910939eed465f140514b9e959.
+- B2-C 33/33, run 46015831238, head e9590ddb65c9f3a09a28279efdb064b6caa6a4a2.
+- B2-D 21/21, run 46015873986, head 9012e514a29b755ac9208f1f495c3f560638b0a1.
+
+Hardening fixed: missing candle intervals admitted by B2-A; LH/HL false BOS in B2-C; consumed pivot unable to serve as protected reversal level; B2-C not detecting a pivot omitted from both B2-B raw list and sequence. Current modules now contain these fixes across their candidate branches.
+
+B2-D limitations: absolute price tolerance must be calibrated per instrument/timeframe; freshness is not classified; zone IDs depend on current cluster membership and are not persistent identifiers. B2-E must design its own stable lineage and must not rely on these IDs as lifecycle keys.
+
+All PRs remain draft/unmerged. B1 is NOT ACCEPTED. No code is connected to app HTML or LONG/SHORT. Stage 1 visual/live-chart polish remains frozen, not cancelled.
