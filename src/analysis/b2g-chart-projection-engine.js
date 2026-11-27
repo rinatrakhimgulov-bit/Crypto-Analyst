@@ -184,8 +184,10 @@
     const b2aById = new Map();
     for (const pivot of b2a.pivots) {
       if (!isObject(pivot) || typeof pivot.pivot_id !== 'string' || !pivot.pivot_id || b2aById.has(pivot.pivot_id) ||
-          !Number.isFinite(pivot.price) || !Number.isSafeInteger(pivot.source_time_ms) ||
-          !Number.isSafeInteger(pivot.confirmed_at_ms) || !Number.isSafeInteger(pivot.available_at_ms) ||
+          !['SWING_HIGH', 'SWING_LOW'].includes(pivot.type) || !Number.isFinite(pivot.price) ||
+          !Number.isSafeInteger(pivot.source_time_ms) || pivot.source_time_ms % step !== 0 ||
+          !Number.isSafeInteger(pivot.confirmed_at_ms) || pivot.confirmed_at_ms % step !== 0 ||
+          !Number.isSafeInteger(pivot.available_at_ms) ||
           pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms ||
           pivot.available_at_ms > asOf) return blocked('B2A_PIVOT_EVIDENCE_INVALID', meta);
       b2aById.set(pivot.pivot_id, pivot);
@@ -208,7 +210,7 @@
           !Number.isFinite(pivot.price) || !Number.isSafeInteger(pivot.source_time_ms) ||
           !Number.isSafeInteger(pivot.confirmed_at_ms) || !Number.isSafeInteger(pivot.available_at_ms) ||
           pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms ||
-          pivot.available_at_ms > asOf || typeof pivot.structure_label !== 'string') {
+          pivot.available_at_ms > asOf || !['INITIAL_HIGH', 'INITIAL_LOW', 'HH', 'HL', 'LH', 'LL', 'EQH', 'EQL'].includes(pivot.structure_label)) {
         return blocked('B2C_ACTIVE_PIVOT_INVALID', meta);
       }
       activeIds.add(pivot.pivot_id);
@@ -254,7 +256,9 @@
           event.available_at_ms !== event.breaking_candle_close_time_ms + policy.finality_safety_lag_ms ||
           event.available_at_ms > asOf || !Number.isSafeInteger(event.breaking_candle_open_time_ms) ||
           !Number.isSafeInteger(event.breaking_candle_close_time_ms) ||
-          event.breaking_candle_close_time_ms <= event.breaking_candle_open_time_ms) {
+          event.breaking_candle_open_time_ms % step !== 0 ||
+          event.breaking_candle_close_time_ms - event.breaking_candle_open_time_ms !== step ||
+          (event.source_pivot_id !== null && event.source_pivot_id !== undefined && !rawIds.has(event.source_pivot_id))) {
         return blocked('B2C_EVENT_INVALID', meta);
       }
       eventIds.add(event.event_id);
@@ -369,6 +373,13 @@
           !Number.isSafeInteger(lifecycle.retest_window_bars) || lifecycle.retest_window_bars < 1 ||
           !Number.isSafeInteger(lifecycle.confirmation_window_bars) || lifecycle.confirmation_window_bars < 1) {
         return blocked('B2E_LIFECYCLE_INVALID', meta);
+      }
+      const breakoutEvent = b2c.events.find(event => event.event_id === lifecycle.breakout_event_id);
+      if (!breakoutEvent || breakoutEvent.direction !== lifecycle.direction ||
+          breakoutEvent.breaking_candle_open_time_ms !== lifecycle.breakout_candle_open_time_ms ||
+          breakoutEvent.breaking_candle_close_time_ms !== lifecycle.breakout_candle_close_time_ms ||
+          breakoutEvent.available_at_ms !== lifecycle.breakout_available_at_ms) {
+        return blocked('B2E_BREAKOUT_EVENT_LINK_MISMATCH', meta);
       }
       lifecycleIds.add(lifecycle.lifecycle_id);
       if (lifecycle.touch && (!Number.isSafeInteger(lifecycle.touch.candle_close_time_ms) ||
