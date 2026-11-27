@@ -481,3 +481,11 @@ B2-F remains disabled in the live UI pending empirical provider-time spread cali
 - B2 suite 182/182 passed; B2 application integration and Chromium/mobile checks passed.
 - B1 deterministic/browser suite passed with zero page errors. Live Bybit REST was skipped due HTTP 403 from both provider hosts on the GitHub runner.
 - No merge; main remains unchanged. iPhone Safari owner verification and MTF live calibration remain open.
+
+
+### Full B2 historical replay result
+
+- Added `docs/audits/B2_HISTORICAL_REPLAY_RESULT_2026-11-27.md`.
+- B2-A/B/C full-series replay completed for BTC/ETH across 1H/4H/1D; 18/18 prefix checks passed.
+- B2-D/E exercised on sampled 160-candle windows and final synchronized MTF fixtures.
+- Explicitly not a profitability test or live provider-time calibration.
