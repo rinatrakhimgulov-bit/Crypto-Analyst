@@ -144,6 +144,8 @@ async function main() {
         transportAbort.timeoutElapsedMs > 1500) {
       throw new Error(`Browser transport cancellation checks failed: ${JSON.stringify(transportAbort)}`);
     }
+    // Allow the Node HTTP server to observe browser-side socket closure.
+    await new Promise(resolve => setTimeout(resolve, 200));
     if (transportProbe.started < 3 || transportProbe.closed < 3) {
       throw new Error(`Browser transport requests were not all aborted at the HTTP layer: ${JSON.stringify(transportProbe)}`);
     }
