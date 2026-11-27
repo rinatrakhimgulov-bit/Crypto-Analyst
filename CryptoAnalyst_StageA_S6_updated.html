@@ -5338,11 +5338,20 @@
             }, 1000);
             assert(updated.status === 'updated' && chart.candles[1].close === 11, 'Текущая свеча должна обновиться');
             assert(chart.closedCount === 1, 'WS update не должен менять число закрытых свечей для аналитики');
+            const confirmed = chart.upsertLiveCandle({
+              ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: true
+            }, 1000);
+            assert(confirmed.status === 'updated' && chart.closedCount === 1, 'confirm не должен напрямую продвигать аналитическую границу закрытых свечей');
             const appended = chart.upsertLiveCandle({
               ts: 3000, closeTs: 4000, open: 11, high: 12, low: 10, close: 11.5, volume: 1, turnover: 11.5, confirmed: false
             }, 1000);
             assert(appended.status === 'appended' && chart.candles.length === 3, 'Следующая последовательная свеча должна добавиться');
             assert(chart.closedCount === 1, 'Добавление новой свечи не должно продвигать аналитическую границу закрытых свечей');
+            chart.setData(base, 2, null, 10);
+            const closedAttempt = chart.upsertLiveCandle({
+              ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: true
+            }, 1000);
+            assert(closedAttempt.status === 'closed-candle' && chart.candles[1].close === 10, 'Закрытая REST-свеча не должна изменяться WebSocket-событием');
             assert(chart.upsertLiveCandle({
               ts: 5000, closeTs: 6000, open: 11.5, high: 12, low: 11, close: 11.7, volume: 1, turnover: 11.7, confirmed: false
             }, 1000).status === 'gap', 'Пропуск свечи должен потребовать REST reconciliation');
