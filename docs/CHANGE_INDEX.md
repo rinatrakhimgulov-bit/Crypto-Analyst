@@ -378,3 +378,12 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - .github/workflows/b2a-causal-pivots.yml — isolated Node test workflow.
 - B2 spec clarification: availableAt includes the B1 finality safety lag.
 - Candidate is not wired into the application; B1 production acceptance gate remains.
+
+
+## 24. B2-A isolated causal swing engine — 2026-11-27
+
+- `src/analysis/b2-causal-swing-engine.js`: isolated pure engine for closed-candle swing highs/lows; maximal equal-price plateau with rightmost representative; exact-price v1 equality; source, confirmation and availability timestamps; B1 finality safety lag.
+- Admission requires an exact matching `VALID` B1 quality report and policy version. Invalid provenance, timestamp grid/order, OHLC, finality, forming/unknown overlap, or insufficient history fails closed.
+- `tests/b2a-causal-swing-engine.test.cjs`: 10 deterministic tests passed in the development harness, including prefix replay invariance and quality fail-closed.
+- `.github/workflows/b2a-causal-pivots.yml`: dedicated CI workflow added; GitHub Actions result not yet confirmed.
+- Research candidate only. No UI/HTML, swing sequence, BOS/CHoCH, S/R, retests, directional decision, or main branch changes.
