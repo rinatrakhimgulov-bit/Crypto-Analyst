@@ -3,7 +3,7 @@
 **Repository:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst  
 **Branch:** `integration/b1-mtf-architecture-2026-11-27`  
 **Draft PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/8  
-**Exact HTML blob:** `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes)  
+**Exact HTML blob:** `d0e0d9f950ddd3b8b90b1d97006e9c542c7a6445` (306,725 bytes)  
 **Browser harness blob:** `70399a984b44f5f85024afcdf11289e4a73a6361`  
 **Read-only live probe blob:** `3b5df8f0feda730c7e6564808f40ad4526f0e44a`
 
@@ -52,7 +52,7 @@ Review the complete B1-A/B/C/E path and its interaction with Stage A:
 
 ## Reproducible verification evidence
 
-Latest completed GitHub Actions run `45968566553`:
+Latest completed pre-audit GitHub Actions run `45968566553` (baseline); rerun the latest branch-head workflow before issuing the verdict:
 - Stage A: 44/44
 - B1 Data Contract: 32/32
 - B1 Quality Validator: 65/65
