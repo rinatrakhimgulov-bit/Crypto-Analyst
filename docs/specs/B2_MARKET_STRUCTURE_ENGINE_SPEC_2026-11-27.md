@@ -373,3 +373,23 @@ B2-D zones, B2-E retest/failure lifecycle, and B2-F chart integration remain sep
 - Consumed levels cannot emit duplicate BOS/CHoCH on repeated closes.
 - A contradictory candle cannot arbitrarily choose bullish or bearish direction.
 - Protected swing metadata always resolves to a pivot available before the transition that activated it.
+
+
+## 19. Research-candidate implementation status — 2026-11-27
+
+This section supersedes earlier statements in this document that no B2 implementation has started. The B1 release/production-integration gate remains unchanged.
+
+### Isolated candidates completed
+- **B2-A:** causal raw swing pivots, plateau handling, closed-candle/finality admission and provenance. 20/20 deterministic tests passed in run [46010999225](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46010999225). Draft PR #12.
+- **B2-B:** alternating sequence, same-side replacement, HH/HL/LH/LL/EQH/EQL labels. 20/20 deterministic tests passed in run [46012309171](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46012309171), including actual B2-A → B2-B execution. Draft PR #13.
+- **B2-C:** UNESTABLISHED/UP/DOWN state, initial breaks, BOS, protected-swing CHoCH, wick sweeps, gap-through evidence and consumed-level handling. It independently validates B2-B output against raw pivots and exact B1 provenance. 28/28 deterministic tests passed in run [46013846058](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46013846058), including a full B1 snapshot → B2-A → B2-B → B2-C integration fixture. Draft PR #15.
+
+### Implementation boundary
+These are isolated research candidates, not accepted production modules. They are not imported by the application HTML and do not affect chart rendering, MTF directional analysis or LONG/SHORT/WAIT. B1 remains NOT ACCEPTED. No production integration or merge is permitted until B1 acceptance and explicit owner approval.
+
+### Remaining B2 scope
+- B2-D: support/resistance zones derived from confirmed pivot evidence.
+- B2-E: breakout/retest/failure lifecycle.
+- B2-F: chart integration of accepted engine output.
+
+Before B2-D, perform an independent exact-source review of the B2-A/B/C candidate commits. Internal deterministic tests and internal source review are not substitutes for independent review, real market-data verification or owner acceptance.
