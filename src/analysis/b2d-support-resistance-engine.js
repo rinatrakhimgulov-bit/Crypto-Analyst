@@ -64,6 +64,7 @@
   }
   function validatePivot(pivot, ids, asOf, equalityPolicy) {
     if (!isObject(pivot) || typeof pivot.pivot_id !== 'string' || !pivot.pivot_id.trim() || ids.has(pivot.pivot_id)) return 'PIVOT_ID_INVALID';
+    if (!['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE'].includes(pivot.sequence_status)) return 'PIVOT_SEQUENCE_STATUS_INVALID';
     if (!['SWING_HIGH', 'SWING_LOW'].includes(pivot.type) || !Number.isFinite(pivot.price) || pivot.price <= 0) return 'PIVOT_VALUE_INVALID';
     for (const key of ['source_time_ms', 'confirmed_at_ms', 'available_at_ms']) {
       if (!Number.isSafeInteger(pivot[key]) || pivot[key] <= 0) return 'PIVOT_TIME_INVALID';
@@ -113,7 +114,8 @@
           price: p.price,
           source_time_ms: p.source_time_ms,
           confirmed_at_ms: p.confirmed_at_ms,
-          available_at_ms: p.available_at_ms
+          available_at_ms: p.available_at_ms,
+          sequence_status: p.sequence_status
         }));
       const base = {
         role,
@@ -133,14 +135,16 @@
         zones.push({
           zone_id: ['B2D', role, pivotIds[0], pivotIds[pivotIds.length - 1]].join(':'),
           ...base,
-          evidence_status: 'CONFIRMED_CLUSTER'
+          evidence_status: 'CONFIRMED_CLUSTER',
+        freshness_status: 'NOT_CLASSIFIED'
         });
       } else {
         candidates.push({
           candidate_id: ['B2D-CANDIDATE', role, pivotIds[0]].join(':'),
           ...base,
           evidence_status: 'INSUFFICIENT_INDEPENDENT_TOUCHES',
-          required_touch_count: minTouches
+          required_touch_count: minTouches,
+          freshness_status: 'NOT_CLASSIFIED'
         });
       }
     }
@@ -285,6 +289,9 @@
       cluster_method: zonePolicy.cluster_method,
       max_cluster_span_price: zonePolicy.max_cluster_span_price,
       min_independent_touches: zonePolicy.min_independent_touches,
+      zone_identity_scope: 'MEMBERSHIP_DERIVED_V1',
+      freshness_policy: 'NOT_CLASSIFIED_V1',
+      touch_evidence_basis: 'ALL_CONFIRMED_RAW_PIVOTS_V1',
       zones,
       candidate_levels: candidates,
       diagnostics: {
