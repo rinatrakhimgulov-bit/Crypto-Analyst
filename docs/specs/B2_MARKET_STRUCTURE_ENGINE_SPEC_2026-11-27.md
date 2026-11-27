@@ -1,7 +1,7 @@
 # B2 Market Structure Engine — Technical Specification
 
 **Date:** 2026-11-27  
-**Status:** Design baseline with isolated B2-A candidate implementation; production integration is gated on formal B1 acceptance.  
+**Status:** Design baseline with isolated B2-A–B2-G research candidates; production integration is gated on formal B1 acceptance.  
 **Working branch:** `integration/b1-mtf-architecture-2026-11-27`  
 **Scope:** Deterministic, explainable market-structure analysis for the existing Bybit linear-futures prototype.
 
@@ -133,6 +133,8 @@ Each event records:
 - invalidation or follow-through state, if later established.
 
 A single candle must not create duplicate events for the same level. Re-crossings and repeated closes require a documented event lifecycle.
+
+If one source candle is simultaneously confirmed as both a swing high and swing low, neither pivot may be assigned an arbitrary intrabar order. Preserve both raw observations but exclude both from the alternating structure sequence and from BOS/CHoCH source-level admission under the versioned `EXCLUDE_BOTH_FROM_SEQUENCE_V1` policy.
 
 ## 7. Support/resistance zones
 
