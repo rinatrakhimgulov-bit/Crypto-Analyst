@@ -3,7 +3,7 @@
 **Repository:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst  
 **Branch:** `integration/b1-mtf-architecture-2026-11-27`  
 **Draft PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/8  
-**Exact HTML blob to audit:** `3f1a739b90e3a187292b29cd9f0ca5c1beafbd5c`  
+**Exact HTML blob to audit:** `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`  
 **File:** `CryptoAnalyst_StageA_S6_updated.html`  
 **Current test harness:** `tests/b1-browser-live-check.cjs`
 
@@ -49,7 +49,7 @@ Latest GitHub Actions run `45965680821`:
 - Stage A: 44/44
 - B1 Data Contract: 32/32
 - B1 Quality Validator: 64/64
-- B1 MTF: 12/12
+- B1 MTF: 16/16
 - B1 gate/UI and C1 chart assertions passed
 - zero browser page errors
 - live Bybit probe skipped/blocked because both public REST hosts returned HTTP 403 to the GitHub runner.
@@ -73,3 +73,7 @@ Return:
 7. Final verdict: APPROVE, APPROVE WITH CONDITIONS, REQUEST CHANGES, or REJECT.
 
 Do not call this profitable trading logic. Do not infer live exchange correctness from mocks or CI that cannot reach Bybit.
+
+## Test suite expansion — 2026-11-27
+
+The current HTML blob now includes 16 MTF tests. Additional cases explicitly assert: forming/pending-finality candles never enter the closed-only analysis slice; provider-time spread one millisecond above policy fails closed; multiple post-cutoff rows fail closed; and missing measured spread policy fails closed. Latest run 45966127523 passed all suites: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 16/16, with UI/chart checks and zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public REST hosts.
