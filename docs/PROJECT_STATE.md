@@ -343,3 +343,24 @@ The older B1-E implementation depends on the legacy `DataQualityEngine` API and 
 - B1 is not accepted; B2 implementation has not started; no merge to main is authorized or performed.
 
 See `docs/audits/B1_BRANCH_CONSOLIDATION_AUDIT_2026-11-27.md` and `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`.
+
+
+
+
+## B1-E current-contract MTF implementation — 2026-11-27
+
+The integration branch now contains an isolated `B1MtfEngine` ported to the current B1 contract. It fetches 1D/4H/1H concurrently through the current Bybit adapter, uses the minimum trusted provider timestamp as the common analysis cutoff, applies the 500 ms finality lag, excludes post-cutoff rows with explicit raw-row accounting, validates each timeframe through the current `B1QualityValidator`, checks exact closed-candle coverage, and blocks aggregate directional permission unless all three reports and coverage checks are VALID. The result is deeply immutable. A request coordinator aborts superseded generations; a failed timeframe aborts sibling adapter requests.
+
+The canonical contract and validator were incremented to 1.1.0. The canonical validator now rejects unsupported contract versions. `source_diagnostics.excluded_after_cutoff_count` is required and included in normalized-row accounting. The quality policy thresholds/version remain unchanged.
+
+**Latest GitHub Actions run:** `45965680821` completed successfully on the integration candidate:
+- Stage A: 44/44;
+- B1 Data Contract: 32/32;
+- B1 Quality Validator: 64/64 (one added unsupported-contract-version regression);
+- B1 MTF: 12/12 (common cutoff, spread, trust, coverage, finality, immutability, sibling abort and superseded generation);
+- B1 gate/UI and C1 chart assertions passed; zero browser page errors.
+- Live Bybit remains SKIPPED/BLOCKED: both public REST hosts return HTTP 403 to GitHub Actions.
+
+The MTF engine remains isolated: it is not connected to the chart, existing selected-timeframe analysis, or LONG/SHORT/WAIT decision path. The exact current-contract port has not yet received independent review. Live concurrent captures and spread calibration remain outstanding. Latest quality-panel reason-code/blocked-WAIT detail still needs Safari visual verification. B1 is not accepted; B2 has not started; main remains unchanged.
+
+Specification: `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
