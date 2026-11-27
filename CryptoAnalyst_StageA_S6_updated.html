@@ -4090,6 +4090,23 @@
         return true;
       }
 
+      // Ticker fallback keeps the visible forming candle responsive even if the
+      // exchange kline topic is delayed or unavailable. It never changes volume,
+      // candle finality, closed-candle count, or the analytical input series.
+      updateFormingCandleFromTicker(price) {
+        if (!Number.isFinite(price) || price <= 0 || !this.candles.length) return false;
+        const index = this.candles.length - 1;
+        if (index < this.closedCount) return false;
+        const last = this.candles[index];
+        const high = Math.max(last.high, price);
+        const low = Math.min(last.low, price);
+        if (last.close === price && last.high === high && last.low === low) return false;
+        this.candles = this.candles.slice();
+        this.candles[index] = { ...last, high, low, close: price };
+        this.render();
+        return true;
+      }
+
       upsertLiveCandle(candle, stepMs) {
         if (!candle || !Number.isSafeInteger(candle.ts) || !Number.isFinite(stepMs) || stepMs <= 0 ||
             ![candle.open, candle.high, candle.low, candle.close, candle.volume, candle.turnover].every(Number.isFinite) ||
@@ -4703,6 +4720,9 @@
       if (!event || event.symbol !== state.symbol || !Number.isFinite(event.lastPrice) || event.lastPrice <= 0) return;
       state.liveTicker = event;
       renderLivePrice(true);
+      // The validated last-traded price is also used to animate the current
+      // forming candle; volume and analytical candle finality remain untouched.
+      chart.updateFormingCandleFromTicker(event.lastPrice);
       if (state.liveTickerTimer !== null) clearTimeout(state.liveTickerTimer);
       state.liveTickerTimer = setTimeout(() => {
         state.liveTickerTimer = null;
@@ -5369,6 +5389,14 @@
               { ts: 2000, closeTs: 3000, open: 10, high: 11, low: 9, close: 10, volume: 1, turnover: 10 }
             ];
             chart.setData(base, 1, null, 10);
+            const tickerMoved = chart.updateFormingCandleFromTicker(11.5);
+            assert(tickerMoved && chart.candles[1].close === 11.5 && chart.candles[1].high === 11.5,
+              'Ticker price must update the visible forming candle close/high');
+            assert(chart.candles[1].volume === 1 && chart.closedCount === 1,
+              'Ticker fallback must preserve REST volume and the closed-candle boundary');
+            const tickerLowMoved = chart.updateFormingCandleFromTicker(9.5);
+            assert(tickerLowMoved && chart.candles[1].low === 9.5 && chart.candles[1].close === 9.5,
+              'Ticker price must extend the forming candle low and update close');
             const updated = chart.upsertLiveCandle({
               ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: false
             }, 1000);
