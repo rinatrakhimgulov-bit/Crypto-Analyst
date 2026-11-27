@@ -1225,3 +1225,14 @@ Spec: `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
 The current-contract MTF suite contains 16 tests. Latest GitHub Actions run `45966127523` passed: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 16/16, gate/UI/chart assertions passed, zero browser page errors. Live Bybit was skipped/blocked by HTTP 403 from both hosts.
 
 Exact current HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. The independent audit prompt is pinned to this exact blob at `docs/audits/PROMPT_B1_CURRENT_CONTRACT_INDEPENDENT_REVIEW_2026-11-27.md`. This prompt is prepared but an external reviewer has not yet returned a verdict. Main remains unchanged; B1 is not accepted; B2 is not started.
+
+
+
+
+## Handover update — snapshot-bound B1 candidate — 2026-11-27
+
+Current exact HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Browser harness blob: `8700f7ebedf6f4091b37d5e7d4c04ba22c2d92a8`. Latest CI run `45966700299` passed Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18, gate/UI/chart assertions, zero browser page errors. Live Bybit still blocked by HTTP 403 from both public REST hosts.
+
+Recent hardening: canonical snapshot ID is mandatory and carried by quality reports; B1-C and B1-E reject reports not bound to the exact snapshot. MTF requires explicit closed history count, exposes pending-finality context separately, and keeps it out of closed-only analysis candles. The browser harness tests snapshot mismatch. MTF suite 18/18.
+
+The exact-artifact independent review prompt is `docs/audits/PROMPT_B1_CURRENT_CONTRACT_INDEPENDENT_REVIEW_2026-11-27.md`. It must be handed to an actual independent reviewer; a prepared prompt is not an audit result. Remaining gates: independent review of this exact blob, real concurrent Bybit capture and spread calibration, transport-level abort verification, latest iPhone Safari quality-panel check, owner acceptance. Main unchanged; B1 not accepted; B2 not started.
