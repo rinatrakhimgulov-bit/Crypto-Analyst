@@ -519,3 +519,32 @@ This section supersedes earlier candidate test-count snapshots in Section 22.
 **Combined integrated workflow:** [119/119 passed](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280701) on B2-E head b7fccbc232c8a2de573cbfb053ef06b10b2cf834. It runs every B2-A/B/C/D/E test file in dependency order in one checkout.
 
 All PRs remain draft/unmerged. Main is unchanged. B1 remains NOT ACCEPTED. The passing suite proves deterministic contract behavior under fixtures, not live Bybit correctness, predictive accuracy or profitability. Independent exact-source review, live data validation, B1 acceptance and explicit owner approval remain mandatory before production integration.
+
+
+## 22. B2-F multi-timeframe structure confluence — 2026-11-27
+
+B2-F is implemented as an isolated research candidate in PR #19:
+`src/analysis/b2f-mtf-structure-confluence-engine.js`.
+
+- Consumes the exact B1-E common-cutoff MTF result and one VALID B2-C result per 1D/4H/1H timeframe.
+- Validates B1 MTF contract, directional permission, required timeframe order, common cutoff, explicit maximum provider-time spread, unique snapshot IDs, canonical snapshot/quality report identity, selected analysis window and B2-C event timing.
+- Binds the actual B1 quality policy `b1-quality-policy-2026-11-27-v1`.
+- Distinguishes B1 MTF display market label (`Linear Perpetual`) from canonical snapshot market type (`linear_perpetual`).
+- Emits full/partial/mixed/unestablished alignment, hierarchy interpretation and 4H/1H consensus. No score, confidence or trade recommendation.
+- 30/30 B2-F tests passed in [run 46020226993](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46020226993); integrated B2-A through B2-F suite 149/149 in [run 46020227119](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46020227119), exact candidate head `4a2cf7fc621cb9120f7e5cd5cc10bab99aac3b32`.
+
+Limitation: the full three-timeframe fixture uses actual B2-A/B/C engines over synthetic snapshots and a synthetic B1-E-shaped result. B1MtfEngine is statically inspected but not executed by the Node test suite. No live Bybit MTF or iPhone/Safari verification.
+
+## 23. B2-G chart integration — future, gated
+
+B2-G is the future visualization increment, not yet implemented. It may connect accepted B2-A through B2-F output to the chart only after B1 acceptance and independent review.
+
+Required boundaries:
+- Chart is a read-only projection of canonical candle and analytics state; no second client-side candle or structure engine.
+- Swing markers, HH/HL/LH/LL labels, BOS/CHoCH markers, S/R zones and retest lifecycle are rendered from immutable engine output.
+- MTF context is shown as 1D/4H/1H structure alignment, not a weighted score.
+- Every overlay must distinguish source-candle time from confirmation/availability time where that distinction matters.
+- No LONG/SHORT/WAIT decision, entry, SL/TP or order execution is added by chart integration.
+- Forming-candle/live-price polish remains a separate Stage 1 task and is not mixed into B2-G.
+
+No B2-G production implementation is authorized until B1 acceptance and explicit owner approval.
