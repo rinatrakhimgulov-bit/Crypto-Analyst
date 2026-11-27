@@ -273,6 +273,18 @@ run('duplicate closed-candle timestamps fail closed', () => {
   assert.equal(result.admission.reasons[0].code, 'CANDLE_DUPLICATE_TIMESTAMP');
 });
 
+run('missing closed-candle intervals fail closed before pivot detection', () => {
+  const input = makeInput();
+  const candles = input.snapshot.candles_by_timeframe['1h'];
+  candles.splice(4, 1);
+  input.quality_report.closed_count -= 1;
+  input.quality_report.valid_count -= 1;
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'CANDLE_GAP_DETECTED');
+  assert.equal(result.pivots.length, 0);
+});
+
 run('out-of-order closed candles fail closed', () => {
   const input = makeInput();
   const candles = input.snapshot.candles_by_timeframe['1h'];
