@@ -221,6 +221,55 @@ function countBy(items, key) {
   for (const item of items) counts[item[key]] = (counts[item[key]] || 0) + 1;
   return counts;
 }
+function eventFollowThrough(events, rows) {
+  const indexByOpen = new Map(rows.map((row, index) => [row.open_time_ms, index]));
+  const horizons = [5, 10, 20];
+  const result = {};
+  for (const horizon of horizons) {
+    const grouped = new Map();
+    for (const event of events) {
+      const direction = event.direction === 'BULLISH' ? 1 : event.direction === 'BEARISH' ? -1 : 0;
+      const index = indexByOpen.get(event.breaking_candle_open_time_ms);
+      if (!direction || index === undefined || index + horizon >= rows.length) continue;
+      const entry = rows[index].close;
+      const future = rows.slice(index + 1, index + horizon + 1);
+      if (!future.length || !Number.isFinite(entry) || entry <= 0) continue;
+      const maxHigh = Math.max(...future.map(x => x.high));
+      const minLow = Math.min(...future.map(x => x.low));
+      const finalClose = future[future.length - 1].close;
+      const closeReturn = direction > 0
+        ? (finalClose / entry - 1) * 100
+        : (entry / finalClose - 1) * 100;
+      const mfe = direction > 0
+        ? (maxHigh / entry - 1) * 100
+        : (entry / minLow - 1) * 100;
+      const mae = direction > 0
+        ? (minLow / entry - 1) * 100
+        : (entry / maxHigh - 1) * 100;
+      if (!grouped.has(event.event_type)) grouped.set(event.event_type, []);
+      grouped.get(event.event_type).push({ closeReturn, mfe, mae, source: event.source_pivot_id });
+    }
+    const byType = {};
+    for (const [type, samples] of grouped) {
+      const closes = samples.map(x => x.closeReturn);
+      const mfes = samples.map(x => x.mfe);
+      const maes = samples.map(x => x.mae);
+      byType[type] = {
+        n: samples.length,
+        unique_source_pivots: new Set(samples.map(x => x.source).filter(Boolean)).size,
+        median_forward_close_return_pct: median(closes),
+        median_mfe_pct: median(mfes),
+        median_mae_pct: median(maes),
+        favorable_close_pct: samples.filter(x => x.closeReturn > 0).length / samples.length * 100,
+        mfe_at_least_0_25_pct: samples.filter(x => x.mfe >= 0.25).length / samples.length * 100,
+        mfe_at_least_0_5_pct: samples.filter(x => x.mfe >= 0.5).length / samples.length * 100,
+        mfe_at_least_1_pct: samples.filter(x => x.mfe >= 1).length / samples.length * 100
+      };
+    }
+    result[horizon + '_bars'] = byType;
+  }
+  return result;
+}
 function sweepStats(events) {
   const counts = new Map();
   for (const event of events) {
@@ -270,7 +319,8 @@ async function main() {
           sequence_history: result.b.sequence_history.length,
           ambiguous_pivots: result.b.diagnostics.ambiguous_dual_pivot_count,
           structure_events: result.c.events.length,
-          event_types: countBy(result.c.events, 'event_type') });
+          event_types: countBy(result.c.events, 'event_type'),
+          event_follow_through: eventFollowThrough(result.c.events, rows) });
       }
       const prefixChecks = [];
       for (const q of [0.25, 0.5, 0.75]) {
@@ -315,6 +365,7 @@ async function main() {
           ambiguous_dual_pivots: full.b.diagnostics.ambiguous_dual_pivot_count,
           structure_events: full.c.events.length,
           event_types: countBy(full.c.events, 'event_type'),
+          event_follow_through: eventFollowThrough(full.c.events, rows),
           sweep_stats: sweepStats(full.c.events),
           structure_state: full.c.structure_state,
           sequence_history: full.b.sequence_history.length,
