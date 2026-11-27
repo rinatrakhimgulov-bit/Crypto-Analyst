@@ -308,3 +308,18 @@ All candidates are isolated, draft and unmerged. B1 remains NOT ACCEPTED. Next: 
 - Explicit policy thresholds; no implicit defaults.
 - 22/22 deterministic tests passed in run 46016401705, including full B1 → B2-A → B2-B → B2-C → B2-D → B2-E execution.
 - PR #17 draft/unmerged. Threshold calibration and independent review remain outstanding.
+
+
+## Latest verified candidate heads — 2026-11-27 (supersedes earlier test-count snapshots)
+
+The current open PR head commits have been checked against GitHub Actions:
+
+| Increment | PR | Exact head commit | Tests | Passing run |
+|---|---:|---|---:|---|
+| B2-A | #12 | `bb13960e647d399b6b05ee12c21f5a2fdeb8265d` | 21/21 | [46014698432](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014698432) |
+| B2-B | #13 | `b209293212ac1bd910939eed465f140514b9e959` | 20/20 | [46015826502](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015826502) |
+| B2-C | #15 | `e9590ddb65c9f3a09a28279efdb064b6caa6a4a2` | 33/33 | [46015831238](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015831238) |
+| B2-D | #16 | `9012e514a29b755ac9208f1f495c3f560638b0a1` | 21/21 | [46015873986](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015873986) |
+| B2-E | #17 | `493a15e8006784d2b78262770725c26bd05c2e85` | 22/22 | [46016401705](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46016401705) |
+
+All five are draft/unmerged research candidates. PR #8/#9 B1 candidates remain draft/unmerged. The main branch is still `8acb6fddaf454e9f2a4bdf3564ad70408d1a5456`; no B2 candidate has been merged or connected to the application HTML.
