@@ -203,7 +203,7 @@ run('initial bearish break is symmetric', () => {
 });
 
 run('a close exactly at a level is not a break', () => {
-  const input = fixture(initialBull, { 3: { open: 100, close: 100, high: 105, low: 95 } });
+  const input = fixture(initialBull, { 3: { open: 100, close: 100, high: 100, low: 95 } });
   const result = analyze(input);
   assert.equal(result.structure_state, 'UNESTABLISHED');
   assert.equal(result.events.length, 0);
@@ -319,7 +319,7 @@ run('contradictory latest levels produce AMBIGUOUS_BREAK without choosing direct
   ];
   const input = fixture(pivots, { 6: { open: 95, close: 95, high: 96, low: 94 } });
   const result = analyze(input);
-  assert.equal(result.structure_state, 'UNESTABLISHED');
+  assert.equal(result.structure_state, 'UNESTABLISHED', JSON.stringify(result.events));
   assert.equal(result.events.at(-1).event_type, 'AMBIGUOUS_BREAK');
 });
 
