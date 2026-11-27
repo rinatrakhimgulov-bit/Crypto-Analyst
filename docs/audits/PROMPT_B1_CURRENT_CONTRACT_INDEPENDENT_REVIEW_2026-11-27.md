@@ -3,7 +3,7 @@
 **Repository:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst  
 **Branch:** `integration/b1-mtf-architecture-2026-11-27`  
 **Draft PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/8  
-**Exact HTML blob to audit:** `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`  
+**Exact HTML blob to audit:** `1cb41cfbc03534441774eeeaac08f36082f19ab9`  
 **File:** `CryptoAnalyst_StageA_S6_updated.html`  
 **Current test harness:** `tests/b1-browser-live-check.cjs`
 
@@ -36,20 +36,23 @@ Review the complete B1-A/B/C/E path and its interaction with Stage A:
 - One and multiple post-cutoff normalized rows.
 - Short raw response and missing leading/trailing closed candles.
 - Duplicate, conflicting duplicate, malformed and misaligned rows combined with post-cutoff exclusions.
-- Wrong canonical contract version and mismatched validator/policy report identity.
+- Wrong canonical contract version and mismatched validator/policy report identity and mismatched snapshot identity.
 - One stale/invalid/degraded/missing timeframe among otherwise valid timeframes.
 - Abort during each of the three concurrent requests.
 - A newer request superseding an older generation whose responses complete late.
+- Missing `closedCandleCount` must fail before any network request; no implicit history default.
+- A pending-finality candle must remain explicit context and never enter `analysis_candles`.
+- A `VALID` report whose `snapshot_id` differs from the dataset's canonical snapshot must be rejected by the B1-C gate.
 - Confirm that no forming candle is present in `analysis_candles` or can influence directional analysis.
 - Confirm the 1000-row provider limit fails explicitly rather than truncating requested history.
 
 ## Reproducible test evidence reported by the implementation author
 
-Latest GitHub Actions run `45965680821`:
+Latest GitHub Actions run `45966700299`:
 - Stage A: 44/44
 - B1 Data Contract: 32/32
-- B1 Quality Validator: 64/64
-- B1 MTF: 16/16
+- B1 Quality Validator: 65/65
+- B1 MTF: 18/18
 - B1 gate/UI and C1 chart assertions passed
 - zero browser page errors
 - live Bybit probe skipped/blocked because both public REST hosts returned HTTP 403 to the GitHub runner.
@@ -76,4 +79,4 @@ Do not call this profitable trading logic. Do not infer live exchange correctnes
 
 ## Test suite expansion — 2026-11-27
 
-The current HTML blob now includes 16 MTF tests. Additional cases explicitly assert: forming/pending-finality candles never enter the closed-only analysis slice; provider-time spread one millisecond above policy fails closed; multiple post-cutoff rows fail closed; and missing measured spread policy fails closed. Latest run 45966127523 passed all suites: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 16/16, with UI/chart checks and zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public REST hosts.
+The current HTML blob includes 18 MTF tests. Additional cases assert: forming and pending-finality candles never enter the closed-only analysis slice; provider-time spread one millisecond above policy fails closed; multiple post-cutoff rows fail closed; missing measured spread policy fails closed; missing closed-candle count fails before network requests; and superseded requests cannot publish. The B1 validator now requires a stable canonical `snapshot_id`, includes it in each quality report, and the analytics gate checks that the report belongs to the exact dataset snapshot. Latest run 45966700299 passed Stage A 44/44, B1 contract 32/32, B1 validator 65/65, MTF 18/18, gate/UI/chart checks, with zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public REST hosts.
