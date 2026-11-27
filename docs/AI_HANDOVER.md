@@ -1184,3 +1184,20 @@ B1 adapter mapping update — 26.11.2026:
 ### B1-C gate hardening — 2026-11-27
 
 The engine requires exact `validator_version` and `policy_version` identity in addition to `status: VALID`. A hand-built or outdated report cannot pass. The latest browser harness exercises actual synthetic adapter → canonical → validator → engine flow; VALID produces populated EMA/ATR arrays, while INVALID negative volume and STALE transport age produce WAIT with no indicators. Latest Actions: 44/44 Stage A, 32/32 contract, 63/63 validator; gate and cleanup passed; no page errors. GitHub-hosted runner is blocked by Bybit HTTP 403 on both public REST hosts. Latest B1-C status-row/blocked-WAIT behavior still requires user-side iPhone Safari confirmation. Do not merge or start B2 until acceptance conditions are satisfied.
+
+
+
+
+## Handover update — architecture baseline and B1 consolidation — 2026-11-27
+
+The canonical architecture baseline is `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`. The detailed branch analysis is `docs/audits/B1_BRANCH_CONSOLIDATION_AUDIT_2026-11-27.md`.
+
+Current working branch: `integration/b1-mtf-architecture-2026-11-27`, created from `b1/contract-review`. Keep `main` unchanged until explicit user acceptance.
+
+Important: do not merge `impl/b1-quality-contract-2026-11-26` wholesale. Its B1-E MTF engine uses the legacy `DataQualityEngine` contract and is not directly compatible with current `B1DataContract` / `B1QualityValidator` / B1-C version identity. Port the common-cutoff semantics into the current contract and preserve fail-closed behavior.
+
+The older B1-E artifact received an external conditional audit (33/33 MTF, 65/65 legacy quality). The audit withheld directional MTF approval pending live provider-time spread measurements, replay of recorded Bybit responses, transport abort testing, and a tested invariant that forming candles cannot affect directional features. It does not cover the latest B1-C/C1 candidate.
+
+Current candidate browser CI evidence: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate checks passed, no browser page errors. User verified the C1 chart on iPhone. The newest B1-C reason-code / blocked-WAIT panel detail still needs Safari visual verification. GitHub Actions live Bybit access is blocked by HTTP 403 from both public REST hosts. Do not describe this as live verification.
+
+B1 remains unaccepted. B2 remains not started. Next work is the controlled MTF port and tests, then independent review of the exact integrated artifact, live capture/calibration, iPhone check of the latest panel, and explicit owner acceptance before main merge.
