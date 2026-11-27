@@ -535,3 +535,13 @@ Latest HTML blob: 842c361a8386c358a68f22407814c376fd3bde1b. Final isolated V8 ve
 - Outstanding: live/recorded Bybit 1D/4H/1H integration, measured spread policy, browser regression, full Stage A self-test. Forming-candle validation/invariant is required before directional integration, not for current isolated library stage.
 - PR #6 remains draft/unmerged. MTF is not connected to directional decisions. Directional MTF remains blocked pending live validation and policy.
 - Full report: `docs/audits/B1_A_B_E_INDEPENDENT_AUDIT_2026-11-27.md`.
+
+
+### B1 live capture probe hardening — 2026-11-27
+
+- Added per-host 15-second request timeout with recorded timeout and backup-host fallback.
+- Stop now cancels active fetches and wakes the inter-sample delay immediately.
+- Separated response-header timestamp from full response-body receipt; records header latency and total duration.
+- Corrected request-start measurement to be per host attempt, so fallback does not contaminate successful-host latency.
+- Capture schema advanced to v2.
+- Source review completed; real browser/network execution is still pending.
