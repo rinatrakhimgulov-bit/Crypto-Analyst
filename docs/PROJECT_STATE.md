@@ -283,3 +283,193 @@ B0 acceptance: StageASelfTest 44/44 в изолированном harness; EMA/A
 ## B1 current adapter mapping — 2026-11-26
 
 Подготовлен `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`: сопоставление BybitAdapter с canonical Candle/Snapshot/QualityReport и 11 конкретных разрывов (canonical contract, duplicates, future timestamps, provider-time fallback, closed-state, quality gate, coverage, pagination, MTF cutoff, stale cache). Предложен минимальный план B1 без переписывания приложения и предварительная рекомендация сохранить JavaScript на первом проходе; Python backend оставить открытой опцией при доказанной необходимости. Это спецификация, не реализация.
+
+
+
+## Актуальное состояние B1 — 2026-11-27 (candidate, не слит в main)
+
+* Ветка реализации и проверки: `b1/contract-review`. `main` не изменялся.
+* B1-A: canonical snapshot mapping, provider provenance/time, closed/open/unknown candle states, raw-order diagnostics, duplicate conflict quarantine, strict Bybit 7-field row schema, no local-clock certification of closed candles.
+* B1-B: deterministic pure validator with explicit policy and validation time; 63 regression cases. Canonical contract suite: 32 cases.
+* B1-C: mandatory fail-closed gate is now connected to `BasicAnalyticsEngine.analyze()`. Only `VALID` with matching validator and policy versions permits directional calculation. Missing/mismatched report, `UNASSESSED`, `DEGRADED`, `INSUFFICIENT`, `STALE`, and `INVALID` produce WAIT.
+* Cached snapshot after REST refresh failure is revalidated and forced to STALE (unless INVALID); stale chart may remain visible, directional analysis is suppressed.
+* GitHub Actions Chromium run: Stage A 44/44, B1 contract 32/32, B1 validator 63/63; gate assertions pass; no page errors; cleanup restoration assertions pass.
+* CI live Bybit requests were blocked by HTTP 403 from both public REST hosts on GitHub runner. This is recorded as skipped, not passed. User manually verified iPhone Safari BTC/ETH and 1H/4H/1D switching and refresh on the pre-B1-C candidate. The latest B1-C build still needs a short iPhone retest of the new B1 status row and WAIT behavior. Earlier capture artifacts documented 180 successful REST samples, but those captures predate the final candidate hardening.
+* Candidate still requires independent code review and explicit acceptance before merge to main. Do not start B2 or claim trading-signal validation.
+
+Canonical implementation spec: `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md`.
+
+
+### B1-C additional hardening and latest CI — 2026-11-27
+
+* Gate verifies not only `status === VALID`, but also exact validator and policy versions. Missing/old/mismatched report identity is treated as INVALID (`QUALITY_REPORT_VERSION_MISMATCH`).
+* Browser integration harness now tests the actual adapter → canonical snapshot → validator → engine path with synthetic Bybit rows. VALID produced 159 closed candles and populated EMA20/EMA50/ATR14; negative volume → INVALID/WAIT/no indicators; expired transport age → STALE/WAIT/no indicators.
+* Latest Actions run passed: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, gate tests, cleanup restoration, zero page errors.
+* Live Bybit remains unverified from GitHub Actions because both hosts return HTTP 403 to the runner. Latest B1-C UI still needs the user's iPhone Safari retest of the new status row and blocked-data WAIT behavior.
+
+
+### Chart visualization C1 — in progress (2026-11-27)
+
+- Existing chart already rendered EMA20/EMA50 and local SH/SL markers; these were retained.
+- Candidate branch now adds EMA200 to the analytical output and chart overlay. EMA200 is calculated from closed candles and has a 200-candle SMA seed; the active REST request is 400 rows to provide warm-up history.
+- Candidate chart now has a lower volume histogram synchronized to the same candle slice. It uses Bybit linear base-asset `volume`; the forming candle's bar is visually muted.
+- EMA lines are clipped to the price pane, and visible EMA values participate in price-axis scaling.
+- This visualization work does not yet change the LONG/SHORT/WAIT decision rules and does not make the analytics a validated trading strategy.
+- Candidate only: `b1/contract-review`; `main` remains unchanged. GitHub Actions run `45962613748` passed: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, EMA200 warm-up, closed-candle line alignment, volume histogram and mobile layout checks all passed; zero browser page errors. Mobile CI viewport was 390 px with a 334×318 px chart canvas and no horizontal chart overflow. GitHub runner still cannot reach Bybit (HTTP 403 on both public REST hosts), so live provider verification is not claimed. User-side iPhone Safari verification of the new chart remains pending; C1 is under review, not accepted.
+
+
+### B1-C UI transparency update — 2026-11-27
+
+The candidate quality panel now exposes B1 status/version, up to five validator reason codes, and whether directional analysis is admitted or blocked with WAIT. A Chromium DOM test injects an INVALID negative-volume report and verifies the user-visible panel shows INVALID, VOLUME_NEGATIVE, blocked state, and WAIT. CI run 45963443614 passed: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate checks passed, zero browser page errors. Live Bybit probe remains blocked on GitHub runners by HTTP 403. The user has confirmed the preceding C1 candidate works on iPhone; the latest added quality-panel detail row still needs a brief Safari visual check. Independent B1 review and formal acceptance remain outstanding; main is unchanged.
+
+
+
+
+## Architecture baseline and B1 consolidation — 2026-11-27
+
+**Current working branch:** `integration/b1-mtf-architecture-2026-11-27` (created from `b1/contract-review`). **Main remains unchanged.**
+
+The global architecture decisions are now recorded in `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`. This is the baseline for product scope, data contracts, MTF synchronization, causal analytics, scenario output, testing, runtime, storage, deployment and deferred decisions. It does not claim planned features are implemented.
+
+The branch comparison found two divergent B1 candidates. The current `b1/contract-review` HTML blob is `1c32696a7aa0751a33e628853df1a780aad7f76b`. The older B1-A/B/E HTML blob is `842c361a8386c358a68f22407814c376fd3bde1b`. They share merge base `e53f74cf814638d70f775366e88b6754c95b9e51`, but the older B1-E branch has a much larger divergent history. No wholesale branch merge is planned.
+
+The older B1-E implementation depends on the legacy `DataQualityEngine` API and is not drop-in compatible with the current `B1DataContract` / `B1QualityValidator` / versioned B1-C gate. Its common-cutoff semantics will be ported deliberately into the current contract. The exact older B1-E artifact received an external conditional review (33/33 MTF tests, 65/65 older quality tests), but that review does not certify the current B1-C/C1 artifact or approve directional MTF use.
+
+**Current evidence and remaining gates:**
+- Candidate B1-A/B/C/C1 browser CI: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate checks passed, no browser page errors in the recorded run.
+- C1 chart display (EMA200 and synchronized volume pane) was subsequently checked by the user on iPhone and reported working. The latest B1-C quality-panel reason-code / blocked-WAIT detail row still needs a visual Safari check.
+- GitHub Actions live Bybit probe is blocked by HTTP 403 from both public REST hosts. No current live verification is claimed.
+- B1-E live provider-time spread calibration, replay of recorded responses, and transport-level cancellation testing remain open.
+- B1 is not accepted; B2 implementation has not started; no merge to main is authorized or performed.
+
+See `docs/audits/B1_BRANCH_CONSOLIDATION_AUDIT_2026-11-27.md` and `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`.
+
+
+
+
+## B1-E current-contract MTF implementation — 2026-11-27
+
+The integration branch now contains an isolated `B1MtfEngine` ported to the current B1 contract. It fetches 1D/4H/1H concurrently through the current Bybit adapter, uses the minimum trusted provider timestamp as the common analysis cutoff, applies the 500 ms finality lag, excludes post-cutoff rows with explicit raw-row accounting, validates each timeframe through the current `B1QualityValidator`, checks exact closed-candle coverage, and blocks aggregate directional permission unless all three reports and coverage checks are VALID. The result is deeply immutable. A request coordinator aborts superseded generations; a failed timeframe aborts sibling adapter requests.
+
+The canonical contract and validator were incremented to 1.1.0. The canonical validator now rejects unsupported contract versions. `source_diagnostics.excluded_after_cutoff_count` is required and included in normalized-row accounting. The quality policy thresholds/version remain unchanged.
+
+**Latest GitHub Actions run:** `45965680821` completed successfully on the integration candidate:
+- Stage A: 44/44;
+- B1 Data Contract: 32/32;
+- B1 Quality Validator: 64/64 (one added unsupported-contract-version regression);
+- B1 MTF: 12/12 (common cutoff, spread, trust, coverage, finality, immutability, sibling abort and superseded generation);
+- B1 gate/UI and C1 chart assertions passed; zero browser page errors.
+- Live Bybit remains SKIPPED/BLOCKED: both public REST hosts return HTTP 403 to GitHub Actions.
+
+The MTF engine remains isolated: it is not connected to the chart, existing selected-timeframe analysis, or LONG/SHORT/WAIT decision path. The exact current-contract port has not yet received independent review. Live concurrent captures and spread calibration remain outstanding. Latest quality-panel reason-code/blocked-WAIT detail still needs Safari visual verification. B1 is not accepted; B2 has not started; main remains unchanged.
+
+Specification: `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
+
+
+
+
+## CURRENT AUTHORITATIVE STATE — 2026-11-27 (supersedes stale header/status above)
+
+**Current integration branch:** `integration/b1-mtf-architecture-2026-11-27`  
+**Main:** unchanged; HTML blob `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf`, 188,954 bytes.  
+**Integration candidate HTML:** blob `3f1a739b90e3a187292b29cd9f0ca5c1beafbd5c`, 295,555 bytes.  
+**Branch comparison:** 48 commits ahead of main, 0 behind.  
+**Draft PR:** #8, integration consolidation; not merged.
+
+### Implemented on the integration candidate
+- B1-A canonical data contract and Bybit adapter.
+- B1-B deterministic quality validator, current version 1.1.0.
+- B1-C fail-closed analytics quality gate and visible reason/status panel.
+- C1 EMA overlays and volume pane on the chart.
+- B1-E isolated current-contract MTF assembler for 1D/4H/1H with common provider-time cutoff, 500 ms finality lag, explicit post-cutoff row accounting, exact closed-window coverage, per-timeframe validation, aggregate fail-closed status, deep immutability and request-generation cancellation.
+- Architecture decision register and current-contract MTF specification.
+
+### Latest recorded CI evidence
+GitHub Actions run `45965680821`: Stage A 44/44; B1 contract 32/32; B1 validator 64/64; B1 MTF 12/12; B1 gate/UI and C1 chart assertions passed; zero browser page errors. The live Bybit check was blocked by HTTP 403 from both public REST hosts in GitHub Actions. This is a successful synthetic/browser regression run, not a live-exchange verification.
+
+### Remaining B1 acceptance gates
+1. Independent review of exact candidate HTML blob `3f1a739b90e3a187292b29cd9f0ca5c1beafbd5c` (review prompt saved under `docs/audits/PROMPT_B1_CURRENT_CONTRACT_INDEPENDENT_REVIEW_2026-11-27.md`).
+2. Recorded concurrent live Bybit 1D/4H/1H responses and measured provider-time spread policy.
+3. Actual browser transport-level abort/cancellation verification.
+4. iPhone Safari visual check of the latest quality reason-code and blocked-WAIT panel. C1 chart layout was previously user-verified.
+5. Explicit owner acceptance before merge to main.
+
+**B1 is not yet accepted. B2 Market Structure has not started.** MTF is not connected to LONG/SHORT/WAIT and must not be described as a completed trading signal engine.
+
+### Global product architecture decisions
+The authoritative decision register is `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`. It fixes the initial product scope, Bybit/USDT linear market, BTC/ETH, 1D/4H/1H, REST-first + WS LOG-ONLY, closed-candle directional analysis, provider-neutral layered architecture, causal market-structure sequence, browser-first JavaScript runtime and no auto-execution. Backend/database/hosting vendor, framework migration, additional exchanges, news and order-flow are explicitly deferred until justified by a real requirement. These are deliberate deferrals, not blockers to building the analytical core.
+
+
+
+
+### B1-E regression expansion — latest verification 2026-11-27
+
+The MTF test suite was expanded from 12 to 16 cases. New assertions cover closed-only analysis slices (no forming/pending-finality candle leakage), provider-time spread exactly one millisecond above policy, multiple post-cutoff rows, and missing measured spread policy. Async tests cover sibling abort and superseded generation.
+
+Latest GitHub Actions run `45966127523` passed: Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 16/16, B1 gate/UI and C1 chart assertions passed, zero browser page errors. Live Bybit remains skipped/blocked by HTTP 403 from both public REST hosts.
+
+Exact current candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independent audit prompt has been pinned to this exact blob. No code change was made to main. B1 remains unaccepted; independent review, live spread calibration, actual network abort verification, latest quality-panel Safari check and owner acceptance remain open.
+
+
+
+
+## Latest B1 hardening — 2026-11-27
+
+The current integration candidate adds exact quality-report-to-snapshot binding. Canonical snapshots require a non-empty `snapshot_id`; the validator records it in the report; B1-C rejects a VALID report whose ID differs from the dataset's canonical snapshot; B1-E applies the same per-timeframe check. Missing MTF `closedCandleCount` now fails before network access instead of defaulting silently. Pending-finality candles are exposed separately as context and excluded from `analysis_candles`.
+
+Latest completed GitHub Actions run `45966700299`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 18/18, B1 gate/UI and C1 chart assertions passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public REST hosts. Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Test harness blob: `8700f7ebedf6f4091b37d5e7d4c04ba22c2d92a8`.
+
+This does not change release status: B1 remains unaccepted pending independent review of this exact blob, recorded live concurrent Bybit capture and spread calibration, transport-level abort test, latest iPhone Safari quality-panel check, and explicit owner acceptance. Main is unchanged; B2 remains not started.
+
+
+
+## Latest verification refresh — 2026-11-27
+
+After the preceding state entry, the MTF suite was expanded with explicit tests for required closed-candle history count and pending-finality context isolation. Latest candidate HTML blob is now `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest completed CI run `45966502044`: Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 18/18, B1 gate/UI and C1 chart assertions passed, zero browser page errors. Total named self-tests: 158/158. Live Bybit remains blocked by HTTP 403 from both public REST hosts on GitHub Actions. Current branch comparison: 66 commits ahead, 0 behind main. Main remains unchanged.
+
+
+
+## CI record correction — 2026-11-27
+
+A newer completed run, `45966700299`, supersedes the earlier run recorded above. It reports Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 65/65, B1 MTF 18/18, B1 gate/UI and C1 chart assertions passed, zero browser page errors; 159/159 named deterministic self-tests. The gate harness now also exercises a VALID-looking report with a mismatched `snapshot_id` and verifies it is rejected. Exact HTML blob remains `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes); current branch comparison is 85 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 from both REST hosts on GitHub Actions. This does not constitute live validation.
+
+
+
+
+## Latest B1 integrity work — 2026-11-27
+
+B1-C now verifies the exact legacy candle array used by the analytical engine is identical to the canonical closed-candle series validated by B1-B, including timestamps, OHLCV, quote turnover and last-closed price. Snapshot ID mismatch or candle-series mismatch blocks with INVALID/WAIT. A matching empty series preserves INSUFFICIENT. MTF suite is now 20 tests and covers the Bybit 1000-row cap and external cancellation.
+
+Added `tools/b1_live_probe.html` schema v3 and `docs/specs/B1_LIVE_CAPTURE_PROCEDURE.md` with Windows-host/iPhone-Safari steps. The probe is read-only and stores captures locally. Chromium CI verifies its initial UI without contacting Bybit. Live capture is still pending because GitHub Actions receives HTTP 403 from both public hosts.
+
+Latest CI run `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20, gate/UI/chart/probe smoke passed, zero page errors. Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`, harness `a23585f9688b9a04336c7f99da7a972513882f8e`, probe `3b5df8f0feda730c7e6564808f40ad4526f0e44a`.
+
+B1 remains not accepted: exact-blob independent review, real concurrent Bybit captures and spread calibration, real transport-level abort test, latest iPhone Safari quality panel check, and explicit owner acceptance remain open. Main unchanged; B2 not started.
+
+
+
+## Latest candidate state — 2026-11-27 (supersedes prior artifact hashes/counts)
+
+- PR #8 remains **DRAFT / NOT MERGED**; head commit `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`.
+- Current HTML blob: `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes).
+- Current browser harness blob: `a23585f9688b9a04336c7f99da7a972513882f8e` (29,130 bytes).
+- Branch comparison: 101 commits ahead, 0 behind main. Main HTML remains `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf` (188,954 bytes), unchanged.
+- Latest CI run `45967551538` passed: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 20/20; gate/UI/chart assertions passed, zero browser page errors; 161/161 named tests.
+- Recent B1-C hardening: the legacy candle series and last-closed price consumed by the analytics engine must exactly match the canonical snapshot that passed validation; divergence forces WAIT. Empty but matching series preserve INSUFFICIENT status/reason rather than being mislabeled INVALID.
+- MTF remains isolated from the chart and directional decision path. Live Bybit is blocked by HTTP 403 from both public hosts on the GitHub runner. Independent review, live concurrent capture/spread calibration, transport abort verification, Safari panel check, and explicit owner acceptance remain open. Main unchanged.
+
+
+
+## Browser transport abort verification — 2026-11-27 (latest)
+
+- Fixed fetch deadline classification: `fetchJsonWithTimeout` now aborts with `DOMException('Таймаут запроса', 'TimeoutError')`, distinguishing deadline expiry from user/supersession cancellation.
+- Browser CI now exercises the actual Chromium `fetch` stack against a delayed local HTTP endpoint and the actual `BybitAdapter.fetchMarketSnapshot` path. It confirms external cancellation aborts both parallel kline/ticker requests and the timeout aborts the pending request; Node HTTP server observed all 3 client sockets close.
+- Latest CI run `45968566553` passed: Stage A 44/44, B1 contract 32/32, validator 65/65, MTF 20/20; 161/161 named tests, gate/UI/C1/probe checks passed, zero browser page errors. Transport cancellation: 3 requests started / 3 sockets closed. Live Bybit remains SKIPPED because both public hosts return HTTP 403 to GitHub Actions.
+- Current HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); test harness blob `70399a984b44f5f85024afcdf11289e4a73a6361` (32,071 bytes); probe blob `3b5df8f0feda730c7e6564808f40ad4526f0e44a` (12,446 bytes). Current branch head `c9d207d6dd3f8194bcc97a4d600e284a85594e04`, 124 ahead / 0 behind main. Main HTML unchanged at `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf`.
+- PR #8 remains draft and unmerged. Independent review, live Bybit captures/spread calibration, iPhone Safari panel check, and explicit owner acceptance remain open. MTF remains isolated from UI/directional decisions.
+
+
+
+## Final branch-position refresh — 2026-11-27
+
+After the documentation sync, PR #8 head is `5e94c29d1f5734e8b46200c04b6da51996ca9726`, still DRAFT / NOT MERGED. The code artifact remains HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); test harness `70399a984b44f5f85024afcdf11289e4a73a6361`. Branch comparison is now 131 ahead / 0 behind main (the additional commits are documentation/PR metadata refreshes; no change to the tested HTML/harness after CI run `45968566553`). Main HTML remains `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf` (188,954 bytes), unchanged.

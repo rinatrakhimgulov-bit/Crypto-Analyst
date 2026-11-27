@@ -74,11 +74,15 @@ Snapshot относится к одному canonical_symbol и одному mar
 - provider metadata и список использованных источников;
 - provider_server_time_ms (если доступен);
 - received_at_ms;
-- candles_by_timeframe;
+- candles_by_timeframe (только свечи с допустимым closed_state);
 - forming_candle_by_timeframe (отдельно, не смешивается с закрытыми);
+- unclassified_candles_by_timeframe (свечи с UNKNOWN finality, не допускаются к расчётам);
+- quote/current-price object (отдельный источник; не смешивать с OHLCV);
 - quality_by_timeframe;
 - aggregate_quality;
 - normalizer_version и contract_version.
+
+До завершения B1-B новый canonical snapshot получает `UNASSESSED`; это временное состояние mapping-only и не разрешает directional output.
 
 ### Единый cutoff для MTF
 
@@ -116,6 +120,7 @@ Snapshot относится к одному canonical_symbol и одному mar
 
 | Статус | Значение | Допуск |
 |---|---|---|
+| UNASSESSED | Canonical mapping создан, но validator ещё не запускался | Только WAIT; directional output запрещён |
 | VALID | Все критические проверки пройдены | Аналитика разрешена |
 | DEGRADED | Есть некритические проблемы или неполные optional fields | Разрешены только модули, которые явно поддерживают эти ограничения; directional output по умолчанию блокируется до явного правила |
 | INVALID | Повреждённые/противоречивые данные или критическая неполнота | Только WAIT |
@@ -235,3 +240,10 @@ Adapter должен:
 - Решить, нужна ли 1m canonical base для resampling или достаточно нативных 1H/4H/1D с cross-check.
 
 **Текущий статус:** draft specification. Не считать B1 реализованным; не менять основной HTML до принятия контракта и тестовой матрицы.
+
+
+
+
+## Supersession note — 2026-11-27
+
+This is an early design draft. The implemented candidate contract is now version 1.1.0 and is defined by the current HTML implementation plus `docs/specs/B1B_QUALITY_VALIDATOR_SPEC_2026-11-27.md`, `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md`, and `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`. Do not treat this draft as the authoritative implementation contract where the documents differ.

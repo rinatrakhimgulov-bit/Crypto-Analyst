@@ -237,3 +237,116 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 ## 14. B1 current adapter mapping — 2026-11-26
 
 `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps Stage A `BybitAdapter` to the proposed provider-neutral contract and records 11 implementation gaps. Proposed minimal path: retain JS for B1 first pass; canonical mapping, pure validator, mandatory quality gate, stale-cache suppression, then MTF cutoff and second provider. Specification only; no code changes.
+
+
+
+## 15. B1-A/B/C candidate implementation — 2026-11-27
+
+* `CryptoAnalyst_StageA_S6_updated.html`: canonical B1 snapshot mapping, pure validator, mandatory fail-closed gate, stale-cache signal suppression, validator status UI, strengthened mock fixtures.
+* `tests/b1-browser-live-check.cjs`: Playwright Chromium harness for Stage A, B1 contract, B1 validator, gate, cleanup restoration, and live provider probe.
+* `.github/workflows/b1-candidate-verification.yml`: candidate-branch verification workflow.
+* `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md`: runtime policy, gate behavior, cache handling, recovery semantics, scope.
+* `docs/specs/B1B_QUALITY_VALIDATOR_SPEC_2026-11-27.md`: appended B1-C integration section.
+
+CI results: 44/44 Stage A, 32/32 B1 contract, 63/63 B1 validator; gate assertions passed. Live Bybit CI probe skipped because both public hosts returned HTTP 403 to GitHub runner. Candidate only; main unchanged.
+
+
+### B1-C hardening — 2026-11-27
+
+* `BasicAnalyticsEngine.analyze()`: requires exact active validator and policy version identity, otherwise fail-closed INVALID/WAIT.
+* `tests/b1-browser-live-check.cjs`: end-to-end synthetic normalization/contract/validator/engine checks for VALID, INVALID, STALE; verifies indicator arrays only appear for VALID.
+* Latest CI: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, gate/cleanup checks passed; live Bybit probe skipped on runner HTTP 403.
+
+
+## 16. Chart visualization C1 — 2026-11-27
+
+- `BasicAnalyticsEngine.calcEMA()` is reused for EMA200; `analyze()` now returns `ema200` and `metrics.lastEma200`.
+- Active `loadAndAnalyze()` requests 400 Bybit kline rows to supply EMA200 warm-up history.
+- `CandleChart.render()` draws EMA200, scales/clips moving-average overlays to the price pane, and renders synchronized volume bars in a separate lower pane.
+- Chart legend documents EMA200 and base-asset volume.
+- `tests/b1-browser-live-check.cjs` adds EMA200 warm-up and chart-rendering assertions.
+- Candidate branch only. CI run `45962613748` passed all suites and chart-specific desktop/mobile rendering assertions; live Bybit probe skipped on runner HTTP 403; iPhone Safari retest pending.
+
+
+## 17. B1-C quality-panel transparency — 2026-11-27
+
+- renderSuccess() now shows B1 status/version, validator reason codes, and explicit analysis admission/block status.
+- Browser harness verifies an INVALID negative-volume fixture renders VOLUME_NEGATIVE, Заблокирована · WAIT, and decision badge WAIT.
+- CI run 45963443614: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate passed, no page errors.
+- Latest panel-detail change awaits iPhone Safari visual check; independent B1 review and formal acceptance still pending.
+
+
+
+
+## 18. Architecture baseline and B1 consolidation — 2026-11-27
+
+- `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`: product scope, layer boundaries, provider-neutral data contract, REST/WS roles, common-cutoff MTF requirements, causal/no-lookahead analytics, scenario evidence contract, runtime/deployment/storage choices, security, testing and deferred decisions.
+- `docs/audits/B1_BRANCH_CONSOLIDATION_AUDIT_2026-11-27.md`: branch divergence, exact candidate HTML identities, external B1-E audit scope, integration incompatibility and controlled port plan.
+- New integration branch: `integration/b1-mtf-architecture-2026-11-27`, based on `b1/contract-review`. No source code changed in this documentation-only step; main unchanged.
+
+
+
+
+## 19. B1-E current-contract MTF implementation — 2026-11-27
+
+- `CryptoAnalyst_StageA_S6_updated.html`: adds isolated `B1MtfEngine` for synchronized 1D/4H/1H assembly, common provider-time cutoff, 500 ms finality, post-cutoff exclusion accounting, exact closed-window coverage, per-timeframe current B1 validation, immutable aggregate, sibling abort and generation coordination.
+- `B1DataContract.VERSION` and `B1QualityValidator.VERSION` incremented to 1.1.0; canonical schema identity is enforced. `source_diagnostics.excluded_after_cutoff_count` is mandatory and participates in raw-to-canonical row accounting.
+- `window.B1MtfSelfTest`: 12 deterministic cases, including exact coverage/finality, provider spread, local-time rejection, stale/mixed identity, deep freeze, sibling abort and superseded request suppression.
+- `tests/b1-browser-live-check.cjs`: awaits and asserts the MTF suite.
+- `.github/workflows/b1-candidate-verification.yml`: candidate integration branch and PR workflow triggers.
+- `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`: current B1-E behavior and acceptance limits.
+
+Latest CI run `45965680821`: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 12/12; browser UI/chart/gate checks passed, zero page errors. Live Bybit blocked by runner HTTP 403. Integration candidate only; main unchanged.
+
+Note: earlier entry saying no source code changed described the initial documentation-only setup before the subsequent MTF port commits. The source has since been changed on the integration branch.
+
+
+
+
+### B1-E MTF test inventory refresh — 2026-11-27
+
+`window.B1MtfSelfTest` now has 16 cases. Added no-forming/pending leakage, +1 ms spread rejection, multiple post-cutoff rejection, and missing-spread-policy rejection. Async cases verify sibling abort and superseded generation suppression. Latest CI run 45966127523: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 16/16; UI/gate/chart checks passed, zero page errors. Live Bybit blocked by runner HTTP 403.
+
+Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independent audit prompt is pinned to this exact blob.
+
+
+
+
+## 20. B1 snapshot identity and MTF finality hardening — 2026-11-27
+
+- `CryptoAnalyst_StageA_S6_updated.html`: B1 canonical snapshots require non-empty `snapshot_id`; quality reports carry that ID; B1-C and B1-E require exact report-to-snapshot identity before directional permission.
+- `CryptoAnalyst_StageA_S6_updated.html`: MTF fetch requires explicit `closedCandleCount`, retains pending-finality candles in `pending_finality_context`, and excludes them from `analysis_candles`.
+- `tests/b1-browser-live-check.cjs`: gate fixtures now carry matching canonical snapshot IDs and test a mismatched VALID report is blocked.
+- MTF self-test suite: 18/18; B1 validator suite: 65/65.
+- Latest CI run `45966700299`: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18, gate/UI/chart assertions passed, zero page errors. Live Bybit blocked by runner HTTP 403.
+- Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`. Main unchanged; integration candidate only.
+
+
+
+## 20. B1-E MTF hardening follow-up — 2026-11-27
+
+- `CryptoAnalyst_StageA_S6_updated.html`: removed implicit 400-candle fallback; explicit `closedCandleCount` is required. Added separate `pending_finality_context` output and regression proving pending-finality candles cannot enter `analysis_candles`.
+- MTF self-tests: 18/18. Latest CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64; total 158/158, gate/UI/chart assertions passed, zero page errors.
+- Latest HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`, 299,978 bytes. Live Bybit remains blocked by runner HTTP 403. Integration only; main unchanged.
+
+
+
+
+## 21. B1 analytics-series binding and live capture probe — 2026-11-27
+
+- `CryptoAnalyst_StageA_S6_updated.html`: B1-C compares the legacy candle series and last-closed price actually consumed by analytics against the exact canonical validated closed series; mismatch blocks with `ANALYTICS_CANDLE_DATA_MISMATCH` and WAIT.
+- `CryptoAnalyst_StageA_S6_updated.html`: empty matching series preserve INSUFFICIENT status; MTF suite now 20 cases, including external cancellation and Bybit 1000-row cap.
+- `tools/b1_live_probe.html`: schema v3 read-only concurrent Bybit 1D/4H/1H capture with strict provider-time parsing and failed-attempt timing/status evidence.
+- `docs/specs/B1_LIVE_CAPTURE_PROCEDURE.md`: Windows local host + iPhone Safari instructions.
+- `tests/b1-browser-live-check.cjs`: live-probe initial UI smoke check, no automatic external requests; quality gate series mismatch and empty-insufficient assertions.
+- Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; gate/UI/chart/probe smoke passed, zero page errors. Live Bybit blocked by runner HTTP 403.
+- Exact current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; main unchanged.
+
+
+
+## 22. B1-C analytics-input integrity guard — 2026-11-27
+
+- `BasicAnalyticsEngine.analyze()` now verifies the legacy closed-candle series and last-closed price consumed by indicators match the exact canonical snapshot that passed B1 validation. Divergence forces WAIT.
+- Empty but matching candle series preserve INSUFFICIENT status and `INSUFFICIENT_HISTORY` rather than being mislabeled INVALID.
+- Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; 161/161 named tests, UI/chart checks passed, zero browser page errors.
+- Current candidate HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; PR #8 draft, main unchanged. Live Bybit remains blocked by runner HTTP 403.
