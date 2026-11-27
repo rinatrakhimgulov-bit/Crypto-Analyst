@@ -65,7 +65,9 @@
   }
   function validatePivot(pivot, ids, asOf, equalityPolicy) {
     if (!isObject(pivot) || typeof pivot.pivot_id !== 'string' || !pivot.pivot_id.trim() || ids.has(pivot.pivot_id)) return 'PIVOT_ID_INVALID';
-    if (!['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE'].includes(pivot.sequence_status)) return 'PIVOT_SEQUENCE_STATUS_INVALID';
+    if (!['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE', 'AMBIGUOUS_FOR_SEQUENCE'].includes(pivot.sequence_status) ||
+        (pivot.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE' && pivot.exclusion_reason !== 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE') ||
+        (pivot.sequence_status !== 'AMBIGUOUS_FOR_SEQUENCE' && pivot.exclusion_reason != null)) return 'PIVOT_SEQUENCE_STATUS_INVALID';
     if (!['SWING_HIGH', 'SWING_LOW'].includes(pivot.type) || !Number.isFinite(pivot.price) || pivot.price <= 0) return 'PIVOT_VALUE_INVALID';
     for (const key of ['source_time_ms', 'confirmed_at_ms', 'available_at_ms']) {
       if (!Number.isSafeInteger(pivot[key]) || pivot[key] <= 0) return 'PIVOT_TIME_INVALID';
