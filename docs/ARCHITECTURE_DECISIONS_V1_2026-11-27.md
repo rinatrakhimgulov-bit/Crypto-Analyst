@@ -241,3 +241,14 @@ The isolated MTF assembler now has 18 regression tests, including no implicit hi
 ## Latest evidence supersession — 2026-11-27
 
 Latest completed run `45966700299`: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18; gate/UI/chart assertions passed, zero browser page errors; 159/159 named tests. Gate tests reject a VALID-looking report with mismatched `snapshot_id`. Candidate HTML blob `1cb41cfbc03534441774eeeaac08f36082f19ab9`. Branch comparison is 85 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 from both REST hosts on GitHub Actions. Decisions unchanged; B1 remains unaccepted.
+
+
+
+
+## 15. Analytics input integrity and live capture tooling — 2026-11-27
+
+The B1-C gate now enforces that the exact closed candles used by EMA/ATR/swings are identical to the canonical candles that passed B1 validation. It compares count, timestamps, OHLC, base volume, quote turnover and last-closed price. A mismatch produces INVALID/WAIT with `ANALYTICS_CANDLE_DATA_MISMATCH`. Empty matching series preserve INSUFFICIENT status. This removes an implicit trust boundary between the canonical quality snapshot and the legacy array consumed by the existing engine.
+
+Added a read-only Bybit V5 1D/4H/1H live capture page `tools/b1_live_probe.html` (schema v3) and an iPhone Safari / Windows local-host procedure. It captures raw payloads, strict provider timestamps, per-host attempt timing and errors; it does not upload data or place orders. Chromium CI smoke-checks the page without issuing external requests. Actual Bybit capture still requires a user-side run because GitHub Actions receives HTTP 403 from both public REST hosts.
+
+Latest candidate HTML blob: `2af63d1bbfec766606325450819d8ddff14173a2`; browser harness blob: `a23585f9688b9a04336c7f99da7a972513882f8e`; live probe blob: `3b5df8f0feda730c7e6564808f40ad4526f0e44a`. Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20, gate/UI/chart and probe-page smoke passed, zero browser errors. Main unchanged. B1 remains unaccepted pending independent review, live calibration, transport abort verification, Safari panel check and owner approval.
