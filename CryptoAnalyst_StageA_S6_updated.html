@@ -1078,7 +1078,8 @@
             conflicting_duplicate_count: Number.isFinite(dataset.quality && dataset.quality.conflictingDuplicateCount) ? dataset.quality.conflictingDuplicateCount : null,
             conflicting_duplicate_timestamps: Array.isArray(dataset.quality && dataset.quality.conflictingDuplicateTimestamps) ? dataset.quality.conflictingDuplicateTimestamps.slice() : null,
             raw_out_of_order_count: Number.isFinite(dataset.quality && dataset.quality.rawOutOfOrderCount) ? dataset.quality.rawOutOfOrderCount : null,
-            raw_order_expected: dataset.quality && dataset.quality.rawOrderExpected ? dataset.quality.rawOrderExpected : null
+            raw_order_expected: dataset.quality && dataset.quality.rawOrderExpected ? dataset.quality.rawOrderExpected : null,
+            excluded_after_cutoff_count: Number.isSafeInteger(dataset.mtfExcludedAfterCutoffCount) && dataset.mtfExcludedAfterCutoffCount >= 0 ? dataset.mtfExcludedAfterCutoffCount : 0
           },
           quote: {
             available: quoteAvailable,
@@ -1216,6 +1217,7 @@
           diagnostics.conflicting_duplicate_timestamps.every(ts => Number.isSafeInteger(ts) && ts > 0) &&
           new Set(diagnostics.conflicting_duplicate_timestamps).size === diagnostics.conflicting_duplicate_timestamps.length &&
           Number.isSafeInteger(diagnostics.raw_out_of_order_count) && diagnostics.raw_out_of_order_count >= 0 &&
+          Number.isSafeInteger(diagnostics.excluded_after_cutoff_count) && diagnostics.excluded_after_cutoff_count >= 0 &&
           diagnostics.raw_order_expected === 'descending';
         
         Object.assign(emptyReport, {
@@ -1261,7 +1263,8 @@
           const expectedNormalizedCount = diagnostics.raw_row_count -
             diagnostics.invalid_row_count -
             diagnostics.duplicate_count -
-            diagnostics.conflicting_duplicate_timestamps.length;
+            diagnostics.conflicting_duplicate_timestamps.length -
+            diagnostics.excluded_after_cutoff_count;
           if (expectedNormalizedCount !== all.length) {
             invalid('NORMALIZED_ROW_ACCOUNTING_MISMATCH', {
               raw_row_count: diagnostics.raw_row_count,
@@ -1466,6 +1469,372 @@
       minimum_required_count_by_timeframe: Object.freeze({ '1h': 100, '4h': 100, '1d': 100 }),
       allow_identical_duplicates: true
     });
+
+
+    // =========================================================================
+    // B1-E: MULTI-TIMEFRAME COMMON-CUTOFF ASSEMBLY (CURRENT B1 CONTRACT)
+    // Isolated from the selected-chart flow and directional engine until accepted.
+    // =========================================================================
+    const B1MtfEngine = (() => {
+      const REQUIRED = Object.freeze(['1d', '4h', '1h']);
+      const INTERVAL = Object.freeze({ '1d': 'D', '4h': '240', '1h': '60' });
+      const STEP = Object.freeze({ '1d': 86400000, '4h': 14400000, '1h': 3600000 });
+      const FINALITY = B1_QUALITY_POLICY.finality_safety_lag_ms;
+
+      function freezeDeep(value) {
+        if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+        Object.freeze(value);
+        for (const key of Object.keys(value)) freezeDeep(value[key]);
+        return value;
+      }
+
+      function failure(code, message, details = {}) {
+        const reason = { code, severity: 'CRITICAL', timeframe: null, message, ...details };
+        return freezeDeep({
+          contract_version: '1.0.0',
+          status: 'INVALID',
+          directional_allowed: false,
+          analysis_as_of_ms: null,
+          provider_time_spread_ms: null,
+          timeframes: Object.fromEntries(REQUIRED.map(tf => [tf, {
+            timeframe: tf, status: 'INVALID', snapshot: null, analysis_candles: [],
+            quality_report: null, reasons: [{ ...reason, timeframe: tf }]
+          }])),
+          reasons: [reason]
+        });
+      }
+
+      function assemble(datasetsByTimeframe, validationNowMs, options = {}) {
+        const maxSpread = options.maxProviderTimeSpreadMs;
+        const closedCount = options.closedCandleCount;
+        if (!Number.isSafeInteger(validationNowMs) || validationNowMs < 0)
+          return failure('MTF_VALIDATION_TIME_INVALID', 'validationNowMs must be a non-negative safe integer.');
+        if (!Number.isSafeInteger(maxSpread) || maxSpread < 0)
+          return failure('MTF_PROVIDER_TIME_POLICY_MISSING', 'A measured non-negative maxProviderTimeSpreadMs is required.');
+        if (!Number.isSafeInteger(closedCount) || closedCount < 1)
+          return failure('MTF_CLOSED_COUNT_INVALID', 'closedCandleCount must be a positive safe integer.');
+        if (REQUIRED.some(tf => closedCount < B1_QUALITY_POLICY.minimum_required_count_by_timeframe[tf]))
+          return failure('MTF_CLOSED_COUNT_BELOW_POLICY', 'closedCandleCount must satisfy the current minimum history policy for every timeframe.');
+
+        if (!datasetsByTimeframe || typeof datasetsByTimeframe !== 'object' || Array.isArray(datasetsByTimeframe))
+          return failure('MTF_INPUT_MISSING', 'No timeframe datasets were supplied.');
+        const missing = REQUIRED.filter(tf => !datasetsByTimeframe[tf]);
+        if (missing.length) return failure('MTF_TIMEFRAME_MISSING', 'Required timeframe response is missing.', { timeframes: missing });
+
+        const datasets = REQUIRED.map(tf => datasetsByTimeframe[tf]);
+        const symbols = new Set(datasets.map(d => String(d && d.symbol || '')));
+        const sources = new Set(datasets.map(d => String(d && d.source || '')));
+        const markets = new Set(datasets.map(d => String(d && d.marketType || '')));
+        if (symbols.size !== 1 || symbols.has('')) return failure('MTF_SYMBOL_MISMATCH', 'All timeframes must refer to one known instrument.');
+        if (sources.size !== 1 || sources.has('')) return failure('MTF_PROVIDER_MISMATCH', 'All timeframes must use one known provider.');
+        if (markets.size !== 1 || markets.has('')) return failure('MTF_MARKET_TYPE_MISMATCH', 'All timeframes must use one known market type.');
+
+        const providerTimes = datasets.map(d => d && d.providerServerTimeMs);
+        if (datasets.some(d => !d || d.timeSource !== 'provider' ||
+            !Number.isSafeInteger(d.providerServerTimeMs) || d.providerServerTimeMs <= 0))
+          return failure('MTF_PROVIDER_TIME_UNTRUSTED', 'Every timeframe requires a trusted provider server timestamp.');
+
+        const cutoff = Math.min(...providerTimes);
+        const spread = Math.max(...providerTimes) - cutoff;
+        if (spread > maxSpread) {
+          const failed = failure('MTF_PROVIDER_TIME_SPREAD_EXCEEDED', 'Provider-time spread exceeds the configured measured policy.', {
+            provider_time_spread_ms: spread, max_provider_time_spread_ms: maxSpread
+          });
+          return freezeDeep({ ...failed, analysis_as_of_ms: cutoff, provider_time_spread_ms: spread });
+        }
+
+        const timeframes = {};
+        const aggregateReasons = [];
+        const statuses = [];
+
+        for (const tf of REQUIRED) {
+          const source = datasetsByTimeframe[tf];
+          const step = STEP[tf];
+          const localReasons = [];
+          if (source.interval !== INTERVAL[tf]) {
+            localReasons.push({ code: 'MTF_INTERVAL_MISMATCH', severity: 'CRITICAL', timeframe: tf, message: 'Dataset interval does not match the requested timeframe.' });
+            timeframes[tf] = { timeframe: tf, status: 'INVALID', snapshot: null, analysis_candles: [], quality_report: null, reasons: localReasons };
+            statuses.push('INVALID'); aggregateReasons.push(...localReasons); continue;
+          }
+          if (!Array.isArray(source.allCandles) || source.allCandles.length === 0) {
+            localReasons.push({ code: 'MTF_NORMALIZED_CANDLES_MISSING', severity: 'CRITICAL', timeframe: tf, message: 'Normalized source candles are missing.' });
+            timeframes[tf] = { timeframe: tf, status: 'INVALID', snapshot: null, analysis_candles: [], quality_report: null, reasons: localReasons };
+            statuses.push('INVALID'); aggregateReasons.push(...localReasons); continue;
+          }
+          if (!Number.isSafeInteger(source.fetchedAtLocalMs) || source.fetchedAtLocalMs <= 0) {
+            localReasons.push({ code: 'MTF_RECEIVE_TIME_INVALID', severity: 'CRITICAL', timeframe: tf, message: 'Local receive timestamp is missing or invalid.' });
+            timeframes[tf] = { timeframe: tf, status: 'INVALID', snapshot: null, analysis_candles: [], quality_report: null, reasons: localReasons };
+            statuses.push('INVALID'); aggregateReasons.push(...localReasons); continue;
+          }
+
+          const excluded = source.allCandles.filter(c => Number.isSafeInteger(c && c.ts) && c.ts > cutoff);
+          if (excluded.length > 1) {
+            localReasons.push({ code: 'MTF_MULTIPLE_POST_CUTOFF_ROWS', severity: 'CRITICAL', timeframe: tf, message: 'More than one normalized candle opens after the common cutoff.' });
+          }
+          const eligibleRows = source.allCandles.filter(c => Number.isSafeInteger(c && c.ts) && c.ts <= cutoff);
+          const rebased = {
+            ...source,
+            serverTimeMs: cutoff,
+            providerServerTimeMs: cutoff,
+            timeSource: 'provider',
+            allCandles: eligibleRows,
+            closedCandles: [],
+            formingCandle: null,
+            mtfExcludedAfterCutoffCount: excluded.length
+          };
+
+          let snapshot, report;
+          try {
+            snapshot = B1DataContract.toSnapshot(rebased);
+            report = B1QualityValidator.validate(snapshot, B1_QUALITY_POLICY, validationNowMs).report;
+          } catch (error) {
+            localReasons.push({ code: 'MTF_CANONICAL_MAPPING_FAILED', severity: 'CRITICAL', timeframe: tf, message: error && error.message ? error.message : 'Canonical mapping failed.' });
+            timeframes[tf] = { timeframe: tf, status: 'INVALID', snapshot: null, analysis_candles: [], quality_report: null, reasons: localReasons };
+            statuses.push('INVALID'); aggregateReasons.push(...localReasons); continue;
+          }
+
+          const closed = snapshot.candles_by_timeframe[tf] || [];
+          const forming = snapshot.forming_candle_by_timeframe[tf] || null;
+          const unknown = snapshot.unclassified_candles_by_timeframe[tf] || [];
+          const expectedEnd = Math.floor((cutoff - FINALITY) / step) * step - step;
+          const expectedStart = expectedEnd - (closedCount - 1) * step;
+          const selected = closed.filter(c => c.open_time_ms >= expectedStart && c.open_time_ms <= expectedEnd);
+          let coverageOk = selected.length === closedCount &&
+            selected[0] && selected[0].open_time_ms === expectedStart &&
+            selected[selected.length - 1] && selected[selected.length - 1].open_time_ms === expectedEnd;
+          if (coverageOk) {
+            for (let i = 0; i < selected.length; i++) {
+              if (selected[i].open_time_ms !== expectedStart + i * step) { coverageOk = false; break; }
+            }
+          }
+          if (!coverageOk) {
+            localReasons.push({
+              code: 'MTF_CLOSED_COVERAGE_INCOMPLETE', severity: 'CRITICAL', timeframe: tf,
+              message: 'The exact requested closed-candle window is incomplete at the common cutoff.',
+              expected_start_ms: expectedStart, expected_end_ms: expectedEnd,
+              expected_count: closedCount, actual_count: selected.length
+            });
+          }
+          if (excluded.length > 1 && !localReasons.some(r => r.code === 'MTF_MULTIPLE_POST_CUTOFF_ROWS')) {
+            localReasons.push({ code: 'MTF_MULTIPLE_POST_CUTOFF_ROWS', severity: 'CRITICAL', timeframe: tf, message: 'Multiple post-cutoff rows are not accepted.' });
+          }
+
+          const status = localReasons.length ? 'INVALID' : report.status;
+          const reasons = [
+            ...report.reasons.map(r => ({ ...r, timeframe: tf })),
+            ...localReasons
+          ];
+          const entry = {
+            timeframe: tf,
+            provider_time_ms: source.providerServerTimeMs,
+            receive_time_ms: source.fetchedAtLocalMs,
+            request_started_at_ms: Number.isSafeInteger(source.requestStartedAtMs) ? source.requestStartedAtMs : null,
+            request_completed_at_ms: Number.isSafeInteger(source.requestCompletedAtMs) ? source.requestCompletedAtMs : null,
+            excluded_after_cutoff_count: excluded.length,
+            pending_finality_count: unknown.length,
+            status,
+            snapshot,
+            analysis_candles: selected,
+            forming_context: forming,
+            quality_report: report,
+            reasons
+          };
+          timeframes[tf] = entry;
+          statuses.push(status);
+          aggregateReasons.push(...reasons);
+        }
+
+        const precedence = ['INVALID', 'STALE', 'INSUFFICIENT', 'DEGRADED', 'VALID'];
+        const aggregateStatus = precedence.find(status => statuses.includes(status)) || 'INVALID';
+        const directionalAllowed = aggregateStatus === 'VALID' &&
+          REQUIRED.every(tf => timeframes[tf] && timeframes[tf].status === 'VALID' &&
+            timeframes[tf].quality_report &&
+            timeframes[tf].quality_report.validator_version === B1QualityValidator.VERSION &&
+            timeframes[tf].quality_report.policy_version === B1_QUALITY_POLICY.version &&
+            timeframes[tf].quality_report.status === 'VALID' &&
+            timeframes[tf].analysis_candles.length === closedCount);
+
+        return freezeDeep({
+          contract_version: '1.0.0',
+          symbol: datasets[0].symbol,
+          source: datasets[0].source,
+          market_type: datasets[0].marketType,
+          required_timeframes: REQUIRED.slice(),
+          analysis_as_of_ms: cutoff,
+          provider_time_spread_ms: spread,
+          max_provider_time_spread_ms: maxSpread,
+          requested_closed_count: closedCount,
+          status: aggregateStatus,
+          directional_allowed: directionalAllowed,
+          timeframes,
+          reasons: aggregateReasons
+        });
+      }
+
+      async function fetchAndAssemble(adapter, symbol, externalSignal, options = {}) {
+        const maxSpread = options.maxProviderTimeSpreadMs;
+        const closedCount = Number.isSafeInteger(options.closedCandleCount) ? options.closedCandleCount : 400;
+        if (!Number.isSafeInteger(maxSpread) || maxSpread < 0)
+          throw new RangeError('A measured maxProviderTimeSpreadMs is required; no production default is assumed.');
+        if (!Number.isSafeInteger(closedCount) || closedCount < 1)
+          throw new RangeError('closedCandleCount must be a positive safe integer.');
+        const controller = new AbortController();
+        const onExternalAbort = () => controller.abort(externalSignal.reason || new Error('MTF request aborted'));
+        if (externalSignal) {
+          if (externalSignal.aborted) throw new DOMException('Aborted', 'AbortError');
+          externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+        }
+        try {
+          const pairs = await Promise.all(REQUIRED.map(async tf => {
+            const requestStartedAtMs = Date.now();
+            const rawLimit = closedCount + Math.ceil(maxSpread / STEP[tf]) + 2;
+            if (rawLimit > 1000) throw new RangeError('MTF raw request exceeds the Bybit V5 1000-row maximum.');
+            const dataset = await adapter.fetchMarketSnapshot(symbol, INTERVAL[tf], controller.signal, rawLimit);
+            dataset.requestStartedAtMs = requestStartedAtMs;
+            dataset.requestCompletedAtMs = Date.now();
+            return [tf, dataset];
+          }).map(p => p.catch(error => { controller.abort(error); throw error; })));
+          if (externalSignal && externalSignal.aborted) throw new DOMException('Aborted', 'AbortError');
+          return assemble(Object.fromEntries(pairs), Date.now(), { ...options, closedCandleCount: closedCount });
+        } finally {
+          if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
+        }
+      }
+
+      function createCoordinator() {
+        let generation = 0;
+        let activeController = null;
+        return Object.freeze({
+          async fetch(adapter, symbol, options = {}) {
+            const current = ++generation;
+            if (activeController) activeController.abort(new Error('Superseded by newer MTF request.'));
+            const controller = new AbortController();
+            activeController = controller;
+            try {
+              const result = await fetchAndAssemble(adapter, symbol, controller.signal, options);
+              if (current !== generation) return { superseded: true, generation: current };
+              return { superseded: false, generation: current, result };
+            } catch (error) {
+              if (current !== generation) return { superseded: true, generation: current };
+              throw error;
+            } finally {
+              if (current === generation && activeController === controller) activeController = null;
+            }
+          },
+          cancel() {
+            generation++;
+            if (activeController) activeController.abort(new Error('MTF request cancelled.'));
+            activeController = null;
+          },
+          get generation() { return generation; }
+        });
+      }
+
+      return Object.freeze({ REQUIRED_TIMEFRAMES: REQUIRED, assemble, fetchAndAssemble, createCoordinator });
+    })();
+
+    window.B1MtfSelfTest = {
+      runAll() {
+        const results = [];
+        const test = (name, fn) => { try { fn(); results.push({ name, passed: true }); } catch (error) { results.push({ name, passed: false, error: error.message }); } };
+        const expect = (condition, message) => { if (!condition) throw new Error(message); };
+        const step = { '1d': 86400000, '4h': 14400000, '1h': 3600000 };
+        const baseBoundary = Math.floor(1800000000000 / step['1d']) * step['1d'] + 12 * step['4h'];
+        const cutoff = Math.floor(baseBoundary / step['1h']) * step['1h'] + step['1h'] - 100;
+        const spread = 200, count = 120, now = cutoff + 5000;
+        const make = (tf, providerTime, opts = {}) => {
+          const rawLimit = count + Math.ceil(spread / step[tf]) + 2;
+          const latestOpen = Math.floor(providerTime / step[tf]) * step[tf];
+          const rows = Array.from({ length: rawLimit }, (_, i) => {
+            const ts = latestOpen - i * step[tf];
+            const close = 1000 + i * 0.1;
+            return [String(ts), String(close), String(close + 2), String(close - 2), String(close + 1), '10', '10000'];
+          });
+          const dataset = BybitAdapter.normalize(rows, {
+            symbol: opts.symbol || 'BTCUSDT', interval: INTERVAL_FOR_TEST[tf],
+            hostUsed: 'api.bybit.com', serverTimeMs: providerTime,
+            providerServerTimeMs: opts.localFallback ? null : providerTime,
+            timeSource: opts.localFallback ? 'local_fallback' : 'provider',
+            clockSkewMs: 0, requestedCount: rawLimit,
+            tickerStatus: { available: false, price: null, timeMs: null, hostUsed: 'api.bybit.com', error: 'MTF fixture' }
+          });
+          dataset.fetchedAtLocalMs = opts.stale ? now - 121000 : now - 1000;
+          return dataset;
+        };
+        const INTERVAL_FOR_TEST = { '1d': 'D', '4h': '240', '1h': '60' };
+        const set = (extra = {}) => ({
+          '1d': make('1d', cutoff, extra['1d'] || {}),
+          '4h': make('4h', cutoff + 100, extra['4h'] || {}),
+          '1h': make('1h', cutoff + 200, extra['1h'] || {})
+        });
+        const run = (datasets = set(), opts = { maxProviderTimeSpreadMs: spread, closedCandleCount: count }) =>
+          B1MtfEngine.assemble(datasets, now, opts);
+
+        test('01 valid 1D/4H/1H set shares minimum provider cutoff', () => {
+          const result = run();
+          expect(result.directional_allowed && result.status === 'VALID', 'valid synchronized set was blocked: ' + JSON.stringify(result.reasons));
+          expect(result.analysis_as_of_ms === cutoff && result.provider_time_spread_ms === spread, 'common cutoff or spread is wrong');
+          expect(step && result.required_timeframes.join(',') === '1d,4h,1h', 'required timeframe order is wrong');
+        });
+        test('02 later 1H candle after cutoff is excluded and counted', () => {
+          const result = run();
+          expect(result.timeframes['1h'].excluded_after_cutoff_count === 1, 'post-cutoff candle was not excluded');
+          expect(result.timeframes['1h'].analysis_candles.length === count, '1H closed coverage was shortened');
+          expect(result.timeframes['1h'].forming_context && result.timeframes['1h'].forming_context.open_time_ms <= cutoff, 'forming context is not anchored to cutoff');
+        });
+        test('03 missing timeframe fails closed', () => {
+          const data = set(); delete data['4h'];
+          const result = run(data);
+          expect(!result.directional_allowed && result.reasons.some(r => r.code === 'MTF_TIMEFRAME_MISSING'), 'missing timeframe was accepted');
+        });
+        test('04 provider time fallback cannot qualify', () => {
+          const result = run(set({ '4h': { localFallback: true } }));
+          expect(!result.directional_allowed && result.reasons.some(r => r.code === 'MTF_PROVIDER_TIME_UNTRUSTED'), 'local time fallback was accepted');
+        });
+        test('05 provider time spread beyond policy fails closed', () => {
+          const result = run(set({ '1h': { } }).replace ? set() : set());
+          const changed = set();
+          changed['1h'].providerServerTimeMs = cutoff + 1000;
+          const blocked = run(changed);
+          expect(!blocked.directional_allowed && blocked.reasons.some(r => r.code === 'MTF_PROVIDER_TIME_SPREAD_EXCEEDED'), 'excessive spread was accepted');
+        });
+        test('06 stale timeframe blocks aggregate', () => {
+          const result = run(set({ '4h': { stale: true } }));
+          expect(!result.directional_allowed && result.status === 'STALE', 'stale timeframe did not block aggregate');
+        });
+        test('07 wrong symbol blocks aggregate', () => {
+          const result = run(set({ '1h': { symbol: 'ETHUSDT' } }));
+          expect(!result.directional_allowed && result.reasons.some(r => r.code === 'MTF_SYMBOL_MISMATCH'), 'mixed symbols were accepted');
+        });
+        test('08 incomplete closed coverage blocks aggregate', () => {
+          const data = set();
+          data['1h'].allCandles = data['1h'].allCandles.slice(0, -5);
+          data['1h'].quality.totalFetched -= 5;
+          data['1h'].quality.requestedCount -= 5;
+          data['1h'].quality.responseShortfall = 0;
+          const result = run(data);
+          expect(!result.directional_allowed && result.reasons.some(r => r.code === 'MTF_CLOSED_COVERAGE_INCOMPLETE'), 'short coverage was accepted');
+        });
+        test('09 exact finality boundary is accepted', () => {
+          const exactCutoff = cutoff + 500;
+          const data = {
+            '1d': make('1d', exactCutoff),
+            '4h': make('4h', exactCutoff),
+            '1h': make('1h', exactCutoff)
+          };
+          const result = B1MtfEngine.assemble(data, exactCutoff + 1000, { maxProviderTimeSpreadMs: 0, closedCandleCount: count });
+          expect(result.timeframes['1h'].analysis_candles.some(c => c.close_time_ms + FINALITY <= exactCutoff), 'finality boundary candle missing');
+        });
+        test('10 result and nested candles are deeply immutable', () => {
+          const result = run();
+          expect(Object.isFrozen(result) && Object.isFrozen(result.timeframes) &&
+            Object.isFrozen(result.timeframes['1d'].snapshot) &&
+            Object.isFrozen(result.timeframes['1d'].analysis_candles) &&
+            Object.isFrozen(result.timeframes['1d'].analysis_candles[0]), 'MTF result is not deeply immutable');
+        });
+        return { results, totals: { total: results.length, passed: results.filter(x => x.passed).length, failed: results.filter(x => !x.passed).length } };
+      }
+    };
 
     window.B1DataContractSelfTest = {
       runAll() {
