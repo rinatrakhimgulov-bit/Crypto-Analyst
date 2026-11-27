@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/b2g-chart-projection-contract-2026-11-27
+      - integration/b2-clean-preview-2026-11-27
   workflow_dispatch:
 
 permissions:
