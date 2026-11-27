@@ -173,3 +173,9 @@ Each per-timeframe quality report must match both the current validator/policy v
 Latest completed CI run `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; B1 gate/UI, chart, and live-probe page smoke checks passed, zero browser page errors. Live Bybit is blocked by HTTP 403 from both public hosts on the runner.
 
 Current exact HTML blob: `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes). Browser harness: `a23585f9688b9a04336c7f99da7a972513882f8e`. Live probe tool: `3b5df8f0feda730c7e6564808f40ad4526f0e44a`.
+
+
+
+## Current full-suite verification — 2026-11-27
+
+Latest CI run `45967551538`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 20/20; UI/gate/chart checks passed, zero browser page errors; 161/161 named tests. Current PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`; HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes). Live Bybit remains blocked by HTTP 403 from both public REST hosts on GitHub Actions. The MTF implementation remains isolated and not connected to directional output.
