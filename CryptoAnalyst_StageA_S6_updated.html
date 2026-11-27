@@ -4107,6 +4107,20 @@
         return true;
       }
 
+      candleVisualStyle(candle, isForming) {
+        const isBull = candle.close >= candle.open;
+        if (isForming) {
+          return {
+            wickColor: isBull ? '#4ade80' : '#f87171',
+            bodyColor: isBull ? 'rgba(34,197,94,0.58)' : 'rgba(239,68,68,0.58)'
+          };
+        }
+        return {
+          wickColor: isBull ? '#22c55e' : '#ef4444',
+          bodyColor: isBull ? '#22c55e' : '#ef4444'
+        };
+      }
+
       upsertLiveCandle(candle, stepMs) {
         if (!candle || !Number.isSafeInteger(candle.ts) || !Number.isFinite(stepMs) || stepMs <= 0 ||
             ![candle.open, candle.high, candle.low, candle.close, candle.volume, candle.turnover].every(Number.isFinite) ||
@@ -4400,8 +4414,9 @@
           const yOpen = yForPrice(c.open);
           const yClose = yForPrice(c.close);
 
-          const wickColor = isForming ? '#94a3b8' : (isBull ? '#22c55e' : '#ef4444');
-          const bodyColor = isForming ? 'rgba(148, 163, 184, 0.25)' : (isBull ? '#22c55e' : '#ef4444');
+          const candleStyle = this.candleVisualStyle(c, isForming);
+          const wickColor = candleStyle.wickColor;
+          const bodyColor = candleStyle.bodyColor;
 
           ctx.strokeStyle = wickColor;
           ctx.lineWidth = 1.2;
@@ -5397,6 +5412,10 @@
             const tickerLowMoved = chart.updateFormingCandleFromTicker(8.5);
             assert(tickerLowMoved && chart.candles[1].low === 8.5 && chart.candles[1].close === 8.5,
               'Ticker price must extend the forming candle low and update close');
+            const formingBullStyle = chart.candleVisualStyle({ open: 10, close: 11 }, true);
+            const formingBearStyle = chart.candleVisualStyle({ open: 10, close: 9 }, true);
+            assert(formingBullStyle.bodyColor.includes('34,197,94') && formingBearStyle.bodyColor.includes('239,68,68'),
+              'Forming candle must use live bullish/bearish colors instead of muted neutral brown/gray');
             // Restore the REST baseline before testing an independent kline update.
             chart.setData(base, 1, null, 10);
             const updated = chart.upsertLiveCandle({
