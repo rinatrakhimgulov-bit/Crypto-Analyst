@@ -1241,4 +1241,10 @@ The exact-artifact independent review prompt is `docs/audits/PROMPT_B1_CURRENT_C
 
 ## Latest B1-E test refresh — 2026-11-27
 
-Current integration HTML blob: `1cb41cfbc03534441741774eeeaac08f36082f19ab9` (299,978 bytes). Latest CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64, MTF 18/18; gate/UI/chart checks passed, zero page errors; 158/158 total named tests. Added fail-before-network behavior for missing closed-candle count and explicit pending-finality context separation. Branch 66 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 on GitHub runners. Independent review, live concurrent capture/spread calibration, transport abort verification, Safari panel check and owner acceptance remain open. Main unchanged.
+Current integration HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64, MTF 18/18; gate/UI/chart checks passed, zero page errors; 158/158 total named tests. Added fail-before-network behavior for missing closed-candle count and explicit pending-finality context separation. Branch 66 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 on GitHub runners. Independent review, live concurrent capture/spread calibration, transport abort verification, Safari panel check and owner acceptance remain open. Main unchanged.
+
+
+
+## Latest handover correction — 2026-11-27
+
+Correct current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest completed CI run `45966700299`: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18; 159/159 named tests, UI/chart checks passed, zero page errors. Gate tests reject a VALID-looking report with a mismatched `snapshot_id`. Branch is 85 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 from both hosts. Main unchanged; independent review and acceptance gates remain open.
