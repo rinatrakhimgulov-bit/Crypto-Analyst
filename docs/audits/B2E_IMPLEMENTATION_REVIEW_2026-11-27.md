@@ -38,7 +38,7 @@ Controls present:
 
 ## Verification
 
-GitHub Actions run [46017280509](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46016401705) passed **24/24** deterministic tests on the exact candidate commit.
+GitHub Actions run [46017280509](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280509) passed **24/24** deterministic tests on the exact candidate commit.
 
 The suite includes bullish and bearish successful role reversals, failed retest, expiry, pending/unresolved windows, explicit tolerance, future-zone exclusion, invalid event/zone provenance and an end-to-end B1 → B2-A → B2-B → B2-C → B2-D → B2-E fixture. The combined integrated suite [46017280701](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280701) also passed **119/119** tests across all five engines in one checkout.
 
