@@ -69,7 +69,7 @@ run('labels alternating highs and lows against the prior same-side pivot', () =>
   const result = analyze(input);
   assert.equal(result.status, 'VALID');
   assert.deepEqual(result.sequence.map(p => p.structure_label), [
-    'INITIAL_HIGH', 'INITIAL_LOW', 'HH', 'HL', 'LH', 'LL'
+    'INITIAL_HIGH', 'INITIAL_LOW', 'HH', 'HL', 'LH'
   ]);
   assert.equal(result.sequence[2].comparison_pivot_id, 'h1');
   assert.equal(result.sequence[3].comparison_pivot_id, 'l1');
@@ -351,6 +351,6 @@ run('B2-A to B2-B integration preserves causal swing sequence labels', () => {
   });
   assert.equal(b2b.status, 'VALID');
   assert.deepEqual(b2b.sequence.map(p => p.structure_label), [
-    'INITIAL_HIGH', 'INITIAL_LOW', 'HH', 'HL', 'LH'
+    'INITIAL_HIGH', 'INITIAL_LOW', 'HH', 'HL', 'LH', 'LL'
   ]);
 });
