@@ -785,3 +785,13 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 
 
 - Final clean-branch historical replay run 46035136810: passed with the current B2-A–B2-G source set; report uploaded as the `b2-historical-replay-report` artifact. This remains archive-based synthetic-B1 replay, not live-provider validation.
+
+
+### Full historical B2 replay
+
+- Added `docs/audits/B2_HISTORICAL_REPLAY_RESULT_2026-11-27.md` based on successful workflow run 46035136810.
+- Replayed full B2-A/B/C over BTCUSDT and ETHUSDT on 1H/4H/1D historical archive series.
+- All six series passed archive integrity checks; 18/18 prefix-invariance checks passed.
+- B2-D/E lifecycle behavior was exercised across five sampled 160-candle windows per series and a final synchronized MTF window. Do not describe this as a full-series B2-D/E replay.
+- Synthetic MTF fixture used zero provider-time spread; this does not calibrate live Bybit timing.
+- The archive ends 2025-12-05. No trading edge, profitability or 2026 adaptation has been established.
