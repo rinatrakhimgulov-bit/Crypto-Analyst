@@ -492,3 +492,18 @@ Latest completed CI run `45966502044`: Stage A 44/44, B1 contract 32/32, B1 vali
 ## Full-suite verification supersession — 2026-11-27
 
 The newest completed run `45966700299` supersedes the earlier 158-test report: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, MTF 18/18; gate/UI/chart assertions passed, zero browser page errors; 159/159 named tests. The gate suite includes rejection of a VALID-looking report with mismatched `snapshot_id`. Candidate HTML blob remains `1cb41cfbc03534441774eeeaac08f36082f19ab9`. Live Bybit remains blocked by runner HTTP 403.
+
+
+
+
+## B1 analytics series integrity and live capture utility — 2026-11-27
+
+Internal review found a second trust boundary: B1-B validated `canonicalSnapshot`, while the existing BasicAnalyticsEngine consumed the parallel legacy `dataset.closedCandles` and `prices.lastClosedPrice`. The two representations were normally generated from the same adapter response, but this was not enforced. B1-C now compares the complete series (count, timestamps, OHLC, base volume, quote turnover) and last-closed price against the canonical validated series before directional analysis. Mismatch blocks with INVALID/WAIT and `ANALYTICS_CANDLE_DATA_MISMATCH`. A matching empty series preserves INSUFFICIENT rather than being mislabelled INVALID.
+
+Added/expanded browser gate assertions for series mismatch and empty insufficient history. MTF suite now 20/20, including 1000-row cap and external abort. B1 validator suite 65/65.
+
+Ported and hardened `tools/b1_live_probe.html` schema v3: strict positive safe-integer provider time; per-host attempt records retain response-header/body timing and HTTP status even on failed attempts; read-only raw 1D/4H/1H captures. Added iPhone Safari procedure using a Windows PC as a local HTTP host. CI smoke-checks the probe UI and confirms it does not auto-request Bybit on load.
+
+Latest CI run `45967551538`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 20/20, gate/UI/chart and probe smoke passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public hosts on GitHub Actions.
+
+Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; harness `a23585f9688b9a04336c7f99da7a972513882f8e`; probe `3b5df8f0feda730c7e6564808f40ad4526f0e44a`. Main unchanged. B1 acceptance gates remain open.
