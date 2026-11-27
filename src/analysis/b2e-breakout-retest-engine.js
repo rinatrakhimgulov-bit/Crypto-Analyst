@@ -122,7 +122,6 @@
           representative_price: median(prices),
           cluster_span_price: Math.max(...prices) - Math.min(...prices),
           touch_count: new Set(cluster.map(p => p.source_time_ms)).size,
-          touch_count: new Set(cluster.map(p => p.source_time_ms)).size,
           first_touch_time_ms: Math.min(...cluster.map(p => p.source_time_ms)),
           last_touch_time_ms: Math.max(...cluster.map(p => p.source_time_ms)),
           available_at_ms: Math.max(...cluster.map(p => p.available_at_ms)),
@@ -153,10 +152,17 @@
   function makeLifecycle(event, zone, candles, breakIndex, policy) {
     const rp = policy.retest_policy;
     let touchIndex = -1;
+    let preTouchFailureIndex = -1;
     const retestEnd = Math.min(candles.length - 1, breakIndex + rp.retest_window_bars);
     for (let i = breakIndex + 1; i <= retestEnd; i++) {
       if (isTouch(candles[i], zone, policy)) {
         touchIndex = i;
+        break;
+      }
+      // A gap can close beyond the failure boundary without intersecting the zone.
+      // That is still a failed breakout and must not be ignored in favor of a later retest.
+      if (outcome(event.direction, candles[i], zone, policy) === 'FAILURE') {
+        preTouchFailureIndex = i;
         break;
       }
     }
@@ -180,6 +186,25 @@
       failure_buffer_price: rp.failure_buffer_price
     };
 
+    if (touchIndex < 0 && preTouchFailureIndex >= 0) {
+      const failureCandle = candles[preTouchFailureIndex];
+      return {
+        ...base,
+        status: 'RETEST_FAILED',
+        role_transition_status: 'REJECTED',
+        effective_role: zone.role,
+        touch: null,
+        confirmation: {
+          outcome: 'FAILURE',
+          candle_open_time_ms: failureCandle.open_time_ms,
+          candle_close_time_ms: failureCandle.close_time_ms,
+          candle_close: failureCandle.close,
+          available_at_ms: failureCandle.close_time_ms + policy.finality_safety_lag_ms,
+          bars_after_break: preTouchFailureIndex - breakIndex
+        },
+        bars_observed_after_break: Math.max(0, candles.length - 1 - breakIndex)
+      };
+    }
     if (touchIndex < 0) {
       const windowComplete = candles.length - 1 >= breakIndex + rp.retest_window_bars;
       return {
