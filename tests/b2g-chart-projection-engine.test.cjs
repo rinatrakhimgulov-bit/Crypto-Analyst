@@ -13,8 +13,8 @@ const POLICY = {
   b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
-  b2b_engine_version: '2.0.0-b2b',
-  b2b_policy_version: 'b2b-swing-sequence-v1',
+  b2b_engine_version: '2.1.0-b2b',
+  b2b_policy_version: 'b2b-swing-sequence-v2',
   b2c_engine_version: '2.0.0-b2c',
   b2c_policy_version: 'b2c-state-v1',
   b2d_engine_version: '2.0.0-b2d',
@@ -25,6 +25,7 @@ const POLICY = {
   b2e_retest_policy_version: 'retest-policy-v1',
   b2f_engine_version: '2.0.0-b2f',
   b2f_policy_version: 'b2f-mtf-confluence-v1',
+  b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
   finality_safety_lag_ms: LAG
 };
 let passed = 0;
@@ -143,8 +144,8 @@ function makeInput() {
     admission: {
       status: 'ADMITTED',
       snapshot_id: snapshotId,
-      b2b_engine_version: '2.0.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v1',
+      b2b_engine_version: '2.1.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v2',
       b1_validator_version: '1.1.0',
       b1_quality_policy_version: POLICY.b1_quality_policy_version
     },
@@ -325,6 +326,7 @@ run('valid projection maps active pivots, events, zones, retests and MTF context
   assert.equal(result.status, 'VALID');
   assert.equal(result.swing_markers.length, 3);
   assert.equal(result.superseded_pivots.length, 1);
+  assert.equal(result.ambiguous_pivots.length, 0);
   assert.equal(result.structure_events.length, 1);
   assert.equal(result.zones.length, 1);
   assert.equal(result.candidate_levels.length, 2);
@@ -479,6 +481,19 @@ run('future retest confirmation blocks', () => {
   input.b2e_result.lifecycles[0].confirmation.available_at_ms = AS_OF + 1;
   assert.equal(analyze(input).admission.reasons[0].code, 'B2E_CONFIRMATION_INVALID');
 });
+run('ambiguous same-candle dual pivots are projected separately, never as active swings', () => {
+  const input = makeInput();
+  const base = input.b2a_result.pivots[0];
+  const high = { ...base, pivot_id: 'dual-high', type: 'SWING_HIGH', price: 120, source_time_ms: STEP * 12, confirmed_at_ms: STEP * 14, available_at_ms: STEP * 14 + LAG };
+  const low = { ...base, pivot_id: 'dual-low', type: 'SWING_LOW', price: 80, source_time_ms: STEP * 12, confirmed_at_ms: STEP * 14, available_at_ms: STEP * 14 + LAG };
+  input.b2a_result.pivots.push(high, low);
+  for (const p of [high, low]) input.b2c_result.raw_pivots.push({ ...p, sequence_status: 'AMBIGUOUS_FOR_SEQUENCE', exclusion_reason: 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE', structure_label: null, comparison_pivot_id: null, price_delta: null, relative_delta_pct: null, superseded_by: null });
+  const result = analyze(input);
+  assert.equal(result.status, 'VALID');
+  assert.equal(result.ambiguous_pivots.length, 2);
+  assert.equal(result.swing_markers.some(p => p.id === 'dual-high' || p.id === 'dual-low'), false);
+});
+
 run('active sequence must include every accepted raw pivot', () => {
   const input = makeInput();
   input.b2c_result.pivots.pop();
