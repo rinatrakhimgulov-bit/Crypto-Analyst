@@ -315,7 +315,7 @@ run('full B1-E three-timeframe snapshot plus actual B2-A/B/C engines yields UP|U
       Object.assign(candles[5], { open: 100, high: 112, low: 99, close: 111 });
       Object.assign(candles[6], { open: 111, high: 113, low: 100, close: 112 });
     } else {
-      Object.assign(candles[2], { open: 100, high: 106, low: 90, close: 99 });
+      Object.assign(candles[2], { open: 100, high: 104, low: 90, close: 99 });
       Object.assign(candles[3], { open: 100, high: 105, low: 94, close: 99 });
       Object.assign(candles[4], { open: 100, high: 105, low: 95, close: 99 });
       Object.assign(candles[5], { open: 100, high: 101, low: 88, close: 89 });
