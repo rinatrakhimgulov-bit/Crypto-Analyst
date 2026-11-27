@@ -266,3 +266,11 @@ CI results: 44/44 Stage A, 32/32 B1 contract, 63/63 B1 validator; gate assertion
 - Chart legend documents EMA200 and base-asset volume.
 - `tests/b1-browser-live-check.cjs` adds EMA200 warm-up and chart-rendering assertions.
 - Candidate branch only. CI run `45962613748` passed all suites and chart-specific desktop/mobile rendering assertions; live Bybit probe skipped on runner HTTP 403; iPhone Safari retest pending.
+
+
+## 17. B1-C quality-panel transparency — 2026-11-27
+
+- renderSuccess() now shows B1 status/version, validator reason codes, and explicit analysis admission/block status.
+- Browser harness verifies an INVALID negative-volume fixture renders VOLUME_NEGATIVE, Заблокирована · WAIT, and decision badge WAIT.
+- CI run 45963443614: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate passed, no page errors.
+- Latest panel-detail change awaits iPhone Safari visual check; independent B1 review and formal acceptance still pending.
