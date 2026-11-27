@@ -235,3 +235,9 @@ The current candidate is more thoroughly regression-tested, but still not accept
 ## Latest MTF implementation evidence — 2026-11-27
 
 The isolated MTF assembler now has 18 regression tests, including no implicit history-depth default and pending-finality context isolation. Latest completed CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64, MTF 18/18; gate/UI/chart assertions passed, zero browser page errors; 158/158 named tests. Candidate HTML blob `1cb41cfbc03534441774eeeaac08f36082f19ab9`, 299,978 bytes. Branch is 66 commits ahead, 0 behind main. Live Bybit is still not verified because the GitHub runner receives HTTP 403 from both REST hosts. The architectural decisions above remain unchanged; B1 acceptance gates remain open.
+
+
+
+## Latest evidence supersession — 2026-11-27
+
+Latest completed run `45966700299`: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18; gate/UI/chart assertions passed, zero browser page errors; 159/159 named tests. Gate tests reject a VALID-looking report with mismatched `snapshot_id`. Candidate HTML blob `1cb41cfbc03534441774eeeaac08f36082f19ab9`. Branch comparison is 85 ahead / 0 behind main. Live Bybit remains blocked by HTTP 403 from both REST hosts on GitHub Actions. Decisions unchanged; B1 remains unaccepted.
