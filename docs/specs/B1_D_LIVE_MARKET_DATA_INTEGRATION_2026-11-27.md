@@ -3,7 +3,7 @@
 Date: 2026-11-27
 Base: `integration/b1-mtf-architecture-2026-11-27`
 Implementation branch: `feature/b1-d-live-market-data-2026-11-27`
-Status: IN PROGRESS
+Status: IMPLEMENTED — automated verification passed; live browser acceptance pending
 
 ## Goal
 
@@ -88,3 +88,12 @@ Promote the existing Bybit V5 public linear WebSocket client from connection-hea
 - Recalculating indicators from every tick.
 - Adding server infrastructure or MCP solely to proxy around provider geo restrictions.
 - Changing the REST primary contract or removing the existing REST polling fallback.
+
+
+## Implementation record — 2026-11-27
+
+- PR #9: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/9 (draft, unmerged).
+- Exact HTML blob: 3421588fa85c47c72b1b3aa6fadfb8aef0608518; browser harness blob: 44b492f92ffbbbb58f6cb830375b6330a556d5c4.
+- CI run 45981279187: Stage A 50/50, contract 32/32, quality 72/72, MTF 20/20; 174/174 deterministic tests. Browser live-handler/UI integration, desktop/mobile chart, REST cancellation/timeout and zero-page-error checks passed.
+- Real Bybit WebSocket remains unverified from iPhone/Safari. GitHub Actions REST is blocked by HTTP 403; synthetic browser events are not live exchange evidence.
+- Acceptance remains pending real iPhone/Safari verification and independent review. No merge; main unchanged.
