@@ -816,3 +816,12 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Live Bybit REST probe was skipped as `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass or evidence of provider unavailability elsewhere.
 - The first CI attempt exposed mobile horizontal overflow from chart controls and an old B1 visual test assumption that EMA200 was always visible. Both were corrected: chart grid/control containers now constrain width, and the EMA regression explicitly enables the EMA layer before testing it.
 - Candidate remains in `feature/b3-chart-ui-redesign-2026-11-27`, draft PR #23. No merge. iPhone/Safari owner visual acceptance remains pending.
+
+
+### B3 verification update
+
+- Initial browser run exposed a real regression: the existing EMA200 visual regression test expected EMA overlays while the Clean preset intentionally hid them. The test was made explicit about enabling the EMA layer before checking EMA200 rendering; no production chart logic was weakened to satisfy the test.
+- The first mobile browser run also exposed horizontal overflow from the new layer controls. CSS was corrected with min-width:0/minmax(0,1fr) constraints and a full-width horizontally scrollable layer strip.
+- GitHub Actions on commit `c8a79a2429f10fafdca28987c28e384ecba467db`: B1 browser/live-data verification SUCCESS; B2 application integration SUCCESS. The latter includes B2-A…G deterministic suites and mobile browser integration/layout assertions.
+- A follow-up test-only cleanup commit `931d29fea93dc144520a2a94db680b6a072963bd` removed temporary diagnostics while retaining an explicit assertion that EMA visibility is enabled during its regression check. CI for this latest test-only commit is pending.
+- No iPhone/Safari visual acceptance yet; no merge.
