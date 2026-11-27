@@ -948,7 +948,7 @@
     // 1.1. B1 CANONICAL DATA CONTRACT (B1-A; mapping only, no decision gate yet)
     // =========================================================================
     const B1DataContract = (() => {
-      const VERSION = '1.0.0';
+      const VERSION = '1.1.0';
       const NORMALIZER_VERSION = 'bybit-rest-v1';
       const TIMEFRAME_MAP = { '60': '1h', '240': '4h', D: '1d' };
 
@@ -1102,7 +1102,7 @@
     // 1.2. B1 QUALITY VALIDATOR (pure deterministic validator; consumed by the analytics quality gate)
     // =========================================================================
     const B1QualityValidator = (() => {
-      const VERSION = '1.0.0';
+      const VERSION = '1.1.0';
       const TF_MS = { '1h': 3600000, '4h': 14400000, '1d': 86400000 };
 
       function validate(snapshot, policy, validationNowMs) {
@@ -1124,7 +1124,7 @@
         if (!policyValid) invalid('POLICY_INVALID', 'A complete, versioned validation policy is required.');
         if (!nowValid) invalid('VALIDATION_TIME_INVALID', 'validationNowMs must be a non-negative safe integer.');
         const snapshotIdentityValid = Boolean(snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) &&
-          typeof snapshot.contract_version === 'string' && snapshot.contract_version.trim().length > 0 &&
+          typeof snapshot.contract_version === 'string' && snapshot.contract_version === B1DataContract.VERSION &&
           typeof snapshot.canonical_symbol === 'string' && snapshot.canonical_symbol.trim().length > 0 &&
           typeof snapshot.market_type === 'string' && snapshot.market_type.trim().length > 0);
         const providerMetadata = snapshot && snapshot.provider_metadata;
@@ -2042,7 +2042,7 @@
           const c=candle(baseOpen,baseClose,state,{provider_event_time_ms:providerTime,received_at_ms:receivedAt,...(opts.candleOverrides||{})});
           const stampEvidence=list=>list.map(x=>x&&typeof x==='object'?({...x,provider_event_time_ms:providerTime,received_at_ms:receivedAt}):x);
           return {
-            contract_version:'1.0.0',snapshot_id:'selftest',canonical_symbol:'BTC/USDT',
+            contract_version:B1DataContract.VERSION,snapshot_id:'selftest',canonical_symbol:'BTC/USDT',
             market_type:'linear_perpetual',analysis_as_of_ms:providerTime,
             provider_metadata:{provider_id:'bybit-v5-rest',venue:'bybit',provider_symbol:'BTCUSDT',host:'api.bybit.com',time_source:opts.timeSource||'provider'},
             provider_server_time_ms:providerTime,received_at_ms:receivedAt,
@@ -2056,6 +2056,9 @@
         const run=(snap,pol=policy,at=now)=>B1QualityValidator.validate(snap,pol,at).report;
         const valid=run(makeSnapshot());
         assert('complete fresh snapshot passes VALID',valid.status==='VALID'&&valid.valid_count===1);
+        const wrongContractVersion=makeSnapshot();
+        wrongContractVersion.contract_version='1.0.0';
+        assert('unsupported canonical contract version fails closed',run(wrongContractVersion).status==='INVALID'&&run(wrongContractVersion).reasons.some(r=>r.code==='SNAPSHOT_SCHEMA_INVALID'));
         assert('requested count and raw response count remain distinct',valid.requested_count===1&&valid.raw_received_count===1&&valid.expected_count===1&&valid.response_shortfall===0);
         const missingProviderId=makeSnapshot();
         delete missingProviderId.provider_metadata.provider_id;
@@ -2138,7 +2141,7 @@
         const dailyClosed=candle(dayOpen,dayClose,'TIME_DERIVED',{timeframe:'1d',provider_event_time_ms:dailyNow,received_at_ms:dailyNow-100});
         const dailyForming=candle(dayClose,dayClose+dailyStep,'OPEN',{timeframe:'1d',provider_event_time_ms:dailyNow,received_at_ms:dailyNow-100});
         const dailySnapshot={
-          contract_version:'1.0.0',snapshot_id:'daily-selftest',canonical_symbol:'BTC/USDT',market_type:'linear_perpetual',
+          contract_version:B1DataContract.VERSION,snapshot_id:'daily-selftest',canonical_symbol:'BTC/USDT',market_type:'linear_perpetual',
           analysis_as_of_ms:dailyNow,provider_metadata:{provider_id:'bybit-v5-rest',venue:'bybit',provider_symbol:'BTCUSDT',host:'api.bybit.com',time_source:'provider'},provider_server_time_ms:dailyNow,received_at_ms:dailyNow-100,
           candles_by_timeframe:{'1d':[dailyClosed]},forming_candle_by_timeframe:{'1d':dailyForming},
           unclassified_candles_by_timeframe:{'1d':[]},
@@ -2242,7 +2245,7 @@
         const fourHourNow=fourHourClose+lag;
         const fourHourCandle=candle(fourHourOpen,fourHourClose,'TIME_DERIVED',{timeframe:'4h',provider_event_time_ms:fourHourNow,received_at_ms:fourHourNow-100});
         const fourHourSnapshot={
-          contract_version:'1.0.0',snapshot_id:'4h-selftest',canonical_symbol:'BTC/USDT',market_type:'linear_perpetual',
+          contract_version:B1DataContract.VERSION,snapshot_id:'4h-selftest',canonical_symbol:'BTC/USDT',market_type:'linear_perpetual',
           analysis_as_of_ms:fourHourNow,provider_metadata:{provider_id:'bybit-v5-rest',venue:'bybit',provider_symbol:'BTCUSDT',host:'api.bybit.com',time_source:'provider'},provider_server_time_ms:fourHourNow,received_at_ms:fourHourNow-100,
           candles_by_timeframe:{'4h':[fourHourCandle]},forming_candle_by_timeframe:{'4h':null},
           unclassified_candles_by_timeframe:{'4h':[]},
