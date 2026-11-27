@@ -522,7 +522,7 @@
         b2c_engine_version: b2c.engine_version,
         b2d_engine_version: b2d.engine_version,
         b2e_engine_version: b2e.engine_version,
-        b2f_engine_version: b2f.engine_version
+        b2f_engine_version: b2f ? b2f.engine_version : null
       },
       symbol,
       market_type: snapshot.market_type,
