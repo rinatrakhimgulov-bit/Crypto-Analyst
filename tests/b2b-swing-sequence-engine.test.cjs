@@ -6,6 +6,7 @@ const { analyze: analyzeB2A } = require('../src/analysis/b2-causal-swing-engine.
 
 const POLICY = Object.freeze({
   version: 'b2b-swing-sequence-v2',
+       same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
   b1_validator_version: '1.1.0',
@@ -139,7 +140,7 @@ run('availability order is preserved even when source times are not chronologica
     pivot('l-early-source', 'SWING_LOW', 90, 2000, 300)
   ]));
   assert.deepEqual(result.sequence.map(p => p.pivot_id), ['h-late-source', 'l-early-source']);
-  assert.equal(result.sequence_order_basis, 'B2A_AVAILABLE_AT_ORDER_STABLE');
+  assert.equal(result.sequence_order_basis, 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS');
 });
 
 run('non-monotonic availability order fails closed instead of silently reordering', () => {
@@ -358,6 +359,7 @@ run('B2-A to B2-B integration preserves causal swing sequence labels', () => {
     b2a_result: b2a,
     policy: {
       version: 'b2b-swing-sequence-v2',
+       same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
       b1_validator_version: '1.1.0',
