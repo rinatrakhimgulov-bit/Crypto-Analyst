@@ -7307,7 +7307,16 @@
           ? this.marketStructure.zones : [];
         for (const zone of b2Zones) {
           if (!Number.isFinite(zone.lower_bound) || !Number.isFinite(zone.upper_bound) ||
+              !Number.isSafeInteger(zone.visible_from_ms) ||
               zone.upper_bound < minP || zone.lower_bound > maxP) continue;
+          // Never backdate a confirmed zone: begin at the first candle whose
+          // open time is at or after the zone's causal availability timestamp.
+          let firstVisibleGlobalIdx = this.candles.findIndex(c => c.ts >= zone.visible_from_ms);
+          if (firstVisibleGlobalIdx < 0 || firstVisibleGlobalIdx >= endIdx) continue;
+          firstVisibleGlobalIdx = Math.max(startIdx, firstVisibleGlobalIdx);
+          const zoneStartX = padLeft + (firstVisibleGlobalIdx - startIdx) * stepX;
+          const zoneWidth = Math.max(0, padLeft + plotW - zoneStartX);
+          if (zoneWidth <= 0) continue;
           const yTop = yForPrice(zone.upper_bound);
           const yBottom = yForPrice(zone.lower_bound);
           const isSupport = zone.role === 'SUPPORT';
@@ -7315,11 +7324,11 @@
           ctx.fillStyle = isSupport ? 'rgba(56, 189, 248, 0.075)' : 'rgba(245, 158, 11, 0.075)';
           ctx.strokeStyle = isSupport ? 'rgba(56, 189, 248, 0.38)' : 'rgba(245, 158, 11, 0.38)';
           ctx.lineWidth = 1;
-          ctx.fillRect(padLeft, yTop, plotW, Math.max(1, yBottom - yTop));
-          ctx.strokeRect(padLeft, yTop, plotW, Math.max(1, yBottom - yTop));
+          ctx.fillRect(zoneStartX, yTop, zoneWidth, Math.max(1, yBottom - yTop));
+          ctx.strokeRect(zoneStartX, yTop, zoneWidth, Math.max(1, yBottom - yTop));
           ctx.fillStyle = isSupport ? '#7dd3fc' : '#fcd34d';
           ctx.font = '10px sans-serif';
-          ctx.fillText((isSupport ? 'SUP' : 'RES') + ' ' + fmtPrice(zone.representative_price), padLeft + 5, Math.max(padTop + 10, yTop + 11));
+          ctx.fillText((isSupport ? 'SUP' : 'RES') + ' ' + fmtPrice(zone.representative_price), zoneStartX + 5, Math.max(padTop + 10, yTop + 11));
           ctx.restore();
         }
 
