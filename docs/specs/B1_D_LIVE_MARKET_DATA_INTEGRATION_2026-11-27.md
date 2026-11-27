@@ -3,7 +3,7 @@
 Date: 2026-11-27
 Base: `integration/b1-mtf-architecture-2026-11-27`
 Implementation branch: `feature/b1-d-live-market-data-2026-11-27`
-Status: IMPLEMENTED — automated verification passed; live browser acceptance pending
+Status: IMPLEMENTED — baseline automated verification passed; latest ticker-freshness correction awaits CI; live browser acceptance pending
 
 ## Goal
 
@@ -93,7 +93,8 @@ Promote the existing Bybit V5 public linear WebSocket client from connection-hea
 ## Implementation record — 2026-11-27
 
 - PR #9: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/9 (draft, unmerged).
-- Exact HTML blob: 3421588fa85c47c72b1b3aa6fadfb8aef0608518; browser harness blob: 44b492f92ffbbbb58f6cb830375b6330a556d5c4.
+- Baseline HTML blob tested by CI: 3421588fa85c47c72b1b3aa6fadfb8aef0608518; current HTML blob after ticker-freshness correction: 39e42c223419bd8a599f6c513ef6e269df120fcc; browser harness blob: 44b492f92ffbbbb58f6cb830375b6330a556d5c4.
 - CI run 45981279187: Stage A 50/50, contract 32/32, quality 72/72, MTF 20/20; 174/174 deterministic tests. Browser live-handler/UI integration, desktop/mobile chart, REST cancellation/timeout and zero-page-error checks passed.
+- Follow-up correction: a ticker delta that changes only non-price fields no longer emits the inherited `lastPrice` as a fresh price event. The existing ticker regression test now covers this case. This source change is newer than CI run 45981279187 and still requires a fresh run.
 - Real Bybit WebSocket remains unverified from iPhone/Safari. GitHub Actions REST is blocked by HTTP 403; synthetic browser events are not live exchange evidence.
 - Acceptance remains pending real iPhone/Safari verification and independent review. No merge; main unchanged.
