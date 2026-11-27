@@ -727,3 +727,6 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - Clean-branch B2 research suite: run `46034803544`, passed.
 - Clean-branch B2 app browser/mobile integration: run `46034803848`, passed. The browser test also verifies that a confirmed S/R zone starts at its causal `visible_from_ms` position rather than being backdated across the chart.
 - Clean-branch B1 browser suite: run `46034803715`, passed with zero page errors. Live Bybit capture was skipped due GitHub runner HTTP 403.
+
+
+- Clean-branch full historical replay: run `46035136810`, passed on the final B2 module set. The report explicitly identifies the replay as archive-based with a synthetic B1-valid wrapper and no live-provider or trading-edge claim.
