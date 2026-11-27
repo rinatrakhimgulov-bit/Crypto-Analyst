@@ -101,8 +101,14 @@ async function main() {
           close, volume: 100 + (i % 7) * 3, turnover: close * (100 + (i % 7) * 3)
         };
       });
+      const toCanonicalCandles = list => list.map(c => ({
+        open_time_ms: c.ts, close_time_ms: c.closeTs,
+        open: c.open, high: c.high, low: c.low, close: c.close,
+        volume_base: c.volume, volume_quote: c.turnover
+      }));
       const base = {
-        canonicalSnapshot: { snapshot_id: 'gate-test-snapshot' },
+        interval: '60',
+        canonicalSnapshot: { snapshot_id: 'gate-test-snapshot', candles_by_timeframe: { '1h': toCanonicalCandles(candles) } },
         closedCandles: candles,
         prices: {
           lastClosedPrice: candles[candles.length - 1].close,
@@ -148,6 +154,7 @@ async function main() {
       const ema200Probe = BasicAnalyticsEngine.analyze({
         ...base,
         closedCandles: longCandles,
+        canonicalSnapshot: { snapshot_id: 'gate-test-ema200', candles_by_timeframe: { '1h': toCanonicalCandles(longCandles) } },
         prices: {
           ...base.prices,
           lastClosedPrice: longCandles[259].close,
@@ -155,7 +162,7 @@ async function main() {
         },
         qualityReport: {
           status: 'VALID', validator_version: B1QualityValidator.VERSION,
-          policy_version: B1_QUALITY_POLICY.version, snapshot_id: 'gate-test-snapshot', reasons: []
+          policy_version: B1_QUALITY_POLICY.version, snapshot_id: 'gate-test-ema200', reasons: []
         }
       });
       const mismatched = BasicAnalyticsEngine.analyze({
@@ -168,6 +175,14 @@ async function main() {
         ...base, qualityReport: {
           status: 'VALID', validator_version: B1QualityValidator.VERSION,
           policy_version: 'old-policy', snapshot_id: 'gate-test-snapshot', reasons: []
+        }
+      });
+      const seriesMismatched = BasicAnalyticsEngine.analyze({
+        ...base,
+        closedCandles: base.closedCandles.map((c, i) => i === base.closedCandles.length - 1 ? { ...c, close: c.close + 1 } : c),
+        qualityReport: {
+          status: 'VALID', validator_version: B1QualityValidator.VERSION,
+          policy_version: B1_QUALITY_POLICY.version, snapshot_id: 'gate-test-snapshot', reasons: []
         }
       });
       const snapshotMismatched = BasicAnalyticsEngine.analyze({
@@ -235,6 +250,12 @@ async function main() {
           lastValueFinite: Number.isFinite(ema200Probe.ema200[259])
         },
         mismatched: { decision: mismatched.decision, blocked: mismatched.qualityGate && mismatched.qualityGate.blocked, status: mismatched.qualityGate && mismatched.qualityGate.status, reasonCodes: mismatched.qualityGate && mismatched.qualityGate.reasonCodes },
+        seriesMismatched: {
+          decision: seriesMismatched.decision,
+          blocked: seriesMismatched.qualityGate && seriesMismatched.qualityGate.blocked,
+          status: seriesMismatched.qualityGate && seriesMismatched.qualityGate.status,
+          reasonCodes: seriesMismatched.qualityGate && seriesMismatched.qualityGate.reasonCodes
+        },
         snapshotMismatched: {
           decision: snapshotMismatched.decision,
           blocked: snapshotMismatched.qualityGate && snapshotMismatched.qualityGate.blocked,
@@ -283,7 +304,10 @@ async function main() {
       ...(gate.mismatched.decision !== 'WAIT' || gate.mismatched.blocked !== true ||
           gate.mismatched.status !== 'INVALID' || !gate.mismatched.reasonCodes.includes('QUALITY_REPORT_VERSION_MISMATCH')
           ? [{ case: 'validator-version-mismatch', ...gate.mismatched }] : []),
-      ...(gate.snapshotMismatched.decision !== 'WAIT' || gate.snapshotMismatched.blocked !== true ||
+      ...(gate.seriesMismatched.decision !== 'WAIT' || gate.seriesMismatched.blocked !== true ||
+          !gate.seriesMismatched.reasonCodes.includes('ANALYTICS_CANDLE_DATA_MISMATCH')
+        ? [{ case: 'analytics-candles-mismatch', ...gate.seriesMismatched }] : []),
+      ...(gate.snapshotMismatched.decision !== 'WAIT' ||
           !gate.snapshotMismatched.reasonCodes.includes('QUALITY_REPORT_SNAPSHOT_MISMATCH')
         ? [{ case: 'snapshot-mismatched-report', ...gate.snapshotMismatched }] : []),
       ...(gate.policyMismatched.decision !== 'WAIT' ||
