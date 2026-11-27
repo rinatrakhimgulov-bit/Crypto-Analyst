@@ -157,6 +157,48 @@
       if (pivot.available_at_ms < previousAvailable) return blocked('INVALID', 'B2B_RAW_PIVOT_ORDER_INVALID', meta);
       previousAvailable = pivot.available_at_ms;
     }
+    const expectedSequence = [];
+    const expectedRawStatus = new Map();
+    for (const rawPivot of source.raw_pivots) {
+      const last = expectedSequence.length ? expectedSequence[expectedSequence.length - 1] : null;
+      if (last && last.type === rawPivot.type) {
+        const moreExtreme = rawPivot.type === 'SWING_HIGH'
+          ? rawPivot.price > last.price
+          : rawPivot.price < last.price;
+        if (!moreExtreme) {
+          expectedRawStatus.set(rawPivot.pivot_id, { status: 'SUPERSEDED_FOR_SEQUENCE', superseded_by: last.pivot_id });
+          continue;
+        }
+        expectedRawStatus.set(last.pivot_id, { status: 'SUPERSEDED_FOR_SEQUENCE', superseded_by: rawPivot.pivot_id });
+        expectedSequence.pop();
+      }
+      const previousSameSide = [...expectedSequence].reverse().find(p => p.type === rawPivot.type) || null;
+      const delta = previousSameSide ? rawPivot.price - previousSameSide.price : null;
+      const expectedLabel = !previousSameSide
+        ? (rawPivot.type === 'SWING_HIGH' ? 'INITIAL_HIGH' : 'INITIAL_LOW')
+        : rawPivot.type === 'SWING_HIGH'
+          ? (delta > 0 ? 'HH' : delta < 0 ? 'LH' : 'EQH')
+          : (delta > 0 ? 'HL' : delta < 0 ? 'LL' : 'EQL');
+      expectedSequence.push({
+        pivot_id: rawPivot.pivot_id,
+        type: rawPivot.type,
+        price: rawPivot.price,
+        structure_label: expectedLabel,
+        comparison_pivot_id: previousSameSide ? previousSameSide.pivot_id : null,
+        price_delta: delta,
+        relative_delta_pct: previousSameSide ? (delta / previousSameSide.price) * 100 : null
+      });
+      expectedRawStatus.set(rawPivot.pivot_id, { status: 'ACCEPTED', superseded_by: null });
+    }
+    for (const rawPivot of source.raw_pivots) {
+      const expectedStatus = expectedRawStatus.get(rawPivot.pivot_id);
+      if (!expectedStatus || rawPivot.sequence_status !== expectedStatus.status ||
+          (rawPivot.superseded_by ?? null) !== expectedStatus.superseded_by) {
+        return blocked('INVALID', 'B2B_RAW_SEQUENCE_STATUS_MISMATCH', meta);
+      }
+    }
+    if (source.sequence.length !== expectedSequence.length) return blocked('INVALID', 'B2B_SEQUENCE_DERIVATION_MISMATCH', meta);
+
     const sequenceIds = new Set();
     let lastSequenceType = null;
     previousAvailable = -1;
@@ -179,6 +221,18 @@
       if (!sourceCandle || !confirmationCandle || expectedPrice !== pivot.price ||
           pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms) {
         return blocked('INVALID', 'B2B_PIVOT_CANDLE_PROVENANCE_MISMATCH', meta);
+      }
+    }
+
+    for (let i = 0; i < expectedSequence.length; i++) {
+      const expected = expectedSequence[i];
+      const actual = source.sequence[i];
+      if (!actual || actual.pivot_id !== expected.pivot_id ||
+          actual.structure_label !== expected.structure_label ||
+          actual.comparison_pivot_id !== expected.comparison_pivot_id ||
+          actual.price_delta !== expected.price_delta ||
+          actual.relative_delta_pct !== expected.relative_delta_pct) {
+        return blocked('INVALID', 'B2B_SEQUENCE_DERIVATION_MISMATCH', meta);
       }
     }
 
