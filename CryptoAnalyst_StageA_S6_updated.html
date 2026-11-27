@@ -427,6 +427,7 @@
       <div class="price-box">
         <span class="price" id="livePrice">—</span>
         <span class="meta" id="priceSourceLabel">Источник цены: —</span>
+        <span class="meta" id="liveDiagnostics">Live-проверка: ожидание данных</span>
         <span class="meta" id="lastUpdate">Обновление: —</span>
       </div>
     </header>
@@ -4665,7 +4666,8 @@
       liveTicker: null,
       liveTickerTimer: null,
       liveReconcileTimer: null,
-      lastConfirmedCandleKey: null
+      lastConfirmedCandleKey: null,
+      lastCandleUpdate: { status: 'not-tested', atMs: null }
     };
 
     // Единственное место создания 30-секундного REST-polling. Идемпотентна: повторный вызов
@@ -4680,6 +4682,33 @@
       state.liveReconcileTimer = null;
       state.liveTicker = null;
       state.lastConfirmedCandleKey = null;
+      state.lastCandleUpdate = { status: 'not-tested', atMs: null };
+      const diag = document.getElementById('liveDiagnostics');
+      if (diag) diag.textContent = 'Live-проверка: ожидание нового потока';
+    }
+    function renderLiveDiagnostics() {
+      const el = document.getElementById('liveDiagnostics');
+      if (!el) return;
+      const symbol = state.symbol;
+      const cached = state.snapshotsByKey.get(makeKey(symbol, state.interval));
+      const rest = cached && cached.dataset ? cached.dataset.prices : null;
+      const restPrice = rest && Number.isFinite(rest.tickerLastPrice) ? rest.tickerLastPrice : null;
+      const ws = state.liveTicker && state.liveTicker.symbol === symbol ? state.liveTicker : null;
+      const wsPrice = ws && Number.isFinite(ws.lastPrice) ? ws.lastPrice : null;
+      const wsAge = ws && Number.isFinite(ws.receivedAtMs) ? Math.max(0, Date.now() - ws.receivedAtMs) : null;
+      const candle = chart && chart.candles.length ? chart.candles[chart.candles.length - 1] : null;
+      const eligible = Boolean(candle && chart.candles.length - 1 >= chart.closedCount);
+      const delta = wsPrice !== null && restPrice !== null ? wsPrice - restPrice : null;
+      const parts = [
+        'REST ticker ' + (restPrice === null ? 'нет' : fmtPrice(restPrice)),
+        'WS last ' + (wsPrice === null ? 'нет' : fmtPrice(wsPrice)),
+        'Δ ' + (delta === null ? '—' : (delta > 0 ? '+' : '') + fmtPrice(delta)),
+        'WS age ' + (wsAge === null ? '—' : (wsAge / 1000).toFixed(1) + 'с'),
+        'свеча ' + (eligible ? 'FORMING' : candle ? 'CLOSED/NO-FORMING' : 'NONE'),
+        'OHLC ' + (candle ? [candle.open,candle.high,candle.low,candle.close].map(fmtPrice).join('/') : '—'),
+        'ticker→свеча ' + (state.lastCandleUpdate ? state.lastCandleUpdate.status : '—')
+      ];
+      el.textContent = parts.join(' · ');
     }
     function freshLiveTicker(symbol = state.symbol) {
       const item = state.liveTicker;
@@ -4737,7 +4766,12 @@
       renderLivePrice(true);
       // The validated last-traded price is also used to animate the current
       // forming candle; volume and analytical candle finality remain untouched.
-      chart.updateFormingCandleFromTicker(event.lastPrice);
+      const candleUpdated = chart.updateFormingCandleFromTicker(event.lastPrice);
+      state.lastCandleUpdate = {
+        status: candleUpdated ? 'UPDATED' : (chart.candles.length && chart.candles.length - 1 < chart.closedCount ? 'BLOCKED_CLOSED' : 'UNCHANGED_OR_NO_FORMING'),
+        atMs: Date.now()
+      };
+      renderLiveDiagnostics();
       if (state.liveTickerTimer !== null) clearTimeout(state.liveTickerTimer);
       state.liveTickerTimer = setTimeout(() => {
         state.liveTickerTimer = null;
@@ -4906,7 +4940,18 @@
       const live = freshLiveTicker(dataset.symbol);
       chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis,
         live ? live.lastPrice : pInfo.currentMarketPrice);
+      // A 30-second REST refresh replaces the chart array. Re-apply the newest
+      // validated WS trade immediately so the forming OHLC does not snap back
+      // to the older REST kline snapshot while the stream remains fresh.
+      if (live) {
+        const updated = chart.updateFormingCandleFromTicker(live.lastPrice);
+        state.lastCandleUpdate = {
+          status: updated ? 'UPDATED_AFTER_REST' : (chart.candles.length && chart.candles.length - 1 < chart.closedCount ? 'BLOCKED_CLOSED_AFTER_REST' : 'UNCHANGED_AFTER_REST'),
+          atMs: Date.now()
+        };
+      }
       renderLivePrice(false);
+      renderLiveDiagnostics();
     }
 
     function renderError(symbol, interval, errorMsg) {
