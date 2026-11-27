@@ -300,3 +300,18 @@ The exact older B1-E artifact received an external conditional review (33/33 MTF
 7. Only then begin B2 Market Structure implementation.
 
 B2 remains **НЕ НАЧАТ**. Research notes and PR #7 are not an implementation. Main remains unchanged.
+
+
+
+
+### B1-E — current-contract MTF common-cutoff implementation — 2026-11-27
+
+**Статус: В РАБОТЕ (integration candidate; not accepted).**
+
+Implemented isolated `B1MtfEngine` against current `B1DataContract` / `B1QualityValidator` rather than copying the legacy DataQualityEngine-dependent module. The engine coordinates 1D/4H/1H, selects minimum trusted provider time as common cutoff, applies 500 ms finality, excludes post-cutoff rows with explicit accounting, validates each TF, verifies exact closed-window coverage, and produces an immutable aggregate. Missing/invalid/stale/degraded TF, missing spread policy, or incomplete coverage blocks directional permission. Failed/superseded requests propagate cancellation at the adapter-signal level.
+
+Canonical contract and validator versions are now 1.1.0. Latest CI run `45965680821`: Stage A 44/44, B1 contract 32/32, validator 64/64, MTF 12/12, UI/gate/chart checks passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both hosts on GitHub Actions.
+
+This is not yet B1 acceptance. Independent review of the exact port, live Bybit captures and measured provider-time spread policy, actual transport-level abort test, latest iPhone Safari quality-panel check, and explicit owner acceptance remain required. MTF is not connected to directional decisions. B2 remains **НЕ НАЧАТ** until B1 is accepted.
+
+Specification: `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
