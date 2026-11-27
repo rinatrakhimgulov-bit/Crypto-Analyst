@@ -541,3 +541,27 @@ Promoted the existing Bybit V5 WebSocket client from connection-health/log-only 
 Latest CI run 45981507604 passed: Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; 174/174 deterministic tests, browser live-handler/UI integration, desktop/mobile chart checks, REST cancellation/timeout checks, zero page errors. Live Bybit remains SKIPPED_PROVIDER_BLOCKED because GitHub Actions receives HTTP 403 from both public REST hosts; no live WebSocket success is claimed.
 
 Exact candidate artifacts: HTML blob 39e42c223419bd8a599f6c513ef6e269df120fcc (329,008 bytes); browser harness blob 44b492f92ffbbbb58f6cb830375b6330a556d5c4 (35,635 bytes). PR #9 is draft and targets the B1 integration branch; PR #8 remains draft. Main unchanged. Real iPhone/Safari stream verification and independent review remain open.
+
+
+## B2 — Market Structure specification design review
+
+**Date:** 2026-11-27  
+**Type:** documentation/research review; no application code changed  
+**Branch:** `research/b2-market-structure-spec-2026-11-27`  
+**PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/10  
+**Base:** PR #9 branch `feature/b1-d-live-market-data-2026-11-27`
+
+### Work completed
+- Reviewed the existing B2 Market Structure Engine design baseline.
+- Recorded unresolved rules that must be frozen before implementation: plateau handling, same-side pivot replacement, protected swing selection, initial trend state, break buffer, event order/lifecycle, and S/R/retest policy.
+- Defined release-blocking causal invariants: prefix invariance, batch/online equivalence, availability-time correctness, no same-candle hindsight, immutable event history, forming-candle isolation, and fail-closed input quality.
+- Recommended staged B2-A/B2-C implementation only after B1 acceptance.
+
+### Verification and limitations
+- Review is internal; no independent external reviewer was used.
+- Documentation only. No application HTML, JavaScript, UI, or decision logic changed.
+- B1 remains unaccepted; its live concurrent MTF capture and independent review gates remain open.
+- No B2 production code or trading signals were added.
+
+### Result
+B2 design review is recorded with blockers. Production implementation remains NOT STARTED and is gated on B1 acceptance.
