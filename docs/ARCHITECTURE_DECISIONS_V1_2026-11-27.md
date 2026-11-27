@@ -252,3 +252,9 @@ The B1-C gate now enforces that the exact closed candles used by EMA/ATR/swings 
 Added a read-only Bybit V5 1D/4H/1H live capture page `tools/b1_live_probe.html` (schema v3) and an iPhone Safari / Windows local-host procedure. It captures raw payloads, strict provider timestamps, per-host attempt timing and errors; it does not upload data or place orders. Chromium CI smoke-checks the page without issuing external requests. Actual Bybit capture still requires a user-side run because GitHub Actions receives HTTP 403 from both public REST hosts.
 
 Latest candidate HTML blob: `2af63d1bbfec766606325450819d8ddff14173a2`; browser harness blob: `a23585f9688b9a04336c7f99da7a972513882f8e`; live probe blob: `3b5df8f0feda730c7e6564808f40ad4526f0e44a`. Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20, gate/UI/chart and probe-page smoke passed, zero browser errors. Main unchanged. B1 remains unaccepted pending independent review, live calibration, transport abort verification, Safari panel check and owner approval.
+
+
+
+## Current candidate evidence — 2026-11-27
+
+PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`; HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; branch 101 ahead / 0 behind main. CI `45967551538` passed 161/161 named tests (Stage A 44, contract 32, validator 65, MTF 20), gate/UI/chart checks and zero browser page errors. B1-C additionally proves that the actual legacy candle series and last-closed price used by analytics match the validated canonical snapshot; otherwise WAIT. Live Bybit remains blocked by runner HTTP 403. No change to architectural decisions; B1 is not accepted.
