@@ -431,3 +431,20 @@ Current open candidate heads and their individual CI results:
 **Combined integrated verification:** [119/119 tests passed](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280701) on B2-E integrated head `b7fccbc232c8a2de573cbfb053ef06b10b2cf834`. The combined workflow runs all five test files in one checkout, in dependency order B2-A → B2-B → B2-C → B2-D → B2-E.
 
 All PRs #8–#17 remain draft/unmerged. Main remains `8acb6fddaf454e9f2a4bdf3564ad70408d1a5456`. No B2 candidate is imported into application HTML or connected to LONG/SHORT. B1 remains NOT ACCEPTED. Deterministic CI does not replace independent review, live Bybit validation or owner acceptance.
+
+
+## Current B2 research state — 2026-11-27 (latest exact heads)
+
+| Module | PR | Current head | Tests | GitHub Actions |
+|---|---:|---|---:|---|
+| B2-A | #12 | `bb13960e647d399b6b05ee12c21f5a2fdeb8265d` | 21/21 | [46014698432](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014698432) |
+| B2-B | #13 | `127815d7b29a3c35316a319b7450cc95c52cb0b5` | 20/20 | [46017296248](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017296248) |
+| B2-C | #15 | `e9590ddb65c9f3a09a28279efdb064b6caa6a4a2` | 33/33 | [46015831238](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015831238) |
+| B2-D | #16 | `9012e514a29b755ac9208f1f495c3f560638b0a1` | 21/21 | [46015873986](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015873986) |
+| B2-E | #17 | `b7fccbc232c8a2de573cbfb053ef06b10b2cf834` | 24/24 | [46017280509](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280509) |
+
+Integrated B2 research suite: **119/119** passed in [run 46017280701](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280701).
+
+B2-E hardening: gap-through failure before any retest is now detected; a pivot break must also close strictly beyond the full historical zone boundary. Its role-reversal output is per breakout event, not a persistent zone-role state across future breakouts. Same-candle range-touch plus close beyond the success boundary is an explicit OHLC bar-level convention, not intrabar tick-path evidence.
+
+PR #18 was closed as a duplicate/superseded design draft; PR #17 is the active B2-E candidate. PRs #12/#13/#15/#16/#17 remain draft/unmerged. B1 PRs #8/#9 remain draft/unmerged. Main remains `8acb6fddaf454e9f2a4bdf3564ad70408d1a5456`; no B2 candidate is imported into application HTML.
