@@ -320,3 +320,11 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - MTF self-test suite: 18/18; B1 validator suite: 65/65.
 - Latest CI run `45966700299`: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18, gate/UI/chart assertions passed, zero page errors. Live Bybit blocked by runner HTTP 403.
 - Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`. Main unchanged; integration candidate only.
+
+
+
+## 20. B1-E MTF hardening follow-up — 2026-11-27
+
+- `CryptoAnalyst_StageA_S6_updated.html`: removed implicit 400-candle fallback; explicit `closedCandleCount` is required. Added separate `pending_finality_context` output and regression proving pending-finality candles cannot enter `analysis_candles`.
+- MTF self-tests: 18/18. Latest CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64; total 158/158, gate/UI/chart assertions passed, zero page errors.
+- Latest HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`, 299,978 bytes. Live Bybit remains blocked by runner HTTP 403. Integration only; main unchanged.
