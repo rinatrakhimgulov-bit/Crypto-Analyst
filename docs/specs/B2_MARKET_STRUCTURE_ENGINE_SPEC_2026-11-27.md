@@ -429,3 +429,26 @@ Role reversal, breakout/retest/failure lifecycle, MTF synthesis, chart overlays 
 - 20/20 deterministic tests passed in GitHub Actions run [46014759139](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014759139), including a full B1 → B2-A → B2-B → B2-C → B2-D fixture.
 - Internal review is recorded in docs/audits/B2D_IMPLEMENTATION_REVIEW_2026-11-27.md; it is not an independent external audit.
 - B1 remains NOT ACCEPTED. No B2 candidate may be imported into the application or connected to directional decisions until B1 acceptance and explicit owner approval.
+
+
+## 20. B2-D isolated support/resistance candidate — 2026-11-27
+
+B2-D is now implemented as an isolated research candidate in `src/analysis/b2d-support-resistance-engine.js`.
+
+- It clusters confirmed raw swing lows into SUPPORT evidence and confirmed raw swing highs into RESISTANCE evidence, never merging roles.
+- Clustering uses versioned `MAX_TOTAL_SPAN_V1` absolute-price tolerance, scoped to exact symbol and timeframe. The total cluster span is bounded; transitive chaining is not allowed.
+- A single independent source-candle touch remains a candidate level. Confirmed zones require the configured minimum number of independent source-candle touches.
+- Every touch preserves pivot ID, price, source/confirmation/availability time and whether it was accepted or superseded in the B2-B sequence.
+- Last-touch age is exposed, but freshness remains explicitly NOT_CLASSIFIED. Zone IDs are membership-derived and are not persistent lifecycle identifiers.
+- 21/21 deterministic tests passed in GitHub Actions run [46015873986](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015873986) on head `9012e514a29b755ac9208f1f495c3f560638b0a1`.
+- Full deterministic B1 snapshot → B2-A → B2-B → B2-C → B2-D chain is covered.
+
+B2-D remains research-only and unmerged. Absolute tolerance requires per-instrument/timeframe calibration. No role reversal, retest lifecycle, MTF or chart integration is included.
+
+## 21. B2-E breakout/retest lifecycle specification — 2026-11-27
+
+A separate design specification is drafted in `docs/specs/B2E_BREAKOUT_RETEST_LIFECYCLE_SPEC_2026-11-27.md`, draft PR #18.
+
+The design uses B2-C immutable event IDs as stable lifecycle identity, not B2-D membership-derived zone IDs. It defines explicit pivot-level retest tolerance, maximum closed-bar window, touch/success/failure/expiry transitions, strict equality boundaries, same-candle no-lookahead, optional B2-D zone context and prefix-replay requirements.
+
+B2-E is specification only; no implementation has been started. It does not authorize bypassing B1 acceptance. The v1 scope deliberately tracks retests of the broken B2-C pivot level, not full B2-D zone outer-boundary breakouts.
