@@ -806,3 +806,13 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Updated `tests/b2-app-browser-integration.cjs` with assertions for mobile chart height, all three presets, custom layer toggles and button state. Updated `.github/workflows/b2-app-integration.yml` to run on the B3 branch.
 - Added `docs/specs/B3_CHART_UI_REDESIGN_SPEC_2026-11-27.md`.
 - JavaScript syntax check: both inline scripts PASS. Browser test/CI and owner iPhone Safari review are not yet confirmed. Candidate only; no merge.
+
+
+### B3 browser/CI verification — 2026-11-27
+
+- B2 application integration workflow [46038517628](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46038517628): SUCCESS. B2-A…B2-G deterministic suites passed; browser integration and mobile chart UI assertions passed; zero browser page errors.
+- B1 candidate browser/data workflow [46038517602](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46038517602): SUCCESS. Stage A 50/50, B1 contract 32/32, quality 72/72, MTF 20/20; browser chart/volume and mobile layout checks passed; zero page errors.
+- B3 browser test verified Clean/Structure/Full presets, manual layer toggle/custom mode, 390×844 mobile viewport, chart height >=440 px, no horizontal overflow, and causal S/R zone positioning.
+- Live Bybit REST probe was skipped as `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass or evidence of provider unavailability elsewhere.
+- The first CI attempt exposed mobile horizontal overflow from chart controls and an old B1 visual test assumption that EMA200 was always visible. Both were corrected: chart grid/control containers now constrain width, and the EMA regression explicitly enables the EMA layer before testing it.
+- Candidate remains in `feature/b3-chart-ui-redesign-2026-11-27`, draft PR #23. No merge. iPhone/Safari owner visual acceptance remains pending.
