@@ -278,3 +278,25 @@ C1 is a chart-visualization task, not a claim that the market-structure engine i
 ### B1-C UI observability closure — 2026-11-27
 
 **Статус: НА ПРОВЕРКЕ.** Quality panel now exposes validator status/version, reason codes, and explicit analysis blocked/WAIT state. Chromium DOM regression test and full CI passed (44/44 Stage A, 32/32 contract, 63/63 validator, zero page errors). GitHub runner live Bybit probe remains blocked with HTTP 403. The latest panel-detail change awaits a brief iPhone Safari visual check; independent B1 review and explicit acceptance remain prerequisites before B2 and merge.
+
+
+
+
+## Architecture closure and B1 branch consolidation — 2026-11-27
+
+The global architecture baseline is recorded in `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`. It closes decisions that can be made without speculative infrastructure: provider-neutral data/analytics boundary, Bybit REST as the initial source, WebSocket LOG-only, 1D/4H/1H analytical scope, closed-candle causality, JavaScript runtime continuity, browser-first delivery, no backend until justified, no auto-trading, and evidence-based scenario validation. Server vendor, database vendor, framework migration and second provider remain intentionally deferred.
+
+**B1 remains НА ПРОВЕРКЕ / В РАБОТЕ, not accepted.** Two B1 candidate branches diverged. The current B1-A/B/C/C1 candidate is `b1/contract-review`; the older B1-A/B/E candidate is `impl/b1-quality-contract-2026-11-26`. The old B1-E module is coupled to a legacy DataQualityEngine and must be ported to the current B1DataContract/B1QualityValidator and B1-C gate. Do not merge the branches wholesale.
+
+The exact older B1-E artifact received an external conditional review (33/33 MTF and 65/65 older quality tests), but live spread calibration and directional MTF approval were explicitly withheld. This review does not cover the latest B1-C/C1 artifact.
+
+**Updated next sequence:**
+1. Port common-cutoff MTF assembly to the current canonical contract on the integration branch.
+2. Add and run deterministic integration tests against the current validator/policy identity and Stage A/browser suites.
+3. Obtain an independent review of the exact consolidated artifact.
+4. Capture real concurrent Bybit 1D/4H/1H responses and calibrate the spread policy; GitHub runner HTTP 403 is not a successful live test.
+5. Check the latest quality-panel reason codes and blocked-WAIT state on iPhone Safari. User has already verified the C1 chart layout.
+6. Obtain explicit owner acceptance before merging into main.
+7. Only then begin B2 Market Structure implementation.
+
+B2 remains **НЕ НАЧАТ**. Research notes and PR #7 are not an implementation. Main remains unchanged.
