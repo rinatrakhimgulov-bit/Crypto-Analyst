@@ -47,8 +47,9 @@
       b1_contract_version: '1.1.0',
       b1_validator_version: '1.1.0',
       b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
-      b2b_engine_version: '2.0.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v1',
+      b2b_engine_version: '2.1.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v2',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2c_engine_version: '2.0.0-b2c',
       b2c_policy_version: 'b2c-state-v1'
     };
@@ -230,6 +231,7 @@
           b2c.admission.status !== 'ADMITTED' || b2c.admission.snapshot_id !== snapshot.snapshot_id ||
           b2c.admission.b2b_engine_version !== policy.b2b_engine_version ||
           b2c.admission.b2b_policy_version !== policy.b2b_policy_version ||
+          b2c.admission.b2b_same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy ||
           b2c.admission.b1_validator_version !== policy.b1_validator_version ||
           b2c.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
           !['UP', 'DOWN', 'UNESTABLISHED'].includes(b2c.structure_state) ||
