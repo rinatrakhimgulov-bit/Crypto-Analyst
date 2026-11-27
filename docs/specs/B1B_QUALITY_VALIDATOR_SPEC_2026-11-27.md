@@ -502,3 +502,14 @@ Canonical snapshots now require a non-empty `snapshot_id` in addition to the sup
 The report identity is not merely the validator/policy version pair: consumers must also bind the report to the exact canonical snapshot. B1-C now rejects a report if its `snapshot_id` does not match `dataset.canonicalSnapshot.snapshot_id`; B1-E requires the same match for every timeframe before aggregate directional permission.
 
 Latest CI run `45966700299`: B1 validator 65/65, MTF 18/18, Stage A 44/44, contract 32/32; gate/UI/chart checks passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public REST hosts.
+
+
+
+
+## Consumer binding requirement — 2026-11-27
+
+A successful validator report is bound to the exact canonical snapshot through `snapshot_id`. Any consumer that uses a parallel/legacy representation of the same candles must also prove that representation is identical to the validated canonical closed series. The current B1-C analytics gate checks candle timestamps, OHLCV, base volume, quote turnover and last-closed price before it admits directional calculations. Mismatch fails closed with `ANALYTICS_CANDLE_DATA_MISMATCH` and WAIT.
+
+This consumer-binding check is outside the validator's pure snapshot-only responsibility; it belongs at the analytics boundary where the alternate series is available.
+
+Latest run `45967551538`: validator 65/65, MTF 20/20, Stage A 44/44, contract 32/32, gate/UI and chart checks passed, zero page errors.
