@@ -109,7 +109,7 @@ textarea{width:100%;min-height:180px;box-sizing:border-box;font:12px ui-monospac
         try{json=JSON.parse(rawText);}catch(e){parseError=String(e);}
         if(!response.ok)throw new Error('HTTP '+response.status+'; '+rawText.slice(0,300));
         if(!json||json.retCode!==0||!json.result||!Array.isArray(json.result.list))throw new Error('Invalid V5 response: '+(json&&json.retMsg||parseError||rawText.slice(0,300)));
-        const providerTimeCandidate=typeof json.time==='number'?json.time:(typeof json.time==='string'&&/^\\d+$/.test(json.time)?Number(json.time):null);
+        const providerTimeCandidate=typeof json.time==='number'?json.time:(typeof json.time==='string'&&/^\d+$/.test(json.time)?Number(json.time):null);
         const providerTimeMs=Number.isSafeInteger(providerTimeCandidate)&&providerTimeCandidate>0?providerTimeCandidate:null;
         const attempt={host,requestStartedAtMs,responseHeadersReceivedAtMs,responseReceivedAtMs,headersLatencyMs:responseHeadersReceivedAtMs-requestStartedAtMs,totalDurationMs:responseReceivedAtMs-requestStartedAtMs,httpStatus};
         attempts.push(attempt);
