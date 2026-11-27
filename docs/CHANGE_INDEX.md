@@ -366,3 +366,8 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 ### B2 Market Structure design artifacts
 - `docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md` — B2 design baseline and staged implementation scope.
 - `docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md` — unresolved design decisions and causal release gates.
+
+### B2 policy freeze update — 2026-11-27
+- docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md Section 15: frozen v1 policies for causal pivots, equality, plateaus, same-side replacement, structure state, protected swings, BOS/CHoCH boundary and event lifecycle.
+- docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md Section 7: resolution matrix for design blockers R1–R7. Internal design resolution only; not independent audit.
+- No application code changed. B2 remains gated on B1 acceptance.
