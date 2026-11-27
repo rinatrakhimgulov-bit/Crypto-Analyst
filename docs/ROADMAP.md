@@ -297,3 +297,14 @@ Current isolated research candidates:
 Internal review fixes: B2-A candle-gap admission; B2-C HH/LL-only BOS continuation; protected-pivot re-arming for opposite CHoCH; exact B2-A-to-B2-B pivot-set binding. B2-D exposes freshness as unclassified and zone IDs as membership-derived; absolute tolerance requires per-instrument/timeframe calibration.
 
 All candidates are isolated, draft and unmerged. B1 remains NOT ACCEPTED. Next: finish B2-D design review, then specify B2-E breakout/retest/failure lifecycle with stable level lineage before implementation. No production integration until B1 acceptance and explicit owner approval.
+
+
+### B2-E — Breakout/retest/failure lifecycle
+**Статус: ИЗОЛИРОВАННЫЙ ИССЛЕДОВАТЕЛЬСКИЙ КАНДИДАТ; production integration заблокирована до принятия B1.**
+
+- Historical zones are reconstructed from only pivots available strictly before breakout close.
+- Retest states: successful, failed, expired, unresolved and pending.
+- Role reversal is confirmed only after a successful retest.
+- Explicit policy thresholds; no implicit defaults.
+- 22/22 deterministic tests passed in run 46016401705, including full B1 → B2-A → B2-B → B2-C → B2-D → B2-E execution.
+- PR #17 draft/unmerged. Threshold calibration and independent review remain outstanding.
