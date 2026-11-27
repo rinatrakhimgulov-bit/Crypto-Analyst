@@ -1134,6 +1134,7 @@
           typeof providerMetadata.venue === 'string' && providerMetadata.venue.trim().length > 0 &&
           typeof providerMetadata.provider_symbol === 'string' && providerMetadata.provider_symbol.trim().length > 0 &&
           typeof providerMetadata.host === 'string' && providerMetadata.host.trim().length > 0 &&
+          B1DataContract.canonicalSymbol(providerMetadata.provider_symbol) === (snapshot && snapshot.canonical_symbol) &&
           (providerMetadata.time_source === 'provider' || providerMetadata.time_source === 'local_fallback'));
         if (!snapshotIdentityValid) invalid('SNAPSHOT_SCHEMA_INVALID', 'Canonical contract version, snapshot id, symbol, and market identity fields must be valid.');
         if (!providerMetadataValid) invalid('PROVIDER_METADATA_INVALID', 'Provider id, venue, provider symbol, host, and recognized time source are required.');
@@ -1339,6 +1340,12 @@
           if (c.market_type !== snapshot.market_type) identityMismatch.push('market_type');
           if (c.timeframe !== timeframe) identityMismatch.push('timeframe');
           if (c.provider_id !== snapshot.provider_metadata.provider_id) identityMismatch.push('provider_id');
+          if (c.venue !== snapshot.provider_metadata.venue) identityMismatch.push('venue');
+          if (c.provider_symbol !== snapshot.provider_metadata.provider_symbol) identityMismatch.push('provider_symbol');
+          if (c.normalizer_version !== B1DataContract.NORMALIZER_VERSION) identityMismatch.push('normalizer_version');
+          if (!c.source_reference || typeof c.source_reference !== 'object' ||
+              c.source_reference.endpoint !== '/v5/market/kline' ||
+              c.source_reference.host !== snapshot.provider_metadata.host) identityMismatch.push('source_reference');
           if (providerTimeValid && c.provider_event_time_ms !== providerTime) identityMismatch.push('provider_event_time_ms');
           if (c.received_at_ms !== receivedAt) identityMismatch.push('received_at_ms');
           if (identityMismatch.length) {
@@ -2228,6 +2235,17 @@
         assert('forming candle cannot satisfy minimum closed-history requirement',run(formingOnly,formingOnlyPolicy).status==='INSUFFICIENT'&&run(formingOnly,formingOnlyPolicy).valid_count===0);
         const wrongSymbol=makeSnapshot({candleOverrides:{canonical_symbol:'ETH/USDT'}});
         assert('candle from a different symbol is rejected',run(wrongSymbol).status==='INVALID'&&run(wrongSymbol).reasons.some(r=>r.code==='CANDLE_PROVENANCE_MISMATCH'));
+        const wrongProviderSymbol=makeSnapshot({candleOverrides:{provider_symbol:'ETHUSDT'}});
+        assert('candle provider symbol must match snapshot provider metadata',run(wrongProviderSymbol).status==='INVALID'&&run(wrongProviderSymbol).reasons.some(r=>r.code==='CANDLE_PROVENANCE_MISMATCH'));
+        const wrongVenue=makeSnapshot({candleOverrides:{venue:'other-exchange'}});
+        assert('candle venue must match snapshot provider metadata',run(wrongVenue).status==='INVALID'&&run(wrongVenue).reasons.some(r=>r.code==='CANDLE_PROVENANCE_MISMATCH'));
+        const wrongNormalizer=makeSnapshot({candleOverrides:{normalizer_version:'unrecognized-normalizer'}});
+        assert('candle normalizer version must match the canonical contract',run(wrongNormalizer).status==='INVALID'&&run(wrongNormalizer).reasons.some(r=>r.code==='CANDLE_PROVENANCE_MISMATCH'));
+        const wrongSourceHost=makeSnapshot({candleOverrides:{source_reference:{endpoint:'/v5/market/kline',host:'api.bytick.com',raw_index:0}}});
+        assert('candle source host must match snapshot provider host',run(wrongSourceHost).status==='INVALID'&&run(wrongSourceHost).reasons.some(r=>r.code==='CANDLE_PROVENANCE_MISMATCH'));
+        const wrongMetadataSymbol=makeSnapshot();
+        wrongMetadataSymbol.provider_metadata.provider_symbol='ETHUSDT';
+        assert('snapshot canonical symbol must agree with provider symbol metadata',run(wrongMetadataSymbol).status==='INVALID'&&run(wrongMetadataSymbol).reasons.some(r=>r.code==='PROVIDER_METADATA_INVALID'));
         const wrongTimeframe=makeSnapshot({candleOverrides:{timeframe:'4h'}});
         assert('candle timeframe must match snapshot timeframe',run(wrongTimeframe).status==='INVALID'&&run(wrongTimeframe).reasons.some(r=>r.code==='CANDLE_PROVENANCE_MISMATCH'));
         const wrongReceiveTime=makeSnapshot({candleOverrides:{received_at_ms:now-99}});
