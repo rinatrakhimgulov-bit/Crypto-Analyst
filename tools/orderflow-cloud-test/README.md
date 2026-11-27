@@ -12,7 +12,7 @@ It does not edit the Crypto Analyst application, `main`, or any existing PR.
 - Serves the candidate dashboard on port 8080 for visual inspection on the iPhone.
 - Writes raw logs and a comparison report under `orderflow-cloud-test-output/`.
 
-No API key, account login, order placement, or trading permission is used. The forwarded port is private by default. The runner is launched with a clean environment and a temporary HOME so the third-party candidate process is not given the Codespaces GitHub token or your normal GitHub CLI credentials.
+No API key, account login, order placement, or trading permission is used. The forwarded port is private by default. Dependency installation and the candidate process both run with a clean environment and temporary HOME, so third-party build/runtime code is not given the Codespaces GitHub token or your normal GitHub CLI credentials.
 
 ## Start it
 
