@@ -283,7 +283,7 @@ run('initial bullish break remains visible after a later same-side pivot replace
   const input = fixture(pivots, { 4: { open: 105, high: 115, low: 104, close: 112 } }, { count: 8 });
   const result = analyze(input);
   assert.equal(result.status, 'VALID', JSON.stringify(result.admission.reasons));
-  assert.ok(result.events.some(e => e.event_type === 'BULLISH_BOS' && e.source_pivot_id === 'h1'));
+  assert.ok(result.events.some(e => e.event_type === 'INITIAL_BULLISH_BREAK' && e.source_pivot_id === 'h1'));
   assert.ok(result.raw_pivots.some(p => p.pivot_id === 'h1' && p.sequence_status === 'SUPERSEDED_FOR_SEQUENCE'));
   assert.ok(result.pivots.some(p => p.pivot_id === 'h2'));
 });
