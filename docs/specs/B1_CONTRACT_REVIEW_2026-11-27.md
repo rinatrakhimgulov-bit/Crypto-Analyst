@@ -228,3 +228,11 @@ Latest isolated verification from the actual candidate HTML:
 - Both inline script blocks syntax-compiled: 2/2.
 
 Acceptance remains deliberately separate from isolated verification. Full browser `StageASelfTest.runAll()`, iPhone Safari lifecycle/UI, and a fresh live Bybit request from the candidate are still required. B1-B is not connected to the live decision gate; B1-C remains a separate future stage. The candidate must not be merged into `main` before those checks and explicit user acceptance.
+
+
+
+## Current implementation supersession note — 2026-11-27
+
+This review document records an earlier B1 contract review state. The current integration candidate has since advanced to canonical contract 1.1.0, validator 1.1.0, B1-C fail-closed analytics gate, and an isolated B1-E common-cutoff assembler. The authoritative current MTF specification is `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`; current project state and branch consolidation are recorded in `docs/PROJECT_STATE.md` and `docs/audits/B1_BRANCH_CONSOLIDATION_AUDIT_2026-11-27.md`.
+
+Do not use the historical acceptance statements in this file as evidence that the current integration candidate is accepted. Current acceptance gates remain open.
