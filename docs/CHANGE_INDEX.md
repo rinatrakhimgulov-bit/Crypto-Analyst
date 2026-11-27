@@ -328,3 +328,16 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - `CryptoAnalyst_StageA_S6_updated.html`: removed implicit 400-candle fallback; explicit `closedCandleCount` is required. Added separate `pending_finality_context` output and regression proving pending-finality candles cannot enter `analysis_candles`.
 - MTF self-tests: 18/18. Latest CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64; total 158/158, gate/UI/chart assertions passed, zero page errors.
 - Latest HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`, 299,978 bytes. Live Bybit remains blocked by runner HTTP 403. Integration only; main unchanged.
+
+
+
+
+## 21. B1 analytics-series binding and live capture probe — 2026-11-27
+
+- `CryptoAnalyst_StageA_S6_updated.html`: B1-C compares the legacy candle series and last-closed price actually consumed by analytics against the exact canonical validated closed series; mismatch blocks with `ANALYTICS_CANDLE_DATA_MISMATCH` and WAIT.
+- `CryptoAnalyst_StageA_S6_updated.html`: empty matching series preserve INSUFFICIENT status; MTF suite now 20 cases, including external cancellation and Bybit 1000-row cap.
+- `tools/b1_live_probe.html`: schema v3 read-only concurrent Bybit 1D/4H/1H capture with strict provider-time parsing and failed-attempt timing/status evidence.
+- `docs/specs/B1_LIVE_CAPTURE_PROCEDURE.md`: Windows local host + iPhone Safari instructions.
+- `tests/b1-browser-live-check.cjs`: live-probe initial UI smoke check, no automatic external requests; quality gate series mismatch and empty-insufficient assertions.
+- Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; gate/UI/chart/probe smoke passed, zero page errors. Live Bybit blocked by runner HTTP 403.
+- Exact current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; main unchanged.
