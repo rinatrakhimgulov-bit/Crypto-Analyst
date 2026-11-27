@@ -418,7 +418,7 @@ async function main() {
     probePage.on('pageerror', error => pageErrors.push('live-probe: ' + error.message));
     const probeExternalRequests = [];
     probePage.on('request', request => {
-      if (/^https:\\/\\/(api\\.bybit\\.com|api\\.bytick\\.com)\\//.test(request.url())) probeExternalRequests.push(request.url());
+      if (/^https:\/\/(api\.bybit\.com|api\.bytick\.com)\//.test(request.url())) probeExternalRequests.push(request.url());
     });
     await probePage.goto(`http://127.0.0.1:${PORT}/tools/b1_live_probe.html`, { waitUntil: 'domcontentloaded', timeout: 15000 });
     const liveProbeUi = await probePage.evaluate(() => ({
