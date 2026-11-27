@@ -6626,7 +6626,7 @@
         min_independent_touches: 2
       };
       const d = B2DSupportResistanceEngine.analyze({
-        policy: B2_POLICY_D, zone_policy, snapshot, quality_report: quality,
+        policy: B2_POLICY_D, zone_policy: zonePolicy, snapshot, quality_report: quality,
         b2c_result: c, analysis_as_of_ms: asOf, timeframe
       });
       if (d.status !== 'VALID') return blocked('B2-D', d);
