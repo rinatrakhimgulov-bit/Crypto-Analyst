@@ -384,6 +384,13 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 
 - `src/analysis/b2-causal-swing-engine.js`: isolated pure engine for closed-candle swing highs/lows; maximal equal-price plateau with rightmost representative; exact-price v1 equality; source, confirmation and availability timestamps; B1 finality safety lag.
 - Admission requires an exact matching `VALID` B1 quality report and policy version. Invalid provenance, timestamp grid/order, OHLC, finality, forming/unknown overlap, or insufficient history fails closed.
-- `tests/b2a-causal-swing-engine.test.cjs`: 10 deterministic tests passed in the development harness, including prefix replay invariance and quality fail-closed.
-- `.github/workflows/b2a-causal-pivots.yml`: dedicated CI workflow added; GitHub Actions result not yet confirmed.
+- `tests/b2a-causal-swing-engine.test.cjs`: 13 deterministic tests; GitHub Actions run 46005202794 passed.
+- `.github/workflows/b2a-causal-pivots.yml`: dedicated Node CI workflow; run 46005202794 passed on candidate commit `f41c85a3d09cbbec602fe1eaef8902b5f52de685`.
 - Research candidate only. No UI/HTML, swing sequence, BOS/CHoCH, S/R, retests, directional decision, or main branch changes.
+
+
+### B2-A exact B1 version binding — 2026-11-27
+- Exact B1 contract (1.1.0), validator (1.1.0) and quality-policy version are now required by candidate policy.
+- Snapshot contract and quality report validator/policy identities are checked exactly; mismatches fail closed.
+- Added regression tests for stale validator and unsupported contract versions; suite 13/13, GitHub Actions run 46005202794 passed.
+- Candidate remains isolated and unmerged; no application HTML or `main` changes.
