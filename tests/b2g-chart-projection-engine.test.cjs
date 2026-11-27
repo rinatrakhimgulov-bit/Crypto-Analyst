@@ -13,12 +13,12 @@ const POLICY = {
   b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
-  b2b_engine_version: '2.1.0-b2b',
-  b2b_policy_version: 'b2b-swing-sequence-v2',
+  b2b_engine_version: '2.2.0-b2b',
+  b2b_policy_version: 'b2b-swing-sequence-v3',
       b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
-  b2c_engine_version: '2.0.0-b2c',
-  b2c_policy_version: 'b2c-state-v1',
+  b2c_engine_version: '2.1.0-b2c',
+  b2c_policy_version: 'b2c-state-v2',
   b2d_engine_version: '2.0.0-b2d',
   b2d_policy_version: 'b2d-zone-engine-v1',
   b2d_zone_policy_version: 'b2d-absolute-span-v1',
@@ -140,14 +140,14 @@ function makeInput() {
     pivots: raw.map(({ sequence_status, superseded_by, ...p }) => p)
   };
   const b2c = {
-    engine_version: '2.0.0-b2c',
-    policy_version: 'b2c-state-v1',
+    engine_version: '2.1.0-b2c',
+    policy_version: 'b2c-state-v2',
     status: 'VALID',
     admission: {
       status: 'ADMITTED',
       snapshot_id: snapshotId,
-      b2b_engine_version: '2.1.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v2',
+      b2b_engine_version: '2.2.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v3',
       b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
@@ -171,8 +171,8 @@ function makeInput() {
     admission: {
       status: 'ADMITTED',
       snapshot_id: snapshotId,
-      b2c_engine_version: '2.0.0-b2c',
-      b2c_policy_version: 'b2c-state-v1',
+      b2c_engine_version: '2.1.0-b2c',
+      b2c_policy_version: 'b2c-state-v2',
       b1_validator_version: '1.1.0',
       b1_quality_policy_version: POLICY.b1_quality_policy_version
     },
@@ -238,8 +238,8 @@ function makeInput() {
     admission: {
       status: 'ADMITTED',
       snapshot_id: snapshotId,
-      b2c_engine_version: '2.0.0-b2c',
-      b2c_policy_version: 'b2c-state-v1',
+      b2c_engine_version: '2.1.0-b2c',
+      b2c_policy_version: 'b2c-state-v2',
       b2d_engine_version: '2.0.0-b2d',
       b2d_policy_version: 'b2d-zone-engine-v1',
       b2d_zone_policy_version: 'b2d-absolute-span-v1',
@@ -297,8 +297,8 @@ function makeInput() {
       b1_contract_version: '1.1.0',
       b1_validator_version: '1.1.0',
       b1_quality_policy_version: POLICY.b1_quality_policy_version,
-      b2c_engine_version: '2.0.0-b2c',
-      b2c_policy_version: 'b2c-state-v1',
+      b2c_engine_version: '2.1.0-b2c',
+      b2c_policy_version: 'b2c-state-v2',
       snapshot_ids: { '1d': 'snapshot-1d', '4h': 'snapshot-4h', '1h': snapshotId }
     },
     symbol: 'BTC/USDT',
