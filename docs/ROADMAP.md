@@ -315,3 +315,18 @@ Canonical contract and validator versions are now 1.1.0. Latest CI run `45965680
 This is not yet B1 acceptance. Independent review of the exact port, live Bybit captures and measured provider-time spread policy, actual transport-level abort test, latest iPhone Safari quality-panel check, and explicit owner acceptance remain required. MTF is not connected to directional decisions. B2 remains **НЕ НАЧАТ** until B1 is accepted.
 
 Specification: `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
+
+
+
+
+## Authoritative roadmap correction — 2026-11-27
+
+This addendum supersedes older progress statements in this file that describe B1-E as not yet ported or the integration branch as only a documentation workspace.
+
+The current integration branch `integration/b1-mtf-architecture-2026-11-27` contains B1-A/B/C, C1 and the current-contract B1-E MTF assembler. Candidate HTML blob: `3f1a739b90e3a187292b29cd9f0ca5c1beafbd5c`; branch is 48 commits ahead of `main`, 0 behind. `main` remains unchanged.
+
+Latest completed browser CI run `45965680821`: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, B1 MTF 12/12; quality gate/UI and C1 chart assertions passed, zero page errors. Live Bybit test was blocked by HTTP 403 from both public hosts on the GitHub runner.
+
+**B1 status remains IN REVIEW / NOT ACCEPTED.** Outstanding: independent audit of the exact current candidate blob, live concurrent Bybit 1D/4H/1H capture and measured provider-time spread tolerance, actual transport-level cancellation verification, latest quality-panel Safari check, explicit owner approval. Do not merge to main until all gates pass.
+
+**B2 Market Structure remains NOT STARTED** until B1 acceptance. The global architecture decisions are recorded in `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`; do not reopen decisions without new evidence or a concrete requirement.
