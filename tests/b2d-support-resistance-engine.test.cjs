@@ -209,13 +209,14 @@ run('exact maximum total span is included in one cluster', () => {
 run('cluster method prevents transitive chaining beyond the total span', () => {
   const pivots = [
     pivot('s100', 'SWING_LOW', 100, 0, 1),
-    pivot('s101', 'SWING_LOW', 101, 2, 3),
-    pivot('s102', 'SWING_LOW', 102, 4, 5),
-    pivot('s103', 'SWING_LOW', 103, 6, 7)
+    pivot('s101', 'SWING_LOW', 101, 1, 2),
+    pivot('s102', 'SWING_LOW', 102, 2, 3),
+    pivot('s103', 'SWING_LOW', 103, 3, 4),
+    pivot('s104', 'SWING_LOW', 104, 4, 5)
   ];
   const result = analyze(fixture(pivots));
   assert.equal(result.zones.length, 2);
-  assert.deepEqual(result.zones.map(z => [z.lower_bound, z.upper_bound]), [[100, 102], [103, 103]]);
+  assert.deepEqual(result.zones.map(z => [z.lower_bound, z.upper_bound]), [[100, 102], [103, 104]]);
   assert.equal(result.zones[0].cluster_span_price, 2);
 });
 
@@ -233,7 +234,7 @@ run('support and resistance are never merged into one cluster', () => {
 run('same-role duplicate source-candle touches fail closed', () => {
   const pivots = [
     pivot('s90a', 'SWING_LOW', 90, 0, 1),
-    pivot('s90b', 'SWING_LOW', 91, 0, 2)
+    pivot('s90b', 'SWING_LOW', 90, 0, 2)
   ];
   const result = analyze(fixture(pivots));
   assert.equal(result.status, 'INVALID');
