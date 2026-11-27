@@ -657,3 +657,8 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - No BOS/CHoCH, protected-swing state, zones, retests or trade recommendations.
 - No live Bybit or profitability claims.
 - B1 remains NOT ACCEPTED; production integration is prohibited until B1 acceptance and explicit owner approval.
+
+
+### B2-A → B2-B contract integration regression — 2026-11-27
+
+Added a direct integration fixture to `tests/b2b-swing-sequence-engine.test.cjs`. The test instantiates the actual B2-A engine with a deterministic canonical B1 snapshot and exact quality report, passes the resulting VALID raw pivots into B2-B, and verifies the causal sequence labels `INITIAL_HIGH`, `INITIAL_LOW`, `HH`, `HL`, `LH`, `LL`. The expanded B2-B suite passed 20/20 in GitHub Actions run [46012201698](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46012201698), code commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`. This is deterministic contract integration, not live Bybit or production-app validation.
