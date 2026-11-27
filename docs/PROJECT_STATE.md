@@ -381,3 +381,13 @@ This entry supersedes earlier candidate counts and records additional defects fo
 
 ### Release boundary
 All B2 candidates remain research-only, draft and unmerged. They are not imported into application HTML and do not feed chart, MTF or LONG/SHORT/WAIT. B1 remains NOT ACCEPTED. Deterministic fixtures are not live Bybit evidence. Independent external review and explicit owner acceptance remain outstanding.
+
+
+## B2-E next increment — 2026-11-27
+
+Draft research specification is available in PR #18:
+https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/18
+
+B2-E uses B2-C event IDs as stable lifecycle identity, not B2-D membership-derived zone IDs. It defines pivot-level retest tolerance, a maximum closed-bar window, touch/success/failure/expiry states, strict equality handling, same-candle no-lookahead and prefix replay. B2-D zone membership is contextual only in v1; full zone-edge breakouts and role reversal are deferred.
+
+B2-E is specification only; no implementation or app integration. B1 remains NOT ACCEPTED.
