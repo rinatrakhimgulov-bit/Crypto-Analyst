@@ -133,3 +133,9 @@ The current branch is 48 commits ahead of main and 0 behind. Main HTML blob rema
 ## Latest verification refresh — 2026-11-27
 
 The current HTML candidate blob is `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest completed CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64, MTF 18/18, gate/UI/chart checks passed, zero browser page errors; 158/158 named self-tests. The new MTF tests ensure missing history depth fails before network calls and pending-finality candles remain context-only. Branch is 66 ahead / 0 behind main. Live Bybit is still blocked by HTTP 403 from both public hosts on GitHub Actions. No independent audit or owner acceptance has been received; main remains unchanged.
+
+
+
+## Current candidate verification — 2026-11-27
+
+PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`; HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes); browser harness `a23585f9688b9a04336c7f99da7a972513882f8e`. Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; 161/161 tests, UI/chart assertions passed, zero page errors. B1-C blocks divergence between validated canonical candles and the legacy analysis input. Live Bybit remains blocked by HTTP 403. PR remains draft; independent review and acceptance remain open; main unchanged.
