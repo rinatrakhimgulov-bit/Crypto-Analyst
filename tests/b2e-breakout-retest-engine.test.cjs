@@ -281,6 +281,20 @@ run('failed bullish retest rejects role reversal and preserves resistance role',
   assert.equal(result.lifecycles[0].effective_role, 'RESISTANCE');
 });
 
+run('a gap close beyond the failure boundary fails before any later retest', () => {
+  const input = fixture({
+    postTouchOverrides: {
+      7: { open: 99, high: 99.5, low: 98, close: 98.5 },
+      8: { open: 100.5, high: 102, low: 100.5, close: 102 }
+    }
+  });
+  const result = analyze(input);
+  assert.equal(result.lifecycles[0].status, 'RETEST_FAILED');
+  assert.equal(result.lifecycles[0].role_transition_status, 'REJECTED');
+  assert.equal(result.lifecycles[0].touch, null);
+  assert.equal(result.lifecycles[0].confirmation.outcome, 'FAILURE');
+});
+
 run('no touch after a complete retest window expires without role reversal', () => {
   const input = fixture({
     postTouchOverrides: {
