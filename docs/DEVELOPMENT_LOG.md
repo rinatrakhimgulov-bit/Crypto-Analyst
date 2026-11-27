@@ -364,3 +364,8 @@ The owner approved freezing Stage 1 visual/live-chart feature work temporarily a
 
 ### Acceptance boundary
 B1 remains NOT ACCEPTED. B2-A/B are isolated research candidates only. No application HTML, `main`, chart, MTF directional path or LONG/SHORT decision logic changed. No live Bybit or profitability claim is made. B2-C and later increments remain separate work and must not be connected to the app before B1 acceptance and explicit owner approval.
+
+
+### B2-A → B2-B deterministic contract integration — 2026-11-27
+
+B2-B test suite expanded to 20/20 with a direct fixture that instantiates the actual B2-A engine using a canonical B1 snapshot and matching quality report, then passes the resulting VALID pivot output to B2-B. The test verifies the causal sequence labels `INITIAL_HIGH`, `INITIAL_LOW`, `HH`, `HL`, `LH`, `LL`. GitHub Actions run [46012201698](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46012201698) passed on commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`. This is deterministic contract verification only.
