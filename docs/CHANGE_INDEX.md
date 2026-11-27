@@ -23,8 +23,8 @@
 
 Последняя проверенная версия:
 
-- Git Blob SHA: `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf`
-- SHA-256: `8783eae2466b2452adda2c23f167a5a6a352f17a42a9605318feac5499519d17`
+- Git Blob SHA: `6ce939ff386f9bad74c353f50fa923795b07a919`
+- SHA-256: `not recalculated after the B2 merge`
 
 ---
 
@@ -489,3 +489,18 @@ B2-F remains disabled in the live UI pending empirical provider-time spread cali
 - B2-A/B/C full-series replay completed for BTC/ETH across 1H/4H/1D; 18/18 prefix checks passed.
 - B2-D/E exercised on sampled 160-candle windows and final synchronized MTF fixtures.
 - Explicitly not a profitability test or live provider-time calibration.
+
+
+## 2026-11-27 — B3 chart UI presentation layer
+
+| Element | Purpose | Stage |
+|---|---|---|
+| `CandleChart.displayMode` | Active preset: clean / structure / full / custom | B3 |
+| `CandleChart.displayLayers` | Independent visibility flags for zones, pivots, events, retests, EMA, volume and legacy levels | B3 |
+| `CandleChart.setDisplayMode(mode)` | Apply a named display preset | B3 |
+| `CandleChart.setDisplayLayer(layer, enabled)` | Toggle one layer without changing analysis output | B3 |
+| `syncChartDisplayControls()` | Keep button active/pressed state synchronized with chart settings | B3 |
+| `data-chart-mode` controls | Clean / Structure / Full preset buttons | B3 |
+| `data-chart-layer` controls | S/R, extrema, BOS/CHoCH, retests, EMA, volume toggles | B3 |
+
+B3 is an unmerged candidate. It changes chart presentation only; B1/B2 engines and directional decision logic are unchanged. See `docs/specs/B3_CHART_UI_REDESIGN_SPEC_2026-11-27.md`.
