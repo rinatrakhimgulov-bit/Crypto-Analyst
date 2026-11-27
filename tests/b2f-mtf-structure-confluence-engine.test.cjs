@@ -289,6 +289,13 @@ run('event available after common cutoff blocks', () => {
   input.b2c_by_timeframe['1d'].events[0].available_at_ms = input.mtf_result.analysis_as_of_ms + 1;
   assert.equal(analyze(input).admission.reasons[0].code, 'B2C_EVENT_HISTORY_INVALID');
 });
+run('B2-C event close timestamps must align to their timeframe', () => {
+  const input = makeInput();
+  input.b2c_by_timeframe['4h'].events[0].breaking_candle_close_time_ms += 1;
+  input.b2c_by_timeframe['4h'].events[0].available_at_ms += 1;
+  assert.equal(analyze(input).admission.reasons[0].code, 'B2C_EVENT_HISTORY_INVALID');
+});
+
 run('provider-time spread is recomputed rather than trusted', () => {
   const input = makeInput();
   input.mtf_result.provider_time_spread_ms = 0;
@@ -436,5 +443,5 @@ run('full B1-E three-timeframe snapshot plus actual B2-A/B/C engines yields UP|U
   assert.equal(result.hierarchical_interpretation, '1H_PULLBACK_AGAINST_BULLISH_1D_4H');
 });
 
-console.log('B2-F TESTS: ' + passed + '/29 passed');
-if (passed !== 29) process.exitCode = 1;
+console.log('B2-F TESTS: ' + passed + '/30 passed');
+if (passed !== 30) process.exitCode = 1;
