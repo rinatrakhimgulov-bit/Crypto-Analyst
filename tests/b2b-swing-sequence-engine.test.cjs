@@ -159,7 +159,7 @@ run('same-candle high and low pivots remain raw but are excluded from the sequen
   const sourceTime = 1500;
   const result = analyze(makeInput([
     pivot('dual-high', 'SWING_HIGH', 110, 3000, sourceTime),
-    pivot('dual-low', 'SWING_LOW', 90, 4000, sourceTime),
+    pivot('dual-low', 'SWING_LOW', 90, 3000, sourceTime),
     pivot('later-high', 'SWING_HIGH', 115, 5000, 3500)
   ]));
   assert.equal(result.status, 'VALID');
@@ -168,6 +168,15 @@ run('same-candle high and low pivots remain raw but are excluded from the sequen
   assert.equal(result.raw_pivots[1].sequence_status, 'AMBIGUOUS_FOR_SEQUENCE');
   assert.equal(result.raw_pivots[0].exclusion_reason, 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE');
   assert.equal(result.diagnostics.ambiguous_dual_pivot_count, 2);
+});
+
+run('same-source dual pivots with different confirmation times fail closed', () => {
+  const result = analyze(makeInput([
+    pivot('dual-high', 'SWING_HIGH', 110, 3000, 1500),
+    pivot('dual-low', 'SWING_LOW', 90, 4000, 1500)
+  ]));
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'DUAL_PIVOT_CONFIRMATION_TIME_MISMATCH');
 });
 
 run('non-VALID B2-A input blocks and emits no sequence', () => {
