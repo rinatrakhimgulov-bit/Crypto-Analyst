@@ -35,7 +35,7 @@ function makeInput(pivots = []) {
       admission: {
         status: 'ADMITTED',
         snapshot_id: snapshotId,
-        quality_report: { snapshot_id: snapshotId, validator_version: '1.1.0', policy_version: 'b1-quality-v1' }
+        quality_report: { snapshot_id: snapshotId, validator_version: '1.1.0', policy_version: 'b1-quality-v1', checked_at_ms: 9000 }
       },
       snapshot_id: snapshotId,
       symbol: 'BTC/USDT',
