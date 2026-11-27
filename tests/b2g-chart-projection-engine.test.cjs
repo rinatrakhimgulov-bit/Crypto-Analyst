@@ -494,7 +494,7 @@ run('ambiguous same-candle dual pivots are projected separately, never as active
   const input = makeInput();
   const base = input.b2a_result.pivots[0];
   const high = { ...base, pivot_id: 'dual-high', type: 'SWING_HIGH', price: 120, source_time_ms: STEP * 12, confirmed_at_ms: STEP * 14, available_at_ms: STEP * 14 + LAG };
-  const low = { ...base, pivot_id: 'dual-low', type: 'SWING_LOW', price: 80, source_time_ms: STEP * 12, confirmed_at_ms: STEP * 15, available_at_ms: STEP * 15 + LAG };
+  const low = { ...base, pivot_id: 'dual-low', type: 'SWING_LOW', price: 80, source_time_ms: STEP * 12, confirmed_at_ms: STEP * 14, available_at_ms: STEP * 14 + LAG };
   input.b2a_result.pivots.push(high, low);
   for (const p of [high, low]) input.b2c_result.raw_pivots.push({ ...p, sequence_status: 'AMBIGUOUS_FOR_SEQUENCE', exclusion_reason: 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE', structure_label: null, comparison_pivot_id: null, price_delta: null, relative_delta_pct: null, superseded_by: null });
   const result = analyze(input);
@@ -503,9 +503,9 @@ run('ambiguous same-candle dual pivots are projected separately, never as active
   const projectedHigh = result.ambiguous_pivots.find(p => p.id === 'dual-high');
   const projectedLow = result.ambiguous_pivots.find(p => p.id === 'dual-low');
   assert.equal(projectedHigh.visible_at_ms, STEP * 14 + LAG);
-  assert.equal(projectedHigh.status_visible_at_ms, STEP * 15 + LAG);
-  assert.equal(projectedLow.visible_at_ms, STEP * 15 + LAG);
-  assert.equal(projectedLow.status_visible_at_ms, STEP * 15 + LAG);
+  assert.equal(projectedHigh.status_visible_at_ms, STEP * 14 + LAG);
+  assert.equal(projectedLow.visible_at_ms, STEP * 14 + LAG);
+  assert.equal(projectedLow.status_visible_at_ms, STEP * 14 + LAG);
   assert.equal(result.swing_markers.some(p => p.id === 'dual-high' || p.id === 'dual-low'), false);
 });
 
@@ -543,5 +543,22 @@ run('projection does not mutate inputs or emit candle/trade-decision data', () =
   }
 });
 
-console.log('B2-G TESTS: ' + passed + '/29 passed');
-if (passed !== 29) process.exitCode = 1;
+run('ambiguous dual pivots with mismatched confirmation times fail closed', () => {
+  const input = makeInput();
+  const base = input.b2a_result.pivots[0];
+  const high = { ...base, pivot_id: 'dual-high-bad', type: 'SWING_HIGH', price: 120,
+    source_time_ms: STEP * 12, confirmed_at_ms: STEP * 14, available_at_ms: STEP * 14 + LAG };
+  const low = { ...base, pivot_id: 'dual-low-bad', type: 'SWING_LOW', price: 80,
+    source_time_ms: STEP * 12, confirmed_at_ms: STEP * 15, available_at_ms: STEP * 15 + LAG };
+  input.b2a_result.pivots.push(high, low);
+  input.b2c_result.raw_pivots.push(
+    { ...high, sequence_status: 'AMBIGUOUS_FOR_SEQUENCE', exclusion_reason: 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE' },
+    { ...low, sequence_status: 'AMBIGUOUS_FOR_SEQUENCE', exclusion_reason: 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE' }
+  );
+  const result = analyze(input);
+  assert.equal(result.status, 'BLOCKED');
+  assert.equal(result.admission.reasons[0].code, 'AMBIGUOUS_PIVOT_PAIR_INVALID');
+});
+
+console.log('B2-G TESTS: ' + passed + '/30 passed');
+if (passed !== 30) process.exitCode = 1;
