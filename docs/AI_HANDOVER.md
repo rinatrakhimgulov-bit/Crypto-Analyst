@@ -1365,3 +1365,8 @@ Latest HTML blob: 842c361a8386c358a68f22407814c376fd3bde1b. Final isolated V8 ve
 - Before directional use, add strict forming-candle validation or a tested invariant that forming data cannot influence directional scoring.
 - MTF remains disconnected from UI/chart/directional decisions. PR #6 remains draft/unmerged.
 - Full audit: `docs/audits/B1_A_B_E_INDEPENDENT_AUDIT_2026-11-27.md`.
+
+
+### B1 live capture probe status — 2026-11-27
+
+The standalone read-only probe `tools/b1_live_probe.html` is hardened in the PR branch: per-host 15-second timeout with fallback, user cancellation of active requests and inter-sample wait, distinct response-header/body timestamps, and per-attempt request timing. It exports schema `crypto-analyst-b1-live-capture-v2`. These are source-level changes only; do not claim live capture has been run. Follow `docs/specs/B1_LIVE_CAPTURE_PROCEDURE.md` and obtain BTCUSDT and ETHUSDT cassettes from a real browser session.
