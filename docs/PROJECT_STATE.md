@@ -283,3 +283,8 @@ B0 acceptance: StageASelfTest 44/44 в изолированном harness; EMA/A
 ## B1 current adapter mapping — 2026-11-26
 
 Подготовлен `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`: сопоставление BybitAdapter с canonical Candle/Snapshot/QualityReport и 11 конкретных разрывов (canonical contract, duplicates, future timestamps, provider-time fallback, closed-state, quality gate, coverage, pagination, MTF cutoff, stale cache). Предложен минимальный план B1 без переписывания приложения и предварительная рекомендация сохранить JavaScript на первом проходе; Python backend оставить открытой опцией при доказанной необходимости. Это спецификация, не реализация.
+
+
+## B2 candidate audit update — 2026-11-26
+
+A static source/test review of `market-structure-engine` and `poi-liquidity-detector` is recorded in `docs/research/B2_STRUCTURE_POI_SOURCE_AUDIT_2026-11-26.md`. Decision: `market-structure-engine` = ADAPT / CONDITIONAL CANDIDATE for B2; `poi-liquidity-detector` = ADAPT / HOLD for B4. Findings include ambiguous dual-side wick breaks, missing input validation at candidate-engine boundaries, incomplete resampler bucket validation, and a kind-insensitive swing-membership bug in POI equal-level tracking. Tests were inspected but not executed; no application code changed. B1 remains the active stage; B2 implementation remains NOT STARTED.

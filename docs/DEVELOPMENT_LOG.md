@@ -343,3 +343,13 @@ B1 находится в исследовании. Основной HTML не и
 Предложен минимальный план B1: сохранить текущий JS adapter как первый provider, добавить canonical mapping + pure validator + mandatory gate + stale suppression, затем common cutoff и только потом второй provider. Предварительная рекомендация: не мигрировать на Python backend до доказанной необходимости.
 
 Подробности: `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`. Код приложения не изменён.
+
+
+## 2026-11-26 — B2 Structure / POI candidate source audit
+
+- Reviewed the full relevant source files and committed tests of `market-structure-engine` and `poi-liquidity-detector`.
+- `market-structure-engine`: ADAPT / CONDITIONAL CANDIDATE. Strong causal swing confirmation and prefix-property test design; issues: wick-mode dual-boundary ambiguity, no input validation, incomplete resampler bucket validation, no measured crypto swing-sensitivity tuning.
+- `poi-liquidity-detector`: ADAPT / HOLD. Useful OB/FVG/EQH/EQL/sweep feature layer; confirmed kind-insensitive membership check by pivot index only, missing candle/config validation and no long-history benchmark.
+- Test source inspected; tests were NOT executed. No live data, profitability, browser integration or performance test performed.
+- No Crypto Analyst application code changed. B1 remains active; B2 remains NOT STARTED.
+- Full report: `docs/research/B2_STRUCTURE_POI_SOURCE_AUDIT_2026-11-26.md`.
