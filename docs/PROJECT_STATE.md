@@ -533,3 +533,19 @@ Current status remains unchanged at the release boundary:
 - B1 is NOT ACCEPTED. Its exact-source independent review, real concurrent Bybit 1D/4H/1H capture and spread calibration, actual iPhone/Safari lifecycle verification, and explicit owner acceptance remain open.
 - B2 production implementation remains NOT STARTED and blocked by B1 acceptance. After B1 acceptance, B2-A/B/C can be proposed as separate increments; no B2-D/E/F scope is bundled.
 - PR #10 remains documentation-only, draft and unmerged. main and the application HTML are unchanged.
+
+## B2-A isolated implementation candidate — 2026-11-27 (latest)
+
+The user explicitly directed work to move beyond repeated B1 UI checks. Do not ask the user to repeat timeframe-switching or live-price checks already completed. Candle animation polish is deferred to the chart UI stage.
+
+An isolated B2-A candidate has now been created on branch feature/b2a-causal-swing-engine-2026-11-27:
+- src/analysis/b2-causal-swing-engine.js — pure, provider-neutral causal raw swing-high/swing-low detector.
+- tests/b2a-causal-swing-engine.test.cjs — deterministic regression fixtures.
+- .github/workflows/b2a-causal-pivots.yml — dedicated Node test workflow.
+- B2 spec clarification: pivot confirmedAt is the right-window candle close boundary; availableAt includes the explicit B1 finality safety lag and must be <= analysis_as_of_ms.
+
+The engine requires a VALID B1 quality report whose snapshot_id, symbol, timeframe, analysis_as_of_ms and B1 policy version exactly match the canonical snapshot and explicit B2 policy. It rejects non-VALID/mismatched input, invalid provenance, out-of-order/duplicate/misaligned candles, non-closed candles, and forming/unknown overlap. It emits only confirmed raw pivots, with rightmost plateau representative and causal timestamps. No swing sequence, BOS/CHoCH, zones, retests, chart integration or LONG/SHORT connection is included.
+
+Local deterministic harness verification in the development environment: 10/10 B2-A tests passed. This is not yet a reported GitHub Actions run. The PR remains draft/unmerged; no application HTML or main branch changed.
+
+B1 release acceptance is still a separate gate for production integration. This isolated B2-A candidate is research/verification code only; it does not activate B2 in the running app.
