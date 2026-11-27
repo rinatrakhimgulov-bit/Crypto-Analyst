@@ -838,3 +838,17 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - A real regression found during validation (EMA200 test assumed EMA was visible by default) was corrected in the test by explicitly enabling the EMA layer. A first-run mobile overflow issue was corrected in CSS and retained in browser assertions.
 - Live Bybit REST verification was not completed: GitHub Actions runner returned HTTP 403 from both public REST hosts. No live-feed validation is claimed.
 - B3 is integrated, but user iPhone/Safari visual acceptance is still pending. No claim is made that mobile rendering has been accepted by the user or that B3 changes trading performance.
+
+## 2026-11-27 — решение о следующих этапах после B3
+
+По итогам пользовательского обсуждения и независимой инженерной оценки Grok зафиксировано изменение приоритетов. Это планирование, не реализация новых функций.
+
+- B3 подтверждён пользователем как заметное улучшение читаемости графика и уже интегрирован в main.
+- Следующим техническим этапом назначен B4 — надёжный Live Data Path: аудит фактического main-кода, согласование REST/WS, realtime last price и forming candle, finality/reconciliation, reconnect/fallback, fail-closed quality handling и реальная проверка на iPhone/Safari.
+- Утверждён B5 Market Journal. Проектирование схемы может идти параллельно B4; первая версия предполагает локальное хранение и JSON export/import, без backend. Записывать полные snapshots, качество/происхождение данных, доступную на момент снимка структуру, решение LONG/SHORT/WAIT/skip, необязательный план и outcome.
+- Журнал должен включать WAIT и пропущенные сценарии, а не только сделки; отличать paper observation от фактической сделки; pending outcome не считать результатом.
+- Далее B6 аналитическое ядро, B7 ограниченные 2–3 setup-сценария, B8 статистическая проверка с out-of-sample и учётом издержек, B9 объяснимые решения/риск-контекст.
+- Подчёркнуто: исторические/synthetic тесты не доказывают edge или live-connectivity; никакой автоторговли и необоснованного расширения фич.
+- Принят архитектурный принцип постепенного разделения data, quality, analytics, journal и UI для возможной будущей миграции без потери проверенной логики.
+
+Детальная спецификация планирования: docs/ROADMAP.md, актуализация от 2026-11-27.
