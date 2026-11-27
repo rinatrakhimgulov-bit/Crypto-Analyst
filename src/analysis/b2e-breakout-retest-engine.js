@@ -418,6 +418,10 @@
     const unmatched = [];
     const breakEvents = b2c.events.filter(e => Object.prototype.hasOwnProperty.call(BREAK_TYPES, e.event_type));
 
+    const expectedPriorState = {
+      INITIAL_BULLISH_BREAK: 'UNESTABLISHED', INITIAL_BEARISH_BREAK: 'UNESTABLISHED',
+      BULLISH_BOS: 'UP', BEARISH_BOS: 'DOWN', BULLISH_CHOCH: 'DOWN', BEARISH_CHOCH: 'UP'
+    };
     for (const event of breakEvents) {
       const direction = BREAK_TYPES[event.event_type];
       const pivot = pivotById.get(event.source_pivot_id);
@@ -428,7 +432,10 @@
           event.breaking_candle_close !== breakingCandle.close ||
           event.confirmed_at_ms !== breakingCandle.close_time_ms ||
           event.available_at_ms !== breakingCandle.close_time_ms + policy.finality_safety_lag_ms ||
-          pivot.available_at_ms >= breakingCandle.close_time_ms ||
+          pivot.available_at_ms >= breakingCandle.close_time_ms || pivot.sequence_status !== 'ACCEPTED' ||
+          event.prior_state !== expectedPriorState[event.event_type] ||
+          event.transition !== (event.event_type === 'INITIAL_BULLISH_BREAK' || event.event_type === 'INITIAL_BEARISH_BREAK' || event.event_type === 'BULLISH_CHOCH' || event.event_type === 'BEARISH_CHOCH') ||
+          event.confirmation_method !== 'CLOSED_CANDLE_CLOSE' || event.break_buffer_policy !== 'ZERO_BUFFER_V1' || event.break_buffer !== 0 ||
           event.level_price !== pivot.price ||
           (direction === 'BULLISH' && (pivot.type !== 'SWING_HIGH' || breakingCandle.close <= pivot.price)) ||
           (direction === 'BEARISH' && (pivot.type !== 'SWING_LOW' || breakingCandle.close >= pivot.price))) {
