@@ -1353,3 +1353,15 @@ Latest verification: B1-E 32/32 PASS; B1 Quality 65/65 PASS; both inline scripts
 The assembled MTF result and failure results are now deeply frozen, including nested per-timeframe diagnostics, canonical candle arrays, candle objects and quality reports. The provider-time-spread failure path was adjusted to preserve the immutable result contract.
 
 Latest HTML blob: 842c361a8386c358a68f22407814c376fd3bde1b. Final isolated V8 verification: B1-E 33/33 PASS; B1 Quality 65/65 PASS; both inline JavaScript blocks parse. This remains a candidate only: no live Bybit, browser/UI, Chrome/iPhone Safari or full StageASelfTest verification. MTFDataEngine is not connected to the UI/decision pipeline. PR #6 remains draft and unmerged; main unchanged.
+
+
+## Independent B1-A/B/E audit — 2026-11-27
+
+- Exact HTML blob `842c361a8386c358a68f22407814c376fd3bde1b` received external **APPROVE WITH CONDITIONS**.
+- Independent runs: B1-E 33/33 PASS; B1 Quality 65/65 PASS; additional V5-shaped normalization/assembly probes passed.
+- No CRITICAL defect found in the current isolated MTF API.
+- Source inspection confirms AbortSignal propagation reaches the adapter's `fetch()`; actual transport cancellation still needs a runtime test.
+- Do not connect MTF to LONG/SHORT yet. First capture real 1D/4H/1H provider-time spread and responses, build a recorded integration fixture, and document a fail-closed `maxProviderTimeSpreadMs` policy.
+- Before directional use, add strict forming-candle validation or a tested invariant that forming data cannot influence directional scoring.
+- MTF remains disconnected from UI/chart/directional decisions. PR #6 remains draft/unmerged.
+- Full audit: `docs/audits/B1_A_B_E_INDEPENDENT_AUDIT_2026-11-27.md`.
