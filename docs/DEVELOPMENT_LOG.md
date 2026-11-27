@@ -394,3 +394,29 @@ GitHub Actions run [46013846058](https://github.com/rinatrakhimgulov-bit/Crypto-
 - No live Bybit test, MTF, S/R zones, retests, chart overlays or LONG/SHORT connection.
 - B1 remains NOT ACCEPTED. Production integration remains blocked until B1 acceptance and explicit owner approval.
 - This is an internal implementation review, not an independent external audit.
+
+
+## B2-D isolated support/resistance zone engine — 2026-11-27
+
+**Branch:** `feature/b2d-support-resistance-zones-2026-11-27`  
+**PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/16 (draft, unmerged)  
+**Verified head:** `0574858db12dd2082d7449f5512fa8461fceac63`
+
+### Work completed
+- Added `src/analysis/b2d-support-resistance-engine.js`, consuming VALID B2-C output with exact B1/B2-A/B2-B/B2-C identity binding.
+- Revalidates candle continuity/finality/provenance, forming/unknown isolation and source/confirmation candle provenance for every raw pivot.
+- Builds support clusters from swing lows and resistance clusters from swing highs; roles are never merged.
+- Requires an explicit instrument/timeframe-scoped absolute max-span policy. No hidden default or guessed ATR/percentage fallback.
+- Uses MAX_TOTAL_SPAN_V1, which bounds the full cluster span and prevents transitive chaining.
+- Requires independent source-candle touches; insufficient clusters remain candidate levels.
+- Emits observed bounds, median representative, touch count, first/last touch, age, zone availability and all contributing pivot IDs/timestamps.
+- Deliberately excludes probability-like strength, role reversal and retest lifecycle.
+
+### Verification
+GitHub Actions run [46014759139](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014759139) passed **20/20** deterministic tests on exact commit `0574858db12dd2082d7449f5512fa8461fceac63`. The suite includes an end-to-end B1 snapshot → B2-A → B2-B → B2-C → B2-D fixture.
+
+### Limits and acceptance boundary
+- Research-only; not imported into application HTML.
+- The absolute zone-span parameter has not been calibrated against live BTC/ETH data.
+- No B2-E retest/failure lifecycle, MTF, chart overlays or LONG/SHORT connection.
+- B1 remains NOT ACCEPTED; production integration is blocked until B1 acceptance and explicit owner approval.
