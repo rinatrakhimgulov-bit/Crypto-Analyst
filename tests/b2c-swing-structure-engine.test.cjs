@@ -613,7 +613,7 @@ run('a consumed BOS swing high cannot emit repeated BOS on later closes', () => 
     7: { open: 112, close: 115, high: 116, low: 111 }
   });
   const result = analyze(input);
-  assert.equal(result.events.filter(e => e.event_type === 'BULLISH_BOS').length, 1);
+  assert.equal(result.events.filter(e => e.event_type === 'BULLISH_BOS').length, 1, JSON.stringify({ events: result.events, pivots: result.pivots, continuation: result.continuation_level }));
 });
 
 
