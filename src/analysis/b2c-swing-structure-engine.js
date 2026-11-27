@@ -33,6 +33,7 @@
     if (policy.b2b_engine_version !== REQUIRED_B2B_ENGINE_VERSION ||
         typeof policy.b2b_policy_version !== 'string' || !policy.b2b_policy_version.trim() ||
         policy.b2a_engine_version !== REQUIRED_B2A_ENGINE_VERSION ||
+        typeof policy.b2a_policy_version !== 'string' || !policy.b2a_policy_version.trim() ||
         typeof policy.b1_contract_version !== 'string' || !policy.b1_contract_version.trim() ||
         typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
         typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
@@ -113,11 +114,12 @@
         !isObject(source.admission) || source.admission.status !== 'ADMITTED' ||
         source.admission.snapshot_id !== snapshot.snapshot_id ||
         source.admission.b2a_engine_version !== policy.b2a_engine_version ||
-        typeof source.admission.b2a_policy_version !== 'string' || !source.admission.b2a_policy_version ||
+        source.admission.b2a_policy_version !== policy.b2a_policy_version ||
         !isObject(source.admission.b2a_quality_report) ||
         source.admission.b2a_quality_report.snapshot_id !== snapshot.snapshot_id ||
         source.admission.b2a_quality_report.validator_version !== policy.b1_validator_version ||
-        source.admission.b2a_quality_report.policy_version !== policy.b1_quality_policy_version) {
+        source.admission.b2a_quality_report.policy_version !== policy.b1_quality_policy_version ||
+        source.admission.b2a_quality_report.checked_at_ms !== report.checked_at_ms) {
       return blocked('INVALID', 'B2B_ADMISSION_IDENTITY_MISMATCH', meta);
     }
 
@@ -136,7 +138,7 @@
     for (let i = 0; i < candles.length; i++) {
       const error = validateCandle(candles[i], snapshot, timeframe, stepMs, asOf, policy.finality_safety_lag_ms);
       if (error) return blocked('INVALID', error, meta);
-      if (seenTimes.has(candles[i].open_time_ms) || (i > 0 && candles[i].open_time_ms <= candles[i - 1].open_time_ms)) {
+      if (seenTimes.has(candles[i].open_time_ms) || (i > 0 && candles[i].open_time_ms - candles[i - 1].open_time_ms !== stepMs)) {
         return blocked('INVALID', 'B1_CANDLE_ORDER_OR_DUPLICATE_INVALID', meta);
       }
       seenTimes.add(candles[i].open_time_ms);
@@ -168,13 +170,37 @@
       previousAvailable = pivot.available_at_ms;
     }
 
+    const candleByOpen = new Map(candles.map(c => [c.open_time_ms, c]));
+    const candleByClose = new Map(candles.map(c => [c.close_time_ms, c]));
+    for (const pivot of source.raw_pivots) {
+      const sourceCandle = candleByOpen.get(pivot.source_time_ms);
+      const confirmationCandle = candleByClose.get(pivot.confirmed_at_ms);
+      const expectedPrice = sourceCandle && (pivot.type === 'SWING_HIGH' ? sourceCandle.high : sourceCandle.low);
+      if (!sourceCandle || !confirmationCandle || expectedPrice !== pivot.price ||
+          pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms) {
+        return blocked('INVALID', 'B2B_PIVOT_CANDLE_PROVENANCE_MISMATCH', meta);
+      }
+    }
+
     const rawById = new Map(source.raw_pivots.map(p => [p.pivot_id, p]));
+    const priorSameSide = { SWING_HIGH: null, SWING_LOW: null };
     for (const pivot of source.sequence) {
       const raw = rawById.get(pivot.pivot_id);
       if (!raw || raw.type !== pivot.type || raw.price !== pivot.price ||
           raw.available_at_ms !== pivot.available_at_ms || raw.source_time_ms !== pivot.source_time_ms) {
         return blocked('INVALID', 'B2B_SEQUENCE_RAW_EVIDENCE_MISMATCH', meta);
       }
+      const previous = priorSameSide[pivot.type];
+      const expectedLabel = !previous
+        ? (pivot.type === 'SWING_HIGH' ? 'INITIAL_HIGH' : 'INITIAL_LOW')
+        : pivot.type === 'SWING_HIGH'
+          ? (pivot.price > previous.price ? 'HH' : pivot.price < previous.price ? 'LH' : 'EQH')
+          : (pivot.price > previous.price ? 'HL' : pivot.price < previous.price ? 'LL' : 'EQL');
+      if (pivot.structure_label !== expectedLabel ||
+          pivot.comparison_pivot_id !== (previous ? previous.pivot_id : null)) {
+        return blocked('INVALID', 'B2B_SEQUENCE_LABEL_MISMATCH', meta);
+      }
+      priorSameSide[pivot.type] = pivot;
     }
 
     const pivots = source.sequence.map(p => ({ ...p, confirmation: { ...p.confirmation } }));
