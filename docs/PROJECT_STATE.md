@@ -700,3 +700,12 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 4. Calibration/out-of-sample review of pivot, zone and retest parameters before any trading-decision use.
 
 `main` remains unchanged. No PR has been merged. This preview must not be treated as an approved trading signal source.
+
+
+### Clean integration PR snapshot
+
+- Clean preview branch based directly on current `main`: `integration/b2-clean-preview-2026-11-27`.
+- Draft PR #22: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/22
+- PR base is current `main`; branch is one snapshot commit ahead before CI workflow updates, with no main changes or merges.
+- This clean branch preserves the newer main-branch B2-F spec and the main `docs/Screenshots.md` file.
+- PR #22 remains draft. Merge only after iPhone/Safari acceptance, live MTF calibration, independent review and explicit owner approval.
