@@ -455,3 +455,15 @@ All B2 modules remain isolated in the draft candidate PR #20. No app HTML or mai
 - B2 app integration CI [46034275312](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034275312) passed all module and browser/mobile checks.
 - B1 browser/data CI [46034276646](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034276646) passed; live Bybit REST explicitly skipped due HTTP 403 from GitHub Actions.
 - Branch `integration/b2-market-structure-ui-2026-11-27`; no `main` merge. Awaiting iPhone/Safari and live MTF calibration.
+
+
+## 2026-11-27 — B2 application integration preview
+
+| File / component | Change | Status |
+|---|---|---|
+| `CryptoAnalyst_StageA_S6_updated.html` | Inlined B2-A–B2-G; selected-timeframe B2 pipeline; causal chart overlay; structure panel | Integration preview |
+| `src/analysis/b2g-chart-projection-engine.js` | Permit explicit absence of B2-F context while preserving fail-closed checks for supplied MTF results | Tested |
+| `tests/b2-app-browser-integration.cjs` | Synthetic B1-valid browser integration, stale gate, chart projection and mobile viewport checks | Passed |
+| `.github/workflows/b2-app-integration.yml` | B2-A–G suites plus Chromium/mobile integration | Passed |
+
+B2-F remains disabled in the live UI pending empirical provider-time spread calibration. The B2 preview does not generate or modify Stage A trade decisions. iPhone/Safari acceptance is still required. `main` is unchanged.
