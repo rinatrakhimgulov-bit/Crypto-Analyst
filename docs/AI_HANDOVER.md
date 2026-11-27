@@ -1275,3 +1275,16 @@ Verification: B2-F 30/30 and integrated B2-A through B2-F 149/149. Latest candid
 Important limitation: the Node test suite uses actual B2-A/B/C engines but a synthetic B1-E-shaped MTF result. The actual B1MtfEngine is statically inspected, not executed. No live Bybit MTF or iPhone/Safari verification. B1 remains NOT ACCEPTED.
 
 PR #18 is closed as a superseded duplicate draft. PR #19 is the active B2-F candidate. PRs #12/#13/#15/#16/#17/#19 remain draft/unmerged. B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no B2 module is imported into application HTML.
+
+
+## Next Stage 2 increment — B2-G chart projection (gated) — 2026-11-27
+
+B2-A through B2-F now have isolated research candidates and deterministic test suites. The next design increment is B2-G, a read-only chart projection of accepted structural outputs:
+- confirmed swing markers and HH/HL/LH/LL labels;
+- BOS/CHoCH markers;
+- support/resistance zones and retest lifecycle states;
+- compact 1D/4H/1H structure context.
+
+B2-G must not create a second candle or analytics engine. It consumes immutable accepted engine output and distinguishes source time from confirmation/availability time. It does not create LONG/SHORT/WAIT, entries, SL/TP or orders.
+
+**Gate:** do not integrate B2-A through B2-G into the application until B1 is formally accepted, the exact candidate commits receive independent review, and the owner explicitly approves integration. Stage 1 live-price/forming-candle polish remains deferred, not cancelled.
