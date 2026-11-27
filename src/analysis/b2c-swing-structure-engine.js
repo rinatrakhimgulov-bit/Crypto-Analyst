@@ -266,6 +266,31 @@
     if (source.sequence.length !== expectedSequence.length) return blocked('INVALID', 'B2B_SEQUENCE_DERIVATION_MISMATCH', meta);
     if (source.sequence_history.length !== expectedHistory.length) return blocked('INVALID', 'B2B_SEQUENCE_HISTORY_DERIVATION_MISMATCH', meta);
 
+    const sequenceIds = new Set();
+    let lastSequenceType = null;
+    previousAvailable = -1;
+    for (const pivot of source.sequence) {
+      if (!rawIds.has(pivot.pivot_id) || sequenceIds.has(pivot.pivot_id) ||
+          pivot.sequence_status !== 'ACCEPTED' ||
+          (pivot.type === lastSequenceType) ||
+          pivot.available_at_ms < previousAvailable) return blocked('INVALID', 'B2B_SEQUENCE_PIVOT_INVALID', meta);
+      sequenceIds.add(pivot.pivot_id);
+      lastSequenceType = pivot.type;
+      previousAvailable = pivot.available_at_ms;
+    }
+
+    const candleByOpen = new Map(candles.map(c => [c.open_time_ms, c]));
+    const candleByClose = new Map(candles.map(c => [c.close_time_ms, c]));
+    for (const pivot of source.raw_pivots) {
+      const sourceCandle = candleByOpen.get(pivot.source_time_ms);
+      const confirmationCandle = candleByClose.get(pivot.confirmed_at_ms);
+      const expectedPrice = sourceCandle && (pivot.type === 'SWING_HIGH' ? sourceCandle.high : sourceCandle.low);
+      if (!sourceCandle || !confirmationCandle || expectedPrice !== pivot.price ||
+          pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms) {
+        return blocked('INVALID', 'B2B_PIVOT_CANDLE_PROVENANCE_MISMATCH', meta);
+      }
+    }
+
     const historyIds = new Set();
     let historyAvailableAt = -1;
     for (let i = 0; i < expectedHistory.length; i++) {
@@ -290,31 +315,6 @@
       }
       historyIds.add(actual.pivot_id);
       historyAvailableAt = actual.available_at_ms;
-    }
-
-    const sequenceIds = new Set();
-    let lastSequenceType = null;
-    previousAvailable = -1;
-    for (const pivot of source.sequence) {
-      if (!rawIds.has(pivot.pivot_id) || sequenceIds.has(pivot.pivot_id) ||
-          pivot.sequence_status !== 'ACCEPTED' ||
-          (pivot.type === lastSequenceType) ||
-          pivot.available_at_ms < previousAvailable) return blocked('INVALID', 'B2B_SEQUENCE_PIVOT_INVALID', meta);
-      sequenceIds.add(pivot.pivot_id);
-      lastSequenceType = pivot.type;
-      previousAvailable = pivot.available_at_ms;
-    }
-
-    const candleByOpen = new Map(candles.map(c => [c.open_time_ms, c]));
-    const candleByClose = new Map(candles.map(c => [c.close_time_ms, c]));
-    for (const pivot of source.raw_pivots) {
-      const sourceCandle = candleByOpen.get(pivot.source_time_ms);
-      const confirmationCandle = candleByClose.get(pivot.confirmed_at_ms);
-      const expectedPrice = sourceCandle && (pivot.type === 'SWING_HIGH' ? sourceCandle.high : sourceCandle.low);
-      if (!sourceCandle || !confirmationCandle || expectedPrice !== pivot.price ||
-          pivot.available_at_ms !== pivot.confirmed_at_ms + policy.finality_safety_lag_ms) {
-        return blocked('INVALID', 'B2B_PIVOT_CANDLE_PROVENANCE_MISMATCH', meta);
-      }
     }
 
     for (let i = 0; i < expectedSequence.length; i++) {
