@@ -5,7 +5,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function createB2BSwingSequenceEngine() {
   'use strict';
 
-  const ENGINE_VERSION = '2.1.0-b2b';
+  const ENGINE_VERSION = '2.2.0-b2b';
   const REQUIRED_B2A_ENGINE_VERSION = '2.0.0-b2a';
   const VALID_TYPES = new Set(['SWING_HIGH', 'SWING_LOW']);
 
@@ -32,7 +32,8 @@
       analysis_as_of_ms: meta.analysisAsOfMs ?? null,
       raw_pivots: [],
       sequence: [],
-      diagnostics: { raw_pivot_count: 0, sequence_pivot_count: 0, superseded_count: 0 }
+      sequence_history: [],
+      diagnostics: { raw_pivot_count: 0, sequence_pivot_count: 0, sequence_history_count: 0, superseded_count: 0 }
     });
   }
 
@@ -160,6 +161,7 @@
       superseded_by: null
     }));
     const sequence = [];
+    const sequenceHistory = [];
 
     for (let i = 0; i < raw.length; i++) {
       const current = raw[i];
@@ -197,6 +199,14 @@
       current.price_delta = label.price_delta;
       current.relative_delta_pct = label.relative_delta_pct;
       sequence.push(current);
+      sequenceHistory.push({
+        ...current,
+        confirmation: { ...current.confirmation },
+        sequence_status: 'ACCEPTED_AT_AVAILABILITY',
+        exclusion_reason: null,
+        superseded_by: null,
+        sequence_index_at_availability: sequence.length - 1
+      });
     }
 
     const normalizedSequence = sequence.map((pivot, index) => ({
@@ -220,13 +230,15 @@
       symbol: source.symbol,
       timeframe: source.timeframe,
       analysis_as_of_ms: source.analysis_as_of_ms,
-      sequence_order_basis: 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS',
+      sequence_order_basis: 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS_WITH_HISTORY',
       comparison_policy: policy.price_equality_policy,
       raw_pivots: raw,
       sequence: normalizedSequence,
+      sequence_history: sequenceHistory,
       diagnostics: {
         raw_pivot_count: raw.length,
         sequence_pivot_count: normalizedSequence.length,
+        sequence_history_count: sequenceHistory.length,
         superseded_count: raw.filter(p => p.sequence_status === 'SUPERSEDED_FOR_SEQUENCE').length,
         ambiguous_dual_pivot_count: raw.filter(p => p.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE').length
       }
