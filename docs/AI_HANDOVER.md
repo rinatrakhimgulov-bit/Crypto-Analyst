@@ -1316,3 +1316,16 @@ Verified runs on commit `936ffb2f2425f440ab1650ddc706ed22617b01cb`:
 - B1 browser/data verification [46034276646](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034276646) passed. Live Bybit REST remains unverified because GitHub Actions was denied with HTTP 403 by both public hosts.
 
 Current integration branch head may have advanced beyond the CI-tested commit due documentation updates; re-run CI on the final head before presenting it as ready. iPhone/Safari live-feed verification and MTF provider-time calibration remain open. No merge to `main` without explicit owner approval.
+
+
+## 2026-11-27 B2 app integration preview handover
+
+- Current clean integration branch: `integration/b2-clean-preview-2026-11-27`.
+- Draft PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/22.
+- B2-A/B/C/D/E selected-timeframe pipeline and B2-G chart projection are embedded in the single-file HTML.
+- B2-F is intentionally not invoked in the live UI until empirical concurrent Bybit 1D/4H/1H provider-time spread calibration.
+- B2 projection is research-only and does not feed Stage A LONG/SHORT/WAIT.
+- B2 suite passed 182/182; Chromium/mobile browser integration passed on synthetic fixtures; B1 browser suite passed but live Bybit was skipped due runner HTTP 403.
+- Historical archive ends 2025-12-05 and uses a synthetic B1-valid wrapper.
+- Next: user iPhone/Safari verification, live MTF capture/calibration, independent exact-source review, parameter/out-of-sample assessment.
+- Do not merge PR #22 without explicit owner approval.
