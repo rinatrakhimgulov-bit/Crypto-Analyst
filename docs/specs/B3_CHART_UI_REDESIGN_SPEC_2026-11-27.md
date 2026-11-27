@@ -1,7 +1,7 @@
 # B3 — Chart UI redesign specification
 
 **Date:** 2026-11-27  
-**Status:** implementation in progress  
+**Status:** candidate implemented; automated CI passed; owner iPhone/Safari acceptance pending  
 **Base:** `main` at `d2b8220572ec407a62c5a359af3c0264919932b1`  
 **Scope:** presentation and interaction only. B1/B2 analytical calculations and LONG/SHORT/WAIT decision logic are out of scope.
 
@@ -57,3 +57,12 @@ Manual layer controls override the preset and set the mode to `custom`.
 ## 6. Current implementation notes
 
 The first candidate adds the three presets, six layer toggles, responsive chart height, reduced B2 label density and causal retest markers. Browser/CI results must be recorded only after an actual run. The candidate is not merged and is not yet accepted.
+
+
+## 7. Verification result
+
+- B2 application integration run 46038517628: SUCCESS.
+- B1 browser/data run 46038517602: SUCCESS; Stage A 50/50, B1 contract 32/32, quality 72/72, MTF 20/20; zero page errors.
+- Browser checks passed for all display presets, custom layer toggles, mobile 390×844 layout, minimum 440 px chart height, no horizontal overflow and causal zone start position.
+- Live Bybit REST probe was skipped due HTTP 403 from the GitHub runner on both public REST hosts. No live-market claim is made.
+- Owner iPhone/Safari visual acceptance remains a release gate. The PR is draft and unmerged.
