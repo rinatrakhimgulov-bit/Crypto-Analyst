@@ -383,3 +383,23 @@ The mandatory gate now requires the current validator version and current policy
 - No changes to the quality gate, existing trade-decision conditions, WebSocket behavior, or `main`.
 
 **Verification:** GitHub Actions run `45962613748` passed on the candidate: Stage A 44/44, B1 contract 32/32, B1 quality validator 63/63, EMA200 warm-up assertions passed (260 values; first valid index 199), chart renderer drew 79 closed-candle volume bars plus one muted forming-candle bar, EMA200 line was drawn only against closed-candle timestamps, mobile viewport 390 px rendered a 334×318 px canvas with 256 px plot width and 55.28 px volume pane, no page errors, cleanup restored. Live Bybit probe was skipped because both public hosts returned HTTP 403 to the GitHub runner. iPhone Safari verification of the new chart layout remains pending. Do not mark C1 accepted until CI and user-side Safari checks pass.
+
+
+### B1-C UI transparency hardening — 2026-11-27
+
+A source/spec consistency review found that the quality panel showed only validator status/version, while the B1-C specification promised visible reason codes. Corrected the candidate UI to show:
+- B1 status and validator version;
+- up to five validator reason codes (or an explicit no-reason/unknown-reason label);
+- whether directional analysis is admitted or blocked with WAIT.
+
+Added a real Chromium DOM-renderer assertion using an INVALID negative-volume fixture. It verifies the panel visibly contains INVALID, VOLUME_NEGATIVE, Заблокирована, and the decision badge WAIT.
+
+CI run 45963443614 passed on candidate commit 4e5adf44.
+- Stage A: 44/44.
+- B1 Data Contract: 32/32.
+- B1 Quality Validator: 63/63.
+- UI gate assertions: all passed.
+- Browser page errors: 0.
+- Live Bybit probe: skipped because GitHub runner received HTTP 403 from both public hosts.
+
+This fixes an observability gap; it does not change validation rules or signal logic. The newest panel-detail change still needs a brief iPhone Safari visual check. Independent review remains outstanding; do not merge B1 into main yet.
