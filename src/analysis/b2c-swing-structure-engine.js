@@ -359,6 +359,9 @@
               ? { ...latestHigh, activated_by_transition_id: event.event_id }
               : null;
           }
+          // A pivot consumed in the prior regime may become the protected reversal level
+          // in the new regime. It must be eligible once in this new structural role.
+          if (protectedLevel) consumed.delete(protectedLevel.pivot_id);
           event.prior_state = priorState;
         } else {
           continuationLevel = null;
