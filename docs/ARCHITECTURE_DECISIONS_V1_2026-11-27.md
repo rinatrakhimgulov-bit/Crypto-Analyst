@@ -175,3 +175,44 @@ These are not unanswered blockers. They are decisions deferred until a real requ
 7. B2 must begin with a written causal specification and deterministic no-lookahead test matrix before code integration.
 
 **Current truth:** B1/C1 candidate exists on a non-main branch. B1-E exists as a separate older candidate and must be adapted to the current B1 contract. MTF is not yet connected to directional decisions. Main remains unchanged.
+
+
+
+
+## 13. Owner-facing decision register — consolidated status
+
+This section is the current decision register. It supersedes any older status wording elsewhere in the repository that describes B1-E as merely a future port. The implementation status is recorded separately from the architectural decision so a design choice is not mistaken for completed code.
+
+| Question | Decision | Status |
+|---|---|---|
+| What is the product? | Personal read-only crypto-futures analysis and scenario-support tool; user makes the trade decision. | DECIDED |
+| Initial exchange and market? | Bybit V5 linear USDT perpetuals. | DECIDED |
+| Initial symbols? | BTCUSDT and ETHUSDT. | DECIDED |
+| Primary timeframes? | 1D / 4H / 1H. | DECIDED |
+| Primary data transport? | REST snapshots and refresh; WebSocket LOG-ONLY. | DECIDED |
+| Candle policy? | Closed candles only for directional calculations. | DECIDED |
+| Data architecture? | Provider adapter → versioned canonical contract → quality/synchronization → feature engines → scenario engine → research validation → risk plan → UI. | DECIDED |
+| MTF policy? | One trusted common provider-time cutoff; no stale/fresh mixing; measured spread policy; fail closed if missing. | DECIDED |
+| Analytical order? | Causal swings → HH/HL/LH/LL → BOS/CHoCH → zones → breakout/retest/failure → regime/volume/pattern context → MTF synthesis → scenario. | DECIDED |
+| Signal behavior? | LONG/SHORT only when all prerequisites pass; otherwise WAIT with explicit reasons. | DECIDED |
+| Confidence display? | No probability/confidence percentage until calibrated out-of-sample. | DECIDED |
+| Execution? | No automatic order placement. | DECIDED / OUT OF SCOPE |
+| Runtime language? | Keep current JavaScript/HTML prototype; no rewrite without measured reason. | DECIDED |
+| UI target? | Browser-first, desktop and iPhone Safari. | DECIDED |
+| Backend now? | No always-on backend for the current single-user prototype. | DECIDED |
+| Hosting/database vendor? | Not selected until persistence, scheduled jobs, notifications or remote compute are genuinely required. | DEFERRED BY DESIGN |
+| TypeScript/React migration? | Not a prerequisite; reconsider only if module complexity justifies it. | DEFERRED BY DESIGN |
+| Second exchange, spot, equities, broad altcoin universe? | Not in initial scope. | DEFERRED BY DESIGN |
+| News/macro and order-flow? | Later, only after price-structure analytics is validated. | DEFERRED BY DESIGN |
+
+### Why some global questions remain deferred
+
+A sound architecture does not require guessing a server vendor, database, framework or hosting plan before there is a measured need. Those choices do not affect the current analytical core and premature selection would add cost and migration risk without improving market analysis. They are explicitly deferred decisions, not forgotten questions. When a concrete requirement appears, the decision must be based on workload, cost, reliability, security and measured constraints.
+
+### Implementation status correction — 2026-11-27
+
+The integration branch now contains the current-contract B1-E MTF implementation. Current candidate HTML blob: `3f1a739b90e3a187292b29cd9f0ca5c1beafbd5c` (295,555 bytes). Candidate branch: `integration/b1-mtf-architecture-2026-11-27`. Comparison to main: 48 commits ahead, 0 behind. Main HTML blob remains `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf` (188,954 bytes).
+
+GitHub Actions run `45965680821` passed Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 12/12, quality-gate/UI and chart assertions, with zero browser page errors. The live Bybit probe was blocked by HTTP 403 from both REST hosts in the GitHub runner. This does not prove live exchange availability or production MTF calibration.
+
+B1-E remains isolated from the existing directional decision path. The current-contract implementation still requires an independent review of this exact blob, recorded concurrent live Bybit 1D/4H/1H captures and measured provider-time spread policy, transport-level cancellation verification, latest quality-panel Safari visual check, and explicit owner acceptance. No merge to main has occurred. B2 Market Structure remains gated on B1 acceptance.
