@@ -94,7 +94,7 @@ function fixture(pivots, overrides = {}, options = {}) {
       low: Math.min(values.low ?? base.low, open, close)
     };
   }
-  const asOf = rows[rows.length - 1].close_time_ms + LAG;
+  for (const p of pivots) {\n    const sourceIndex = Math.round(p.source_time_ms / STEP) - 1;\n    const row = rows[sourceIndex];\n    if (p.type === 'SWING_HIGH') {\n      if (row.open > p.price) row.open = p.price;\n      if (row.close > p.price) row.close = p.price;\n      row.high = p.price;\n      row.low = Math.min(row.low, row.open, row.close);\n    } else {\n      if (row.open < p.price) row.open = p.price;\n      if (row.close < p.price) row.close = p.price;\n      row.low = p.price;\n      row.high = Math.max(row.high, row.open, row.close);\n    }\n  }\n  const asOf = rows[rows.length - 1].close_time_ms + LAG;
   const sequence = labelSequence(pivots);
   const report = {
     snapshot_id: SNAPSHOT_ID,
@@ -264,7 +264,7 @@ run('bullish close through protected LH emits bearish-to-bullish CHoCH', () => {
   const pivots = [
     makePivot('h110', 'SWING_HIGH', 110, 0, 1),
     makePivot('l100', 'SWING_LOW', 100, 1, 2),
-    makePivot('h105', 'SWING_HIGH', 3, 4)
+    makePivot('h105', 'SWING_HIGH', 105, 3, 4)
   ];
   const input = fixture(pivots, {
     3: { open: 100, close: 95, high: 105, low: 94 },
