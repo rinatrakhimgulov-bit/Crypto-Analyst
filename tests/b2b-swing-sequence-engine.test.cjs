@@ -139,7 +139,7 @@ run('availability order is preserved even when source times are not chronologica
     pivot('l-early-source', 'SWING_LOW', 90, 2000, 300)
   ]));
   assert.deepEqual(result.sequence.map(p => p.pivot_id), ['h-late-source', 'l-early-source']);
-  assert.equal(result.sequence_order_basis, 'B2A_AVAILABLE_AT_ORDER_STABLE');
+  assert.equal(result.sequence_order_basis, 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS');
 });
 
 run('non-monotonic availability order fails closed instead of silently reordering', () => {
@@ -362,7 +362,8 @@ run('B2-A to B2-B integration preserves causal swing sequence labels', () => {
       b2a_policy_version: 'b2a-causal-swing-v1',
       b1_validator_version: '1.1.0',
       b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
-      price_equality_policy: 'EXACT_PRICE_V1'
+      price_equality_policy: 'EXACT_PRICE_V1',
+      same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1'
     }
   });
   assert.equal(b2b.status, 'VALID');
