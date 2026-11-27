@@ -92,6 +92,7 @@ function deriveFixtureSequence(pivots) {
   }
   const ambiguous = new Set([...sourceTypes.entries()].filter(([, types]) => types.has('SWING_HIGH') && types.has('SWING_LOW')).map(([time]) => time));
   const active = [];
+  const history = [];
   for (const p of pivots) {
     p.sequence_status = ambiguous.has(p.source_time_ms) ? 'AMBIGUOUS_FOR_SEQUENCE' : 'PENDING';
     p.exclusion_reason = ambiguous.has(p.source_time_ms) ? 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE' : null;
@@ -109,10 +110,28 @@ function deriveFixtureSequence(pivots) {
       last.superseded_by = p.pivot_id;
       active.pop();
     }
+    const previousSameSide = [...active].reverse().find(x => x.type === p.type) || null;
+    const delta = previousSameSide ? p.price - previousSameSide.price : null;
     p.sequence_status = 'ACCEPTED';
+    p.structure_label = !previousSameSide
+      ? (p.type === 'SWING_HIGH' ? 'INITIAL_HIGH' : 'INITIAL_LOW')
+      : p.type === 'SWING_HIGH'
+        ? (delta > 0 ? 'HH' : delta < 0 ? 'LH' : 'EQH')
+        : (delta > 0 ? 'HL' : delta < 0 ? 'LL' : 'EQL');
+    p.comparison_pivot_id = previousSameSide ? previousSameSide.pivot_id : null;
+    p.price_delta = delta;
+    p.relative_delta_pct = previousSameSide ? (delta / previousSameSide.price) * 100 : null;
     active.push(p);
+    history.push({
+      ...p, confirmation: { ...p.confirmation },
+      sequence_status: 'ACCEPTED_AT_AVAILABILITY', exclusion_reason: null,
+      superseded_by: null, sequence_index_at_availability: active.length - 1
+    });
   }
-  return labelSequence(active);
+  return {
+    active: active.map((p, index) => ({ ...p, sequence_index: index })),
+    history
+  };
 }
 
 function fixture(pivots, overrides = {}, options = {}) {
@@ -195,10 +214,11 @@ function fixture(pivots, overrides = {}, options = {}) {
     symbol: 'BTCUSDT',
     timeframe: '1h',
     analysis_as_of_ms: asOf,
-    sequence_order_basis: 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS',
+    sequence_order_basis: 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS_WITH_HISTORY',
     comparison_policy: 'EXACT_PRICE_V1',
     raw_pivots: pivots,
-    sequence
+    sequence: sequence.active,
+    sequence_history: sequence.history
   };
   const b2a = {
     engine_version: '2.0.0-b2a',
