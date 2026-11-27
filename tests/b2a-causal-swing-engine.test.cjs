@@ -7,6 +7,8 @@ const STEP = 3600000;
 const LAG = 500;
 const POLICY = Object.freeze({
   version: 'b2a-causal-swing-v1',
+  b1_contract_version: '1.1.0',
+  b1_validator_version: '1.1.0',
   b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
   left_strength: 2,
   right_strength: 2,
@@ -189,6 +191,22 @@ run('unsupported equality policy fails closed', () => {
   const result = analyze(input);
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'PRICE_EQUALITY_POLICY_UNSUPPORTED');
+});
+
+run('B1 validator version must match the exact accepted validator', () => {
+  const input = makeInput();
+  input.quality_report.validator_version = '0.9.0';
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'QUALITY_REPORT_IDENTITY_MISMATCH');
+});
+
+run('unsupported B1 canonical contract version fails closed', () => {
+  const input = makeInput();
+  input.snapshot.contract_version = '99.0.0';
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'SNAPSHOT_IDENTITY_INVALID');
 });
 
 run('B1 quality-policy version must match the engine finality policy', () => {
