@@ -408,3 +408,9 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - `tests/b2b-swing-sequence-engine.test.cjs`: 19 deterministic cases covering sequence behavior, replacement symmetry, equality, causal ordering, fail-closed admission, immutability and determinism.
 - `.github/workflows/b2b-swing-sequence.yml`: isolated B2-B CI workflow. Run `46011622297` passed 19/19 on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
 - PR #13 is draft/unmerged and based on B2-A candidate. No main/app changes; B1 acceptance remains required before production integration.
+
+
+### B2-A → B2-B contract integration test — 2026-11-27
+- `tests/b2b-swing-sequence-engine.test.cjs`: now 20 deterministic tests; one runs the actual B2-A engine and passes its result into B2-B to verify the end-to-end contract and causal sequence labels.
+- GitHub Actions run `46012201698` passed 20/20 on commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`.
+- Deterministic contract integration only; no live Bybit or app integration.
