@@ -474,6 +474,74 @@ async function main() {
       throw new Error(`B1-D live UI integration failed: ${JSON.stringify(liveUiIntegration)}`);
     }
 
+    const b2Integration = await page.evaluate(() => {
+      const h = window.__CryptoAnalystTestHooks;
+      if (!h || typeof h.runB2Analysis !== 'function') throw new Error('B2 runtime hook unavailable');
+      const now = Date.now();
+      const step = 3600000;
+      const latestOpen = Math.floor(now / step) * step - step;
+      const rows = Array.from({ length: 240 }, (_, i) => {
+        const k = 239 - i;
+        const ts = latestOpen - k * step;
+        const base = 65000 + k * 5 + Math.sin(k / 4) * 850 + Math.sin(k / 13) * 420;
+        const open = base + Math.sin(k * 1.7) * 90;
+        const close = base + Math.cos(k * 1.3) * 100;
+        const high = Math.max(open, close) + 120 + Math.abs(Math.sin(k)) * 80;
+        const low = Math.min(open, close) - 120 - Math.abs(Math.cos(k)) * 80;
+        const volume = 100 + (k % 17) * 3;
+        return [String(ts), String(open), String(high), String(low), String(close), String(volume), String(volume * close)];
+      });
+      const normalized = BybitAdapter.normalize(rows, {
+        symbol: 'BTCUSDT', interval: '60', hostUsed: 'api.bybit.com',
+        serverTimeMs: now, providerServerTimeMs: now, timeSource: 'provider',
+        clockSkewMs: 0, requestedCount: 240,
+        tickerStatus: { available: false, price: null, timeMs: null, hostUsed: 'api.bybit.com', error: 'B2 synthetic browser fixture' }
+      });
+      normalized.canonicalSnapshot = B1DataContract.toSnapshot(normalized);
+      normalized.qualityReport = B1QualityValidator.validate(
+        normalized.canonicalSnapshot, B1_QUALITY_POLICY, now
+      ).report;
+      const result = h.runB2Analysis(normalized);
+      if (result.status !== 'VALID') return {
+        status: result.status, stage: result.stage, reasons: result.reasons,
+        quality: normalized.qualityReport.status,
+        candles: normalized.closedCandles.length
+      };
+      h.chart.setData(normalized.allCandles, normalized.closedCandles.length, null, normalized.prices.currentMarketPrice);
+      h.chart.setMarketStructure(result.projection);
+      h.renderB2Panel(result);
+      const panel = {
+        status: document.getElementById('b2Status').textContent,
+        text: document.getElementById('b2StructureList').textContent
+      };
+      const projection = result.projection;
+      const stats = {
+        quality: normalized.qualityReport.status,
+        closedCandles: normalized.closedCandles.length,
+        structure: result.b2c.structure_state,
+        pivots: projection.swing_markers.length,
+        events: projection.structure_events.length,
+        zones: projection.zones.length,
+        retests: projection.retest_lifecycles.length,
+        panelStatus: panel.status,
+        panelHasStructure: panel.text.includes('Структура'),
+        chartHasProjection: h.chart.marketStructure === projection,
+        mtfDisabled: projection.mtf_context === null
+      };
+      h.chart.setMarketStructure(null);
+      return { status: result.status, ...stats };
+    });
+    if (b2Integration.status !== 'VALID' ||
+        b2Integration.quality !== 'VALID' ||
+        b2Integration.closedCandles < 100 ||
+        b2Integration.pivots < 1 ||
+        b2Integration.panelStatus !== 'VALID · 1H' ||
+        b2Integration.panelHasStructure !== true ||
+        b2Integration.chartHasProjection !== true ||
+        b2Integration.mtfDisabled !== true) {
+      throw new Error('B2 browser integration failed: ' + JSON.stringify(b2Integration));
+    }
+
     const chartVisual = await page.evaluate(() => {
       const chart = window.__CryptoAnalystTestHooks && window.__CryptoAnalystTestHooks.chart;
       if (!chart) throw new Error('Chart test hook was not exposed');
