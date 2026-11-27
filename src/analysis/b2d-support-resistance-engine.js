@@ -246,6 +246,16 @@
       if (pivot.available_at_ms <= asOf) eligible.push(pivot);
     }
 
+    for (const type of ['SWING_LOW', 'SWING_HIGH']) {
+      const sourceTimes = new Set();
+      for (const pivot of eligible.filter(p => p.type === type)) {
+        if (sourceTimes.has(pivot.source_time_ms)) {
+          return blocked('INVALID', 'DUPLICATE_PIVOT_TOUCH_SOURCE_TIME', meta);
+        }
+        sourceTimes.add(pivot.source_time_ms);
+      }
+    }
+
     const support = buildClusters(eligible.filter(p => p.type === 'SWING_LOW'), 'SUPPORT',
       zonePolicy.max_cluster_span_price, zonePolicy.min_independent_touches, asOf);
     const resistance = buildClusters(eligible.filter(p => p.type === 'SWING_HIGH'), 'RESISTANCE',
