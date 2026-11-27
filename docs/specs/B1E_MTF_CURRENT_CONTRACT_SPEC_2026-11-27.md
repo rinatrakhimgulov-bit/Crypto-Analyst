@@ -104,3 +104,14 @@ GitHub Actions live Bybit checks remain blocked by HTTP 403 from both public RES
 - Owner acceptance and merge to main.
 
 Until those gates are satisfied, MTF remains an isolated data assembly capability and cannot authorize a trade decision.
+
+
+
+
+## Verification record correction — 2026-11-27
+
+The current completed GitHub Actions run is `45965680821` (not the earlier pre-hardening run cited above). It reports Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 12/12, B1 gate/UI and C1 chart assertions passed, zero browser page errors. The extra validator case rejects unsupported canonical contract versions.
+
+Exact current candidate HTML blob: `3f1a739b90e3a187292b29cd9f0ca5c1beafbd5c`, 295,555 bytes, branch `integration/b1-mtf-architecture-2026-11-27`. The current branch is 48 commits ahead and 0 behind main; main remains unchanged.
+
+The CI live Bybit check is blocked by HTTP 403 from both public REST hosts. No live MTF capture, measured production spread tolerance, or real browser network-stack abort behavior is established by this run.
