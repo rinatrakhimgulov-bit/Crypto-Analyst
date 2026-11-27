@@ -238,3 +238,18 @@ run('empty valid B2-A pivot set returns an empty valid sequence', () => {
   assert.equal(result.raw_pivots.length, 0);
   assert.equal(result.sequence.length, 0);
 });
+
+
+run('output freezing does not freeze nested objects owned by B2-A input', () => {
+  const input = makeInput([
+    pivot('h1', 'SWING_HIGH', 100, 3000),
+    pivot('l1', 'SWING_LOW', 90, 4000)
+  ]);
+  const sourceConfirmation = input.b2a_result.pivots[0].confirmation;
+  const sourceQualityReport = input.b2a_result.admission.quality_report;
+  const result = analyze(input);
+  assert.equal(Object.isFrozen(sourceConfirmation), false);
+  assert.equal(Object.isFrozen(sourceQualityReport), false);
+  assert.ok(Object.isFrozen(result.raw_pivots[0].confirmation));
+  assert.ok(Object.isFrozen(result.admission.b2a_quality_report));
+});
