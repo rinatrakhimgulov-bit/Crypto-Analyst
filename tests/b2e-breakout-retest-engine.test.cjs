@@ -340,6 +340,7 @@ run('historical zone is reconstructed from pivots available before the break, no
   assert.equal(result.lifecycles[0].status, 'RETEST_SUCCESSFUL');
   assert.deepEqual(result.lifecycles[0].historical_zone.pivot_ids, ['h100', 'h101']);
   assert.equal(result.lifecycles[0].historical_zone.upper_bound, 101);
+  assert.deepEqual(result.lifecycles[0].historical_zone.touches.map(t => t.pivot_id), ['h100', 'h101']);
 });
 
 run('a zone that did not have enough independent touches before the break is unmatched', () => {
