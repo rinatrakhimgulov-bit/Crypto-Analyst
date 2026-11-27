@@ -5,6 +5,7 @@ on:
     branches:
       - integration/b2-market-structure-ui-2026-11-27
       - integration/b2-clean-preview-2026-11-27
+      - feature/b3-chart-ui-redesign-2026-11-27
   workflow_dispatch:
 
 permissions:
