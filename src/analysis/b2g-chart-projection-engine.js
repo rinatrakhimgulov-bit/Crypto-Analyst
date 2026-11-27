@@ -29,6 +29,7 @@
       analysis_as_of_ms: meta.analysisAsOfMs ?? null,
       swing_markers: [],
       superseded_pivots: [],
+      ambiguous_pivots: [],
       structure_events: [],
       zones: [],
       candidate_levels: [],
@@ -43,8 +44,9 @@
       b1_validator_version: '1.1.0',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
-      b2b_engine_version: '2.0.0-b2b',
-      b2b_policy_version: 'b2b-swing-sequence-v1',
+      b2b_engine_version: '2.1.0-b2b',
+      b2b_policy_version: 'b2b-swing-sequence-v2',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2c_engine_version: '2.0.0-b2c',
       b2c_policy_version: 'b2c-state-v1',
       b2d_engine_version: '2.0.0-b2d',
@@ -212,7 +214,8 @@
     for (const pivot of b2c.raw_pivots) {
       const original = pivot && b2aById.get(pivot.pivot_id);
       if (!original || rawIds.has(pivot.pivot_id) || !samePivot(original, pivot) ||
-          !['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE'].includes(pivot.sequence_status) ||
+          !['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE', 'AMBIGUOUS_FOR_SEQUENCE'].includes(pivot.sequence_status) ||
+          (pivot.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE' && pivot.exclusion_reason !== 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE') ||
           pivot.available_at_ms > asOf) return blocked('B2C_RAW_PIVOT_SET_MISMATCH', meta);
       rawIds.add(pivot.pivot_id);
     }
@@ -260,6 +263,14 @@
       confirmed_at_ms: p.confirmed_at_ms,
       visible_at_ms: p.available_at_ms,
       superseded_by: p.superseded_by || null,
+      visibility_rule: 'SHOW_ONLY_AT_OR_AFTER_VISIBLE_AT'
+    }));
+
+    const ambiguousPivots = b2c.raw_pivots.filter(p => p.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE').map(p => ({
+      id: p.pivot_id, kind: 'AMBIGUOUS_DUAL_PIVOT', label: 'AMBIGUOUS_FOR_SEQUENCE',
+      pivot_type: p.type, price: p.price, anchor_time_ms: p.source_time_ms,
+      source_time_ms: p.source_time_ms, confirmed_at_ms: p.confirmed_at_ms,
+      visible_at_ms: p.available_at_ms, exclusion_reason: p.exclusion_reason,
       visibility_rule: 'SHOW_ONLY_AT_OR_AFTER_VISIBLE_AT'
     }));
 
@@ -470,6 +481,7 @@
       analysis_as_of_ms: asOf,
       swing_markers: sortByTimeAndId(swingMarkers, 'anchor_time_ms', 'id'),
       superseded_pivots: sortByTimeAndId(supersededPivots, 'anchor_time_ms', 'id'),
+      ambiguous_pivots: sortByTimeAndId(ambiguousPivots, 'visible_at_ms', 'id'),
       structure_events: sortByTimeAndId(structureEvents, 'anchor_time_ms', 'id'),
       zones: sortByTimeAndId(zones, 'visible_from_ms', 'id'),
       candidate_levels: sortByTimeAndId(candidateLevels, 'visible_at_ms', 'id'),
