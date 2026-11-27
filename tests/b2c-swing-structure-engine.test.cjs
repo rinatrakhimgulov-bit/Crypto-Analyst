@@ -272,6 +272,22 @@ run('bullish BOS requires a later confirmed continuation high', () => {
   assert.equal(result.events[1].source_pivot_id, 'h110');
 });
 
+run('a lower high after bullish transition cannot become a bullish BOS level', () => {
+  const pivots = [
+    ...initialBull,
+    makePivot('l95', 'SWING_LOW', 95, 3, 4),
+    makePivot('h99', 'SWING_HIGH', 99, 4, 5)
+  ];
+  const input = fixture(pivots, {
+    3: { open: 100, close: 105, high: 106, low: 95 },
+    6: { open: 98, close: 100, high: 100, low: 97 }
+  });
+  const result = analyze(input);
+  assert.equal(result.structure_state, 'UP');
+  assert.deepEqual(result.events.map(e => e.event_type), ['INITIAL_BULLISH_BREAK']);
+  assert.equal(result.continuation_level, null);
+});
+
 run('bearish BOS requires a later confirmed continuation low', () => {
   const pivots = [
     makePivot('h110', 'SWING_HIGH', 110, 0, 1),
@@ -287,6 +303,23 @@ run('bearish BOS requires a later confirmed continuation low', () => {
   assert.equal(result.structure_state, 'DOWN');
   assert.deepEqual(result.events.map(e => e.event_type), ['INITIAL_BEARISH_BREAK', 'BEARISH_BOS']);
   assert.equal(result.events[1].source_pivot_id, 'l90');
+});
+
+run('a higher low after bearish transition cannot become a bearish BOS level', () => {
+  const pivots = [
+    makePivot('h110', 'SWING_HIGH', 110, 0, 1),
+    makePivot('l100', 'SWING_LOW', 100, 1, 2),
+    makePivot('h105', 'SWING_HIGH', 105, 3, 4),
+    makePivot('l101', 'SWING_LOW', 101, 4, 5)
+  ];
+  const input = fixture(pivots, {
+    3: { open: 100, close: 95, high: 105, low: 94 },
+    6: { open: 102, close: 100.5, high: 103, low: 100 }
+  });
+  const result = analyze(input);
+  assert.equal(result.structure_state, 'DOWN');
+  assert.deepEqual(result.events.map(e => e.event_type), ['INITIAL_BEARISH_BREAK']);
+  assert.equal(result.continuation_level, null);
 });
 
 run('bearish close through protected HL emits bullish-to-bearish CHoCH', () => {
