@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - b1/contract-review
+      - integration/b1-mtf-architecture-2026-11-27
   workflow_dispatch:
 
 permissions:
