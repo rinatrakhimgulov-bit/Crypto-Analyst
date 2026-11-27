@@ -68,10 +68,13 @@ function labelSequence(pivots) {
       : p.type === 'SWING_HIGH'
         ? (p.price > prior.price ? 'HH' : p.price < prior.price ? 'LH' : 'EQH')
         : (p.price > prior.price ? 'HL' : p.price < prior.price ? 'LL' : 'EQL');
+    const delta = prior ? p.price - prior.price : null;
     const result = {
       ...p,
       structure_label: label,
-      comparison_pivot_id: prior ? prior.pivot_id : null
+      comparison_pivot_id: prior ? prior.pivot_id : null,
+      price_delta: delta,
+      relative_delta_pct: prior ? (delta / prior.price) * 100 : null
     };
     previous[p.type] = p;
     return result;
@@ -205,6 +208,7 @@ run('initial bearish break is symmetric', () => {
 run('a close exactly at a level is not a break', () => {
   const input = fixture(initialBull, { 3: { open: 100, close: 100, high: 100, low: 95 } });
   const result = analyze(input);
+  assert.equal(result.status, 'VALID');
   assert.equal(result.structure_state, 'UNESTABLISHED');
   assert.equal(result.events.length, 0);
 });
@@ -343,7 +347,7 @@ run('B2-B sequence label tampering fails closed', () => {
   input.b2b_result.sequence[1].structure_label = 'LH';
   const result = analyze(input);
   assert.equal(result.status, 'INVALID');
-  assert.equal(result.admission.reasons[0].code, 'B2B_SEQUENCE_LABEL_MISMATCH');
+  assert.equal(result.admission.reasons[0].code, 'B2B_SEQUENCE_DERIVATION_MISMATCH');
 });
 
 run('pivot price must match its actual source candle', () => {
