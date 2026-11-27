@@ -7,6 +7,8 @@ const POLICY = Object.freeze({
   version: 'b2b-swing-sequence-v1',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
+  b1_validator_version: '1.1.0',
+  b1_quality_policy_version: 'b1-quality-v1',
   price_equality_policy: 'EXACT_PRICE_V1'
 });
 
@@ -131,8 +133,8 @@ run('exact equality retains the earlier same-side pivot', () => {
 
 run('availability order is preserved even when source times are not chronological', () => {
   const result = analyze(makeInput([
-    pivot('h-late-source', 'SWING_HIGH', 100, 1000, 8000),
-    pivot('l-early-source', 'SWING_LOW', 90, 2000, 500)
+    pivot('h-late-source', 'SWING_HIGH', 100, 1000, 400),
+    pivot('l-early-source', 'SWING_LOW', 90, 2000, 300)
   ]));
   assert.deepEqual(result.sequence.map(p => p.pivot_id), ['h-late-source', 'l-early-source']);
   assert.equal(result.sequence_order_basis, 'B2A_AVAILABLE_AT_ORDER_STABLE');
