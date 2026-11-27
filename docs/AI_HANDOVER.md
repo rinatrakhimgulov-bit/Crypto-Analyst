@@ -1216,3 +1216,12 @@ Latest CI run `45965680821`: Stage A 44/44, B1 contract 32/32, B1 validator 64/6
 MTF is isolated and not connected to directional decision output. No production provider-time spread default exists. Real concurrent Bybit capture/spread calibration, independent review of exact current-contract HTML, actual network abort verification, and latest quality-panel iPhone Safari check remain open. C1 chart was already user-verified on iPhone. B1 not accepted, B2 not started, main unchanged.
 
 Spec: `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
+
+
+
+
+### Latest B1-E verification update — 2026-11-27
+
+The current-contract MTF suite contains 16 tests. Latest GitHub Actions run `45966127523` passed: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 16/16, gate/UI/chart assertions passed, zero browser page errors. Live Bybit was skipped/blocked by HTTP 403 from both hosts.
+
+Exact current HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. The independent audit prompt is pinned to this exact blob at `docs/audits/PROMPT_B1_CURRENT_CONTRACT_INDEPENDENT_REVIEW_2026-11-27.md`. This prompt is prepared but an external reviewer has not yet returned a verdict. Main remains unchanged; B1 is not accepted; B2 is not started.
