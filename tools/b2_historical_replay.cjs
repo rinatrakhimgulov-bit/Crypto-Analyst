@@ -136,9 +136,9 @@ function makeSnapshot(rows, symbol, timeframe, asOf, snapshotId) {
   };
   return { snapshot, quality, candles };
 }
-function runStructure(rows, symbol, timeframe, asOf, id) {
+function runStructure(rows, symbol, timeframe, asOf, id, strength = 2) {
   const { snapshot, quality } = makeSnapshot(rows, symbol, timeframe, asOf, id);
-  const a = analyzeA({ snapshot, quality_report: quality, timeframe, analysis_as_of_ms: asOf, policy: POLICY_A });
+  const a = analyzeA({ snapshot, quality_report: quality, timeframe, analysis_as_of_ms: asOf, policy: { ...POLICY_A, left_strength: strength, right_strength: strength } });
   assert(a.status === 'VALID', 'B2-A blocked: ' + JSON.stringify(a.admission.reasons));
   const b = analyzeB({ b2a_result: a, policy: POLICY_B });
   assert(b.status === 'VALID', 'B2-B blocked: ' + JSON.stringify(b.admission.reasons));
@@ -147,11 +147,11 @@ function runStructure(rows, symbol, timeframe, asOf, id) {
   assert(c.status === 'VALID', 'B2-C blocked: ' + JSON.stringify(c.admission.reasons));
   return { snapshot, quality, a, b, c };
 }
-function runZones(structure, symbol, timeframe) {
+function runZones(structure, symbol, timeframe, spanRatio = 0.001, retestRatio = 0.0005) {
   const priceScale = median(structure.snapshot.candles_by_timeframe[timeframe].map(c => c.close));
   const zonePolicy = {
     version: 'b2d-absolute-span-v1', instrument_symbol: symbol, timeframe,
-    cluster_method: 'MAX_TOTAL_SPAN_V1', max_cluster_span_price: priceScale * 0.001,
+    cluster_method: 'MAX_TOTAL_SPAN_V1', max_cluster_span_price: priceScale * spanRatio,
     min_independent_touches: 2
   };
   const policyD = {
@@ -171,9 +171,9 @@ function runZones(structure, symbol, timeframe) {
   assert(d.status === 'VALID', 'B2-D blocked: ' + JSON.stringify(d.admission.reasons));
   const retestPolicy = {
     version: 'retest-policy-v1', touch_method: 'RANGE_INTERSECTION_V1',
-    touch_tolerance_price: priceScale * 0.0005,
-    success_buffer_price: priceScale * 0.0005,
-    failure_buffer_price: priceScale * 0.0005,
+    touch_tolerance_price: priceScale * retestRatio,
+    success_buffer_price: priceScale * retestRatio,
+    failure_buffer_price: priceScale * retestRatio,
     retest_window_bars: 20, confirmation_window_bars: 3
   };
   const policyE = {
@@ -197,6 +197,12 @@ function comparePrefix(full, prefix, cutoff, label) {
   const fullPivots = full.a.pivots.filter(p => p.available_at_ms <= cutoff);
   assert(JSON.stringify(fullPivots) === JSON.stringify(prefix.a.pivots),
     label + ' B2-A prefix invariance failed');
+  const fullSequenceHistory = full.b.sequence_history.filter(p => p.available_at_ms <= cutoff);
+  assert(JSON.stringify(fullSequenceHistory) === JSON.stringify(prefix.b.sequence_history),
+    label + ' B2-B sequence-history prefix invariance failed');
+  const fullCSequenceHistory = full.c.sequence_history.filter(p => p.available_at_ms <= cutoff);
+  assert(JSON.stringify(fullCSequenceHistory) === JSON.stringify(prefix.c.sequence_history),
+    label + ' B2-C sequence-history prefix invariance failed');
   const fullEvents = full.c.events.filter(e => e.available_at_ms <= cutoff);
   const compact = events => events.map(e => ({ id: e.event_id, type: e.event_type,
     source: e.source_pivot_id, available: e.available_at_ms, level: e.level_price }));
@@ -210,9 +216,13 @@ function windowAt(rows, endIndex, count) {
   const start = Math.max(0, endIndex - count + 1);
   return rows.slice(start, endIndex + 1);
 }
+function countBy(items, key) {
+  const counts = {};
+  for (const item of items) counts[item[key]] = (counts[item[key]] || 0) + 1;
+  return counts;
+}
 function summarizeZones(result) {
-  const statuses = {};
-  for (const item of result.e.lifecycles) statuses[item.status] = (statuses[item.status] || 0) + 1;
+  const statuses = countBy(result.e.lifecycles, 'status');
   return { zones: result.d.zones.length, candidates: result.d.candidate_levels.length,
     breakouts: result.e.lifecycles.length, retest_statuses: statuses };
 }
@@ -233,7 +243,18 @@ async function main() {
       const rows = data.rows;
       const last = rows[rows.length - 1];
       const asOf = last.close_time_ms + LAG;
-      const full = runStructure(rows, symbol, tf, asOf, 'historical:' + symbol + ':' + tf + ':full');
+      const full = runStructure(rows, symbol, tf, asOf, 'historical:' + symbol + ':' + tf + ':full', 2);
+      const strengthSensitivity = [];
+      for (const strength of [3, 5]) {
+        const result = runStructure(rows, symbol, tf, asOf,
+          'historical:' + symbol + ':' + tf + ':strength:' + strength, strength);
+        strengthSensitivity.push({ strength, raw_pivots: result.a.pivots.length,
+          active_sequence: result.b.sequence.length,
+          sequence_history: result.b.sequence_history.length,
+          ambiguous_pivots: result.b.diagnostics.ambiguous_dual_pivot_count,
+          structure_events: result.c.events.length,
+          event_types: countBy(result.c.events, 'event_type') });
+      }
       const prefixChecks = [];
       for (const q of [0.25, 0.5, 0.75]) {
         const index = Math.floor((rows.length - 1) * q);
@@ -251,14 +272,23 @@ async function main() {
         const windowAsOf = end.close_time_ms + LAG;
         const structure = runStructure(slice, symbol, tf, windowAsOf,
           'historical:' + symbol + ':' + tf + ':window:' + q);
-        const zones = runZones(structure, symbol, tf);
+        const zones = runZones(structure, symbol, tf, 0.001, 0.0005);
+        const parameterGrid = [];
+        for (const spanRatio of [0.0005, 0.001, 0.0025, 0.005]) {
+          for (const retestRatio of [0.00025, 0.0005, 0.001]) {
+            const candidate = runZones(structure, symbol, tf, spanRatio, retestRatio);
+            parameterGrid.push({ span_ratio: spanRatio, retest_ratio: retestRatio, ...summarizeZones(candidate) });
+          }
+        }
         windowResults.push({ quantile: q, end: new Date(end.close_time_ms).toISOString(),
           structure_state: structure.c.structure_state,
           pivot_count: structure.a.pivots.length,
           active_sequence_count: structure.b.sequence.length,
+          sequence_history_count: structure.b.sequence_history.length,
           event_count: structure.c.events.length,
+          event_types: countBy(structure.c.events, 'event_type'),
           ambiguous_pivot_count: structure.b.diagnostics.ambiguous_dual_pivot_count,
-          ...summarizeZones(zones) });
+          ...summarizeZones(zones), parameter_grid: parameterGrid });
       }
       byTf[tf] = {
         integrity: data.integrity,
@@ -266,8 +296,11 @@ async function main() {
           active_sequence: full.b.sequence.length,
           ambiguous_dual_pivots: full.b.diagnostics.ambiguous_dual_pivot_count,
           structure_events: full.c.events.length,
+          event_types: countBy(full.c.events, 'event_type'),
           structure_state: full.c.structure_state,
-          prefix_invariance_checks: prefixChecks.length },
+          sequence_history: full.b.sequence_history.length,
+          prefix_invariance_checks: prefixChecks.length,
+          strength_sensitivity: strengthSensitivity },
         '160_candle_windows': windowResults
       };
     }
