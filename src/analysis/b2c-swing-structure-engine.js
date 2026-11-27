@@ -26,7 +26,7 @@
       admission: { status: 'BLOCKED', reasons: [{ code, severity: 'CRITICAL' }] },
       snapshot_id: meta.snapshotId || null, symbol: meta.symbol || null,
       timeframe: meta.timeframe || null, analysis_as_of_ms: meta.analysisAsOfMs ?? null,
-      structure_state: 'UNESTABLISHED', events: [], pivots: [],
+      structure_state: 'UNESTABLISHED', events: [], pivots: [], sequence_history: [],
       diagnostics: { candle_count: 0, pivot_count: 0, event_count: 0 }
     });
   }
@@ -490,7 +490,8 @@
       state_policy: 'PROTECTED_SWING_HL_LH_V1',
       break_buffer_policy: policy.break_buffer_policy,
       price_equality_policy: policy.price_equality_policy,
-      events, raw_pivots: source.raw_pivots.map(p => ({ ...p, confirmation: { ...p.confirmation } })), pivots,
+      events, raw_pivots: source.raw_pivots.map(p => ({ ...p, confirmation: { ...p.confirmation } })),
+      pivots, sequence_history: eventPivots,
       protected_level: protectedLevel ? {
         pivot_id: protectedLevel.pivot_id, price: protectedLevel.price,
         source_time_ms: protectedLevel.source_time_ms,
