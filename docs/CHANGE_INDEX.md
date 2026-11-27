@@ -394,3 +394,10 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - Snapshot contract and quality report validator/policy identities are checked exactly; mismatches fail closed.
 - Added regression tests for stale validator and unsupported contract versions; suite 13/13, GitHub Actions run 46005202794 passed.
 - Candidate remains isolated and unmerged; no application HTML or `main` changes.
+
+
+### B2-A causal pivot edge-case hardening — 2026-11-27
+- `tests/b2a-causal-swing-engine.test.cjs`: expanded deterministic suite from 13 to 20 cases.
+- Added regression coverage for longer plateaus/right-window counting, non-contiguous equal highs, incomplete right confirmation, deeply immutable pivot evidence, duplicate timestamps, and out-of-order candles.
+- GitHub Actions run `46010999225` passed on commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
+- No engine source, application HTML, or main branch changed. Research-only; B1 acceptance remains required before production integration.
