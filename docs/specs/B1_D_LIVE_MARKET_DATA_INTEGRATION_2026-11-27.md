@@ -37,6 +37,7 @@ Promote the existing Bybit V5 public linear WebSocket client from connection-hea
 3. **Chart/UI**
    - Update live price label and horizontal price line from ticker events.
    - Update the forming candle from kline events.
+   - If the kline topic is delayed or silent, use validated ticker `lastPrice` as a visual-only fallback for the forming candle's close/high/low. Preserve REST/WS candle volume, do not advance finality, and do not alter closed candles or analytical inputs.
    - Do not recompute indicators, support/resistance, or directional decisions on every ticker tick.
    - Preserve the user's chart zoom/pan state when applying live updates.
    - Show whether live ticker/kline data is connected, fresh, or stale, with receive age.
@@ -98,3 +99,5 @@ Promote the existing Bybit V5 public linear WebSocket client from connection-hea
 - Follow-up correction: a ticker delta that changes only non-price fields no longer emits the inherited `lastPrice` as a fresh price event. The existing ticker regression test now covers this case. This correction was included in CI run 45981507604; the non-price-delta regression passed.
 - Real Bybit WebSocket remains unverified from iPhone/Safari. GitHub Actions REST is blocked by HTTP 403; synthetic browser events are not live exchange evidence.
 - Acceptance remains pending real iPhone/Safari verification and independent review. No merge; main unchanged.
+
+- Follow-up live-UI correction: the validated ticker stream now updates the visible forming candle's close/high/low as a visual fallback when kline updates are delayed; volume, finality, closed-candle count, and analytical inputs remain unchanged. Regression coverage added to the Stage A browser suite.
