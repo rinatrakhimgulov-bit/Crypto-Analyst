@@ -440,3 +440,21 @@ Canonical contract and validator were incremented to 1.1.0. The validator now re
 **GitHub Actions run 45965680821 passed:** Stage A 44/44; B1 contract 32/32; B1 quality validator 64/64; B1 MTF 12/12; B1 gate/UI and C1 chart checks passed; zero browser page errors. Live Bybit probe was skipped/blocked because both public REST hosts returned HTTP 403 to the GitHub runner. This does not constitute live verification.
 
 Added `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`. Main remains unchanged. B1 is not accepted pending exact-artifact independent review, real concurrent Bybit capture/spread calibration, transport-level abort verification, latest Safari quality-panel check, and explicit owner acceptance.
+
+
+
+
+## B1-E MTF regression expansion — 2026-11-27
+
+Expanded `B1MtfSelfTest` from 12 to 16 cases. New tests verify:
+- forming and pending-finality candles never enter the closed-only `analysis_candles` slice;
+- provider-time spread one millisecond above configured policy fails closed;
+- multiple post-cutoff normalized rows fail closed;
+- missing measured provider-time spread policy fails closed.
+
+
+The suite also contains async tests for aborting sibling timeframe requests after a failure and preventing a superseded generation from publishing late results.
+
+**Latest GitHub Actions run 45966127523 passed:** Stage A 44/44, B1 contract 32/32, B1 validator 64/64, B1 MTF 16/16, B1 gate/UI and C1 chart checks passed, zero browser page errors. Live Bybit remained skipped/blocked because both public REST hosts returned HTTP 403 to GitHub Actions. Exact current HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`.
+
+The exact-artifact independent audit prompt was updated to this blob. Main remains unchanged; no merge or B1 acceptance has occurred.
