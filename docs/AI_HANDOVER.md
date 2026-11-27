@@ -1280,4 +1280,21 @@ Latest CI run 45981507604 passed: Stage A 50/50, contract 32/32, quality 72/72, 
 
 Important: CI does NOT prove live Bybit connectivity. GitHub Actions REST calls return HTTP 403 and the live provider test is correctly marked SKIPPED_PROVIDER_BLOCKED. The browser UI integration uses synthetic events. Next required work is a real iPhone/Safari test from a network that can reach Bybit: confirm current last traded price matches Bybit, the forming candle moves without manual refresh, and test BTC/ETH + 1H/4H/1D switches and reconnect/fallback. If the branch candidate cannot be run on iPhone without merging, arrange a temporary preview; do not merge merely to test.
 
-After live browser evidence, perform an exact-blob independent review of the B1-D source and update this handover. B1 remains not accepted until its separate independent-review/live MTF spread gates and owner acceptance are satisfied. B2 remains not started.
+After live browser evidence, perform an exact-blob independent review of the B1-D source and complete the B1 live MTF spread gates. B1 remains NOT ACCEPTED until the separate independent-review/live MTF spread gates and owner acceptance are satisfied.
+
+## 2026-11-27 current handover — B2 research candidate
+
+Current candidate branch: `feature/b2g-chart-projection-contract-2026-11-27`.
+Draft PR #20: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/20 (base `feature/b2f-mtf-structure-confluence-2026-11-27`). Current head at the time of this handover: `04473be79584bdf9be7cd70b16017cd7444fc341`.
+
+B2-A through B2-G candidate modules are implemented on the research branch. B2-B 2.2.0 preserves immutable sequence history at availability time; B2-C 2.1.0 replays events from that history. Same-candle dual pivots are explicitly ambiguous and excluded from the active structure sequence. B2-E/B2-G validate event source pivots against sequence history. B2-D may retain ambiguous raw pivots as tagged S/R evidence.
+
+Verification:
+- Integrated B2-A–B2-G CI run 46031937203 passed 181/181 deterministic tests.
+- Historical replay run 46032038435 passed on BTCUSDT/ETHUSDT 1H/4H/1D archive data through 2025-12-05.
+- 18/18 prefix-invariance checks passed; 30 sampled B2-A–B2-E windows and two synchronized MTF B2-F/B2-G projections completed.
+- Full metrics and limitations are in `docs/audits/B2_PRELIMINARY_HISTORICAL_REPLAY_2026-11-27.md`; CI artifact: `b2-historical-replay-report`.
+
+Critical limits: historical replay used a synthetic B1-valid wrapper and synthetic zero MTF provider-time spread. Zone/retest parameters and 2/2 pivot strength are exploratory, not production-calibrated. The archive is third-party and ends 2025-12-05. No profitability claim is supported.
+
+Next gates before integration: exact-source independent audit; review/calibrate pivot strength, zone span and retest parameters; complete live Bybit concurrent 1D/4H/1H provider-time calibration; verify the current candidate on iPhone/Safari. B1 remains NOT ACCEPTED. No app HTML or `main` changes. Do not merge PR #20 without explicit owner approval.
