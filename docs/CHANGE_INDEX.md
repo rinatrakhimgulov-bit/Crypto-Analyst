@@ -504,3 +504,12 @@ B2-F remains disabled in the live UI pending empirical provider-time spread cali
 | `data-chart-layer` controls | S/R, extrema, BOS/CHoCH, retests, EMA, volume toggles | B3 |
 
 B3 is an unmerged candidate. It changes chart presentation only; B1/B2 engines and directional decision logic are unchanged. See `docs/specs/B3_CHART_UI_REDESIGN_SPEC_2026-11-27.md`.
+
+
+### B3 verification status
+
+- Candidate HTML blob: `6b5521195454bc3d3be3e18cc7f4fb10682ee48b` (before final docs-only updates; app source unchanged after this blob).
+- Draft PR #23: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/23.
+- B2 app/browser workflow 46038517628: success; B2 deterministic tests and browser/mobile assertions passed.
+- B1 browser/data workflow 46038517602: success; Stage A 50/50, B1 contract 32/32, quality 72/72, MTF 20/20; zero page errors. Live Bybit REST skipped due runner HTTP 403.
+- iPhone/Safari owner visual acceptance remains pending; no merge.
