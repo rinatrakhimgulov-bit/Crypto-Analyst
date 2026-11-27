@@ -43,3 +43,12 @@ Open `tools/b1_live_probe.html` in a browser. It is a standalone read-only page 
 - A 30-sample run is an initial measurement, not a proof of long-term exchange behavior.
 - Keep MTF disconnected from directional decisions until recorded-response integration, spread policy, browser regression and forming-candle safety checks are complete.
 - The page stores data in the browser only; it does not upload the capture. Exported JSON contains market data and timestamps, not API credentials.
+
+
+## Capture utility safeguards (v2)
+
+- Each host attempt has a 15-second timeout. A timed-out primary host is recorded and the backup host is attempted.
+- A user Stop action aborts active requests and interrupts the inter-sample wait.
+- `responseHeadersReceivedAtMs` records when response headers arrive; `responseReceivedAtMs` records when the complete response body has been read. `headersLatencyMs` and `totalDurationMs` are kept separately.
+- Request start time is recorded separately for each host attempt, so a failed primary-host attempt does not inflate the successful backup-host latency.
+- Capture schema is now `crypto-analyst-b1-live-capture-v2`. Preserve the schema field when sharing the JSON cassette.
