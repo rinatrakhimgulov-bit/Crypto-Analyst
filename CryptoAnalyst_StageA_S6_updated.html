@@ -1636,6 +1636,7 @@
             snapshot,
             analysis_candles: selected,
             forming_context: forming,
+            pending_finality_context: unknown,
             quality_report: report,
             reasons
           };
@@ -1673,7 +1674,7 @@
 
       async function fetchAndAssemble(adapter, symbol, externalSignal, options = {}) {
         const maxSpread = options.maxProviderTimeSpreadMs;
-        const closedCount = Number.isSafeInteger(options.closedCandleCount) ? options.closedCandleCount : 400;
+        const closedCount = options.closedCandleCount;
         if (!Number.isSafeInteger(maxSpread) || maxSpread < 0)
           throw new RangeError('A measured maxProviderTimeSpreadMs is required; no production default is assumed.');
         if (!Number.isSafeInteger(closedCount) || closedCount < 1)
@@ -1887,7 +1888,16 @@
           expect(rejected && seen.length === 3 && seen.every(item => item.signal.aborted),
             'failed timeframe did not abort all sibling requests');
         }]);
-        asyncTests.push(['16 superseded MTF generation cannot publish late results', async () => {
+        asyncTests.push(['16 missing closed-candle count is rejected before network requests', async () => {
+          let fetchCalls = 0;
+          const adapter = { fetchMarketSnapshot() { fetchCalls++; return Promise.resolve(null); } };
+          let rejected = false;
+          try {
+            await B1MtfEngine.fetchAndAssemble(adapter, 'BTCUSDT', null, { maxProviderTimeSpreadMs: spread });
+          } catch (error) { rejected = error instanceof RangeError; }
+          expect(rejected && fetchCalls === 0, 'missing closedCandleCount silently defaulted or started requests');
+        }]);
+        asyncTests.push(['17 superseded MTF generation cannot publish late results', async () => {
           let requestCount = 0;
           const adapter = {
             fetchMarketSnapshot(_symbol, interval, signal) {
