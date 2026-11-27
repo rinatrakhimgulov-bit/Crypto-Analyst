@@ -15,6 +15,8 @@ const POLICY = {
   b2a_policy_version: 'b2a-causal-swing-v1',
   b2b_engine_version: '2.1.0-b2b',
   b2b_policy_version: 'b2b-swing-sequence-v2',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
   b2c_engine_version: '2.0.0-b2c',
   b2c_policy_version: 'b2c-state-v1',
   b2d_engine_version: '2.0.0-b2d',
@@ -146,6 +148,8 @@ function makeInput() {
       snapshot_id: snapshotId,
       b2b_engine_version: '2.1.0-b2b',
       b2b_policy_version: 'b2b-swing-sequence-v2',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b1_validator_version: '1.1.0',
       b1_quality_policy_version: POLICY.b1_quality_policy_version
