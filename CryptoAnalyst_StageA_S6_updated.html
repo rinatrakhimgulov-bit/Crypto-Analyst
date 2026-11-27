@@ -1125,6 +1125,7 @@
         if (!nowValid) invalid('VALIDATION_TIME_INVALID', 'validationNowMs must be a non-negative safe integer.');
         const snapshotIdentityValid = Boolean(snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) &&
           typeof snapshot.contract_version === 'string' && snapshot.contract_version === B1DataContract.VERSION &&
+          typeof snapshot.snapshot_id === 'string' && snapshot.snapshot_id.trim().length > 0 &&
           typeof snapshot.canonical_symbol === 'string' && snapshot.canonical_symbol.trim().length > 0 &&
           typeof snapshot.market_type === 'string' && snapshot.market_type.trim().length > 0);
         const providerMetadata = snapshot && snapshot.provider_metadata;
@@ -1134,11 +1135,12 @@
           typeof providerMetadata.provider_symbol === 'string' && providerMetadata.provider_symbol.trim().length > 0 &&
           typeof providerMetadata.host === 'string' && providerMetadata.host.trim().length > 0 &&
           (providerMetadata.time_source === 'provider' || providerMetadata.time_source === 'local_fallback'));
-        if (!snapshotIdentityValid) invalid('SNAPSHOT_SCHEMA_INVALID', 'Canonical snapshot identity fields must be non-empty strings.');
+        if (!snapshotIdentityValid) invalid('SNAPSHOT_SCHEMA_INVALID', 'Canonical contract version, snapshot id, symbol, and market identity fields must be valid.');
         if (!providerMetadataValid) invalid('PROVIDER_METADATA_INVALID', 'Provider id, venue, provider symbol, host, and recognized time source are required.');
         const emptyReport = {
           validator_version: VERSION,
           policy_version: policyValid ? policy.version : null,
+          snapshot_id: snapshot && typeof snapshot.snapshot_id === 'string' ? snapshot.snapshot_id : null,
           status: 'INVALID',
           reasons,
           symbol: snapshot && snapshot.canonical_symbol || null,
@@ -1652,6 +1654,7 @@
             timeframes[tf].quality_report &&
             timeframes[tf].quality_report.validator_version === B1QualityValidator.VERSION &&
             timeframes[tf].quality_report.policy_version === B1_QUALITY_POLICY.version &&
+            timeframes[tf].quality_report.snapshot_id === timeframes[tf].snapshot.snapshot_id &&
             timeframes[tf].quality_report.status === 'VALID' &&
             timeframes[tf].analysis_candles.length === closedCount);
 
@@ -2120,6 +2123,9 @@
         const wrongContractVersion=makeSnapshot();
         wrongContractVersion.contract_version='1.0.0';
         assert('unsupported canonical contract version fails closed',run(wrongContractVersion).status==='INVALID'&&run(wrongContractVersion).reasons.some(r=>r.code==='SNAPSHOT_SCHEMA_INVALID'));
+        const missingSnapshotId=makeSnapshot();
+        missingSnapshotId.snapshot_id='';
+        assert('canonical snapshot without stable snapshot id fails closed',run(missingSnapshotId).status==='INVALID'&&run(missingSnapshotId).reasons.some(r=>r.code==='SNAPSHOT_SCHEMA_INVALID'));
         assert('requested count and raw response count remain distinct',valid.requested_count===1&&valid.raw_received_count===1&&valid.expected_count===1&&valid.response_shortfall===0);
         const missingProviderId=makeSnapshot();
         delete missingProviderId.provider_metadata.provider_id;
@@ -3652,7 +3658,8 @@
         const reportVersionValid = Boolean(
           qualityReport &&
           qualityReport.validator_version === B1QualityValidator.VERSION &&
-          qualityReport.policy_version === B1_QUALITY_POLICY.version
+          qualityReport.policy_version === B1_QUALITY_POLICY.version &&
+          Boolean(dataset && dataset.canonicalSnapshot && qualityReport.snapshot_id === dataset.canonicalSnapshot.snapshot_id)
         );
         if (!reportVersionValid || qualityReport.status !== 'VALID') {
           const prices = dataset && dataset.prices ? dataset.prices : {};
@@ -3660,7 +3667,10 @@
           const codes = Array.isArray(qualityReport && qualityReport.reasons)
             ? qualityReport.reasons.map(reason => reason && reason.code).filter(Boolean).slice(0, 5)
             : [];
-          if (qualityReport && !reportVersionValid) codes.unshift('QUALITY_REPORT_VERSION_MISMATCH');
+          if (qualityReport && !reportVersionValid) codes.unshift(
+            dataset && dataset.canonicalSnapshot && qualityReport.snapshot_id === dataset.canonicalSnapshot.snapshot_id
+              ? 'QUALITY_REPORT_VERSION_MISMATCH' : 'QUALITY_REPORT_SNAPSHOT_MISMATCH'
+          );
           const detail = codes.length ? ` Причины: ${codes.join(', ')}.` : '';
           return {
             decision: 'WAIT',
