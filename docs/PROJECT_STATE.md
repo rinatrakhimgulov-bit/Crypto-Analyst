@@ -709,3 +709,14 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - PR base is current `main`; branch is one snapshot commit ahead before CI workflow updates, with no main changes or merges.
 - This clean branch preserves the newer main-branch B2-F spec and the main `docs/Screenshots.md` file.
 - PR #22 remains draft. Merge only after iPhone/Safari acceptance, live MTF calibration, independent review and explicit owner approval.
+
+### Clean integration branch verification (latest)
+
+- Current draft PR #22 head: `3d6c721044118f5a04f5498e60f03c1e13b7597b`.
+- Base `main`: `bc8af9270dfa5f3d475ae928731476b6dae87b2a`; comparison is 9 commits ahead / 0 behind.
+- B2 app integration run 46034803848: success; all seven B2 module test steps and Chromium/mobile integration passed.
+- B2 suite run 46034803544: success, 182/182 deterministic tests.
+- B1 browser/data run 46034808544: success; deterministic groups 50/50, 32/32, 72/72, 20/20; zero browser page errors.
+- Live Bybit REST was skipped as `SKIPPED_PROVIDER_BLOCKED` because GitHub runner requests to both public REST hosts received HTTP 403. No live Bybit pass is claimed.
+- Synthetic mobile viewport 390px: no horizontal overflow. iPhone Safari remains untested.
+- PR #22 is still draft and unmerged. `main` is unchanged.
