@@ -189,6 +189,23 @@ run('zone evidence preserves every contributing pivot ID and touch timestamp', (
   assert.deepEqual(support.pivot_ids, ['s90a', 's91b']);
   assert.deepEqual(support.touches.map(t => t.pivot_id), ['s90a', 's91b']);
   assert.ok(support.touches.every(t => Number.isSafeInteger(t.available_at_ms)));
+  assert.ok(support.touches.every(t => t.sequence_status === 'ACCEPTED'));
+  assert.equal(support.freshness_status, 'NOT_CLASSIFIED');
+  assert.equal(result.zone_identity_scope, 'MEMBERSHIP_DERIVED_V1');
+  assert.equal(result.freshness_policy, 'NOT_CLASSIFIED_V1');
+});
+
+run('superseded raw pivots remain visible as touch evidence without being promoted to sequence pivots', () => {
+  const pivots = [
+    pivot('s90a', 'SWING_LOW', 90, 0, 1),
+    pivot('s91b', 'SWING_LOW', 91, 2, 3)
+  ];
+  pivots[0].sequence_status = 'SUPERSEDED_FOR_SEQUENCE';
+  const result = analyze(fixture(pivots));
+  assert.equal(result.status, 'VALID');
+  assert.equal(result.zones.length, 1);
+  assert.equal(result.zones[0].touch_count, 2);
+  assert.equal(result.zones[0].touches[0].sequence_status, 'SUPERSEDED_FOR_SEQUENCE');
 });
 
 run('a single pivot remains a candidate level rather than a confirmed zone', () => {
@@ -440,7 +457,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C → B2-D chain builds support a
       price_equality_policy: 'EXACT_PRICE_V1',
       break_buffer_policy: 'ZERO_BUFFER_V1'
     },
-    snapshot, quality_report: qualityReport, b2b_result: b2b,
+    snapshot, quality_report: qualityReport, b2a_result: b2a, b2b_result: b2b,
     analysis_as_of_ms: asOf, timeframe: '1h'
   });
   assert.equal(b2c.status, 'VALID');
