@@ -4,7 +4,7 @@
 **Дата актуализации:** 2026-11-27  
 **Основная ветка:** `main`  
 **Основной исходный файл:** `CryptoAnalyst_StageA_S6_updated.html`  
-**Текущее состояние:** B2-A–B2-G интегрированы в `main` через PR #22 (merge commit `d2b8220572ec407a62c5a359af3c0264919932b1`). Начат B3: переработка визуализации графика в отдельной ветке. B1/B2 аналитическое ядро не меняется в рамках B3.
+**Текущее состояние:** B2-A–B2-G интегрированы в `main` через PR #22 (merge commit `d2b8220572ec407a62c5a359af3c0264919932b1`). B3 chart UI реализован в draft PR #23; B1/B2 аналитическое ядро не менялось. Автоматические B1/B2/browser CI проверки прошли; iPhone/Safari acceptance ожидается.
 
 ---
 
@@ -752,3 +752,13 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - Спецификация: `docs/specs/B3_CHART_UI_REDESIGN_SPEC_2026-11-27.md`.
 - Ветка-кандидат содержит изменения HTML, browser integration test и workflow trigger. JavaScript syntax check прошёл для обоих inline scripts. Полный browser/CI run и iPhone Safari acceptance пока не подтверждены.
 - B3 не merged; `main` остаётся неизменным относительно merge commit #22.
+
+
+### B3 browser/CI verification — 2026-11-27
+
+- B2 application integration workflow [46038517628](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46038517628): SUCCESS. B2-A…B2-G deterministic suites passed; browser integration and mobile chart UI assertions passed; zero browser page errors.
+- B1 candidate browser/data workflow [46038517602](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46038517602): SUCCESS. Stage A 50/50, B1 contract 32/32, quality 72/72, MTF 20/20; browser chart/volume and mobile layout checks passed; zero page errors.
+- B3 browser test verified Clean/Structure/Full presets, manual layer toggle/custom mode, 390×844 mobile viewport, chart height >=440 px, no horizontal overflow, and causal S/R zone positioning.
+- Live Bybit REST probe was skipped as `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass or evidence of provider unavailability elsewhere.
+- The first CI attempt exposed mobile horizontal overflow from chart controls and an old B1 visual test assumption that EMA200 was always visible. Both were corrected: chart grid/control containers now constrain width, and the EMA regression explicitly enables the EMA layer before testing it.
+- Candidate remains in `feature/b3-chart-ui-redesign-2026-11-27`, draft PR #23. No merge. iPhone/Safari owner visual acceptance remains pending.
