@@ -316,3 +316,8 @@ Canonical implementation spec: `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-
 - EMA lines are clipped to the price pane, and visible EMA values participate in price-axis scaling.
 - This visualization work does not yet change the LONG/SHORT/WAIT decision rules and does not make the analytics a validated trading strategy.
 - Candidate only: `b1/contract-review`; `main` remains unchanged. GitHub Actions run `45962613748` passed: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, EMA200 warm-up, closed-candle line alignment, volume histogram and mobile layout checks all passed; zero browser page errors. Mobile CI viewport was 390 px with a 334×318 px chart canvas and no horizontal chart overflow. GitHub runner still cannot reach Bybit (HTTP 403 on both public REST hosts), so live provider verification is not claimed. User-side iPhone Safari verification of the new chart remains pending; C1 is under review, not accepted.
+
+
+### B1-C UI transparency update — 2026-11-27
+
+The candidate quality panel now exposes B1 status/version, up to five validator reason codes, and whether directional analysis is admitted or blocked with WAIT. A Chromium DOM test injects an INVALID negative-volume report and verifies the user-visible panel shows INVALID, VOLUME_NEGATIVE, blocked state, and WAIT. CI run 45963443614 passed: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate checks passed, zero browser page errors. Live Bybit probe remains blocked on GitHub runners by HTTP 403. The user has confirmed the preceding C1 candidate works on iPhone; the latest added quality-panel detail row still needs a brief Safari visual check. Independent B1 review and formal acceptance remain outstanding; main is unchanged.
