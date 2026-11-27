@@ -438,6 +438,7 @@
       admission: {
         status: 'ADMITTED', snapshot_id: snapshot.snapshot_id,
         b2b_engine_version: source.engine_version, b2b_policy_version: source.policy_version,
+        b2b_same_candle_dual_pivot_policy: policy.b2b_same_candle_dual_pivot_policy,
         b1_validator_version: report.validator_version, b1_quality_policy_version: report.policy_version
       },
       snapshot_id: snapshot.snapshot_id, symbol: snapshot.canonical_symbol, timeframe,
