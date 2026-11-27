@@ -473,3 +473,15 @@ B1 remains not accepted: exact-blob independent review, real concurrent Bybit ca
 ## Final branch-position refresh — 2026-11-27
 
 After the documentation sync, PR #8 head is `5e94c29d1f5734e8b46200c04b6da51996ca9726`, still DRAFT / NOT MERGED. The code artifact remains HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); test harness `70399a984b44f5f85024afcdf11289e4a73a6361`. Branch comparison is now 131 ahead / 0 behind main (the additional commits are documentation/PR metadata refreshes; no change to the tested HTML/harness after CI run `45968566553`). Main HTML remains `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf` (188,954 bytes), unchanged.
+
+
+## B1-D live market-data integration — 2026-11-27 (latest)
+
+- New draft PR #9: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/9. Base is the B1 integration candidate branch; PR #8 remains a dependency and is still draft/unmerged. PR #9 is also draft/unmerged. No merge was performed.
+- Implementation branch: feature/b1-d-live-market-data-2026-11-27; head commit a591f651e63f3bec60be6b71d22f8d162f8024a7.
+- Candidate HTML blob: 3421588fa85c47c72b1b3aa6fadfb8aef0608518 (328,399 bytes; 6,157 lines). Browser harness blob: 44b492f92ffbbbb58f6cb830375b6330a556d5c4 (35,635 bytes). B1-D spec blob: 459d94bc05cbf226f7abd40f9c2d50a2ff702256.
+- B1-D promotes the existing Bybit V5 public WS client from connection-health/log-only to validated ticker/kline callbacks. Ticker uses lastPrice only. Kline validates active symbol/timeframe, aligned timestamps, OHLCV invariants and explicit confirm. Live chart updates do not recalculate closed-candle analytics. REST remains history/bootstrap/reconciliation/recovery with the existing 30-second background poll.
+- Closed REST candles cannot be mutated by WS events. A forming candle can be updated; a next candle can be appended only after its predecessor is confirmed. Gaps, conflicts, older events and invalid payloads trigger REST reconciliation. Confirmed candles schedule delayed REST refresh after the 500 ms finality lag plus 250 ms; WS confirm never directly promotes data into B1 analytics.
+- Latest CI run 45981279187 passed: Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; 174/174 deterministic tests. Browser-level live-handler-to-UI checks, desktop/mobile chart checks, transport cancellation/timeout checks and zero-page-error assertion passed.
+- Real exchange connectivity is still NOT VERIFIED. GitHub Actions REST requests to both public Bybit hosts are blocked with HTTP 403; CI reports SKIPPED_PROVIDER_BLOCKED. The new browser test uses controlled events and does not prove a real Bybit WebSocket session. A real iPhone/Safari run must confirm live lastPrice and forming-candle updates, symbol/timeframe switching and reconnect/fallback behavior.
+- main remains unchanged. Do not merge PR #8 or #9 automatically. B1-D automated implementation is complete; live browser acceptance and independent review remain open. B2 remains gated.
