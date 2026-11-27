@@ -579,3 +579,21 @@ B2 design review is recorded with blockers. Production implementation remains NO
 - No application code, HTML, UI, analytical decision path, or main branch changed.
 - B1 acceptance gates remain open; B2 implementation remains blocked until explicit B1 acceptance.
 - Changes are on research/b2-market-structure-spec-2026-11-27, in documentation-only PR #10 (draft, unmerged).
+
+## B2-A isolated causal swing candidate — 2026-11-27
+
+### Implemented
+- Added a pure B2-A module at src/analysis/b2-causal-swing-engine.js.
+- Added exact B1 snapshot/quality-report identity admission and required B1 quality-policy version binding.
+- Added closed-candle, provenance, ordering, timestamp-grid, OHLC and finality-safety checks.
+- Added symmetric plateau-aware swing-high/swing-low detection with rightmost plateau representative.
+- Added source, plateau, confirmation and availability timestamps; availability includes the explicit B1 finality safety lag.
+- Added deterministic tests for plateau handling, causal timestamps, prefix replay invariance, quality blocking, identity mismatch, forming-candle overlap, malformed time bounds, insufficient history, immutability and unsupported equality policy.
+- Added a dedicated GitHub Actions workflow for the B2-A Node test file.
+
+### Verification and limits
+- 10/10 deterministic test cases passed in the current development JavaScript harness.
+- GitHub Actions status has not yet been confirmed.
+- This is isolated B2-A research code. It is not imported by the app HTML and does not affect current analytics or decisions.
+- B2-B sequence labels, B2-C BOS/CHoCH, zones, retests and chart integration are not implemented.
+- B1 formal acceptance remains required before production integration. No main branch changes or merges.
