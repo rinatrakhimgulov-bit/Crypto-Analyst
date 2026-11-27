@@ -416,3 +416,27 @@ Key finding: the older B1-E MTF implementation depends on legacy `DataQualityEng
 The exact older B1-E artifact has an external conditional audit (33/33 MTF and 65/65 legacy quality tests). The reviewer withheld directional MTF approval pending real Bybit time-spread measurements, recorded response replay, abort testing, and a forming-candle non-consumption invariant. That review does not certify the newer B1/C1 artifact.
 
 Working branch `integration/b1-mtf-architecture-2026-11-27` was created from `b1/contract-review`. Main remains unchanged. The user had previously confirmed the C1 chart on iPhone; the newest quality-panel detail row remains pending Safari visual verification. Live Bybit from GitHub Actions remains blocked by HTTP 403. B1 is not accepted and B2 has not started.
+
+
+
+
+## B1-E current-contract MTF port and regression verification — 2026-11-27
+
+Ported the common-cutoff MTF assembler from the older candidate design to the current B1 canonical contract. The previous implementation was not copied wholesale because it depended on legacy `DataQualityEngine` methods and schema.
+
+Implementation details:
+- Added isolated `B1MtfEngine` for required 1D/4H/1H datasets.
+- Concurrently fetches each timeframe through the existing Bybit adapter; raw request limit is desired closed count + provider-spread rows + two safety rows, with Bybit's 1000-row cap enforced.
+- Requires trusted provider time for all TFs; common cutoff is the minimum provider time; spread policy must be explicitly supplied and has no guessed production default.
+- Reclassifies each response against the common cutoff and 500 ms finality lag.
+- Excludes post-cutoff rows from canonical TF snapshots and preserves the count in new required `source_diagnostics.excluded_after_cutoff_count`; raw-row accounting subtracts only explicitly recorded exclusions.
+- Validates each TF using the current B1 validator/policy identity; verifies exact closed-window start/end/count/interval; keeps forming context separate from closed-only `analysis_candles`.
+- Aggregate permission is fail-closed and requires every timeframe report/version and exact coverage to be VALID.
+- Adds deep immutability, sibling abort propagation, superseded-generation suppression.
+- MTF remains isolated from UI and existing directional decision path.
+
+Canonical contract and validator were incremented to 1.1.0. The validator now rejects unsupported canonical contract versions. Added regression for unsupported contract version.
+
+**GitHub Actions run 45965680821 passed:** Stage A 44/44; B1 contract 32/32; B1 quality validator 64/64; B1 MTF 12/12; B1 gate/UI and C1 chart checks passed; zero browser page errors. Live Bybit probe was skipped/blocked because both public REST hosts returned HTTP 403 to the GitHub runner. This does not constitute live verification.
+
+Added `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`. Main remains unchanged. B1 is not accepted pending exact-artifact independent review, real concurrent Bybit capture/spread calibration, transport-level abort verification, latest Safari quality-panel check, and explicit owner acceptance.
