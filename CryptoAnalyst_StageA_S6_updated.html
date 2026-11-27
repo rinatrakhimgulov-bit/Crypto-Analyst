@@ -4092,6 +4092,7 @@
         const last = this.candles[lastIndex];
         if (candle.ts < last.ts) return { status: 'older' };
         if (candle.ts === last.ts) {
+          if (lastIndex < this.closedCount) return { status: 'closed-candle' };
           const sameOpen = Math.abs(candle.open - last.open) <= 1e-10;
           const monotonic = candle.high >= last.high && candle.low <= last.low &&
             candle.volume >= last.volume && candle.turnover >= last.turnover;
@@ -4106,6 +4107,7 @@
           return { status: 'updated' };
         }
         if (candle.ts !== last.ts + stepMs) return { status: 'gap' };
+        if (lastIndex >= this.closedCount && last.confirmed !== true) return { status: 'unconfirmed-predecessor' };
         if (this.offsetFromEnd > 0) this.offsetFromEnd += 1;
         this.candles = this.candles.concat([{ ...candle }]);
         this.clampOffset();
@@ -4637,7 +4639,13 @@
     }
     function freshLiveTicker(symbol = state.symbol) {
       const item = state.liveTicker;
-      return item && item.symbol === symbol && Number.isFinite(item.lastPrice) &&
+      const wsState = BybitWsClient.state;
+      const tickerTopic = `tickers.${symbol}`;
+      const entry = wsState && wsState.tickerBySymbol instanceof Map
+        ? wsState.tickerBySymbol.get(symbol) : null;
+      const streamReady = Boolean(wsState && wsState.status === 'open' &&
+        wsState.confirmedTopics.has(tickerTopic) && entry && entry.ready);
+      return streamReady && item && item.symbol === symbol && Number.isFinite(item.lastPrice) &&
         item.lastPrice > 0 && Number.isFinite(item.receivedAtMs) &&
         Date.now() - item.receivedAtMs <= LIVE_TICKER_STALE_MS ? item : null;
     }
@@ -4697,7 +4705,7 @@
       }
       const stepMs = BybitAdapter.intervalToMs(event.interval);
       const result = chart.upsertLiveCandle(event.candle, stepMs);
-      if (['invalid', 'no-base', 'older', 'conflict', 'gap'].includes(result.status)) {
+      if (['invalid', 'no-base', 'older', 'closed-candle', 'unconfirmed-predecessor', 'conflict', 'gap'].includes(result.status)) {
         scheduleLiveRestReconciliation(0, 'WebSocket kline requires REST reconciliation: ' + result.status);
         return;
       }
@@ -6033,7 +6041,10 @@
             post.symbolRestored = state.symbol === origSymbol && state.interval === origInterval;
             post.webSocketRestored = window.WebSocket === OrigWS;
             post.fetchRestored = BybitAdapter.fetchMarketSnapshot === origFetch;
-            post.hooksRestored = BybitWsClient.hooks.onStatus === origHooks.onStatus && BybitWsClient.hooks.onRecovered === origHooks.onRecovered;
+            post.hooksRestored = BybitWsClient.hooks.onStatus === origHooks.onStatus &&
+              BybitWsClient.hooks.onRecovered === origHooks.onRecovered &&
+              BybitWsClient.hooks.onTicker === origHooks.onTicker &&
+              BybitWsClient.hooks.onKline === origHooks.onKline;
             post.configRestored = CFG_KEYS.every((k) => BybitWsClient[k] === origCfg[k]);
             post.snapshotsRestored = state.snapshotsByKey === origSnapshots;
             post.clockRestored = Date.now === origDateNow && window.setTimeout === origTimers.setTimeout;
