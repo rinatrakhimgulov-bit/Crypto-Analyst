@@ -118,9 +118,9 @@ The exposed overall context is categorical structure context (for example `BULLI
 
 ## 15. Final deterministic verification — 2026-11-27
 
-Latest B2-F head: `fe11e2819c590489ecc618ad0f23023eefee62e7`.
+Latest B2-F head: `db81a06d992a89bfaa7a5c60f7266f679f4fcd90`.
 
-- B2-F: **30/30** deterministic tests passed in [run 46020066819](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46020066819).
-- Integrated B2-A through B2-F research suite: **149/149** passed in [run 46020066749](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46020066749).
+- B2-F: **30/30** deterministic tests passed in [run 46020155711](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46020155711).
+- Integrated B2-A through B2-F research suite: **149/149** passed in [run 46020155690](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46020155690).
 
 Final additional guard: every B2-C event close timestamp must be positive, aligned to its own timeframe boundary, and its availability must equal the close timestamp plus the exact B1 finality lag.
