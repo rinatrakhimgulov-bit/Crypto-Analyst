@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('node:fs');
+
 // Research-only historical replay. The archive is fetched at runtime and is not committed.
 const { analyze: analyzeA } = require('../src/analysis/b2-causal-swing-engine.js');
 const { analyze: analyzeB } = require('../src/analysis/b2b-swing-sequence-engine.js');
@@ -324,6 +326,8 @@ async function main() {
       }
     };
   }
-  console.log(JSON.stringify(output, null, 2));
+  const report = JSON.stringify(output, null, 2);
+  fs.writeFileSync('b2_historical_replay_report.json', report + '\n');
+  console.log(report);
 }
 main().catch(error => { console.error(error && error.stack ? error.stack : error); process.exitCode = 1; });
