@@ -467,3 +467,10 @@ All B2 modules remain isolated in the draft candidate PR #20. No app HTML or mai
 | `.github/workflows/b2-app-integration.yml` | B2-A–G suites plus Chromium/mobile integration | Passed |
 
 B2-F remains disabled in the live UI pending empirical provider-time spread calibration. The B2 preview does not generate or modify Stage A trade decisions. iPhone/Safari acceptance is still required. `main` is unchanged.
+
+
+### Clean integration PR
+
+- Draft PR #22: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/22.
+- Branch: `integration/b2-clean-preview-2026-11-27`, based directly on current `main`.
+- The PR is a preview candidate only. B2-F remains disabled pending live MTF spread calibration; iPhone/Safari acceptance and independent review remain outstanding.
