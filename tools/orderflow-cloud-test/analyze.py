@@ -26,10 +26,14 @@ def load(path: Path) -> list[dict]:
 
 ticks = load(LOG_DIR / "ticks.jsonl")
 samples = load(LOG_DIR / "samples.jsonl")
+ws_messages = load(LOG_DIR / "ws_control.jsonl")
 print("ORDERFLOW / BYBIT LIVE PROBE")
 print("===========================")
 print(f"Tick records: {len(ticks)}")
 print(f"REST samples: {len(samples)}")
+print(f"WebSocket control messages: {len(ws_messages)}")
+for message in ws_messages[:5]:
+    print("  WS:", message.get("control_message"))
 
 if ticks:
     ids = [t.get("trade_id") for t in ticks if t.get("trade_id")]
@@ -105,14 +109,14 @@ else:
     print("Matched closed 1m candles: none yet (need a live feed and at least one candle close).")
 
 errors = []
-for s in samples:
+for sample in samples:
     for key in ("ticker_error", "kline_error"):
-        if s.get(key):
-            errors.append(s[key])
+        if sample.get(key):
+            errors.append(sample[key])
 if errors:
     print("Sample network/API errors:")
-    for e in errors[:5]:
-        print(f"  - {e}")
+    for error in errors[:5]:
+        print(f"  - {error}")
 
 print("\nRaw evidence directory:", LOG_DIR)
 print("This report does not prove browser rendering; inspect the forwarded dashboard separately.")
