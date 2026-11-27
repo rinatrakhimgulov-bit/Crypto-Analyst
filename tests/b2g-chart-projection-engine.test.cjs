@@ -552,5 +552,5 @@ run('projection does not mutate inputs or emit candle/trade-decision data', () =
   }
 });
 
-console.log('B2-G TESTS: ' + passed + '/29 passed');
-if (passed !== 29) process.exitCode = 1;
+console.log('B2-G TESTS: ' + passed + '/30 passed');
+if (passed !== 30) process.exitCode = 1;
