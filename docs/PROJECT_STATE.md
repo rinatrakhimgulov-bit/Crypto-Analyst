@@ -761,7 +761,7 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - B3 browser test verified Clean/Structure/Full presets, manual layer toggle/custom mode, 390×844 mobile viewport, chart height >=440 px, no horizontal overflow, and causal S/R zone positioning.
 - Live Bybit REST probe was skipped as `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass or evidence of provider unavailability elsewhere.
 - The first CI attempt exposed mobile horizontal overflow from chart controls and an old B1 visual test assumption that EMA200 was always visible. Both were corrected: chart grid/control containers now constrain width, and the EMA regression explicitly enables the EMA layer before testing it.
-- Candidate remains in `feature/b3-chart-ui-redesign-2026-11-27`, draft PR #23. No merge. iPhone/Safari owner visual acceptance remains pending.
+- PR #23 was merged into `main` as `7d34a3539c9a655bca546bbb7b0c8ff2293b80ee`. iPhone/Safari owner visual acceptance remains pending after integration.
 
 
 ## B3 — завершение реализации и интеграция (2026-11-27)
