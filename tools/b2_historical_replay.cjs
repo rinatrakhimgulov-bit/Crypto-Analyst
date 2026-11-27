@@ -221,6 +221,23 @@ function countBy(items, key) {
   for (const item of items) counts[item[key]] = (counts[item[key]] || 0) + 1;
   return counts;
 }
+function sweepStats(events) {
+  const counts = new Map();
+  for (const event of events) {
+    if (!String(event.event_type).endsWith('_SWEEP') || !event.source_pivot_id) continue;
+    const key = event.event_type + ':' + event.source_pivot_id;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const values = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  return {
+    sweep_events: values.reduce((sum, item) => sum + item[1], 0),
+    unique_level_events: values.length,
+    repeated_levels: values.filter(item => item[1] > 1).length,
+    events_on_repeated_levels: values.filter(item => item[1] > 1).reduce((sum, item) => sum + item[1], 0),
+    max_events_per_level: values.length ? values[0][1] : 0,
+    top_repeated_levels: values.filter(item => item[1] > 1).slice(0, 10).map(([key, count]) => ({ key, count }))
+  };
+}
 function summarizeZones(result) {
   const statuses = countBy(result.e.lifecycles, 'status');
   return { zones: result.d.zones.length, candidates: result.d.candidate_levels.length,
@@ -287,6 +304,7 @@ async function main() {
           sequence_history_count: structure.b.sequence_history.length,
           event_count: structure.c.events.length,
           event_types: countBy(structure.c.events, 'event_type'),
+          sweep_stats: sweepStats(structure.c.events),
           ambiguous_pivot_count: structure.b.diagnostics.ambiguous_dual_pivot_count,
           ...summarizeZones(zones), parameter_grid: parameterGrid });
       }
@@ -297,6 +315,7 @@ async function main() {
           ambiguous_dual_pivots: full.b.diagnostics.ambiguous_dual_pivot_count,
           structure_events: full.c.events.length,
           event_types: countBy(full.c.events, 'event_type'),
+          sweep_stats: sweepStats(full.c.events),
           structure_state: full.c.structure_state,
           sequence_history: full.b.sequence_history.length,
           prefix_invariance_checks: prefixChecks.length,
