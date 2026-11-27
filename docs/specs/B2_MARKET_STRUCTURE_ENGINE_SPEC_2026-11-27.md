@@ -307,7 +307,7 @@ This section resolves the implementation ambiguities identified in the B2 design
 - A plateau is a maximal contiguous run of candles whose candidate high (for pivot highs) or low (for pivot lows) is exactly equal under `EXACT_PRICE_V1`.
 - The representative is the **rightmost candle** in that contiguous run. The raw pivot retains plateau start/end timestamps and indices.
 - A pivot-high plateau is valid only when its price is strictly greater than every one of the `leftStrength` closed candles immediately preceding the plateau start and every one of the `rightStrength` closed candles immediately following the plateau end. Pivot lows use the strict inverse.
-- Confirmation occurs only after all `rightStrength` candles following the **end** of the plateau have closed. `sourceTime` points to the representative candle; `confirmedAt` and `availableAt` are the close time of the final required right-side candle.
+- Confirmation occurs only after all `rightStrength` candles following the **end** of the plateau have closed. `sourceTime` points to the representative candle; `confirmedAt` is the exclusive close boundary of the final required right-side candle. `availableAt` is `confirmedAt + finality_safety_lag_ms`, using the explicit B1 finality-safety-lag policy version supplied to the engine. A pivot is emitted only when `availableAt <= analysisAsOf`. This preserves B1's rule that a candle is not admitted as time-derived closed until the safety lag has elapsed.
 - A plateau touching either edge of available history is not confirmed unless the full left and right windows exist. No partial-window pivot is emitted.
 
 ### 15.3 Raw pivots and alternating structural sequence
