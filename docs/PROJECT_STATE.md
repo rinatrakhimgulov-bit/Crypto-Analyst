@@ -445,3 +445,15 @@ Added `tools/b1_live_probe.html` schema v3 and `docs/specs/B1_LIVE_CAPTURE_PROCE
 Latest CI run `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20, gate/UI/chart/probe smoke passed, zero page errors. Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`, harness `a23585f9688b9a04336c7f99da7a972513882f8e`, probe `3b5df8f0feda730c7e6564808f40ad4526f0e44a`.
 
 B1 remains not accepted: exact-blob independent review, real concurrent Bybit captures and spread calibration, real transport-level abort test, latest iPhone Safari quality panel check, and explicit owner acceptance remain open. Main unchanged; B2 not started.
+
+
+
+## Latest candidate state — 2026-11-27 (supersedes prior artifact hashes/counts)
+
+- PR #8 remains **DRAFT / NOT MERGED**; head commit `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`.
+- Current HTML blob: `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes).
+- Current browser harness blob: `a23585f9688b9a04336c7f99da7a972513882f8e` (29,130 bytes).
+- Branch comparison: 101 commits ahead, 0 behind main. Main HTML remains `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf` (188,954 bytes), unchanged.
+- Latest CI run `45967551538` passed: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 20/20; gate/UI/chart assertions passed, zero browser page errors; 161/161 named tests.
+- Recent B1-C hardening: the legacy candle series and last-closed price consumed by the analytics engine must exactly match the canonical snapshot that passed validation; divergence forces WAIT. Empty but matching series preserve INSUFFICIENT status/reason rather than being mislabeled INVALID.
+- MTF remains isolated from the chart and directional decision path. Live Bybit is blocked by HTTP 403 from both public hosts on the GitHub runner. Independent review, live concurrent capture/spread calibration, transport abort verification, Safari panel check, and explicit owner acceptance remain open. Main unchanged.
