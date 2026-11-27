@@ -7,6 +7,7 @@
 
   const ENGINE_VERSION = '2.0.0-b2e';
   const REQUIRED_B2D_ENGINE_VERSION = '2.0.0-b2d';
+  const REQUIRED_B2B_ENGINE_VERSION = '2.0.0-b2b';
   const REQUIRED_B2C_ENGINE_VERSION = '2.0.0-b2c';
   const BREAK_TYPES = Object.freeze({
     INITIAL_BULLISH_BREAK: 'BULLISH',
@@ -41,7 +42,7 @@
     if (policy.b2d_engine_version !== REQUIRED_B2D_ENGINE_VERSION ||
         typeof policy.b2d_policy_version !== 'string' || !policy.b2d_policy_version.trim() ||
         typeof policy.b2d_zone_policy_version !== 'string' || !policy.b2d_zone_policy_version.trim() ||
-        policy.b2b_engine_version !== REQUIRED_B2D_ENGINE_VERSION.replace('2.0.0-b2d', '2.0.0-b2b') ||
+        policy.b2b_engine_version !== REQUIRED_B2B_ENGINE_VERSION ||
         typeof policy.b2b_policy_version !== 'string' || !policy.b2b_policy_version.trim() ||
         policy.b2c_engine_version !== REQUIRED_B2C_ENGINE_VERSION ||
         typeof policy.b2c_policy_version !== 'string' || !policy.b2c_policy_version.trim() ||
