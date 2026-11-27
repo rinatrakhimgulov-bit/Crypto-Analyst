@@ -351,6 +351,8 @@ run('superseded pivot is separated from active HH/HL sequence', () => {
   const result = analyze(makeInput());
   assert.equal(result.superseded_pivots[0].id, 'p4');
   assert.equal(result.superseded_pivots[0].label, 'SUPERSEDED_FOR_SEQUENCE');
+  assert.equal(result.superseded_pivots[0].visible_at_ms, STEP * 9 + LAG);
+  assert.equal(result.superseded_pivots[0].status_visible_at_ms, STEP * 9 + LAG);
   assert.equal(result.swing_markers.some(x => x.id === 'p4'), false);
 });
 run('BOS marker anchors to breaking candle but is visible only after close finality', () => {
@@ -492,12 +494,18 @@ run('ambiguous same-candle dual pivots are projected separately, never as active
   const input = makeInput();
   const base = input.b2a_result.pivots[0];
   const high = { ...base, pivot_id: 'dual-high', type: 'SWING_HIGH', price: 120, source_time_ms: STEP * 12, confirmed_at_ms: STEP * 14, available_at_ms: STEP * 14 + LAG };
-  const low = { ...base, pivot_id: 'dual-low', type: 'SWING_LOW', price: 80, source_time_ms: STEP * 12, confirmed_at_ms: STEP * 14, available_at_ms: STEP * 14 + LAG };
+  const low = { ...base, pivot_id: 'dual-low', type: 'SWING_LOW', price: 80, source_time_ms: STEP * 12, confirmed_at_ms: STEP * 15, available_at_ms: STEP * 15 + LAG };
   input.b2a_result.pivots.push(high, low);
   for (const p of [high, low]) input.b2c_result.raw_pivots.push({ ...p, sequence_status: 'AMBIGUOUS_FOR_SEQUENCE', exclusion_reason: 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE', structure_label: null, comparison_pivot_id: null, price_delta: null, relative_delta_pct: null, superseded_by: null });
   const result = analyze(input);
   assert.equal(result.status, 'VALID');
   assert.equal(result.ambiguous_pivots.length, 2);
+  const projectedHigh = result.ambiguous_pivots.find(p => p.id === 'dual-high');
+  const projectedLow = result.ambiguous_pivots.find(p => p.id === 'dual-low');
+  assert.equal(projectedHigh.visible_at_ms, STEP * 14 + LAG);
+  assert.equal(projectedHigh.status_visible_at_ms, STEP * 15 + LAG);
+  assert.equal(projectedLow.visible_at_ms, STEP * 15 + LAG);
+  assert.equal(projectedLow.status_visible_at_ms, STEP * 15 + LAG);
   assert.equal(result.swing_markers.some(p => p.id === 'dual-high' || p.id === 'dual-low'), false);
 });
 
