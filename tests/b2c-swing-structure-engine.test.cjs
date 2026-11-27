@@ -736,6 +736,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C chain emits a causal initial br
     },
     snapshot,
     quality_report: qualityReport,
+    b2a_result: b2a,
     b2b_result: b2b,
     analysis_as_of_ms: asOf,
     timeframe: '1h'
