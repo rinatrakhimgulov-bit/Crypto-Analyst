@@ -1192,3 +1192,6 @@ B1 remains NOT ACCEPTED and unmerged. B2-A/B/C exist only as isolated research c
 B2-C covers initial breaks, BOS, protected-swing CHoCH, wick sweeps and strict close confirmation. No candidate is imported by the app HTML; no MTF, zones, retests, UI or LONG/SHORT integration. No live Bybit evidence or profitability claim.
 
 Next: independent exact-source review of B2-A/B/C, then B2-D zones as a separate research increment. Never merge PRs #8–#15 without explicit owner approval.
+
+
+B2-D has now been added as a separate isolated support/resistance zone engine: PR #16, 20/20 deterministic tests passed in GitHub Actions run 46014759139 on commit 0574858db12dd2082d7449f5512fa8461fceac63. It clusters confirmed swing lows/highs into separate support/resistance groups using an explicit instrument/timeframe-scoped absolute max-span policy; no hidden default tolerance is used. A full B1 → B2-A → B2-B → B2-C → B2-D fixture passed. The tolerance has not been calibrated against live BTC/ETH data. No app integration; B1 remains NOT ACCEPTED.
