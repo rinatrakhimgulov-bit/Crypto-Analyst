@@ -97,3 +97,15 @@ The Chromium harness now exercises the real adapter normalization → canonical 
 - Every non-VALID status, missing report, and mismatched validator version is fail-closed.
 
 Latest GitHub Actions run: Stage A 44/44; canonical contract 32/32; quality validator 63/63; real gate integration assertions passed; cleanup assertions passed; zero browser page errors. Live Bybit access remains skipped because the GitHub-hosted runner receives HTTP 403 from both public REST hosts.
+
+
+## 8. UI reason visibility regression
+
+The quality panel renders:
+- validator status and version;
+- up to five validator reason codes;
+- explicit analysis admission or blocked-WAIT state.
+
+A Chromium DOM integration assertion uses a synthetic INVALID negative-volume snapshot and confirms the panel displays INVALID, VOLUME_NEGATIVE, blocked state, and the WAIT decision badge. CI run 45963443614 passed all suites (Stage A 44/44, B1 contract 32/32, B1 validator 63/63), UI assertion passed, and browser page errors were zero.
+
+The user confirmed the prior C1 candidate works in iPhone Safari. The newest reason-code panel addition needs a brief visual check on device. Independent review and formal acceptance are still required before merge.
