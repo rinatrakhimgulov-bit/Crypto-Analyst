@@ -392,3 +392,9 @@ Current PR #8 head: `f6cc90e51096e30bd524a6e883f3ca0ad1273d79` (draft, not merge
 ## Browser transport verification — 2026-11-27
 
 Latest CI `45968566553` passed 161/161 named tests (Stage A 44, contract 32, validator 65, MTF 20), gate/UI/C1/probe checks and zero browser page errors. Added a real Chromium fetch cancellation test through `BybitAdapter.fetchMarketSnapshot`: external abort cancelled both parallel requests and the timeout cancelled a delayed request; local server observed 3/3 client sockets closed. This validates browser-side cancellation wiring, not live Bybit connectivity. Fetch deadlines now surface as `TimeoutError`. Live Bybit still returns HTTP 403 to the GitHub runner. Exact current HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf`; harness blob `70399a984b44f5f85024afcdf11289e4a73a6361`. Branch 124 ahead / 0 behind main. B1 acceptance remains open.
+
+
+
+## Final branch-position refresh — 2026-11-27
+
+PR #8 head `5e94c29d1f5734e8b46200c04b6da51996ca9726`, draft/unmerged. Branch 131 ahead / 0 behind main. The code artifact remains HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` and harness `70399a984b44f5f85024afcdf11289e4a73a6361`; no code changed after successful CI `45968566553`, only documentation/PR metadata. Main remains unchanged.
