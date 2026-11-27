@@ -750,7 +750,7 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - B3 начат в ветке `feature/b3-chart-ui-redesign-2026-11-27`, созданной от merge commit выше.
 - Цель B3: увеличить мобильную рабочую область графика, добавить режимы Clean/Structure/Full и независимые переключатели слоёв, снизить плотность меток без изменения B1/B2 output.
 - Спецификация: `docs/specs/B3_CHART_UI_REDESIGN_SPEC_2026-11-27.md`.
-- Ветка-кандидат содержит изменения HTML, browser integration test и workflow trigger. JavaScript syntax check прошёл для обоих inline scripts. Полный browser/CI run и iPhone Safari acceptance пока не подтверждены.
+- Ветка-кандидат содержит изменения HTML, browser integration test и workflow trigger. Оба inline JavaScript script проходят syntax check. На commit `c8a79a2429f10fafdca28987c28e384ecba467db` GitHub Actions прошёл: B1 browser/live-data verification SUCCESS, B2 application integration SUCCESS (включая B2-A…G и мобильные browser assertions). После небольшой очистки диагностического тестового вывода повторный CI для текущего HEAD ожидается. iPhone Safari acceptance пока не подтверждён.
 - B3 не merged; `main` остаётся неизменным относительно merge commit #22.
 
 
