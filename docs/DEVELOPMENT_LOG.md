@@ -525,3 +525,19 @@ Changed fetch deadline abort reason from a generic Error to a named `TimeoutErro
 CI run `45968566553` passed: Stage A 44/44, B1 contract 32/32, validator 65/65, MTF 20/20; 161/161 named self-tests, gate/UI/C1/probe checks passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public hosts on GitHub Actions.
 
 Current HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); test harness blob `70399a984b44f5f85024afcdf11289e4a73a6361` (32,071 bytes). PR #8 remains draft; main unchanged.
+
+
+## B1-D live ticker and kline integration — 2026-11-27
+
+Promoted the existing Bybit V5 WebSocket client from connection-health/log-only behavior to a live market-data transport for the currently selected symbol and timeframe.
+
+- Ticker snapshot/delta callbacks emit validated lastPrice only when a snapshot or delta actually contains lastPrice; non-price-only deltas cannot refresh the last-price freshness clock. Events preserve provider event time, local receive time, sequence and connection generation. Mark/index prices are never substituted. The app requires an acknowledged active ticker subscription and a fresh snapshot before treating the WS price as live. The 10-second receive-age threshold causes an explicit stale indication and REST fallback.
+- Kline callbacks validate topic symbol/interval, timestamp grid and interval end, positive OHLC prices, volume/turnover, OHLC relationships and boolean confirm. Invalid messages fail closed and request REST reconciliation.
+- Chart now has dedicated live-price and live-candle update methods. Ticker updates the displayed price and horizontal price line; kline updates the forming candle without recalculating indicators or advancing the closed-candle analysis boundary. Closed REST candles are immutable to WS updates. A new candle is appended only after the prior forming candle is explicitly confirmed. Gaps, older candles, conflicts and missing base history request REST reconciliation.
+- Confirmed kline schedules REST reconciliation after the existing 500 ms finality safety lag plus 250 ms. WS finality does not itself certify B1 analytics. REST remains the history/bootstrap/reconciliation/recovery source and keeps its 30-second background poll.
+- Symbol/timeframe switches clear live display state. Switching symbols resets any previously cached ticker snapshot so an old delta cannot be mistaken for a fresh quote.
+- Added six B1-D deterministic Stage A tests and browser-level integration checks that exercise the live ticker and kline handlers through the actual DOM and chart. Existing desktop/mobile chart, B1 gate and transport tests remain active.
+
+Latest CI run 45981507604 passed: Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; 174/174 deterministic tests, browser live-handler/UI integration, desktop/mobile chart checks, REST cancellation/timeout checks, zero page errors. Live Bybit remains SKIPPED_PROVIDER_BLOCKED because GitHub Actions receives HTTP 403 from both public REST hosts; no live WebSocket success is claimed.
+
+Exact candidate artifacts: HTML blob 39e42c223419bd8a599f6c513ef6e269df120fcc (329,008 bytes); browser harness blob 44b492f92ffbbbb58f6cb830375b6330a556d5c4 (35,635 bytes). PR #9 is draft and targets the B1 integration branch; PR #8 remains draft. Main unchanged. Real iPhone/Safari stream verification and independent review remain open.

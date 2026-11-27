@@ -5,6 +5,7 @@ on:
     branches:
       - b1/contract-review
       - integration/b1-mtf-architecture-2026-11-27
+      - feature/b1-d-live-market-data-2026-11-27
   pull_request:
     branches:
       - main

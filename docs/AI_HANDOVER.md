@@ -1266,3 +1266,18 @@ Current integration branch head `c9d207d6dd3f8194bcc97a4d600e284a85594e04`. HTML
 ## Final branch pointer — 2026-11-27
 
 Current PR #8 head after documentation sync: `5e94c29d1f5734e8b46200c04b6da51996ca9726`; draft and unmerged. Branch 131 ahead / 0 behind main. The exact tested code blobs remain HTML `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` and harness `70399a984b44f5f85024afcdf11289e4a73a6361`; no source changes after successful CI `45968566553`. Main HTML is unchanged.
+
+
+## Handover — B1-D live market-data candidate — 2026-11-27
+
+Current B1-D PR: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/9 (DRAFT, NOT MERGED). It targets integration/b1-mtf-architecture-2026-11-27 and depends on draft PR #8. Main remains unchanged. Do not merge automatically.
+
+Latest source commit verified by CI: 1b013781a8a7e507915bf73ae760d6ecbbbca0be; subsequent PR commits are documentation-only. Use PR #9 for the current branch head. Exact HTML blob: 39e42c223419bd8a599f6c513ef6e269df120fcc (329,008 bytes). Browser harness blob: 44b492f92ffbbbb58f6cb830375b6330a556d5c4 (35,635 bytes). Spec: docs/specs/B1_D_LIVE_MARKET_DATA_INTEGRATION_2026-11-27.md.
+
+B1-D implementation is in place: validated Bybit WS ticker/kline callbacks (non-price-only ticker deltas do not refresh lastPrice), live lastPrice/price-line update, forming-candle upsert, strict closed-candle boundary, REST reconciliation and 30-second REST fallback. A confirmed WS candle does not directly enter analytics; it triggers delayed REST reconciliation after the finality lag. Closed REST candles are immutable to WS updates. Symbol switches clear the prior ticker cache.
+
+Latest CI run 45981507604 passed: Stage A 50/50, contract 32/32, quality 72/72, MTF 20/20; 174/174 deterministic tests. Browser handler-to-UI integration, desktop/mobile chart checks, REST abort/timeout checks passed; zero browser page errors.
+
+Important: CI does NOT prove live Bybit connectivity. GitHub Actions REST calls return HTTP 403 and the live provider test is correctly marked SKIPPED_PROVIDER_BLOCKED. The browser UI integration uses synthetic events. Next required work is a real iPhone/Safari test from a network that can reach Bybit: confirm current last traded price matches Bybit, the forming candle moves without manual refresh, and test BTC/ETH + 1H/4H/1D switches and reconnect/fallback. If the branch candidate cannot be run on iPhone without merging, arrange a temporary preview; do not merge merely to test.
+
+After live browser evidence, perform an exact-blob independent review of the B1-D source and update this handover. B1 remains not accepted until its separate independent-review/live MTF spread gates and owner acceptance are satisfied. B2 remains not started.

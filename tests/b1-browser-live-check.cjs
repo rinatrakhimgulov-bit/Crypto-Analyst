@@ -402,6 +402,78 @@ async function main() {
     ];
     if (gateFailures.length) throw new Error(`B1 mandatory gate failures: ${JSON.stringify(gateFailures)}`);
 
+    const liveUiIntegration = await page.evaluate(() => {
+      const h = window.__CryptoAnalystTestHooks;
+      if (!h || !h.handleLiveTicker || !h.handleLiveKline) throw new Error('B1-D live UI hooks unavailable');
+      const { chart, state, BybitWsClient, handleLiveTicker, handleLiveKline, clearLiveDataState } = h;
+      const savedChart = {
+        candles: chart.candles.slice(), closedCount: chart.closedCount, analysis: chart.analysis,
+        marketPrice: chart.marketPrice, visibleCount: chart.visibleCount, offsetFromEnd: chart.offsetFromEnd
+      };
+      const savedSelection = { symbol: state.symbol, interval: state.interval };
+      const savedClient = {
+        status: BybitWsClient.state.status,
+        confirmedTopics: BybitWsClient.state.confirmedTopics,
+        tickerBySymbol: BybitWsClient.state.tickerBySymbol
+      };
+      try {
+        state.symbol = 'BTCUSDT';
+        state.interval = '240';
+        BybitWsClient.state.status = 'open';
+        BybitWsClient.state.confirmedTopics = new Set(['tickers.BTCUSDT', 'kline.240.BTCUSDT']);
+        BybitWsClient.state.tickerBySymbol = new Map([['BTCUSDT', {
+          symbol: 'BTCUSDT', ready: true, snapshotReceived: true,
+          state: { symbol: 'BTCUSDT', lastPrice: '65000' }
+        }]]);
+        const base = [
+          { ts: 1000, closeTs: 2000, open: 65000, high: 65001, low: 64999, close: 65000, volume: 1, turnover: 65000 },
+          { ts: 2000, closeTs: 3000, open: 65000, high: 65001, low: 64999, close: 65000, volume: 1, turnover: 65000 }
+        ];
+        chart.setData(base, 1, null, 100);
+        handleLiveTicker({
+          symbol: 'BTCUSDT', lastPrice: 65001.5, providerEventTimeMs: Date.now(),
+          receivedAtMs: Date.now(), cs: 123, type: 'delta', connGen: BybitWsClient.state.connGen
+        });
+        const tickerUi = {
+          price: document.getElementById('livePrice').textContent,
+          source: document.getElementById('priceSourceLabel').textContent,
+          chartPrice: chart.marketPrice
+        };
+        handleLiveKline({
+          valid: true, symbol: 'BTCUSDT', interval: '240', receivedAtMs: Date.now(),
+          candle: {
+            ts: 2000, closeTs: 3000, open: 65000, high: 65002, low: 64999,
+            close: 65001.5, volume: 2, turnover: 130003, confirmed: false
+          }
+        });
+        const klineUi = {
+          close: chart.candles[1].close,
+          volume: chart.candles[1].volume,
+          closedCount: chart.closedCount
+        };
+        return { tickerUi, klineUi };
+      } finally {
+        clearLiveDataState();
+        chart.setData(savedChart.candles, savedChart.closedCount, savedChart.analysis, savedChart.marketPrice);
+        chart.visibleCount = savedChart.visibleCount;
+        chart.offsetFromEnd = savedChart.offsetFromEnd;
+        chart.render();
+        state.symbol = savedSelection.symbol;
+        state.interval = savedSelection.interval;
+        BybitWsClient.state.status = savedClient.status;
+        BybitWsClient.state.confirmedTopics = savedClient.confirmedTopics;
+        BybitWsClient.state.tickerBySymbol = savedClient.tickerBySymbol;
+      }
+    });
+    if (liveUiIntegration.tickerUi.price !== '65001.5' ||
+        !liveUiIntegration.tickerUi.source.includes('Bybit WS lastPrice') ||
+        liveUiIntegration.tickerUi.chartPrice !== 65001.5 ||
+        liveUiIntegration.klineUi.close !== 65001.5 ||
+        liveUiIntegration.klineUi.volume !== 2 ||
+        liveUiIntegration.klineUi.closedCount !== 1) {
+      throw new Error(`B1-D live UI integration failed: ${JSON.stringify(liveUiIntegration)}`);
+    }
+
     const chartVisual = await page.evaluate(() => {
       const chart = window.__CryptoAnalystTestHooks && window.__CryptoAnalystTestHooks.chart;
       if (!chart) throw new Error('Chart test hook was not exposed');

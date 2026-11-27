@@ -427,6 +427,7 @@
       <div class="price-box">
         <span class="price" id="livePrice">—</span>
         <span class="meta" id="priceSourceLabel">Источник цены: —</span>
+        <span class="meta" id="liveDiagnostics">Live-проверка: ожидание данных</span>
         <span class="meta" id="lastUpdate">Обновление: —</span>
       </div>
     </header>
@@ -527,7 +528,7 @@
         <div class="subcard">
           <h4>Не реализовано (Этапы 2 и 3)</h4>
           <ul>
-            <li><strong>Потоковый WebSocket:</strong> пока используется периодический REST-опрос, а не постоянный WS-поток.</li>
+            <li><strong>Потоковый WebSocket:</strong> Bybit ticker обновляет текущую цену и ценовую линию; kline-поток обновляет формирующуюся свечу. REST остаётся источником истории, контрольной сверки и восстановления.</li>
             <li><strong>Полноценные зоны уровней, структура и режимы:</strong> оценка ретестов/реакций/пробоев уровней, классификация <code>BOS / CHoCH</code>, рыночные режимы и мультитаймфреймовый движок (<code>1D + 4H + 1H</code>) — в Этапе 2.</li>
             <li><strong>Библиотека моделей, пороги объёма и риск-калькулятор:</strong> проверка порогов на истории, модели, цели TP/SL с учётом комиссий/проскальзывания и алерты — в Этапах 2–3.</li>
             <li><strong>Полноценный офлайн PWA и бэктест:</strong> отдельные PNG-иконки, Service Worker и исторический прогон стратегий — в Этапах 2–3.</li>
@@ -2453,7 +2454,7 @@
       // Верхняя граница числа отслеживаемых «брошенных» сокетов (защита от неограниченного роста, если onclose не приходит).
       maxAbandonedTracked: 8,
 
-      hooks: { onStatus: null, onRecovered: null },
+      hooks: { onStatus: null, onRecovered: null, onTicker: null, onKline: null },
 
       state: {
         ws: null,
@@ -3315,6 +3316,26 @@
           cs: msg.cs,
           recvAt
         });
+        // A delta that changes only non-price fields must not refresh the displayed
+        // last-traded price or its freshness clock using an inherited value.
+        const hasLastPriceUpdate = msg.type === 'snapshot' ||
+          Object.prototype.hasOwnProperty.call(data, 'lastPrice');
+        const lastPrice = Number(entry.state && entry.state.lastPrice);
+        if (hasLastPriceUpdate && Number.isFinite(lastPrice) && lastPrice > 0) {
+          const event = Object.freeze({
+            symbol: sym,
+            lastPrice,
+            providerEventTimeMs: BybitAdapter.parseProviderTime(msg.ts),
+            receivedAtMs: recvAt,
+            cs: hasCs ? msg.cs : null,
+            type: msg.type,
+            connGen: cGen
+          });
+          const onTicker = this.hooks && this.hooks.onTicker;
+          if (typeof onTicker === 'function') {
+            try { onTicker(event); } catch (err) { this._log('error', 'onTicker hook failed', err && err.message ? err.message : err); }
+          }
+        }
       },
 
       _handleKlineMessage(msg, recvAt, cGen) {
@@ -3322,15 +3343,97 @@
           this.state.staleMessagesDropped += 1;
           return;
         }
+        const parts = typeof msg.topic === 'string' ? msg.topic.split('.') : [];
+        const interval = parts.length === 3 ? parts[1] : null;
+        const symbol = parts.length === 3 ? parts[2] : null;
+        const stepMs = BybitAdapter.intervalToMs(interval);
         const items = Array.isArray(msg.data) ? msg.data : [];
-        const lastItem = items.length ? items[items.length - 1] : null;
-        this._log('log', `Kline ${msg.topic} (${msg.type || 'unknown'})`, {
-          count: items.length,
-          start: lastItem ? lastItem.start : undefined,
-          close: lastItem ? lastItem.close : undefined,
-          confirm: lastItem ? lastItem.confirm : undefined,
-          recvAt
-        });
+        const onKline = this.hooks && this.hooks.onKline;
+        const reject = (reason) => {
+          this.state.invalidStreamMessages += 1;
+          this._log('warn', `Kline ${msg.topic}: сообщение отклонено — ${reason}`);
+          if (typeof onKline === 'function') {
+            try { onKline(Object.freeze({ valid: false, symbol, interval, reason, receivedAtMs: recvAt, connGen: cGen })); }
+            catch (err) { this._log('error', 'onKline hook failed', err && err.message ? err.message : err); }
+          }
+        };
+        if (parts.length !== 3 || !stepMs || symbol !== this.state.symbol || interval !== this.state.interval) {
+          reject('topic symbol/interval не совпадает с активной подпиской');
+          return;
+        }
+        if (!['snapshot', 'delta'].includes(msg.type) || items.length === 0) {
+          reject('неподдерживаемый тип сообщения или пустой data');
+          return;
+        }
+        for (const item of items) {
+          if (!item || typeof item !== 'object' || String(item.interval) !== interval) {
+            reject('некорректный объект свечи или interval');
+            continue;
+          }
+          const parseIntMs = (value) => {
+            const n = typeof value === 'number' ? value :
+              (typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : NaN);
+            return Number.isSafeInteger(n) && n > 0 ? n : null;
+          };
+          const parseDecimal = (value) => {
+            if (typeof value !== 'string' && typeof value !== 'number') return null;
+            if (typeof value === 'string' && !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(value)) return null;
+            const n = Number(value);
+            return Number.isFinite(n) ? n : null;
+          };
+          const start = parseIntMs(item.start);
+          const end = parseIntMs(item.end);
+          const open = parseDecimal(item.open);
+          const high = parseDecimal(item.high);
+          const low = parseDecimal(item.low);
+          const close = parseDecimal(item.close);
+          const volume = parseDecimal(item.volume);
+          const turnover = parseDecimal(item.turnover);
+          if (!start || !end || open === null || high === null || low === null || close === null ||
+              volume === null || turnover === null || typeof item.confirm !== 'boolean') {
+            reject('отсутствуют или некорректны обязательные поля OHLCV/time/confirm');
+            continue;
+          }
+          if (!BybitAdapter.isAlignedToUtcGrid(start, interval) || end !== start + stepMs - 1) {
+            reject('timestamp свечи не выровнен по сетке таймфрейма');
+            continue;
+          }
+          if (open <= 0 || high <= 0 || low <= 0 || close <= 0 || volume < 0 || turnover < 0 ||
+              high < Math.max(open, close, low) || low > Math.min(open, close, high)) {
+            reject('нарушены ограничения OHLCV');
+            continue;
+          }
+          const candle = Object.freeze({
+            ts: start,
+            closeTs: start + stepMs,
+            open,
+            high,
+            low,
+            close,
+            volume,
+            turnover,
+            confirmed: item.confirm
+          });
+          const event = Object.freeze({
+            valid: true,
+            symbol,
+            interval,
+            candle,
+            providerEventTimeMs: BybitAdapter.parseProviderTime(msg.ts),
+            receivedAtMs: recvAt,
+            connGen: cGen,
+            messageType: msg.type
+          });
+          this._log('log', `Kline ${msg.topic} (${msg.type})`, {
+            start,
+            close,
+            confirm: item.confirm,
+            recvAt
+          });
+          if (typeof onKline === 'function') {
+            try { onKline(event); } catch (err) { this._log('error', 'onKline hook failed', err && err.message ? err.message : err); }
+          }
+        }
       },
 
       _handleMessage(event, cGen) {
@@ -3498,11 +3601,19 @@
 
       setSubscription(symbol, interval) {
         const s = this.state;
+        const previousSymbol = s.symbol;
         const nextSymbol = String(symbol || s.symbol).toUpperCase();
         const nextInterval = this.supportedIntervals.has(interval) ? interval : s.interval;
         const prevTopics = s.topics.slice();
         const nextTopics = this.buildTopics(nextSymbol, nextInterval);
 
+        if (nextSymbol !== previousSymbol) {
+          const nextTicker = this._getTickerEntry(nextSymbol);
+          nextTicker.state = null;
+          nextTicker.snapshotReceived = false;
+          nextTicker.ready = false;
+          nextTicker.csLast = null;
+        }
         s.symbol = nextSymbol;
         s.interval = nextInterval;
         this._setActiveTopics(nextTopics);
@@ -3973,6 +4084,81 @@
         this.render();
       }
 
+      updateMarketPrice(price) {
+        if (!Number.isFinite(price) || price <= 0) return false;
+        this.marketPrice = price;
+        this.render();
+        return true;
+      }
+
+      // Ticker fallback keeps the visible forming candle responsive even if the
+      // exchange kline topic is delayed or unavailable. It never changes volume,
+      // candle finality, closed-candle count, or the analytical input series.
+      updateFormingCandleFromTicker(price) {
+        if (!Number.isFinite(price) || price <= 0 || !this.candles.length) return false;
+        const index = this.candles.length - 1;
+        if (index < this.closedCount) return false;
+        const last = this.candles[index];
+        const high = Math.max(last.high, price);
+        const low = Math.min(last.low, price);
+        if (last.close === price && last.high === high && last.low === low) return false;
+        this.candles = this.candles.slice();
+        this.candles[index] = { ...last, high, low, close: price };
+        this.render();
+        return true;
+      }
+
+      candleVisualStyle(candle, isForming) {
+        const isBull = candle.close >= candle.open;
+        if (isForming) {
+          return {
+            wickColor: isBull ? '#4ade80' : '#f87171',
+            bodyColor: isBull ? 'rgba(34,197,94,0.58)' : 'rgba(239,68,68,0.58)'
+          };
+        }
+        return {
+          wickColor: isBull ? '#22c55e' : '#ef4444',
+          bodyColor: isBull ? '#22c55e' : '#ef4444'
+        };
+      }
+
+      upsertLiveCandle(candle, stepMs) {
+        if (!candle || !Number.isSafeInteger(candle.ts) || !Number.isFinite(stepMs) || stepMs <= 0 ||
+            ![candle.open, candle.high, candle.low, candle.close, candle.volume, candle.turnover].every(Number.isFinite) ||
+            candle.open <= 0 || candle.high <= 0 || candle.low <= 0 || candle.close <= 0 ||
+            candle.volume < 0 || candle.turnover < 0 ||
+            candle.high < Math.max(candle.open, candle.close, candle.low) ||
+            candle.low > Math.min(candle.open, candle.close, candle.high)) {
+          return { status: 'invalid' };
+        }
+        if (!this.candles.length) return { status: 'no-base' };
+        const lastIndex = this.candles.length - 1;
+        const last = this.candles[lastIndex];
+        if (candle.ts < last.ts) return { status: 'older' };
+        if (candle.ts === last.ts) {
+          if (lastIndex < this.closedCount) return { status: 'closed-candle' };
+          const sameOpen = Math.abs(candle.open - last.open) <= 1e-10;
+          const monotonic = candle.high >= last.high && candle.low <= last.low &&
+            candle.volume >= last.volume && candle.turnover >= last.turnover;
+          if (!sameOpen || !monotonic) return { status: 'conflict' };
+          const next = { ...last, ...candle };
+          const unchanged = ['high', 'low', 'close', 'volume', 'turnover', 'confirmed']
+            .every((key) => next[key] === last[key]);
+          if (unchanged) return { status: 'duplicate' };
+          this.candles = this.candles.slice();
+          this.candles[lastIndex] = next;
+          this.render();
+          return { status: 'updated' };
+        }
+        if (candle.ts !== last.ts + stepMs) return { status: 'gap' };
+        if (lastIndex >= this.closedCount && last.confirmed !== true) return { status: 'unconfirmed-predecessor' };
+        if (this.offsetFromEnd > 0) this.offsetFromEnd += 1;
+        this.candles = this.candles.concat([{ ...candle }]);
+        this.clampOffset();
+        this.render();
+        return { status: 'appended' };
+      }
+
       resetView() {
         this.visibleCount = 80;
         this.offsetFromEnd = 0;
@@ -4229,8 +4415,9 @@
           const yOpen = yForPrice(c.open);
           const yClose = yForPrice(c.close);
 
-          const wickColor = isForming ? '#94a3b8' : (isBull ? '#22c55e' : '#ef4444');
-          const bodyColor = isForming ? 'rgba(148, 163, 184, 0.25)' : (isBull ? '#22c55e' : '#ef4444');
+          const candleStyle = this.candleVisualStyle(c, isForming);
+          const wickColor = candleStyle.wickColor;
+          const bodyColor = candleStyle.bodyColor;
 
           ctx.strokeStyle = wickColor;
           ctx.lineWidth = 1.2;
@@ -4475,12 +4662,142 @@
       pendingSyncToken: null,
       snapshotsByKey: new Map(),
       timerId: null,
-      selfTestRunning: false
+      selfTestRunning: false,
+      liveTicker: null,
+      liveTickerTimer: null,
+      liveReconcileTimer: null,
+      lastConfirmedCandleKey: null,
+      lastCandleUpdate: { status: 'not-tested', atMs: null }
     };
 
     // Единственное место создания 30-секундного REST-polling. Идемпотентна: повторный вызов
     // не создаёт второй интервал (сначала снимает существующий).
     const POLL_INTERVAL_MS = 30000;
+    const LIVE_TICKER_STALE_MS = 10000;
+    const LIVE_CONFIRM_RECONCILE_DELAY_MS = B1_FINALITY_SAFETY_LAG_MS + 250;
+    function clearLiveDataState() {
+      if (state.liveTickerTimer !== null) clearTimeout(state.liveTickerTimer);
+      if (state.liveReconcileTimer !== null) clearTimeout(state.liveReconcileTimer);
+      state.liveTickerTimer = null;
+      state.liveReconcileTimer = null;
+      state.liveTicker = null;
+      state.lastConfirmedCandleKey = null;
+      state.lastCandleUpdate = { status: 'not-tested', atMs: null };
+      const diag = document.getElementById('liveDiagnostics');
+      if (diag) diag.textContent = 'Live-проверка: ожидание нового потока';
+    }
+    function renderLiveDiagnostics() {
+      const el = document.getElementById('liveDiagnostics');
+      if (!el) return;
+      const symbol = state.symbol;
+      const cached = state.snapshotsByKey.get(makeKey(symbol, state.interval));
+      const rest = cached && cached.dataset ? cached.dataset.prices : null;
+      const restPrice = rest && Number.isFinite(rest.tickerLastPrice) ? rest.tickerLastPrice : null;
+      const ws = state.liveTicker && state.liveTicker.symbol === symbol ? state.liveTicker : null;
+      const wsPrice = ws && Number.isFinite(ws.lastPrice) ? ws.lastPrice : null;
+      const wsAge = ws && Number.isFinite(ws.receivedAtMs) ? Math.max(0, Date.now() - ws.receivedAtMs) : null;
+      const candle = chart && chart.candles.length ? chart.candles[chart.candles.length - 1] : null;
+      const eligible = Boolean(candle && chart.candles.length - 1 >= chart.closedCount);
+      const delta = wsPrice !== null && restPrice !== null ? wsPrice - restPrice : null;
+      const parts = [
+        'REST ticker ' + (restPrice === null ? 'нет' : fmtPrice(restPrice)),
+        'WS last ' + (wsPrice === null ? 'нет' : fmtPrice(wsPrice)),
+        'Δ ' + (delta === null ? '—' : (delta > 0 ? '+' : '') + fmtPrice(delta)),
+        'WS age ' + (wsAge === null ? '—' : (wsAge / 1000).toFixed(1) + 'с'),
+        'свеча ' + (eligible ? 'FORMING' : candle ? 'CLOSED/NO-FORMING' : 'NONE'),
+        'OHLC ' + (candle ? [candle.open,candle.high,candle.low,candle.close].map(fmtPrice).join('/') : '—'),
+        'ticker→свеча ' + (state.lastCandleUpdate ? state.lastCandleUpdate.status : '—')
+      ];
+      el.textContent = parts.join(' · ');
+    }
+    function freshLiveTicker(symbol = state.symbol) {
+      const item = state.liveTicker;
+      const wsState = BybitWsClient.state;
+      const tickerTopic = `tickers.${symbol}`;
+      const entry = wsState && wsState.tickerBySymbol instanceof Map
+        ? wsState.tickerBySymbol.get(symbol) : null;
+      const streamReady = Boolean(wsState && wsState.status === 'open' &&
+        wsState.confirmedTopics.has(tickerTopic) && entry && entry.ready);
+      return streamReady && item && item.symbol === symbol && Number.isFinite(item.lastPrice) &&
+        item.lastPrice > 0 && Number.isFinite(item.receivedAtMs) &&
+        Date.now() - item.receivedAtMs <= LIVE_TICKER_STALE_MS ? item : null;
+    }
+    function renderLivePrice(updateChart = true) {
+      const live = freshLiveTicker();
+      const cached = state.snapshotsByKey.get(makeKey(state.symbol, state.interval));
+      const restPrices = cached && cached.dataset ? cached.dataset.prices : null;
+      let displayPrice = null;
+      let sourceText = 'Источник цены: —';
+      let sourceClass = 'meta';
+      if (live) {
+        displayPrice = live.lastPrice;
+        const ageMs = Math.max(0, Date.now() - live.receivedAtMs);
+        sourceText = `Источник цены: Bybit WS lastPrice · ${ageMs < 1000 ? ageMs + ' мс' : (ageMs / 1000).toFixed(1) + ' с'}`;
+        sourceClass = 'meta status-ok';
+      } else if (restPrices && Number.isFinite(restPrices.currentMarketPrice)) {
+        displayPrice = restPrices.currentMarketPrice;
+        const wsStale = state.liveTicker && state.liveTicker.symbol === state.symbol;
+        sourceText = `Источник цены: ${restPrices.currentPriceSource || 'Bybit REST'}${wsStale ? ' · WS устарел' : ''}`;
+        sourceClass = wsStale ? 'meta status-warn' : 'meta status-ok';
+      } else if (state.liveTicker && state.liveTicker.symbol === state.symbol) {
+        displayPrice = state.liveTicker.lastPrice;
+        sourceText = 'Источник цены: Bybit WS lastPrice · УСТАРЕЛ';
+        sourceClass = 'meta status-warn';
+      }
+      if (displayPrice !== null) document.getElementById('livePrice').textContent = fmtPrice(displayPrice);
+      document.getElementById('priceSourceLabel').textContent = sourceText;
+      document.getElementById('priceSourceLabel').className = sourceClass;
+      if (updateChart && displayPrice !== null) chart.updateMarketPrice(displayPrice);
+    }
+    function scheduleLiveRestReconciliation(delayMs, reason) {
+      if (state.liveReconcileTimer !== null) return;
+      const symbol = state.symbol;
+      const interval = state.interval;
+      state.liveReconcileTimer = setTimeout(() => {
+        state.liveReconcileTimer = null;
+        if (symbol !== state.symbol || interval !== state.interval) return;
+        console.info('[CryptoAnalyst][B1-D] REST reconciliation:', reason);
+        loadAndAnalyze(false);
+      }, Math.max(0, delayMs));
+    }
+    function handleLiveTicker(event) {
+      if (!event || event.symbol !== state.symbol || !Number.isFinite(event.lastPrice) || event.lastPrice <= 0) return;
+      state.liveTicker = event;
+      renderLivePrice(true);
+      // The validated last-traded price is also used to animate the current
+      // forming candle; volume and analytical candle finality remain untouched.
+      const candleUpdated = chart.updateFormingCandleFromTicker(event.lastPrice);
+      state.lastCandleUpdate = {
+        status: candleUpdated ? 'UPDATED' : (chart.candles.length && chart.candles.length - 1 < chart.closedCount ? 'BLOCKED_CLOSED' : 'UNCHANGED_OR_NO_FORMING'),
+        atMs: Date.now()
+      };
+      renderLiveDiagnostics();
+      if (state.liveTickerTimer !== null) clearTimeout(state.liveTickerTimer);
+      state.liveTickerTimer = setTimeout(() => {
+        state.liveTickerTimer = null;
+        renderLivePrice(true);
+      }, LIVE_TICKER_STALE_MS + 25);
+    }
+    function handleLiveKline(event) {
+      if (!event || event.symbol !== state.symbol || event.interval !== state.interval) return;
+      if (!event.valid || !event.candle) {
+        scheduleLiveRestReconciliation(0, event.reason || 'invalid WebSocket kline');
+        return;
+      }
+      const stepMs = BybitAdapter.intervalToMs(event.interval);
+      const result = chart.upsertLiveCandle(event.candle, stepMs);
+      if (['invalid', 'no-base', 'older', 'closed-candle', 'unconfirmed-predecessor', 'conflict', 'gap'].includes(result.status)) {
+        scheduleLiveRestReconciliation(0, 'WebSocket kline requires REST reconciliation: ' + result.status);
+        return;
+      }
+      if (event.candle.confirmed) {
+        const key = `${event.symbol}:${event.interval}:${event.candle.ts}`;
+        if (state.lastConfirmedCandleKey !== key) {
+          state.lastConfirmedCandleKey = key;
+          scheduleLiveRestReconciliation(LIVE_CONFIRM_RECONCILE_DELAY_MS, 'confirmed candle ' + key);
+        }
+      }
+    }
     function startPeriodicPoll() {
       if (state.timerId !== null) clearInterval(state.timerId);
       state.timerId = setInterval(() => loadAndAnalyze(false), POLL_INTERVAL_MS);
@@ -4492,7 +4809,9 @@
 
     const chart = new CandleChart(document.getElementById('chartCanvas'));
     if (new URLSearchParams(window.location.search).get('test') === '1') {
-      window.__CryptoAnalystTestHooks = Object.freeze({ chart });
+      window.__CryptoAnalystTestHooks = Object.freeze({
+        chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient
+      });
     }
 
     function tfLabel(interval) {
@@ -4515,6 +4834,7 @@
 
     function clearDisplayForNewInstrument(symbol, interval, hasCachedSnapshot) {
       const tfText = tfLabel(interval);
+      clearLiveDataState();
       setStaleBanner(null);
       resetMetricsUi();
       document.getElementById('chartTitle').textContent = `График — ${symbol} (${tfText})`;
@@ -4617,7 +4937,21 @@
         { k: 'Допуск аналитики', v: qualityGateBlocked ? 'Заблокирована · WAIT' : 'Допущена к расчёту', cls: qualityGateBlocked ? 'status-err' : 'status-ok' }
       ]);
 
-      chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis, pInfo.currentMarketPrice);
+      const live = freshLiveTicker(dataset.symbol);
+      chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis,
+        live ? live.lastPrice : pInfo.currentMarketPrice);
+      // A 30-second REST refresh replaces the chart array. Re-apply the newest
+      // validated WS trade immediately so the forming OHLC does not snap back
+      // to the older REST kline snapshot while the stream remains fresh.
+      if (live) {
+        const updated = chart.updateFormingCandleFromTicker(live.lastPrice);
+        state.lastCandleUpdate = {
+          status: updated ? 'UPDATED_AFTER_REST' : (chart.candles.length && chart.candles.length - 1 < chart.closedCount ? 'BLOCKED_CLOSED_AFTER_REST' : 'UNCHANGED_AFTER_REST'),
+          atMs: Date.now()
+        };
+      }
+      renderLivePrice(false);
+      renderLiveDiagnostics();
     }
 
     function renderError(symbol, interval, errorMsg) {
@@ -4785,7 +5119,7 @@
         // ---- Сохранение исходного окружения (до любых изменений; сами сохранения не имеют побочных эффектов) ----
         const OrigWS = window.WebSocket;
         const origFetch = BybitAdapter.fetchMarketSnapshot;           // исходная ссылка, без bind
-        const origHooks = { onStatus: BybitWsClient.hooks.onStatus, onRecovered: BybitWsClient.hooks.onRecovered };
+        const origHooks = { onStatus: BybitWsClient.hooks.onStatus, onRecovered: BybitWsClient.hooks.onRecovered, onTicker: BybitWsClient.hooks.onTicker, onKline: BybitWsClient.hooks.onKline };
         const CFG_KEYS = ['pingIntervalMs', 'pongTimeoutMs', 'streamAliveMs', 'stallMs', 'degradedMisses', 'timerGapMs', 'resumeGraceMs',
           'connectTimeoutMs', 'stableResetMs', 'lateWindowMs', 'maxTimedOutPings', 'subAckTimeoutMs', 'subRetryMax',
           'reconnectBaseMs', 'reconnectMaxMs', 'maxAbandonedTracked'];
@@ -4942,6 +5276,8 @@
           MockWebSocket.closeMode = 'sync';
           BybitWsClient.state = freshClientState();
           BybitWsClient.hooks.onStatus = null;
+          BybitWsClient.hooks.onTicker = null;
+          BybitWsClient.hooks.onKline = null;
           BybitWsClient.hooks.onRecovered = origHooks.onRecovered;     // настоящий хук приложения → настоящий loadAndAnalyze
           for (const k of CFG_KEYS) BybitWsClient[k] = origCfg[k];
           BybitWsClient.configure({ pingIntervalMs: 20000, pongTimeoutMs: 5000, stallMs: 30000, reconnectBaseMs: 100, reconnectMaxMs: 1000, subAckTimeoutMs: 2000, subRetryMax: 2, timerGapMs: 3000, resumeGraceMs: 0 });
@@ -4983,6 +5319,8 @@
           envChanged = true;
           const realSockets = [origClientState.ws, ...Array.from(origClientState.abandoned)].filter(Boolean);
           BybitWsClient.hooks.onStatus = null;
+          BybitWsClient.hooks.onTicker = null;
+          BybitWsClient.hooks.onKline = null;
           if (state.activeController) { state.activeController.abort(new Error('Запущен StageASelfTest')); state.activeController = null; }
           stopPeriodicPoll();
           BybitWsClient.stop(true);
@@ -4993,6 +5331,161 @@
           BybitAdapter.fetchMarketSnapshot = mockFetch;
           clock.reset();
           clock.install();
+
+          // ===================== B1-D: live market-data transport =====================
+          await record('B1-D. Symbol switch requires a new ticker snapshot', () => {
+            const events = [];
+            BybitWsClient.hooks.onTicker = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            const cachedEth = BybitWsClient._getTickerEntry('ETHUSDT');
+            cachedEth.state = { symbol: 'ETHUSDT', lastPrice: '5000' };
+            cachedEth.snapshotReceived = true;
+            cachedEth.ready = true;
+            cachedEth.csLast = 99;
+            BybitWsClient.setSubscription('ETHUSDT', '240');
+            assert(cachedEth.state === null && !cachedEth.snapshotReceived && !cachedEth.ready && cachedEth.csLast === null,
+              'Кэш предыдущей подписки ETH должен быть сброшен');
+            ws.triggerMessage({
+              topic: 'tickers.ETHUSDT', type: 'delta', cs: 100, ts: Date.now() + 1,
+              data: { lastPrice: '5001' }
+            });
+            assert(events.length === 0, 'Delta до нового snapshot не должна оживить старую цену');
+            ws.triggerMessage({
+              topic: 'tickers.ETHUSDT', type: 'snapshot', cs: 1, ts: Date.now() + 2,
+              data: { symbol: 'ETHUSDT', lastPrice: '5002' }
+            });
+            assert(events.length === 1 && events[0].lastPrice === 5002, 'Новый snapshot должен открыть поток ETH');
+          });
+
+          await record('B1-D. Ticker snapshot and delta emit only validated lastPrice', () => {
+            const events = [];
+            BybitWsClient.hooks.onTicker = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 10, ts: Date.now() + 1,
+              data: { symbol: 'BTCUSDT', lastPrice: '60000', markPrice: '60010', indexPrice: '60020' }
+            });
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'delta', cs: 11, ts: Date.now() + 2,
+              data: { volume24h: '12345' }
+            });
+            assert(events.length === 1, 'Delta без lastPrice не должна создавать новое событие цены');
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'delta', cs: 12, ts: Date.now() + 3,
+              data: { lastPrice: '60001' }
+            });
+            assert(events.length === 2, 'Ожидались snapshot и delta с новым lastPrice');
+            assert(events[0].lastPrice === 60000 && events[1].lastPrice === 60001, 'В callback должен попадать lastPrice');
+            assert(events[1].symbol === 'BTCUSDT' && events[1].connGen === S().connGen, 'Должны сохраняться symbol и generation');
+          });
+
+          await record('B1-D. Ticker delta before snapshot is not emitted', () => {
+            const events = [];
+            BybitWsClient.hooks.onTicker = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'delta', cs: 1, ts: Date.now() + 1,
+              data: { lastPrice: '60001' }
+            });
+            assert(events.length === 0, 'Delta до snapshot не должна попасть в live bridge');
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 2, ts: Date.now() + 2,
+              data: { symbol: 'BTCUSDT', lastPrice: '60002' }
+            });
+            assert(events.length === 1 && events[0].lastPrice === 60002, 'После snapshot должен прийти валидный ticker');
+          });
+
+          await record('B1-D. Valid kline event is normalized with finality but not promoted to analytics', () => {
+            const events = [];
+            BybitWsClient.hooks.onKline = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            const step = BybitAdapter.intervalToMs('240');
+            const start = Math.floor(Date.now() / step) * step;
+            ws.triggerMessage({
+              topic: 'kline.240.BTCUSDT', type: 'snapshot', ts: Date.now(),
+              data: [{ start: String(start), end: String(start + step - 1), interval: '240',
+                open: '60000', high: '60100', low: '59900', close: '60050',
+                volume: '12', turnover: '720600', confirm: false }]
+            });
+            assert(events.length === 1 && events[0].valid, 'Валидная свеча должна быть передана');
+            assert(events[0].candle.ts === start && events[0].candle.confirmed === false, 'Нужны timestamp и явный статус незакрытой свечи');
+            assert(events[0].candle.closeTs === start + step, 'closeTs должен быть эксклюзивной границей свечи');
+          });
+
+          await record('B1-D. Malformed kline is rejected and requests reconciliation', () => {
+            const events = [];
+            BybitWsClient.hooks.onKline = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            const step = BybitAdapter.intervalToMs('240');
+            const start = Math.floor(Date.now() / step) * step;
+            ws.triggerMessage({
+              topic: 'kline.240.BTCUSDT', type: 'snapshot', ts: Date.now(),
+              data: [{ start: String(start), end: String(start + step - 1), interval: '240',
+                open: '60000', high: '59900', low: '60100', close: '60050',
+                volume: '12', turnover: '720600', confirm: false }]
+            });
+            assert(events.length === 1 && events[0].valid === false, 'OHLC contradiction must be rejected');
+            assert(S().invalidStreamMessages === 1, 'Invalid stream counter must increase');
+          });
+
+          await record('B1-D. Chart live upsert changes forming candle without changing closed count', (restoreList) => {
+            const saved = {
+              candles: chart.candles.slice(), closedCount: chart.closedCount, analysis: chart.analysis,
+              marketPrice: chart.marketPrice, visibleCount: chart.visibleCount, offsetFromEnd: chart.offsetFromEnd
+            };
+            restoreList.push(() => {
+              chart.setData(saved.candles, saved.closedCount, saved.analysis, saved.marketPrice);
+              chart.visibleCount = saved.visibleCount;
+              chart.offsetFromEnd = saved.offsetFromEnd;
+              chart.render();
+            });
+            const base = [
+              { ts: 1000, closeTs: 2000, open: 10, high: 11, low: 9, close: 10, volume: 1, turnover: 10 },
+              { ts: 2000, closeTs: 3000, open: 10, high: 11, low: 9, close: 10, volume: 1, turnover: 10 }
+            ];
+            chart.setData(base, 1, null, 10);
+            const tickerMoved = chart.updateFormingCandleFromTicker(11.5);
+            assert(tickerMoved && chart.candles[1].close === 11.5 && chart.candles[1].high === 11.5,
+              'Ticker price must update the visible forming candle close/high');
+            assert(chart.candles[1].volume === 1 && chart.closedCount === 1,
+              'Ticker fallback must preserve REST volume and the closed-candle boundary');
+            const tickerLowMoved = chart.updateFormingCandleFromTicker(8.5);
+            assert(tickerLowMoved && chart.candles[1].low === 8.5 && chart.candles[1].close === 8.5,
+              'Ticker price must extend the forming candle low and update close');
+            const formingBullStyle = chart.candleVisualStyle({ open: 10, close: 11 }, true);
+            const formingBearStyle = chart.candleVisualStyle({ open: 10, close: 9 }, true);
+            assert(formingBullStyle.bodyColor.includes('34,197,94') && formingBearStyle.bodyColor.includes('239,68,68'),
+              'Forming candle must use live bullish/bearish colors instead of muted neutral brown/gray');
+            // Restore the REST baseline before testing an independent kline update.
+            chart.setData(base, 1, null, 10);
+            const updated = chart.upsertLiveCandle({
+              ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: false
+            }, 1000);
+            assert(updated.status === 'updated' && chart.candles[1].close === 11, 'Текущая свеча должна обновиться');
+            assert(chart.closedCount === 1, 'WS update не должен менять число закрытых свечей для аналитики');
+            const confirmed = chart.upsertLiveCandle({
+              ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: true
+            }, 1000);
+            assert(confirmed.status === 'updated' && chart.closedCount === 1, 'confirm не должен напрямую продвигать аналитическую границу закрытых свечей');
+            const appended = chart.upsertLiveCandle({
+              ts: 3000, closeTs: 4000, open: 11, high: 12, low: 10, close: 11.5, volume: 1, turnover: 11.5, confirmed: false
+            }, 1000);
+            assert(appended.status === 'appended' && chart.candles.length === 3, 'Следующая последовательная свеча должна добавиться');
+            assert(chart.closedCount === 1, 'Добавление новой свечи не должно продвигать аналитическую границу закрытых свечей');
+            chart.setData(base, 2, null, 10);
+            const closedAttempt = chart.upsertLiveCandle({
+              ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: true
+            }, 1000);
+            assert(closedAttempt.status === 'closed-candle' && chart.candles[1].close === 10, 'Закрытая REST-свеча не должна изменяться WebSocket-событием');
+            assert(chart.upsertLiveCandle({
+              ts: 5000, closeTs: 6000, open: 11.5, high: 12, low: 11, close: 11.7, volume: 1, turnover: 11.7, confirmed: false
+            }, 1000).status === 'gap', 'Пропуск свечи должен потребовать REST reconciliation');
+          });
 
           // ===================== 1–4: ACK =====================
           await record('1. ACK с правильным req_id и op подтверждает подписку', () => {
@@ -5656,7 +6149,7 @@
           step('window.WebSocket', () => { window.WebSocket = OrigWS; });
           step('fetchMarketSnapshot', () => { BybitAdapter.fetchMarketSnapshot = origFetch; });
           step('config', () => { for (const k of CFG_KEYS) BybitWsClient[k] = origCfg[k]; });
-          step('hooks', () => { BybitWsClient.hooks.onStatus = origHooks.onStatus; BybitWsClient.hooks.onRecovered = origHooks.onRecovered; });
+          step('hooks', () => { BybitWsClient.hooks.onStatus = origHooks.onStatus; BybitWsClient.hooks.onRecovered = origHooks.onRecovered; BybitWsClient.hooks.onTicker = origHooks.onTicker; BybitWsClient.hooks.onKline = origHooks.onKline; });
           step('descriptors', () => {
             if (JSON.stringify(Object.getOwnPropertyDescriptor(document, 'visibilityState')) !== JSON.stringify(origVisDesc)) {
               if (origVisDesc) Object.defineProperty(document, 'visibilityState', origVisDesc); else delete document.visibilityState;
@@ -5695,7 +6188,10 @@
             post.symbolRestored = state.symbol === origSymbol && state.interval === origInterval;
             post.webSocketRestored = window.WebSocket === OrigWS;
             post.fetchRestored = BybitAdapter.fetchMarketSnapshot === origFetch;
-            post.hooksRestored = BybitWsClient.hooks.onStatus === origHooks.onStatus && BybitWsClient.hooks.onRecovered === origHooks.onRecovered;
+            post.hooksRestored = BybitWsClient.hooks.onStatus === origHooks.onStatus &&
+              BybitWsClient.hooks.onRecovered === origHooks.onRecovered &&
+              BybitWsClient.hooks.onTicker === origHooks.onTicker &&
+              BybitWsClient.hooks.onKline === origHooks.onKline;
             post.configRestored = CFG_KEYS.every((k) => BybitWsClient[k] === origCfg[k]);
             post.snapshotsRestored = state.snapshotsByKey === origSnapshots;
             post.clockRestored = Date.now === origDateNow && window.setTimeout === origTimers.setTimeout;
@@ -5749,8 +6245,10 @@
 
     document.getElementById('refreshBtn').addEventListener('click', () => loadAndAnalyze(false));
     document.getElementById('resetViewBtn').addEventListener('click', () => chart.resetView());
-    BybitWsClient.hooks.onStatus = () => renderConnStatus();
+    BybitWsClient.hooks.onStatus = () => { renderConnStatus(); renderLivePrice(); };
     BybitWsClient.hooks.onRecovered = (_reason, syncMeta) => loadAndAnalyze(false, syncMeta);
+    BybitWsClient.hooks.onTicker = handleLiveTicker;
+    BybitWsClient.hooks.onKline = handleLiveKline;
     BybitWsClient.attachLifecycle();
 
     loadAndAnalyze(true);

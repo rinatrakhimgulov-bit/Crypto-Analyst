@@ -398,3 +398,10 @@ Latest CI `45968566553` passed 161/161 named tests (Stage A 44, contract 32, val
 ## Final branch-position refresh — 2026-11-27
 
 PR #8 head `5e94c29d1f5734e8b46200c04b6da51996ca9726`, draft/unmerged. Branch 131 ahead / 0 behind main. The code artifact remains HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` and harness `70399a984b44f5f85024afcdf11289e4a73a6361`; no code changed after successful CI `45968566553`, only documentation/PR metadata. Main remains unchanged.
+
+
+## B1-D live market-data integration — 2026-11-27
+
+Automated implementation is complete in draft PR #9, stacked on the B1 integration candidate. The existing Bybit WS client now feeds validated lastPrice and selected-timeframe kline updates into the chart; REST remains bootstrap/history/reconciliation and 30-second fallback. Closed-candle analytics remain isolated from unconfirmed WS data. Latest CI 45981507604: 174/174 deterministic tests passed, browser handler/UI integration and desktop/mobile chart checks passed, zero page errors.
+
+Still pending: real iPhone/Safari Bybit WebSocket verification and independent exact-blob review. GitHub Actions cannot reach Bybit REST (HTTP 403), so no live exchange result is claimed. PR #8 and #9 remain draft; main unchanged. B2 remains gated.
