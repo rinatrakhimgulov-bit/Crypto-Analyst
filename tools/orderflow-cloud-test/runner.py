@@ -21,11 +21,13 @@ sys.path.insert(0, str(REPO))
 
 from orderflow_system.config.settings import DASHBOARD, DataSource, get_btcusd_config  # noqa: E402
 from orderflow_system.data.bybit_feed import BybitFeed  # noqa: E402
+from orderflow_system.data.models import Candle  # noqa: E402
 from orderflow_system.main import OrderflowSystem, setup_logging  # noqa: E402
 
 TICK_LOG = LOG_DIR / "ticks.jsonl"
 SAMPLE_LOG = LOG_DIR / "samples.jsonl"
 WS_LOG = LOG_DIR / "ws_control.jsonl"
+SEED_LOG = LOG_DIR / "history_seed.jsonl"
 REST_TICKER = "https://api.bybit.com/v5/market/tickers"
 REST_KLINE = "https://api.bybit.com/v5/market/kline"
 
@@ -47,6 +49,53 @@ def candle_snapshot(candle: Any) -> dict[str, Any] | None:
         "volume": float(candle.volume),
         "tick_count": int(candle.tick_count),
     }
+
+
+async def seed_history(system: OrderflowSystem) -> None:
+    """Preload closed 1m history so the chart is not an empty live-only view."""
+    pipeline = system.pipelines["BTCUSDT"]
+    timeout = aiohttp.ClientTimeout(total=10)
+    row: dict[str, Any] = {"kind": "history_seed", "local_time_ms": int(time.time() * 1000)}
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            params = {"category": "linear", "symbol": "BTCUSDT", "interval": "1", "limit": "500"}
+            async with session.get(REST_KLINE, params=params) as response:
+                row["http_status"] = response.status
+                payload = await response.json(content_type=None)
+        row["ret_code"] = payload.get("retCode")
+        if response.status != 200 or payload.get("retCode") != 0:
+            row["error"] = payload.get("retMsg", f"HTTP {response.status}")
+            append_jsonl(SEED_LOG, row)
+            print(f"[probe] REST history seed unavailable: {row['error']}", flush=True)
+            return
+
+        now_ms = int(time.time() * 1000)
+        candles = []
+        for item in payload.get("result", {}).get("list", []):
+            if len(item) < 6:
+                continue
+            start_ms = int(item[0])
+            if start_ms + 60_000 > now_ms:
+                continue  # Do not seed the still-forming exchange candle.
+            candles.append(Candle(
+                timestamp_ms=start_ms,
+                open=float(item[1]),
+                high=float(item[2]),
+                low=float(item[3]),
+                close=float(item[4]),
+                volume=float(item[5]),
+            ))
+        loaded = pipeline.candle_builder.load_historical_candles(candles)
+        row["received_rows"] = len(payload.get("result", {}).get("list", []))
+        row["closed_rows_loaded"] = loaded
+        row["first_timestamp_ms"] = candles[0].timestamp_ms if candles else None
+        row["last_timestamp_ms"] = candles[-1].timestamp_ms if candles else None
+        append_jsonl(SEED_LOG, row)
+        print(f"[probe] Seeded {loaded} closed Bybit 1m candles for chart history.", flush=True)
+    except Exception as exc:
+        row["error"] = f"{type(exc).__name__}: {exc}"
+        append_jsonl(SEED_LOG, row)
+        print(f"[probe] REST history seed failed: {row['error']}", flush=True)
 
 
 async def rest_monitor(system: OrderflowSystem, stop: asyncio.Event) -> None:
@@ -156,6 +205,8 @@ async def run() -> None:
     original_on_tick = system._on_tick
     system._on_tick = traced_on_tick
 
+    await seed_history(system)
+
     stop = asyncio.Event()
     monitor_task = asyncio.create_task(rest_monitor(system, stop))
 
@@ -170,6 +221,7 @@ async def run() -> None:
     print(f"Tick log: {TICK_LOG}", flush=True)
     print(f"REST/candle samples: {SAMPLE_LOG}", flush=True)
     print(f"WebSocket control messages: {WS_LOG}", flush=True)
+    print(f"REST history seed: {SEED_LOG}", flush=True)
 
     try:
         await system.start()
