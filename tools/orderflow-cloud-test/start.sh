@@ -7,6 +7,12 @@ PINNED="b2ff4ee9dcdf5adff8d7f73e875d23558f136611"
 
 mkdir -p "$ROOT/.cloud-test" "$ROOT/orderflow-cloud-test-output"
 
+# Keep temporary clone and raw evidence out of the user's Git working tree.
+EXCLUDE="$ROOT/.git/info/exclude"
+for pattern in "/.cloud-test/" "/orderflow-cloud-test-output/"; do
+  grep -qxF "$pattern" "$EXCLUDE" 2>/dev/null || echo "$pattern" >> "$EXCLUDE"
+done
+
 if [ ! -d "$WORK/.git" ]; then
   git clone https://github.com/mahmoud20138/OrderFlow-Analysis-Pro.git "$WORK"
 fi
