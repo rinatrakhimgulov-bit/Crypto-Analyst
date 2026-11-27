@@ -118,3 +118,17 @@ The user confirmed the prior C1 candidate works in iPhone Safari. The newest rea
 The canonical contract and quality validator have been incremented to 1.1.0 for the MTF cutoff-exclusion accounting extension. The analytics gate continues to require exact active `validator_version` and `policy_version`; reports produced by the previous validator version cannot pass the current gate. The active policy identifier remains `b1-quality-policy-2026-11-27-v1` because its thresholds did not change.
 
 The isolated MTF assembler does not currently feed `BasicAnalyticsEngine.analyze()`. Existing selected-timeframe B1-C behavior remains unchanged. Do not interpret B1-E implementation as approval of directional MTF signals.
+
+
+
+
+## Canonical snapshot identity binding — 2026-11-27
+
+The quality gate now requires all three identity conditions before admitting directional calculations:
+1. exact active validator version;
+2. exact active policy version;
+3. quality report `snapshot_id` exactly matches `dataset.canonicalSnapshot.snapshot_id`.
+
+A report from a different snapshot is rejected as INVALID with reason code `QUALITY_REPORT_SNAPSHOT_MISMATCH`, resulting in WAIT and empty directional indicators/levels. The validator itself requires a non-empty canonical snapshot ID and includes it in its report. The MTF aggregate applies the same per-timeframe report-to-snapshot binding.
+
+Browser regression coverage now includes a VALID-looking report with a deliberately mismatched snapshot ID. Latest CI run `45966700299` passed the gate/UI assertions and all suites: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18, zero browser page errors.
