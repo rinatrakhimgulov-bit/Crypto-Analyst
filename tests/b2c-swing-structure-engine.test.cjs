@@ -317,7 +317,7 @@ run('contradictory latest levels produce AMBIGUOUS_BREAK without choosing direct
     makePivot('l100', 'SWING_LOW', 100, 3, 4),
     makePivot('h90', 'SWING_HIGH', 90, 0, 5)
   ];
-  const input = fixture(pivots, { 6: { open: 95, close: 95, high: 96, low: 94 } });
+  const input = fixture(pivots, { 6: { open: 95, close: 95, high: 96, low: 94 } }, { count: 7 });
   const result = analyze(input);
   assert.equal(result.structure_state, 'UNESTABLISHED', JSON.stringify(result.events));
   assert.equal(result.events.at(-1).event_type, 'AMBIGUOUS_BREAK');
@@ -403,4 +403,43 @@ run('B1 validator version mismatch blocks B2-C', () => {
   const result = analyze(input);
   assert.equal(result.status, 'INVALID');
   assert.equal(result.events.length, 0);
+});
+
+
+run('a later LL does not lower the protected low established by an HL', () => {
+  const pivots = [
+    ...initialBull,
+    makePivot('l95', 'SWING_LOW', 95, 3, 4),
+    makePivot('h110', 'SWING_HIGH', 110, 4, 5),
+    makePivot('l85', 'SWING_LOW', 85, 5, 6)
+  ];
+  const input = fixture(pivots, {
+    3: { open: 100, close: 105, high: 106, low: 95 }
+  });
+  const result = analyze(input);
+  assert.equal(result.structure_state, 'UP');
+  assert.equal(result.protected_level.pivot_id, 'l95');
+  assert.equal(result.diagnostics.protected_level_status, 'AVAILABLE');
+  assert.equal(result.raw_pivots.length, 5);
+});
+
+run('prefix replay preserves every event already available at the prefix cutoff', () => {
+  const fullInput = fixture(initialBull, {
+    3: { open: 100, close: 105, high: 106, low: 95 }
+  });
+  const full = analyze(fullInput);
+  const prefix = JSON.parse(JSON.stringify(fullInput));
+  prefix.snapshot.candles_by_timeframe['1h'] = prefix.snapshot.candles_by_timeframe['1h'].slice(0, 5);
+  prefix.snapshot.analysis_as_of_ms = prefix.snapshot.candles_by_timeframe['1h'][4].close_time_ms + LAG;
+  prefix.snapshot.provider_server_time_ms = prefix.snapshot.analysis_as_of_ms;
+  prefix.analysis_as_of_ms = prefix.snapshot.analysis_as_of_ms;
+  prefix.quality_report.analysis_as_of_ms = prefix.analysis_as_of_ms;
+  prefix.quality_report.checked_at_ms = prefix.analysis_as_of_ms - 100;
+  prefix.quality_report.closed_count = 5;
+  prefix.quality_report.valid_count = 5;
+  prefix.b2b_result.analysis_as_of_ms = prefix.analysis_as_of_ms;
+  prefix.b2b_result.admission.b2a_quality_report.checked_at_ms = prefix.quality_report.checked_at_ms;
+  const replay = analyze(prefix);
+  const expected = full.events.filter(e => e.available_at_ms <= prefix.analysis_as_of_ms);
+  assert.deepEqual(replay.events, expected);
 });
