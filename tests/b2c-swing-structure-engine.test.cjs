@@ -753,6 +753,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C chain emits a causal initial br
       b2b_engine_version: '2.1.0-b2b',
       b2b_policy_version: 'b2b-swing-sequence-v2',
       same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
+      b2b_same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
       b1_contract_version: '1.1.0',
