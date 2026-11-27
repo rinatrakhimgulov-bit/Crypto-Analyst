@@ -94,7 +94,7 @@ Crypto Analyst развивается как независимая от кон�
 Критерий завершения: аналитика получает согласованный и проверяемый набор данных, а дефекты качества невозможно незаметно превратить в торговый сигнал.
 
 ### B2 — Market Structure Engine
-**Статус: НЕ НАЧАТ.**
+**Статус: ИЗОЛИРОВАННАЯ ИССЛЕДОВАТЕЛЬСКАЯ РЕАЛИЗАЦИЯ B2-A/B; production integration заблокирована до принятия B1.**
 
 Предварительные source-audit заметки (не означают начало B2): `docs/research/B2_PYVSMC_CANDIDATE_AUDIT_2026-11-26.md`, `docs/research/B2_MARKET_STRUCTURE_CANDIDATES_2026-11-26.md`.
 
@@ -261,3 +261,125 @@ Crypto Analyst развивается как независимая от кон�
 Начать с B0: провести полный аудит текущего аналитического конвейера без изменения исходника. На выходе получить проверяемую карту фактической реализации и точную спецификацию B1.
 
 **Не переходить к реализации B1, пока B0 не завершён, не проверен и не принят.**
+
+
+## 9. Current priority update — 2026-11-27 (supersedes earlier stage ordering)
+
+**Active priority: Stage 2 / B2 Market Structure research.** Stage 1 visual/live-chart refinement is temporarily frozen, not cancelled. Data-quality/finality requirements remain mandatory.
+
+- B1 is NOT ACCEPTED; its draft candidates remain unmerged.
+- B2-A isolated raw pivots: 20/20 deterministic tests passed; PR #12 draft.
+- B2-B isolated alternating sequence: 20/20 deterministic tests passed, including actual B2-A integration; PR #13 draft.
+- B2-C isolated BOS/CHoCH state machine: 28/28 deterministic tests passed, including full B1 → B2-A → B2-B → B2-C fixture; PR #15 draft.
+- None of these candidates is imported into the application HTML or connected to LONG/SHORT.
+- No production integration until B1 acceptance and explicit owner approval.
+- Next work: independent exact-source review of B2-A/B/C. After review, proceed to B2-D support/resistance zones as a separate increment.
+
+
+### B2-D — Support/resistance zones
+**Статус: ИЗОЛИРОВАННЫЙ ИССЛЕДОВАТЕЛЬСКИЙ КАНДИДАТ; production integration заблокирована до принятия B1.**
+
+- Separate pure zone engine from confirmed B2-C raw pivot evidence.
+- Support and resistance remain separate roles.
+- Explicit absolute max-span policy scoped to instrument/timeframe; no implicit tolerance.
+- 20/20 deterministic tests passed in run 46014759139, including full B1 → B2-A → B2-B → B2-C → B2-D fixture.
+- PR #16 draft/unmerged. Absolute tolerance calibration against live market data remains outstanding.
+
+
+## 10. Stage 2 progress update — 2026-11-27
+
+Current isolated research candidates:
+- B2-A causal swing pivots: 21/21 tests, run 46014698432.
+- B2-B alternating sequence: 20/20 tests, run 46015818149.
+- B2-C structure/BOS/CHoCH: 33/33 tests, run 46015831238.
+- B2-D support/resistance zones: 21/21 tests, run 46015873986.
+
+Internal review fixes: B2-A candle-gap admission; B2-C HH/LL-only BOS continuation; protected-pivot re-arming for opposite CHoCH; exact B2-A-to-B2-B pivot-set binding. B2-D exposes freshness as unclassified and zone IDs as membership-derived; absolute tolerance requires per-instrument/timeframe calibration.
+
+All candidates are isolated, draft and unmerged. B1 remains NOT ACCEPTED. Next: finish B2-D design review, then specify B2-E breakout/retest/failure lifecycle with stable level lineage before implementation. No production integration until B1 acceptance and explicit owner approval.
+
+
+### B2-E — Breakout/retest/failure lifecycle
+**Статус: ИЗОЛИРОВАННЫЙ ИССЛЕДОВАТЕЛЬСКИЙ КАНДИДАТ; production integration заблокирована до принятия B1.**
+
+- Historical zones are reconstructed from only pivots available strictly before breakout close.
+- Retest states: successful, failed, expired, unresolved and pending.
+- Role reversal is confirmed only after a successful retest.
+- Explicit policy thresholds; no implicit defaults.
+- 22/22 deterministic tests passed in run 46016401705, including full B1 → B2-A → B2-B → B2-C → B2-D → B2-E execution.
+- PR #17 draft/unmerged. Threshold calibration and independent review remain outstanding.
+
+
+## Latest verified candidate heads — 2026-11-27 (supersedes earlier test-count snapshots)
+
+The current open PR head commits have been checked against GitHub Actions:
+
+| Increment | PR | Exact head commit | Tests | Passing run |
+|---|---:|---|---:|---|
+| B2-A | #12 | `bb13960e647d399b6b05ee12c21f5a2fdeb8265d` | 21/21 | [46014698432](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014698432) |
+| B2-B | #13 | `b209293212ac1bd910939eed465f140514b9e959` | 20/20 | [46015826502](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015826502) |
+| B2-C | #15 | `e9590ddb65c9f3a09a28279efdb064b6caa6a4a2` | 33/33 | [46015831238](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015831238) |
+| B2-D | #16 | `9012e514a29b755ac9208f1f495c3f560638b0a1` | 21/21 | [46015873986](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015873986) |
+| B2-E | #17 | `493a15e8006784d2b78262770725c26bd05c2e85` | 22/22 | [46016401705](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46016401705) |
+
+All five are draft/unmerged research candidates. PR #8/#9 B1 candidates remain draft/unmerged. The main branch is still `8acb6fddaf454e9f2a4bdf3564ad70408d1a5456`; no B2 candidate has been merged or connected to the application HTML.
+
+
+## Final integrated B2 verification snapshot — 2026-11-27
+
+Current open candidate heads and their individual CI results:
+- B2-A PR #12: 21/21, head `bb13960e647d399b6b05ee12c21f5a2fdeb8265d`, run [46014698432](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014698432).
+- B2-B PR #13: 20/20, head `127815d7b29a3c35316a319b7450cc95c52cb0b5`, run [46017296248](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017296248).
+- B2-C PR #15: 33/33, head `e9590ddb65c9f3a09a28279efdb064b6caa6a4a2`, run [46015831238](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015831238).
+- B2-D PR #16: 21/21, head `9012e514a29b755ac9208f1f495c3f560638b0a1`, run [46015873986](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015873986).
+- B2-E PR #17: 24/24, head `b7fccbc232c8a2de573cbfb053ef06b10b2cf834`, run [46017280509](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280509).
+
+**Combined integrated verification:** [119/119 tests passed](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280701) on B2-E integrated head `b7fccbc232c8a2de573cbfb053ef06b10b2cf834`. The combined workflow runs all five test files in one checkout, in dependency order B2-A → B2-B → B2-C → B2-D → B2-E.
+
+All PRs #8–#17 remain draft/unmerged. Main remains `8acb6fddaf454e9f2a4bdf3564ad70408d1a5456`. No B2 candidate is imported into application HTML or connected to LONG/SHORT. B1 remains NOT ACCEPTED. Deterministic CI does not replace independent review, live Bybit validation or owner acceptance.
+
+
+## Latest Stage 2 status — 2026-11-27
+
+B2-E candidate hardening completed:
+- Rejects a gap-through close beyond the failure boundary before any later retest can be considered.
+- Requires the breakout candle to clear the full historical zone outer boundary, not merely one pivot inside that zone.
+- Candidate branch synchronized with current B2-A/B/C/D modules and test suites; full B2-A result is passed into B2-C in the integrated fixture.
+- B2-E 24/24 tests passed in run 46017280509 on head b7fccbc232c8a2de573cbfb053ef06b10b2cf834.
+- Integrated B2 research suite 119/119 passed in run 46017280701.
+
+B2-E v1 produces one lifecycle per breakout event; it does not persist zone-role state across later breakouts or invalidate a prior successful role reversal. Same-candle range-touch plus close beyond the success boundary is accepted as an OHLC bar-level convention, not intrabar tick-path evidence. Thresholds remain uncalibrated synthetic inputs.
+
+PR #18 was closed as a duplicate design draft. PR #17 is the active B2-E candidate. All B2 PRs #12/#13/#15/#16/#17 remain draft/unmerged; B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no app HTML integration.
+
+
+## B2-F multi-timeframe structure confluence — 2026-11-27
+
+Draft PR #19 adds an isolated B2-F engine combining B2-C structure states across 1D/4H/1H on the B1-E common cutoff.
+
+- Exact B1 MTF contract and common-cutoff admission.
+- Exact per-timeframe snapshot/quality report and B2-C result identity.
+- Provider-time spread recomputed and bound to an explicit max spread policy.
+- Correct distinction between B1 MTF display market label and canonical snapshot market type.
+- Actual B1 quality policy binding: `b1-quality-policy-2026-11-27-v1`.
+- Full/partial/mixed/unestablished structure alignment, hierarchical interpretation and 4H/1H consensus.
+- No weighted score or trade decision.
+
+Verification: B2-F 30/30 and integrated B2-A through B2-F 149/149. Latest candidate head `4a2cf7fc621cb9120f7e5cd5cc10bab99aac3b32`; B2-F run 46020226993, integrated run 46020227119. PR #19 remains draft/unmerged.
+
+Important limitation: the Node test suite uses actual B2-A/B/C engines but a synthetic B1-E-shaped MTF result. The actual B1MtfEngine is statically inspected, not executed. No live Bybit MTF or iPhone/Safari verification. B1 remains NOT ACCEPTED.
+
+PR #18 is closed as a superseded duplicate draft. PR #19 is the active B2-F candidate. PRs #12/#13/#15/#16/#17/#19 remain draft/unmerged. B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no B2 module is imported into application HTML.
+
+
+## Next Stage 2 increment — B2-G chart projection (gated) — 2026-11-27
+
+B2-A through B2-F now have isolated research candidates and deterministic test suites. The next design increment is B2-G, a read-only chart projection of accepted structural outputs:
+- confirmed swing markers and HH/HL/LH/LL labels;
+- BOS/CHoCH markers;
+- support/resistance zones and retest lifecycle states;
+- compact 1D/4H/1H structure context.
+
+B2-G must not create a second candle or analytics engine. It consumes immutable accepted engine output and distinguishes source time from confirmation/availability time. It does not create LONG/SHORT/WAIT, entries, SL/TP or orders.
+
+**Gate:** do not integrate B2-A through B2-G into the application until B1 is formally accepted, the exact candidate commits receive independent review, and the owner explicitly approves integration. Stage 1 live-price/forming-candle polish remains deferred, not cancelled.

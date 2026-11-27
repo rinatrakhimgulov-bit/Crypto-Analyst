@@ -237,3 +237,107 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 ## 14. B1 current adapter mapping — 2026-11-26
 
 `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps Stage A `BybitAdapter` to the proposed provider-neutral contract and records 11 implementation gaps. Proposed minimal path: retain JS for B1 first pass; canonical mapping, pure validator, mandatory quality gate, stale-cache suppression, then MTF cutoff and second provider. Specification only; no code changes.
+
+
+## Stage 2 / B2 Market Structure candidates — 2026-11-27
+- `docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md`: frozen causal B2 policy and B2-A/B isolated candidate status.
+- `docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md`: internal design review and resolution of seven implementation ambiguities.
+- `src/analysis/b2-causal-swing-engine.js`: B2-A raw causal swing pivots; exact B1 identity/finality admission.
+- `tests/b2a-causal-swing-engine.test.cjs`: 20 deterministic tests; run `46010999225` passed.
+- `src/analysis/b2b-swing-sequence-engine.js`: B2-B alternating sequence and HH/LH/EQH/HL/LL/EQL labels; exact upstream identity binding.
+- `tests/b2b-swing-sequence-engine.test.cjs`: 19 deterministic tests; run `46011622297` passed.
+- PR #12 and #13 remain draft/unmerged, research-only. B1 remains NOT ACCEPTED; no application or `main` integration.
+
+
+### B2-A → B2-B contract integration verification — 2026-11-27
+- B2-B suite: 20/20 deterministic cases, including actual B2-A engine output passed into B2-B.
+- GitHub Actions run `46012201698` passed on code commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`.
+- This confirms deterministic module contract only; no live Bybit or app integration.
+
+
+### B2-C causal BOS/CHoCH state machine — 2026-11-27
+- `src/analysis/b2c-swing-structure-engine.js`: isolated UNESTABLISHED/UP/DOWN state machine; initial breaks, BOS, protected-swing CHoCH, wick sweeps, gap-through, strict zero-buffer close and one-time level consumption.
+- B1/B2 identity binding, candle and pivot source provenance, continuity/finality checks, independent reconstruction of B2-B sequence from raw pivots, append-only immutable output.
+- `tests/b2c-swing-structure-engine.test.cjs`: 28 deterministic tests including end-to-end B1 → B2-A → B2-B → B2-C flow.
+- GitHub Actions run `46013846058` passed 28/28 on commit `a58441aa4f39aa6e3b98650624f07a2041e7152a`.
+- PR #15 is draft/unmerged. Research-only; no main/app integration. B1 acceptance remains mandatory.
+
+- `docs/audits/B2C_IMPLEMENTATION_REVIEW_2026-11-27.md`: internal exact-source review notes for B2-C candidate commit `a58441aa4f39aa6e3b98650624f07a2041e7152a`; explicitly not an independent external audit.
+
+
+### B2-D support/resistance zones — 2026-11-27
+- `src/analysis/b2d-support-resistance-engine.js`: isolated support/resistance clustering from confirmed raw swing pivots.
+- Explicit instrument/timeframe-scoped absolute max-span policy; MAX_TOTAL_SPAN_V1; independent source-candle touch counting; candidate levels for insufficient touches.
+- `tests/b2d-support-resistance-engine.test.cjs`: 20 deterministic tests including full B1 → B2-A → B2-B → B2-C → B2-D execution.
+- GitHub Actions run `46014759139` passed 20/20 on commit `0574858db12dd2082d7449f5512fa8461fceac63`.
+- PR #16 remains draft/unmerged. No app/main integration; B1 acceptance remains mandatory.
+
+- `docs/audits/B2D_IMPLEMENTATION_REVIEW_2026-11-27.md`: internal exact-source review notes for B2-D candidate commit `0574858db12dd2082d7449f5512fa8461fceac63`; explicitly not an independent external audit.
+
+
+### Stage 2 hardening and B2-D update — 2026-11-27
+- B2-A: candle-gap rejection added; 21/21 passed (run 46014698432).
+- B2-B: current branch includes B2-A gap fix; 20/20 passed (run 46015818149).
+- B2-C: HH/LL-only continuation, protected-pivot re-arming on state transition, exact B2-A pivot-set binding; 33/33 passed (run 46015831238).
+- B2-D: isolated S/R zone engine; 21/21 passed (run 46015873986). Absolute tolerance needs per-instrument/timeframe calibration; freshness unclassified; IDs membership-derived.
+- All remain research-only, draft and unmerged; B1 remains NOT ACCEPTED.
+
+
+### B2-E breakout/retest/failure lifecycle — 2026-11-27
+- `src/analysis/b2e-breakout-retest-engine.js`: isolated historical-zone-aware breakout/retest lifecycle and role-reversal confirmation.
+- Validates B2-C event semantics and B2-D zone evidence; historical zones are reconstructed only from pivots available before breakout close.
+- `tests/b2e-breakout-retest-engine.test.cjs`: 22 deterministic tests including full B1 → B2-A → B2-B → B2-C → B2-D → B2-E execution.
+- GitHub Actions run `46016401705` passed 22/22 on commit `493a15e8006784d2b78262770725c26bd05c2e85`.
+- PR #17 remains draft/unmerged. No app/main integration; B1 acceptance remains mandatory.
+
+- `docs/audits/B2E_IMPLEMENTATION_REVIEW_2026-11-27.md`: internal exact-source review notes for B2-E candidate commit `493a15e8006784d2b78262770725c26bd05c2e85`; explicitly not an independent external audit.
+
+- Latest exact B2-A/B/C/D/E candidate heads and CI counts are recorded in the 2026-11-27 current-state section of PROJECT_STATE.md.
+
+- Final B2-A→B2-E combined verification: 119/119 passed in run 46017280701 on integrated head `b7fccbc232c8a2de573cbfb053ef06b10b2cf834`.
+
+
+## Latest Stage 2 status — 2026-11-27
+
+B2-E candidate hardening completed:
+- Rejects a gap-through close beyond the failure boundary before any later retest can be considered.
+- Requires the breakout candle to clear the full historical zone outer boundary, not merely one pivot inside that zone.
+- Candidate branch synchronized with current B2-A/B/C/D modules and test suites; full B2-A result is passed into B2-C in the integrated fixture.
+- B2-E 24/24 tests passed in run 46017280509 on head b7fccbc232c8a2de573cbfb053ef06b10b2cf834.
+- Integrated B2 research suite 119/119 passed in run 46017280701.
+
+B2-E v1 produces one lifecycle per breakout event; it does not persist zone-role state across later breakouts or invalidate a prior successful role reversal. Same-candle range-touch plus close beyond the success boundary is accepted as an OHLC bar-level convention, not intrabar tick-path evidence. Thresholds remain uncalibrated synthetic inputs.
+
+PR #18 was closed as a duplicate design draft. PR #17 is the active B2-E candidate. All B2 PRs #12/#13/#15/#16/#17 remain draft/unmerged; B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no app HTML integration.
+
+
+## B2-F multi-timeframe structure confluence — 2026-11-27
+
+Draft PR #19 adds an isolated B2-F engine combining B2-C structure states across 1D/4H/1H on the B1-E common cutoff.
+
+- Exact B1 MTF contract and common-cutoff admission.
+- Exact per-timeframe snapshot/quality report and B2-C result identity.
+- Provider-time spread recomputed and bound to an explicit max spread policy.
+- Correct distinction between B1 MTF display market label and canonical snapshot market type.
+- Actual B1 quality policy binding: `b1-quality-policy-2026-11-27-v1`.
+- Full/partial/mixed/unestablished structure alignment, hierarchical interpretation and 4H/1H consensus.
+- No weighted score or trade decision.
+
+Verification: B2-F 30/30 and integrated B2-A through B2-F 149/149. Latest candidate head `4a2cf7fc621cb9120f7e5cd5cc10bab99aac3b32`; B2-F run 46020226993, integrated run 46020227119. PR #19 remains draft/unmerged.
+
+Important limitation: the Node test suite uses actual B2-A/B/C engines but a synthetic B1-E-shaped MTF result. The actual B1MtfEngine is statically inspected, not executed. No live Bybit MTF or iPhone/Safari verification. B1 remains NOT ACCEPTED.
+
+PR #18 is closed as a superseded duplicate draft. PR #19 is the active B2-F candidate. PRs #12/#13/#15/#16/#17/#19 remain draft/unmerged. B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no B2 module is imported into application HTML.
+
+
+## Next Stage 2 increment — B2-G chart projection (gated) — 2026-11-27
+
+B2-A through B2-F now have isolated research candidates and deterministic test suites. The next design increment is B2-G, a read-only chart projection of accepted structural outputs:
+- confirmed swing markers and HH/HL/LH/LL labels;
+- BOS/CHoCH markers;
+- support/resistance zones and retest lifecycle states;
+- compact 1D/4H/1H structure context.
+
+B2-G must not create a second candle or analytics engine. It consumes immutable accepted engine output and distinguishes source time from confirmation/availability time. It does not create LONG/SHORT/WAIT, entries, SL/TP or orders.
+
+**Gate:** do not integrate B2-A through B2-G into the application until B1 is formally accepted, the exact candidate commits receive independent review, and the owner explicitly approves integration. Stage 1 live-price/forming-candle polish remains deferred, not cancelled.

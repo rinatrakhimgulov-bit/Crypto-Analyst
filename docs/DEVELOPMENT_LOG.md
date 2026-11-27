@@ -343,3 +343,202 @@ B1 находится в исследовании. Основной HTML не и
 Предложен минимальный план B1: сохранить текущий JS adapter как первый provider, добавить canonical mapping + pure validator + mandatory gate + stale suppression, затем common cutoff и только потом второй provider. Предварительная рекомендация: не мигрировать на Python backend до доказанной необходимости.
 
 Подробности: `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`. Код приложения не изменён.
+
+
+## Stage 2 transition and isolated B2-A/B candidates — 2026-11-27
+
+The owner approved freezing Stage 1 visual/live-chart feature work temporarily and prioritizing the analytical Market Structure stage. The first-stage issues (live forming-candle animation, precise live-price comparison and remaining real iPhone/Safari market-data diagnostics) are deferred, not discarded. B1 data-quality requirements remain mandatory.
+
+### B2-A
+- Isolated pure causal raw swing-high/swing-low engine in `src/analysis/b2-causal-swing-engine.js`.
+- Exact B1 snapshot/report and version binding; closed-candle provenance, timeframe alignment, finality, ordering and OHLC checks; plateau-aware pivots with rightmost representative and causal timestamps.
+- Expanded deterministic tests: 20/20 passed in GitHub Actions run [46010999225](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46010999225), code commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
+- PR #12 is draft/unmerged and not connected to the application.
+
+### B2-B
+- Isolated pure swing-sequence engine in `src/analysis/b2b-swing-sequence-engine.js`.
+- Consumes only VALID B2-A output; preserves raw pivots; builds availability-ordered alternating sequence; implements symmetric same-side replacement and HH/LH/EQH/HL/LL/EQL labels.
+- Exact B2-A and B1 identity binding; deep immutable output without freezing upstream-owned objects.
+- Deterministic tests: 19/19 passed in GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46011622297), code commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
+- PR #13 is draft/unmerged and based on the B2-A candidate branch.
+
+### Acceptance boundary
+B1 remains NOT ACCEPTED. B2-A/B are isolated research candidates only. No application HTML, `main`, chart, MTF directional path or LONG/SHORT decision logic changed. No live Bybit or profitability claim is made. B2-C and later increments remain separate work and must not be connected to the app before B1 acceptance and explicit owner approval.
+
+
+### B2-A → B2-B deterministic contract integration — 2026-11-27
+
+B2-B test suite expanded to 20/20 with a direct fixture that instantiates the actual B2-A engine using a canonical B1 snapshot and matching quality report, then passes the resulting VALID pivot output to B2-B. The test verifies the causal sequence labels `INITIAL_HIGH`, `INITIAL_LOW`, `HH`, `HL`, `LH`, `LL`. GitHub Actions run [46012201698](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46012201698) passed on commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`. This is deterministic contract verification only.
+
+
+## B2-C isolated structure-state engine — 2026-11-27
+
+**Branch:** `feature/b2c-bos-choch-state-machine-2026-11-27`  
+**PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/15 (draft, unmerged)  
+**Verified head:** `a58441aa4f39aa6e3b98650624f07a2041e7152a`
+
+### Work completed
+- Added `src/analysis/b2c-swing-structure-engine.js`, a pure consumer of a VALID B2-B result plus the exact B1 snapshot and quality report.
+- Revalidates B1 snapshot/report identity, B2-A/B engine and policy identities, candle provenance/finality/order/continuity/OHLC, forming/unknown isolation, and each pivot's actual source candle, confirmation candle and finality availability.
+- Independently reconstructs B2-B same-side replacement and sequence labels from raw pivots; rejects omitted pivots, forged labels and forged supersession metadata.
+- Implements UNESTABLISHED / UP / DOWN, initial breaks, bullish/bearish BOS, protected HL/LH advancement, bullish/bearish CHoCH, wick-only sweep evidence, gap-through annotation and consumed-level deduplication.
+- Uses strict close beyond level with ZERO_BUFFER_V1; equality is not a break.
+- Evaluates breaks before admitting pivots that become available at the same candle close, preventing same-candle hindsight.
+- Preserves raw pivot evidence and emits deeply immutable event history.
+
+### Verification
+GitHub Actions run [46013846058](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46013846058) passed **28/28** deterministic tests on exact commit `a58441aa4f39aa6e3b98650624f07a2041e7152a`. Coverage includes bullish/bearish initial breaks, BOS/CHoCH symmetry, protected swing behavior, wick sweeps, equality, same-candle no-lookahead, duplicate-level suppression, prefix replay, malformed provenance and an end-to-end B1 → B2-A → B2-B → B2-C fixture.
+
+### Limits and acceptance boundary
+- Research-only module; not imported into application HTML.
+- No live Bybit test, MTF, S/R zones, retests, chart overlays or LONG/SHORT connection.
+- B1 remains NOT ACCEPTED. Production integration remains blocked until B1 acceptance and explicit owner approval.
+- This is an internal implementation review, not an independent external audit.
+
+
+## B2-D isolated support/resistance zone engine — 2026-11-27
+
+**Branch:** `feature/b2d-support-resistance-zones-2026-11-27`  
+**PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/16 (draft, unmerged)  
+**Verified head:** `0574858db12dd2082d7449f5512fa8461fceac63`
+
+### Work completed
+- Added `src/analysis/b2d-support-resistance-engine.js`, consuming VALID B2-C output with exact B1/B2-A/B2-B/B2-C identity binding.
+- Revalidates candle continuity/finality/provenance, forming/unknown isolation and source/confirmation candle provenance for every raw pivot.
+- Builds support clusters from swing lows and resistance clusters from swing highs; roles are never merged.
+- Requires an explicit instrument/timeframe-scoped absolute max-span policy. No hidden default or guessed ATR/percentage fallback.
+- Uses MAX_TOTAL_SPAN_V1, which bounds the full cluster span and prevents transitive chaining.
+- Requires independent source-candle touches; insufficient clusters remain candidate levels.
+- Emits observed bounds, median representative, touch count, first/last touch, age, zone availability and all contributing pivot IDs/timestamps.
+- Deliberately excludes probability-like strength, role reversal and retest lifecycle.
+
+### Verification
+GitHub Actions run [46014759139](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014759139) passed **20/20** deterministic tests on exact commit `0574858db12dd2082d7449f5512fa8461fceac63`. The suite includes an end-to-end B1 snapshot → B2-A → B2-B → B2-C → B2-D fixture.
+
+### Limits and acceptance boundary
+- Research-only; not imported into application HTML.
+- The absolute zone-span parameter has not been calibrated against live BTC/ETH data.
+- No B2-E retest/failure lifecycle, MTF, chart overlays or LONG/SHORT connection.
+- B1 remains NOT ACCEPTED; production integration is blocked until B1 acceptance and explicit owner approval.
+
+
+## Stage 2 audit hardening and B2-D — 2026-11-27
+
+Internal review identified and fixed four issues across isolated candidate branches:
+- B2-A now rejects candle gaps before pivot detection.
+- B2-C BOS continuation requires HH in UP / LL in DOWN; LH/HL are not valid continuation break levels.
+- B2-C re-arms a previously consumed pivot when it becomes the protected reversal level in the new state, enabling valid opposite CHoCH.
+- B2-C now consumes the exact B2-A result and verifies B2-B raw pivot set completeness, not just sequence self-consistency.
+
+Current CI:
+- B2-A 21/21, run 46014698432, head bb13960e647d399b6b05ee12c21f5a2fdeb8265d.
+- B2-B 20/20, run 46015818149, head b209293212ac1bd910939eed465f140514b9e959.
+- B2-C 33/33, run 46015831238, head e9590ddb65c9f3a09a28279efdb064b6caa6a4a2.
+- B2-D 21/21, run 46015873986, head 9012e514a29b755ac9208f1f495c3f560638b0a1.
+
+B2-D builds support/resistance clusters from all confirmed raw pivots, keeps superseded-pivot status visible, exposes freshness age without classifying freshness, and uses an explicit absolute-price-span policy scoped to instrument/timeframe. Zone identity is membership-derived, not guaranteed stable across snapshots.
+
+PRs #12, #13, #15, #16 remain draft/unmerged. B1 remains NOT ACCEPTED. No production app integration or main branch changes.
+
+
+## B2-E isolated breakout/retest/failure lifecycle — 2026-11-27
+
+**Branch:** `feature/b2e-breakout-retest-lifecycle-2026-11-27`  
+**PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/17 (draft, unmerged)  
+**Verified head:** `493a15e8006784d2b78262770725c26bd05c2e85`
+
+### Work completed
+- Added `src/analysis/b2e-breakout-retest-engine.js`.
+- Consumes only VALID B2-C events and B2-D zones with exact B1/B2-B/B2-C/B2-D identity binding.
+- Revalidates candle, pivot, event and current B2-D zone evidence, including B2-C accepted source pivot, prior state, transition flag, close confirmation and ZERO_BUFFER_V1.
+- Reconstructs a historical zone from only raw pivots available strictly before the breakout candle close. This prevents future pivots from retroactively creating/widening the breakout zone.
+- Maps bullish breakouts to resistance zones and bearish breakouts to support zones.
+- Uses explicit retest touch tolerance, success/failure close buffers, retest window and confirmation window.
+- Emits RETEST_SUCCESSFUL, RETEST_FAILED, RETEST_EXPIRED, RETEST_UNRESOLVED, WAITING_RETEST and RETEST_PENDING_CONFIRMATION.
+- Confirms role reversal only after a successful retest; failed/expired/unresolved outcomes preserve the original role.
+- Records unmatched breakouts where a qualifying historical zone did not exist.
+
+### Verification
+GitHub Actions run [46016401705](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46016401705) passed **22/22** deterministic tests on exact commit `493a15e8006784d2b78262770725c26bd05c2e85`, including a full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E fixture.
+
+### Limits and acceptance boundary
+- Research-only; not imported into application HTML.
+- Retest thresholds are explicit synthetic configuration inputs, not calibrated market facts.
+- No MTF, chart overlays, trade scenarios or LONG/SHORT connection.
+- B1 remains NOT ACCEPTED; production integration is blocked until B1 acceptance and explicit owner approval.
+- Internal review is not an independent external audit.
+
+
+## Latest verified candidate heads — 2026-11-27 (supersedes earlier test-count snapshots)
+
+The current open PR head commits have been checked against GitHub Actions:
+
+| Increment | PR | Exact head commit | Tests | Passing run |
+|---|---:|---|---:|---|
+| B2-A | #12 | `bb13960e647d399b6b05ee12c21f5a2fdeb8265d` | 21/21 | [46014698432](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014698432) |
+| B2-B | #13 | `b209293212ac1bd910939eed465f140514b9e959` | 20/20 | [46015826502](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015826502) |
+| B2-C | #15 | `e9590ddb65c9f3a09a28279efdb064b6caa6a4a2` | 33/33 | [46015831238](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015831238) |
+| B2-D | #16 | `9012e514a29b755ac9208f1f495c3f560638b0a1` | 21/21 | [46015873986](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015873986) |
+| B2-E | #17 | `493a15e8006784d2b78262770725c26bd05c2e85` | 22/22 | [46016401705](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46016401705) |
+
+All five are draft/unmerged research candidates. PR #8/#9 B1 candidates remain draft/unmerged. The main branch is still `8acb6fddaf454e9f2a4bdf3564ad70408d1a5456`; no B2 candidate has been merged or connected to the application HTML.
+
+
+## Final integrated B2 verification snapshot — 2026-11-27
+
+Current open candidate heads and their individual CI results:
+- B2-A PR #12: 21/21, head `bb13960e647d399b6b05ee12c21f5a2fdeb8265d`, run [46014698432](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014698432).
+- B2-B PR #13: 20/20, head `127815d7b29a3c35316a319b7450cc95c52cb0b5`, run [46017296248](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017296248).
+- B2-C PR #15: 33/33, head `e9590ddb65c9f3a09a28279efdb064b6caa6a4a2`, run [46015831238](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015831238).
+- B2-D PR #16: 21/21, head `9012e514a29b755ac9208f1f495c3f560638b0a1`, run [46015873986](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015873986).
+- B2-E PR #17: 24/24, head `b7fccbc232c8a2de573cbfb053ef06b10b2cf834`, run [46017280509](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280509).
+
+**Combined integrated verification:** [119/119 tests passed](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46017280701) on B2-E integrated head `b7fccbc232c8a2de573cbfb053ef06b10b2cf834`. The combined workflow runs all five test files in one checkout, in dependency order B2-A → B2-B → B2-C → B2-D → B2-E.
+
+All PRs #8–#17 remain draft/unmerged. Main remains `8acb6fddaf454e9f2a4bdf3564ad70408d1a5456`. No B2 candidate is imported into application HTML or connected to LONG/SHORT. B1 remains NOT ACCEPTED. Deterministic CI does not replace independent review, live Bybit validation or owner acceptance.
+
+
+## Latest Stage 2 status — 2026-11-27
+
+B2-E candidate hardening completed:
+- Rejects a gap-through close beyond the failure boundary before any later retest can be considered.
+- Requires the breakout candle to clear the full historical zone outer boundary, not merely one pivot inside that zone.
+- Candidate branch synchronized with current B2-A/B/C/D modules and test suites; full B2-A result is passed into B2-C in the integrated fixture.
+- B2-E 24/24 tests passed in run 46017280509 on head b7fccbc232c8a2de573cbfb053ef06b10b2cf834.
+- Integrated B2 research suite 119/119 passed in run 46017280701.
+
+B2-E v1 produces one lifecycle per breakout event; it does not persist zone-role state across later breakouts or invalidate a prior successful role reversal. Same-candle range-touch plus close beyond the success boundary is accepted as an OHLC bar-level convention, not intrabar tick-path evidence. Thresholds remain uncalibrated synthetic inputs.
+
+PR #18 was closed as a duplicate design draft. PR #17 is the active B2-E candidate. All B2 PRs #12/#13/#15/#16/#17 remain draft/unmerged; B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no app HTML integration.
+
+
+## B2-F multi-timeframe structure confluence — 2026-11-27
+
+Draft PR #19 adds an isolated B2-F engine combining B2-C structure states across 1D/4H/1H on the B1-E common cutoff.
+
+- Exact B1 MTF contract and common-cutoff admission.
+- Exact per-timeframe snapshot/quality report and B2-C result identity.
+- Provider-time spread recomputed and bound to an explicit max spread policy.
+- Correct distinction between B1 MTF display market label and canonical snapshot market type.
+- Actual B1 quality policy binding: `b1-quality-policy-2026-11-27-v1`.
+- Full/partial/mixed/unestablished structure alignment, hierarchical interpretation and 4H/1H consensus.
+- No weighted score or trade decision.
+
+Verification: B2-F 30/30 and integrated B2-A through B2-F 149/149. Latest candidate head `4a2cf7fc621cb9120f7e5cd5cc10bab99aac3b32`; B2-F run 46020226993, integrated run 46020227119. PR #19 remains draft/unmerged.
+
+Important limitation: the Node test suite uses actual B2-A/B/C engines but a synthetic B1-E-shaped MTF result. The actual B1MtfEngine is statically inspected, not executed. No live Bybit MTF or iPhone/Safari verification. B1 remains NOT ACCEPTED.
+
+PR #18 is closed as a superseded duplicate draft. PR #19 is the active B2-F candidate. PRs #12/#13/#15/#16/#17/#19 remain draft/unmerged. B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no B2 module is imported into application HTML.
+
+
+## Next Stage 2 increment — B2-G chart projection (gated) — 2026-11-27
+
+B2-A through B2-F now have isolated research candidates and deterministic test suites. The next design increment is B2-G, a read-only chart projection of accepted structural outputs:
+- confirmed swing markers and HH/HL/LH/LL labels;
+- BOS/CHoCH markers;
+- support/resistance zones and retest lifecycle states;
+- compact 1D/4H/1H structure context.
+
+B2-G must not create a second candle or analytics engine. It consumes immutable accepted engine output and distinguishes source time from confirmation/availability time. It does not create LONG/SHORT/WAIT, entries, SL/TP or orders.
+
+**Gate:** do not integrate B2-A through B2-G into the application until B1 is formally accepted, the exact candidate commits receive independent review, and the owner explicitly approves integration. Stage 1 live-price/forming-candle polish remains deferred, not cancelled.
