@@ -3544,12 +3544,29 @@
         for (let g = 0; g < this.candles.length; g++) {
           tsToGlobalIdx.set(this.candles[g].ts, g);
         }
+        const closedCandlesRef = (this.analysis && Array.isArray(this.analysis.closedCandlesRef))
+          ? this.analysis.closedCandlesRef
+          : [];
+        const tsToClosedIdx = new Map();
+        for (let idx = 0; idx < closedCandlesRef.length; idx++) {
+          tsToClosedIdx.set(closedCandlesRef[idx].ts, idx);
+        }
 
         let minP = Infinity;
         let maxP = -Infinity;
         for (const c of slice) {
           if (c.low < minP) minP = c.low;
           if (c.high > maxP) maxP = c.high;
+          const closedIdx = tsToClosedIdx.get(c.ts);
+          if (closedIdx !== undefined && this.analysis) {
+            for (const series of [this.analysis.ema20, this.analysis.ema50, this.analysis.ema200]) {
+              const value = Array.isArray(series) ? series[closedIdx] : null;
+              if (Number.isFinite(value)) {
+                minP = Math.min(minP, value);
+                maxP = Math.max(maxP, value);
+              }
+            }
+          }
         }
 
         const levels = this.analysis && this.analysis.levels ? this.analysis.levels : {};
@@ -3683,17 +3700,12 @@
         }
         ctx.restore();
 
-        const closedCandlesRef = (this.analysis && Array.isArray(this.analysis.closedCandlesRef))
-          ? this.analysis.closedCandlesRef
-          : [];
-        const tsToClosedIdx = new Map();
-        for (let idx = 0; idx < closedCandlesRef.length; idx++) {
-          tsToClosedIdx.set(closedCandlesRef[idx].ts, idx);
-        }
-
         const drawLineSeries = (arr, color) => {
           if (!arr || !arr.length || !tsToClosedIdx.size) return;
           ctx.save();
+          ctx.beginPath();
+          ctx.rect(padLeft, padTop, plotW, pricePlotH);
+          ctx.clip();
           ctx.strokeStyle = color;
           ctx.lineWidth = 1.6;
           ctx.beginPath();
@@ -3888,6 +3900,9 @@
     }
 
     const chart = new CandleChart(document.getElementById('chartCanvas'));
+    if (new URLSearchParams(window.location.search).get('test') === '1') {
+      window.__CryptoAnalystTestHooks = Object.freeze({ chart });
+    }
 
     function tfLabel(interval) {
       if (interval === '60') return '1H';
