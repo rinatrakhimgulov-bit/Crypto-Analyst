@@ -343,3 +343,205 @@ B1 находится в исследовании. Основной HTML не и
 Предложен минимальный план B1: сохранить текущий JS adapter как первый provider, добавить canonical mapping + pure validator + mandatory gate + stale suppression, затем common cutoff и только потом второй provider. Предварительная рекомендация: не мигрировать на Python backend до доказанной необходимости.
 
 Подробности: `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`. Код приложения не изменён.
+
+
+## 14. B1-A/B/C/D — canonical data contract, validator and quality gate
+
+**Дата:** 2026-11-26. Ветка: `impl/b1-quality-contract-2026-11-26`. Draft PR #6; в `main` не влито.
+
+### Реализовано в candidate branch
+
+- Добавлен `DataQualityEngine` с canonical contract v1.0.0: Candle mapping, Snapshot, QualityReport, preflight.
+- Bybit adapter теперь сохраняет `providerTimeMs` и `timeSource`; local Date.now fallback явно помечается как `LOCAL_FALLBACK`.
+- Duplicate rows классифицируются как identical или conflicting; конфликтующая строка не перезаписывает предыдущую молча.
+- Добавлен expected closed-candle coverage для запрошенного окна.
+- Validator проверяет OHLCV finite values/invariants, volume, UTC alignment, порядок, gaps, future timestamps, freshness, достаточность истории и coverage.
+- Future open timestamp более чем на 2 секунды впереди provider time отклоняется.
+- `BasicAnalyticsEngine.analyze()` запускает quality preflight; только VALID допускает обычный анализ. DEGRADED/INVALID/STALE/INSUFFICIENT дают WAIT с причинами.
+- `renderError()` больше не показывает cached LONG/SHORT как текущий вывод: stale decision переводится в WAIT, график сохраняется как справочный контекст.
+- Панель качества показывает статус B1 Quality Gate.
+
+### Проверки
+
+- `B1QualitySelfTest.runAll()`: 35/35 PASS в изолированном JS execution.
+- Два script blocks: syntax parse PASS.
+- Отдельный integration probe для DEGRADED dataset: WAIT, directionalAllowed=false.
+- Не запускались live Bybit, настоящий Chrome/iPhone Safari и полный StageASelfTest 44/44 в browser runtime.
+
+### Оставшиеся части B1
+
+- B1-E: общий analysis cutoff и сборка синхронизированного 1D/4H/1H snapshot.
+- B1-F: сравнение второго provider.
+- Независимый review и browser/runtime verification до merge.
+
+B1 остаётся IN PROGRESS. Draft PR #6: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/6.
+
+
+## 15. B1 quality-hardening after independent audit — 2026-11-26
+
+В candidate branch PR #6 внесены локальные исправления по трём подтверждённым дефектам:
+1. Убрано молчаливое преобразование adapter counters через `Number(value || 0)`. Все восемь полей обязательны; проверяются тип, целочисленность, конечность и неотрицательность.
+2. Добавлена повторная проверка закрытости каждой свечи: `closeTimeMs + 500ms <= providerTimeMs`. Незакрытая свеча в массиве closed candles блокирует направленный анализ.
+3. Coverage metadata теперь валидируется структурно и математически: обязательные integer start/end/count, UTC alignment и согласованное число свечей в диапазоне. Missing/malformed/inconsistent coverage — CRITICAL.
+
+### Regression verification
+- B1QualitySelfTest: 46/46 PASS в isolated JavaScript execution.
+- Оба inline script blocks прошли syntax parsing.
+- 4/4 direct integration probes: malformed counter, negative counter, unclosed candle, missing coverage — все дали decision WAIT, status INVALID, directionalAllowed=false.
+- Не выполнены: live Bybit, реальный браузер Chrome/iPhone Safari, полный StageASelfTest 44/44 в браузерном harness.
+- Повторный независимый Grok review ещё не получен.
+
+PR #6 остаётся draft и не слит в main. B1 остаётся IN PROGRESS; B1-E common MTF cutoff и B1-F второй provider ещё не реализованы.
+
+
+## 16. B1 strict-consistency follow-up — 2026-11-26
+
+Additional audit hardening in PR #6:
+- Aggregate duplicate count is checked against identical + conflicting duplicate counts.
+- Provider analysis time must agree with provider timestamp within the configured skew tolerance.
+- Closed-candle finality is checked against the earlier of analysis and provider cutoffs, with the 500 ms buffer.
+- Regression suite now contains 54 tests, all 49 PASS in isolated JS execution. Both inline scripts parse; 4/4 direct quality-gate probes block malformed datasets with WAIT/INVALID.
+
+Real browser, live Bybit and full StageASelfTest 44/44 remain untested. Independent Grok re-audit pending. PR #6 remains draft and unmerged.
+
+
+### Final B1 candidate verification refresh — 2026-11-26
+
+Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`. B1 quality suite: 54/54 PASS; both inline scripts syntax-parse. Synthetic adapter integration: `BybitAdapter.normalize()` → `DataQualityEngine.preflight()` produced 60 closed candles + 1 forming candle with VALID quality. Four direct BasicAnalyticsEngine gate probes returned WAIT / INVALID / directionalAllowed=false for malformed counters, negative counters, unclosed candle and missing coverage. This is isolated fixture testing, not live Bybit or browser runtime. StageASelfTest 44/44 and independent Grok re-audit remain pending.
+
+
+### Latest candidate verification refresh (2026-11-26)
+
+- HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
+- `B1QualitySelfTest.runAll()`: 54/54 PASS in isolated JavaScript execution.
+- Both inline script blocks syntax-parse successfully.
+- Synthetic `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: 60 closed candles + 1 forming candle, status VALID.
+- Four direct quality-gate probes block malformed counters, negative counters, unclosed candles and missing coverage with WAIT / INVALID.
+- These are isolated JavaScript/fixture checks, not a live Bybit request or real browser runtime. Full StageASelfTest 44-case browser harness and independent Grok re-audit remain pending. PR #6 remains draft and unmerged; main is unchanged.
+
+
+### B1 adapter integration regression refresh (2026-11-26)
+
+- Latest HTML blob: `6810d7366e834b35306c8cfbb58751f0189a1b46`.
+- `B1QualitySelfTest.runAll()`: **54/54 PASS**; both inline script blocks syntax-parse.
+- Four new end-to-end fixture tests now exercise actual `BybitAdapter.normalize()` → `DataQualityEngine.preflight()`: valid reversed rows and 60/1 closed/forming split; invalid row rejection; identical duplicate classification; conflicting duplicate classification.
+- Browser/Chrome/iPhone Safari runtime, live Bybit, StageASelfTest 44/44 and independent Grok re-audit remain pending. PR #6 remains draft; main unchanged.
+
+
+### B1 regression expansion: finality, forming characterization and recovery (2026-11-26)
+
+- Latest candidate HTML blob: `e92c44d1397a8499a5a5adac7c12294923e3f494`.
+- `B1QualitySelfTest.runAll()`: **65/65 PASS** in an isolated V8 execution harness using the actual extracted production implementations of `BybitAdapter`, `DataQualityEngine` and `BasicAnalyticsEngine`.
+- Added exact finality boundary cases F1a-F1d (T−501/T−500 VALID; T−499/T INVALID).
+- Added FM2-FM4 characterization tests. They explicitly document current behavior: forming-candle gap, duplicate timestamp and malformed OHLC are not currently validated by the Quality Gate. These tests do not change that policy.
+- Added a shuffled-timestamp Bybit V5-shaped fixture exercising `normalize() → preflight() → analyze()`, plus stale LONG and SHORT conversion to WAIT/STALE followed by fresh valid re-analysis.
+- Both inline script blocks syntax-parse successfully.
+- Verification remains isolated and deterministic: no browser DOM/runtime, no live Bybit HTTP request, no Chrome/iPhone Safari run, and no full `StageASelfTest` run. The stale recovery tests validate engine-level recovery, not the rendered UI badge.
+- PR #6 remains draft and unmerged; `main` is unchanged. These checks do not complete B1 or authorize merging yet.
+
+## 17. Независимый аудит B1-A/B — 2026-11-26
+
+Grok проверил полный candidate HTML blob `e92c44d1397a8499a5a5adac7c12294923e3f494` и подтвердил его SHA. Самостоятельно исполнил `B1QualitySelfTest.runAll()`: **65/65 PASS**. Вердикт: **APPROVE**, новых CRITICAL/HIGH дефектов нет.
+
+LOW-наблюдения: F1 boundary tests проверяют status и directionalAllowed, но не конкретный reason code; forming candle остаётся вне Quality Gate, что честно зафиксировано characterization tests; stale recovery не включает реальный UI/renderError путь. Эти пункты не блокируют unit/static approval.
+
+Ограничения остаются: полный browser `StageASelfTest` 44/44, Chrome/iPhone Safari, live Bybit request и UI stale-badge не проверялись. PR #6 остаётся draft и unmerged; main не изменён; B1 не завершён.
+
+## B1-E source audit and specification — 2026-11-26
+
+Inspected the current `BybitAdapter.normalize()`, `DataQualityEngine.createSnapshot()/validate()`, `BasicAnalyticsEngine.analyze()` and `loadAndAnalyze()` flow. Confirmed one-timeframe-at-a-time fetch/analysis and no shared 1D/4H/1H assembly. Identified that the current per-response closed/forming partition and provider-time consistency check make a naive common-cutoff override unsafe.
+
+Added `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md`: target MTF orchestration, common-cutoff selection, reclassification of candles, coverage recalculation, aggregate quality rules, cache/concurrency safety and 23 deterministic acceptance tests. The live provider-time spread limit is intentionally not guessed; it must be calibrated from live measurements.
+
+No application code changed. B1-E remains specification-only / NOT IMPLEMENTED.
+
+## B1-E MTF implementation candidate — 2026-11-26
+
+Added an isolated `MTFDataEngine` to the PR #6 candidate HTML. The module supports coordinated concurrent 1D/4H/1H fetching, minimum trusted provider-time common cutoff, closed/forming reclassification, per-TF coverage recalculation, per-TF validation, aggregate quality, request supersession and sibling cancellation on failure. Existing selected-timeframe chart and analysis flow are not connected to this module.
+
+Added an explicit `providerTimeToleranceMs` validator override, defaulting to null (therefore existing single-timeframe validation continues to use the original 2-second skew limit). MTF passes its explicit measured spread policy; no production policy value has been selected pending live timing measurements.
+
+Tests on latest candidate blob: B1-E **23/23 PASS**, existing B1 quality suite **65/65 PASS**, both inline script blocks syntax-parse. Isolated V8 execution used test doubles for browser AbortController/DOMException/timer globals. No live HTTP, browser UI, mobile Safari or full StageASelfTest browser run. Candidate only; not merged.
+
+B1-E audit refinement: a candle whose open time is later than the common cutoff is now excluded from the as-of snapshot and counted in `excludedAfterCutoffCount`; its mere presence no longer invalidates a coherent snapshot. This handles ordinary response-time differences across an interval boundary. B1-E remains 23/23 PASS and B1 remains 65/65 PASS after this correction.
+
+
+## 16. B1-E common-cutoff coverage correction and adapter integration fixtures — 2026-11-26
+
+**Branch:** `impl/b1-quality-contract-2026-11-26` (draft PR #6)  
+**Latest HTML blob:** `d9bb093001299ef8a835fc01dcaa6fb87e0425cd`  
+**Latest branch commit after spec update:** `4e7668f098427acbd033a0bb9acc41a9714353b6`
+
+### Problem addressed
+
+Independent review identified that retaining each response's original `expectedClosedStartMs` while moving only the end to the common cutoff could create a hybrid coverage window. At an interval boundary, a later response can spend one of its raw Bybit rows on a candle opened after the common cutoff. Simply excluding that candle then leaves too few rows for the common-cutoff target history.
+
+### Implementation changes
+
+1. Split MTF `desiredClosedCount` from provider `rawLimit`.
+2. Calculate per-timeframe raw request limit as desired closed count + ceiling of permitted provider-time spread divided by timeframe duration + one forming-row allowance.
+3. Reject raw limits above Bybit V5's documented maximum of 1000.
+4. Recalculate expected end and start from the common cutoff and explicit desired closed count.
+5. Keep exactly the newest target number of eligible closed candles; do not hide short responses by trimming missing data.
+6. Preserve adapter quality findings and report missing leading/count coverage when a response is short.
+7. Do not publish a forming candle when multiple forming candidates make the partition ambiguous.
+8. Add stable per-timeframe diagnostic objects for missing/invalid assembly paths.
+9. Add actual adapter integration fixtures: V5-shaped newest-first raw rows -> production `BybitAdapter.normalize()` -> `MTFDataEngine.assemble()`, covering 1H, 4H and 1D boundary rollovers and short response behavior.
+10. Update `docs/specs/B1_E_MTF_COMMON_CUTOFF_SPEC.md` with explicit raw-row and closed-history semantics.
+
+### Verification
+
+- `B1EMtfSelfTest.runAll()`: **31/31 PASS**.
+- `B1QualitySelfTest.runAll()`: **65/65 PASS**.
+- Both inline JavaScript blocks: syntax parse PASS.
+- Tests ran in isolated V8 against the extracted production implementations. Concurrency tests used controlled test doubles; this is not a browser or live-network test.
+
+### Limitations / acceptance status
+
+- No live Bybit HTTP request or provider-time spread calibration.
+- No browser DOM/UI, Chrome/iPhone Safari, full `StageASelfTest` 44/44, or actual HTTP abort verification.
+- MTFDataEngine remains isolated and is not connected to UI or directional decision logic.
+- PR #6 remains draft and unmerged. `main` unchanged. B1 remains IN PROGRESS; no production readiness claim.
+
+
+### Follow-up: post-boundary pending-finality classification — 2026-11-26
+
+A further edge case was found during review of the 500 ms finality buffer. Immediately after an interval boundary, the prior candle may have a close time at or before the common cutoff but still be inside the finality buffer, while the new interval candle is actively forming. Treating both as forming would incorrectly label this ordinary short transition as ambiguous.
+
+Correction:
+- Active forming now requires closeTimeMs > analysisAsOfMs.
+- Pending finality is tracked separately when closeTimeMs <= analysisAsOfMs and closeTimeMs + 500 > analysisAsOfMs.
+- Only multiple active forming candidates block as ambiguous; no arbitrary forming candle is published in that case.
+- Raw-row reserve increased to desired closed count + ceil(maxProviderTimeSpreadMs / stepMs) + 2.
+- Added test 32 for the normal post-boundary state.
+
+Latest suites: B1-E 32/32 PASS, B1 Quality 65/65 PASS; both inline scripts parse. Browser/live checks remain pending.
+
+
+### Final B1-E immutability update — 2026-11-26
+
+The assembled MTF result and failure results are now deeply frozen, including nested per-timeframe diagnostics, canonical candle arrays, candle objects and quality reports. The provider-time-spread failure path was adjusted to preserve the immutable result contract.
+
+Latest HTML blob: 842c361a8386c358a68f22407814c376fd3bde1b. Final isolated V8 verification: B1-E 33/33 PASS; B1 Quality 65/65 PASS; both inline JavaScript blocks parse. This remains a candidate only: no live Bybit, browser/UI, Chrome/iPhone Safari or full StageASelfTest verification. MTFDataEngine is not connected to the UI/decision pipeline. PR #6 remains draft and unmerged; main unchanged.
+
+
+### Independent B1-A/B/E audit — 2026-11-27
+
+- Exact candidate audited: HTML blob `842c361a8386c358a68f22407814c376fd3bde1b`; spec blob `0481400d46be50ff353b73783c769e220ca60bda`.
+- External verdict: **APPROVE WITH CONDITIONS**.
+- Independent execution: B1-E 33/33 PASS; B1 Quality 65/65 PASS; V5-shaped normalize→assemble probes, boundary/short-response/multiple-forming/deep-freeze probes passed.
+- No CRITICAL defect found for current isolated MTF API.
+- Confirmed source-level AbortSignal path reaches `fetch(url, { signal: controller.signal })`; transport-level cancellation still needs a test.
+- Outstanding: live/recorded Bybit 1D/4H/1H integration, measured spread policy, browser regression, full Stage A self-test. Forming-candle validation/invariant is required before directional integration, not for current isolated library stage.
+- PR #6 remains draft/unmerged. MTF is not connected to directional decisions. Directional MTF remains blocked pending live validation and policy.
+- Full report: `docs/audits/B1_A_B_E_INDEPENDENT_AUDIT_2026-11-27.md`.
+
+
+### B1 live capture probe hardening — 2026-11-27
+
+- Added per-host 15-second request timeout with recorded timeout and backup-host fallback.
+- Stop now cancels active fetches and wakes the inter-sample delay immediately.
+- Separated response-header timestamp from full response-body receipt; records header latency and total duration.
+- Corrected request-start measurement to be per host attempt, so fallback does not contaminate successful-host latency.
+- Capture schema advanced to v2.
+- Source review completed; real browser/network execution is still pending.
