@@ -458,3 +458,23 @@ The suite also contains async tests for aborting sibling timeframe requests afte
 **Latest GitHub Actions run 45966127523 passed:** Stage A 44/44, B1 contract 32/32, B1 validator 64/64, B1 MTF 16/16, B1 gate/UI and C1 chart checks passed, zero browser page errors. Live Bybit remained skipped/blocked because both public REST hosts returned HTTP 403 to GitHub Actions. Exact current HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`.
 
 The exact-artifact independent audit prompt was updated to this blob. Main remains unchanged; no merge or B1 acceptance has occurred.
+
+
+
+
+## B1 report/snapshot identity hardening and MTF edge cases — 2026-11-27
+
+Internal review identified that the B1-C gate checked validator and policy versions plus VALID status but did not prove the quality report belonged to the exact canonical snapshot currently being analyzed. Closed this gap:
+- canonical contract requires a non-empty `snapshot_id`;
+- B1QualityValidator includes `snapshot_id` in every report;
+- B1-C requires exact report-to-`dataset.canonicalSnapshot` identity and blocks mismatch with `QUALITY_REPORT_SNAPSHOT_MISMATCH`;
+- B1-E requires exact report-to-per-timeframe snapshot identity before aggregate permission.
+
+Additional MTF hardening:
+- explicit `closedCandleCount` is mandatory in `fetchAndAssemble()`; missing value rejects before adapter/network requests;
+- pending-finality candles are preserved in `pending_finality_context`, never in the closed-only `analysis_candles`;
+- added deterministic regressions for missing history count and pending-finality separation.
+
+Browser harness fixtures now bind reports to their canonical snapshots and include a deliberate snapshot-ID mismatch case. Latest completed GitHub Actions run `45966700299`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 18/18, gate/UI and C1 chart checks passed, zero browser page errors. Total across named self-test suites: 159/159. Live Bybit remains blocked by HTTP 403 from both public REST hosts.
+
+Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`; browser harness blob: `8700f7ebedf6f4091b37d5e7d4c04ba22c2d92a8`. Main unchanged. B1 not accepted pending independent exact-blob review, live concurrent capture/spread calibration, transport abort verification, latest Safari panel check and owner approval.
