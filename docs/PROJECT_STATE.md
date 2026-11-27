@@ -409,3 +409,14 @@ The MTF test suite was expanded from 12 to 16 cases. New assertions cover closed
 Latest GitHub Actions run `45966127523` passed: Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 16/16, B1 gate/UI and C1 chart assertions passed, zero browser page errors. Live Bybit remains skipped/blocked by HTTP 403 from both public REST hosts.
 
 Exact current candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independent audit prompt has been pinned to this exact blob. No code change was made to main. B1 remains unaccepted; independent review, live spread calibration, actual network abort verification, latest quality-panel Safari check and owner acceptance remain open.
+
+
+
+
+## Latest B1 hardening — 2026-11-27
+
+The current integration candidate adds exact quality-report-to-snapshot binding. Canonical snapshots require a non-empty `snapshot_id`; the validator records it in the report; B1-C rejects a VALID report whose ID differs from the dataset's canonical snapshot; B1-E applies the same per-timeframe check. Missing MTF `closedCandleCount` now fails before network access instead of defaulting silently. Pending-finality candles are exposed separately as context and excluded from `analysis_candles`.
+
+Latest completed GitHub Actions run `45966700299`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, B1 MTF 18/18, B1 gate/UI and C1 chart assertions passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public REST hosts. Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Test harness blob: `8700f7ebedf6f4091b37d5e7d4c04ba22c2d92a8`.
+
+This does not change release status: B1 remains unaccepted pending independent review of this exact blob, recorded live concurrent Bybit capture and spread calibration, transport-level abort test, latest iPhone Safari quality-panel check, and explicit owner acceptance. Main is unchanged; B2 remains not started.
