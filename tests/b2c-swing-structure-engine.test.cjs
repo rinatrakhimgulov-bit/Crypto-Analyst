@@ -639,6 +639,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C chain emits a causal initial br
   });
   assert.equal(b2c.status, 'VALID');
   assert.equal(b2c.structure_state, 'UP');
-  assert.equal(b2c.events[0].event_type, 'INITIAL_BULLISH_BREAK');
+  assert.ok(b2c.events.some(event => event.event_type === 'BULLISH_SWEEP'));
+  assert.equal(b2c.events.at(-1).event_type, 'INITIAL_BULLISH_BREAK');
   assert.ok(b2c.raw_pivots.length > 0);
 });
