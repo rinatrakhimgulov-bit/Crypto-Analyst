@@ -491,3 +491,14 @@ Canonical `source_diagnostics` now requires non-negative integer `excluded_after
 B1 validator version is 1.1.0. The quality policy thresholds and policy identifier remain unchanged. Current MTF integration and acceptance gates are documented in `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
 
 Latest candidate CI run 45965680821: validator 64/64, MTF 12/12, Stage A 44/44, contract 32/32, browser gate/chart checks passed, zero page errors. Live Bybit remains blocked from GitHub Actions by HTTP 403; no live MTF calibration is claimed.
+
+
+
+
+## Snapshot identity binding — 2026-11-27
+
+Canonical snapshots now require a non-empty `snapshot_id` in addition to the supported contract version, symbol and market identity. Every B1 quality report carries the exact `snapshot_id` it validated. A missing snapshot ID fails closed with `SNAPSHOT_SCHEMA_INVALID`.
+
+The report identity is not merely the validator/policy version pair: consumers must also bind the report to the exact canonical snapshot. B1-C now rejects a report if its `snapshot_id` does not match `dataset.canonicalSnapshot.snapshot_id`; B1-E requires the same match for every timeframe before aggregate directional permission.
+
+Latest CI run `45966700299`: B1 validator 65/65, MTF 18/18, Stage A 44/44, contract 32/32; gate/UI/chart checks passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public REST hosts.
