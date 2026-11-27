@@ -261,3 +261,16 @@ Crypto Analyst развивается как независимая от кон�
 Начать с B0: провести полный аудит текущего аналитического конвейера без изменения исходника. На выходе получить проверяемую карту фактической реализации и точную спецификацию B1.
 
 **Не переходить к реализации B1, пока B0 не завершён, не проверен и не принят.**
+
+
+## 9. Current priority update — 2026-11-27 (supersedes earlier stage ordering)
+
+**Active priority: Stage 2 / B2 Market Structure research.** Stage 1 visual/live-chart refinement is temporarily frozen, not cancelled. Data-quality/finality requirements remain mandatory.
+
+- B1 is NOT ACCEPTED; its draft candidates remain unmerged.
+- B2-A isolated raw pivots: 20/20 deterministic tests passed; PR #12 draft.
+- B2-B isolated alternating sequence: 20/20 deterministic tests passed, including actual B2-A integration; PR #13 draft.
+- B2-C isolated BOS/CHoCH state machine: 28/28 deterministic tests passed, including full B1 → B2-A → B2-B → B2-C fixture; PR #15 draft.
+- None of these candidates is imported into the application HTML or connected to LONG/SHORT.
+- No production integration until B1 acceptance and explicit owner approval.
+- Next work: independent exact-source review of B2-A/B/C. After review, proceed to B2-D support/resistance zones as a separate increment.
