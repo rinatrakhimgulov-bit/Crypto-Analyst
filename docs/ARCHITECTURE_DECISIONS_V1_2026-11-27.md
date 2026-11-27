@@ -258,3 +258,9 @@ Latest candidate HTML blob: `2af63d1bbfec766606325450819d8ddff14173a2`; browser 
 ## Current candidate evidence — 2026-11-27
 
 PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`; HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; branch 101 ahead / 0 behind main. CI `45967551538` passed 161/161 named tests (Stage A 44, contract 32, validator 65, MTF 20), gate/UI/chart checks and zero browser page errors. B1-C additionally proves that the actual legacy candle series and last-closed price used by analytics match the validated canonical snapshot; otherwise WAIT. Live Bybit remains blocked by runner HTTP 403. No change to architectural decisions; B1 is not accepted.
+
+
+
+## Browser transport evidence — 2026-11-27
+
+The Bybit adapter's timeout path now aborts with named `TimeoutError`, distinct from an external `AbortError`. Playwright exercises the actual Chromium fetch stack against a delayed local HTTP server through the real adapter: external cancellation stops parallel kline/ticker fetches, timeout stops a delayed fetch, and server observed 3/3 client sockets closed. CI `45968566553` passed 161/161 named tests and zero page errors. This verifies browser-side cancellation wiring only; live exchange connectivity remains unverified due runner HTTP 403. Current HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf`. Main unchanged.
