@@ -5249,14 +5249,14 @@
           // ===================== B1-D: live market-data transport =====================
           await record('B1-D. Symbol switch requires a new ticker snapshot', () => {
             const events = [];
+            BybitWsClient.hooks.onTicker = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
             const cachedEth = BybitWsClient._getTickerEntry('ETHUSDT');
             cachedEth.state = { symbol: 'ETHUSDT', lastPrice: '5000' };
             cachedEth.snapshotReceived = true;
             cachedEth.ready = true;
             cachedEth.csLast = 99;
-            BybitWsClient.hooks.onTicker = (event) => events.push(event);
-            BybitWsClient.start('BTCUSDT', '240');
-            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
             BybitWsClient.setSubscription('ETHUSDT', '240');
             assert(cachedEth.state === null && !cachedEth.snapshotReceived && !cachedEth.ready && cachedEth.csLast === null,
               'Кэш предыдущей подписки ETH должен быть сброшен');
