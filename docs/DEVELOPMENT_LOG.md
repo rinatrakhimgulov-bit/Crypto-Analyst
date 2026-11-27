@@ -403,3 +403,16 @@ CI run 45963443614 passed on candidate commit 4e5adf44.
 - Live Bybit probe: skipped because GitHub runner received HTTP 403 from both public hosts.
 
 This fixes an observability gap; it does not change validation rules or signal logic. The newest panel-detail change still needs a brief iPhone Safari visual check. Independent review remains outstanding; do not merge B1 into main yet.
+
+
+
+
+## Architecture baseline and B1 branch consolidation — 2026-11-27
+
+Created `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md` to fix the product/architecture baseline and close decisions that do not require speculative infrastructure. Created `docs/audits/B1_BRANCH_CONSOLIDATION_AUDIT_2026-11-27.md` after comparing the current B1/C1 candidate with the separate B1-A/B/E candidate.
+
+Key finding: the older B1-E MTF implementation depends on legacy `DataQualityEngine` methods and schema. It cannot safely be copied into the current B1-A/B/C candidate, which uses `B1DataContract`, `B1QualityValidator`, and versioned B1-C report identity. The MTF semantics must be ported and tested against the current contract. No source HTML was modified in this documentation step.
+
+The exact older B1-E artifact has an external conditional audit (33/33 MTF and 65/65 legacy quality tests). The reviewer withheld directional MTF approval pending real Bybit time-spread measurements, recorded response replay, abort testing, and a forming-candle non-consumption invariant. That review does not certify the newer B1/C1 artifact.
+
+Working branch `integration/b1-mtf-architecture-2026-11-27` was created from `b1/contract-review`. Main remains unchanged. The user had previously confirmed the C1 chart on iPhone; the newest quality-panel detail row remains pending Safari visual verification. Live Bybit from GitHub Actions remains blocked by HTTP 403. B1 is not accepted and B2 has not started.
