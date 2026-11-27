@@ -6,7 +6,7 @@ Collect real, concurrent Bybit V5 Linear kline responses for 1D/4H/1H so the B1-
 
 ## Tool
 
-Open `tools/b1_live_probe.html` in a browser. It is a standalone read-only page and does not change the Crypto Analyst application or place orders.
+Download `tools/b1_live_probe.html` from the repository to the device that will run the capture, then open the downloaded `.html` file in a full browser (Chrome or Safari). The GitHub `blob` source-code page is not the running diagnostic page. If GitHub displays the source, use its Raw/download option or download the repository archive and extract the file. It is a standalone read-only page and does not change the Crypto Analyst application or place orders.
 
 ## Recommended capture
 
@@ -20,12 +20,13 @@ Open `tools/b1_live_probe.html` in a browser. It is a standalone read-only page 
 
 ## Procedure
 
-1. Open the probe page in Chrome or Safari.
-2. Keep the page in the foreground until capture completes.
-3. Select BTCUSDT and run the recommended 30-sample capture.
-4. Export the JSON file. Do not edit the file.
-5. Repeat for ETHUSDT as a separate capture.
-6. Bring both JSON files back into the project review.
+1. Download `tools/b1_live_probe.html` from the PR branch. Do not try to run the GitHub `blob` source-code view.
+2. Open the downloaded HTML file in a full Chrome or Safari browser. If the browser only displays source text or refuses local HTML execution, use a desktop browser rather than treating that as a failed Bybit test.
+3. Keep the page in the foreground until capture completes.
+4. Select BTCUSDT and run the recommended 30-sample capture.
+5. Export the JSON file. Do not edit the file.
+6. Repeat for ETHUSDT as a separate capture.
+7. Bring both JSON files back into the project review.
 
 ## What will be measured
 
