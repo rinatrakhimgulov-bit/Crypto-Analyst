@@ -176,7 +176,7 @@ run('full bullish alignment is explicit and unweighted', () => {
   assert.equal(result.status, 'VALID');
   assert.equal(result.structure_pattern, 'UP|UP|UP');
   assert.equal(result.alignment_status, 'FULL_BULLISH');
-  assert.equal(result.alignment_direction, 'BULLISH');
+  assert.equal(result.alignment_context, 'BULLISH_STRUCTURE');
   assert.equal(result.hierarchical_interpretation, 'FULL_TIMEFRAME_ALIGNMENT');
 });
 run('MTF display market label may differ from canonical snapshot market type', () => {
@@ -191,12 +191,12 @@ run('MTF display market label may differ from canonical snapshot market type', (
 run('full bearish alignment is symmetric', () => {
   const result = analyze(makeInput({ '1d': 'DOWN', '4h': 'DOWN', '1h': 'DOWN' }));
   assert.equal(result.alignment_status, 'FULL_BEARISH');
-  assert.equal(result.alignment_direction, 'BEARISH');
+  assert.equal(result.alignment_context, 'BEARISH_STRUCTURE');
 });
 run('partial bullish alignment preserves unestablished timeframe', () => {
   const result = analyze(makeInput({ '1d': 'UP', '4h': 'UNESTABLISHED', '1h': 'UP' }));
   assert.equal(result.alignment_status, 'PARTIAL_BULLISH');
-  assert.equal(result.alignment_direction, 'BULLISH');
+  assert.equal(result.alignment_context, 'BULLISH_STRUCTURE');
 });
 run('partial bearish alignment preserves unestablished timeframe', () => {
   const result = analyze(makeInput({ '1d': 'DOWN', '4h': 'DOWN', '1h': 'UNESTABLISHED' }));
@@ -205,7 +205,7 @@ run('partial bearish alignment preserves unestablished timeframe', () => {
 run('all unestablished timeframes do not invent a direction', () => {
   const result = analyze(makeInput({ '1d': 'UNESTABLISHED', '4h': 'UNESTABLISHED', '1h': 'UNESTABLISHED' }));
   assert.equal(result.alignment_status, 'UNESTABLISHED');
-  assert.equal(result.alignment_direction, 'UNESTABLISHED');
+  assert.equal(result.alignment_context, 'UNESTABLISHED_STRUCTURE');
 });
 run('any opposing UP and DOWN states are mixed', () => {
   const result = analyze(makeInput({ '1d': 'UP', '4h': 'DOWN', '1h': 'UNESTABLISHED' }));
@@ -287,6 +287,25 @@ run('provider-time spread is recomputed rather than trusted', () => {
   input.mtf_result.provider_time_spread_ms = 0;
   assert.equal(analyze(input).admission.reasons[0].code, 'B1_MTF_PROVIDER_TIME_SPREAD_MISMATCH');
 });
+run('extra per-timeframe snapshot series are rejected', () => {
+  const input = makeInput();
+  input.mtf_result.timeframes['1d'].snapshot.candles_by_timeframe['4h'] = [];
+  assert.equal(analyze(input).admission.reasons[0].code, 'B1_MTF_CANONICAL_CANDLES_INVALID');
+});
+run('duplicate snapshot IDs across timeframe entries are rejected', () => {
+  const input = makeInput();
+  input.mtf_result.timeframes['4h'].snapshot.snapshot_id = input.mtf_result.timeframes['1d'].snapshot.snapshot_id;
+  input.mtf_result.timeframes['4h'].quality_report.snapshot_id = input.mtf_result.timeframes['1d'].snapshot.snapshot_id;
+  input.b2c_by_timeframe['4h'].snapshot_id = input.mtf_result.timeframes['1d'].snapshot.snapshot_id;
+  input.b2c_by_timeframe['4h'].admission.snapshot_id = input.mtf_result.timeframes['1d'].snapshot.snapshot_id;
+  assert.equal(analyze(input).admission.reasons[0].code, 'B1_MTF_SNAPSHOT_QUALITY_MISMATCH');
+});
+run('event availability must equal break close plus exact B1 finality lag', () => {
+  const input = makeInput();
+  input.b2c_by_timeframe['1d'].events[0].available_at_ms += 1;
+  assert.equal(analyze(input).admission.reasons[0].code, 'B2C_EVENT_HISTORY_INVALID');
+});
+
 run('same input produces deterministic deeply immutable output', () => {
   const input = makeInput();
   const a = analyze(input);
@@ -410,5 +429,5 @@ run('full B1-E three-timeframe snapshot plus actual B2-A/B/C engines yields UP|U
   assert.equal(result.hierarchical_interpretation, '1H_PULLBACK_AGAINST_BULLISH_1D_4H');
 });
 
-console.log('B2-F TESTS: ' + passed + '/25 passed');
-if (passed !== 25) process.exitCode = 1;
+console.log('B2-F TESTS: ' + passed + '/28 passed');
+if (passed !== 28) process.exitCode = 1;
