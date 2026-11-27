@@ -402,6 +402,6 @@ PR #8 head `5e94c29d1f5734e8b46200c04b6da51996ca9726`, draft/unmerged. Branch 13
 
 ## B1-D live market-data integration — 2026-11-27
 
-Automated implementation is complete in draft PR #9, stacked on the B1 integration candidate. The existing Bybit WS client now feeds validated lastPrice and selected-timeframe kline updates into the chart; REST remains bootstrap/history/reconciliation and 30-second fallback. Closed-candle analytics remain isolated from unconfirmed WS data. Latest CI 45981279187: 174/174 deterministic tests passed, browser handler/UI integration and desktop/mobile chart checks passed, zero page errors.
+Automated implementation is complete in draft PR #9, stacked on the B1 integration candidate. The existing Bybit WS client now feeds validated lastPrice and selected-timeframe kline updates into the chart; REST remains bootstrap/history/reconciliation and 30-second fallback. Closed-candle analytics remain isolated from unconfirmed WS data. Latest CI 45981507604: 174/174 deterministic tests passed, browser handler/UI integration and desktop/mobile chart checks passed, zero page errors.
 
 Still pending: real iPhone/Safari Bybit WebSocket verification and independent exact-blob review. GitHub Actions cannot reach Bybit REST (HTTP 403), so no live exchange result is claimed. PR #8 and #9 remain draft; main unchanged. B2 remains gated.
