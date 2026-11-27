@@ -1,0 +1,40 @@
+name: B2 complete deterministic chain audit
+
+on:
+  push:
+    branches:
+      - audit/b2-independent-review-2026-11-27
+    paths:
+      - "src/analysis/b2-*.js"
+      - "tests/b2*-engine.test.cjs"
+      - ".github/workflows/b2-audit-full-suite.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  b2-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout audited B2 chain
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run B2-A
+        run: node tests/b2a-causal-swing-engine.test.cjs
+      - name: Run B2-B
+        run: node tests/b2b-swing-sequence-engine.test.cjs
+      - name: Run B2-C
+        run: node tests/b2c-swing-structure-engine.test.cjs
+      - name: Run B2-D
+        run: node tests/b2d-support-resistance-engine.test.cjs
+      - name: Run B2-E
+        run: node tests/b2e-breakout-retest-engine.test.cjs
+      - name: Run B2-F
+        run: node tests/b2f-mtf-structure-confluence-engine.test.cjs
+      - name: Run B2-G
+        run: node tests/b2g-chart-projection-engine.test.cjs
