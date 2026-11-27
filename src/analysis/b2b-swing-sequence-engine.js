@@ -140,6 +140,7 @@
 
     const raw = source.pivots.map(pivot => ({
       ...pivot,
+      confirmation: { ...pivot.confirmation },
       sequence_status: 'PENDING',
       structure_label: null,
       comparison_pivot_id: null,
@@ -200,7 +201,7 @@
         snapshot_id: source.snapshot_id,
         b2a_engine_version: source.engine_version,
         b2a_policy_version: source.policy_version,
-        b2a_quality_report: source.admission.quality_report
+        b2a_quality_report: { ...source.admission.quality_report }
       },
       snapshot_id: source.snapshot_id,
       symbol: source.symbol,
