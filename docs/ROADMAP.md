@@ -355,3 +355,9 @@ Additional safety hardening on the integration branch:
 Latest completed CI run `45966700299`: Stage A 44/44, B1 contract 32/32, B1 validator 65/65, MTF 18/18, gate/UI/chart assertions passed, zero browser page errors. Live Bybit remains blocked by runner HTTP 403 from both public hosts. Exact current HTML blob `1cb41cfbc03534441774eeeaac08f36082f19ab9`.
 
 B1 remains in review, not accepted. Independent exact-blob review, live spread calibration, actual network abort verification, latest Safari quality-panel check and owner approval remain mandatory. No merge to main; B2 remains gated.
+
+
+
+### Verification refresh — 2026-11-27
+
+Latest integration candidate HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest completed CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64, MTF 18/18; gate/UI and chart assertions passed; zero browser page errors. Total: 158/158 named self-tests. MTF now explicitly rejects omitted closed-candle count before any network request and tests that pending-finality candles remain context-only. Branch is 66 commits ahead, 0 behind main. Live Bybit remains unverified because GitHub Actions receives HTTP 403 from both REST hosts. B1 acceptance gates remain open.
