@@ -585,7 +585,7 @@
 
       async fetchJsonWithTimeout(url, externalSignal, timeoutMs = 9000) {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(new Error('Таймаут запроса')), timeoutMs);
+        const timeoutId = setTimeout(() => controller.abort(new DOMException('Таймаут запроса', 'TimeoutError')), timeoutMs);
 
         const onExternalAbort = () => controller.abort(externalSignal.reason || new Error('Запрос отменён'));
         if (externalSignal) {
