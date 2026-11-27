@@ -190,3 +190,11 @@ run('unsupported equality policy fails closed', () => {
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'PRICE_EQUALITY_POLICY_UNSUPPORTED');
 });
+
+run('B1 quality-policy version must match the engine finality policy', () => {
+  const input = makeInput();
+  input.policy = { ...POLICY, b1_quality_policy_version: 'different-b1-policy' };
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'QUALITY_REPORT_IDENTITY_MISMATCH');
+});
