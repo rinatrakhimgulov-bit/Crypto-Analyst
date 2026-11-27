@@ -261,3 +261,5 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 - `tests/b2c-swing-structure-engine.test.cjs`: 28 deterministic tests including end-to-end B1 → B2-A → B2-B → B2-C flow.
 - GitHub Actions run `46013846058` passed 28/28 on commit `a58441aa4f39aa6e3b98650624f07a2041e7152a`.
 - PR #15 is draft/unmerged. Research-only; no main/app integration. B1 acceptance remains mandatory.
+
+- `docs/audits/B2C_IMPLEMENTATION_REVIEW_2026-11-27.md`: internal exact-source review notes for B2-C candidate commit `a58441aa4f39aa6e3b98650624f07a2041e7152a`; explicitly not an independent external audit.
