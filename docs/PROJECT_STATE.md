@@ -344,3 +344,14 @@ B1 is **NOT ACCEPTED** and remains unmerged. PR #8 and #9 remain draft candidate
 All three B2 increments remain research-only. None is imported by the application HTML. No MTF directional integration, zones, retests, chart overlays, trade scenarios or LONG/SHORT recommendations are implemented. The tests are deterministic fixtures, not live Bybit evidence or proof of trading profitability.
 
 Next: independent review of exact B2-A/B/C source blobs and tests. Only after that should B2-D support/resistance zones be designed as a separate increment. Do not merge PRs #8–#15 without explicit owner approval.
+
+
+### B2-D — Support/resistance zones (2026-11-27)
+- Isolated zone engine in `src/analysis/b2d-support-resistance-engine.js`, consuming VALID B2-C output and exact upstream identities.
+- Groups swing lows as SUPPORT and swing highs as RESISTANCE. The roles remain separate.
+- Requires an explicit instrument/timeframe-scoped absolute max-span policy; no guessed default, ATR fallback or implicit percentage tolerance.
+- Uses MAX_TOTAL_SPAN_V1 so total cluster span cannot exceed the configured value; no transitive chaining.
+- Requires independent source-candle touches; single-touch groups remain candidate levels.
+- Preserves observed bounds, median representative, pivot IDs, touch times and zone availability; no probability-like strength score.
+- 20/20 deterministic tests passed in GitHub Actions run [46014759139](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014759139) on commit `0574858db12dd2082d7449f5512fa8461fceac63`, including full B1 → B2-A → B2-B → B2-C → B2-D fixture.
+- PR #16 is draft/unmerged. The absolute-span policy is not yet calibrated on live BTC/ETH market data.
