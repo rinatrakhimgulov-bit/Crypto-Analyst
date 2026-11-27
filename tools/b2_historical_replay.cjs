@@ -198,8 +198,13 @@ function comparePrefix(full, prefix, cutoff, label) {
   assert(JSON.stringify(fullPivots) === JSON.stringify(prefix.a.pivots),
     label + ' B2-A prefix invariance failed');
   const fullEvents = full.c.events.filter(e => e.available_at_ms <= cutoff);
-  assert(JSON.stringify(fullEvents) === JSON.stringify(prefix.c.events),
-    label + ' B2-C event prefix invariance failed');
+  const compact = events => events.map(e => ({ id: e.event_id, type: e.event_type,
+    source: e.source_pivot_id, available: e.available_at_ms, level: e.level_price }));
+  assert(JSON.stringify(compact(fullEvents)) === JSON.stringify(compact(prefix.c.events)),
+    label + ' B2-C event prefix invariance failed: ' + JSON.stringify({
+      fullCount: fullEvents.length, prefixCount: prefix.c.events.length,
+      full: compact(fullEvents).slice(-20), prefix: compact(prefix.c.events).slice(-20)
+    }));
 }
 function windowAt(rows, endIndex, count) {
   const start = Math.max(0, endIndex - count + 1);
