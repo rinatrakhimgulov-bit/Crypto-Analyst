@@ -1862,13 +1862,29 @@
             result.reasons.some(r => r.code === 'MTF_MULTIPLE_POST_CUTOFF_ROWS'),
             'multiple post-cutoff rows were accepted');
         });
-        test('14 missing measured provider-time spread policy fails closed', () => {
+        test('14 pending-finality candles remain context and are excluded from analysis', () => {
+          const providerTime = cutoff + 200;
+          const data = {
+            '1d': make('1d', providerTime),
+            '4h': make('4h', providerTime),
+            '1h': make('1h', providerTime)
+          };
+          const result = run(data, { maxProviderTimeSpreadMs: 0, closedCandleCount: count });
+          const pending = result.timeframes['1h'].pending_finality_context;
+          expect(pending.length > 0 && pending.every(c => c.closed_state === 'UNKNOWN'),
+            'pending-finality candle was not retained as explicit context');
+          expect(result.timeframes['1h'].analysis_candles.every(c =>
+            c.closed_state === 'TIME_DERIVED' &&
+            c.close_time_ms + B1_QUALITY_POLICY.finality_safety_lag_ms <= result.analysis_as_of_ms
+          ), 'pending-finality candle leaked into the analysis slice');
+        });
+        test('15 missing measured provider-time spread policy fails closed', () => {
           const result = B1MtfEngine.assemble(set(), now, { closedCandleCount: count });
           expect(result.status === 'INVALID' && !result.directional_allowed &&
             result.reasons.some(r => r.code === 'MTF_PROVIDER_TIME_POLICY_MISSING'),
             'missing spread policy did not fail closed');
         });
-        asyncTests.push(['15 failed timeframe request aborts sibling fetches', async () => {
+        asyncTests.push(['16 failed timeframe request aborts sibling fetches', async () => {
           const seen = [];
           const adapter = {
             fetchMarketSnapshot(_symbol, interval, signal) {
@@ -1888,7 +1904,7 @@
           expect(rejected && seen.length === 3 && seen.every(item => item.signal.aborted),
             'failed timeframe did not abort all sibling requests');
         }]);
-        asyncTests.push(['16 missing closed-candle count is rejected before network requests', async () => {
+        asyncTests.push(['17 missing closed-candle count is rejected before network requests', async () => {
           let fetchCalls = 0;
           const adapter = { fetchMarketSnapshot() { fetchCalls++; return Promise.resolve(null); } };
           let rejected = false;
@@ -1897,7 +1913,7 @@
           } catch (error) { rejected = error instanceof RangeError; }
           expect(rejected && fetchCalls === 0, 'missing closedCandleCount silently defaulted or started requests');
         }]);
-        asyncTests.push(['17 superseded MTF generation cannot publish late results', async () => {
+        asyncTests.push(['18 superseded MTF generation cannot publish late results', async () => {
           let requestCount = 0;
           const adapter = {
             fetchMarketSnapshot(_symbol, interval, signal) {
