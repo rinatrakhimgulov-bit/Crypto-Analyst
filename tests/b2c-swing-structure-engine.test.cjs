@@ -443,3 +443,25 @@ run('prefix replay preserves every event already available at the prefix cutoff'
   const expected = full.events.filter(e => e.available_at_ms <= prefix.analysis_as_of_ms);
   assert.deepEqual(replay.events, expected);
 });
+
+
+run('B2-C independently reconstructs B2-B sequence and rejects omitted pivots', () => {
+  const input = fixture(initialBull);
+  input.b2b_result.sequence.pop();
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'B2B_SEQUENCE_DERIVATION_MISMATCH');
+});
+
+run('B2-C rejects forged raw supersession metadata', () => {
+  const pivots = [
+    makePivot('h100', 'SWING_HIGH', 100, 0, 1),
+    makePivot('h110', 'SWING_HIGH', 110, 2, 3),
+    makePivot('l90', 'SWING_LOW', 90, 4, 5)
+  ];
+  const input = fixture(pivots);
+  input.b2b_result.raw_pivots[0].superseded_by = 'not-the-replacing-pivot';
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'B2B_RAW_SEQUENCE_STATUS_MISMATCH');
+});
