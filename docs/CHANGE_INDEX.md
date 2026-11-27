@@ -283,3 +283,19 @@ CI results: 44/44 Stage A, 32/32 B1 contract, 63/63 B1 validator; gate assertion
 - `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`: product scope, layer boundaries, provider-neutral data contract, REST/WS roles, common-cutoff MTF requirements, causal/no-lookahead analytics, scenario evidence contract, runtime/deployment/storage choices, security, testing and deferred decisions.
 - `docs/audits/B1_BRANCH_CONSOLIDATION_AUDIT_2026-11-27.md`: branch divergence, exact candidate HTML identities, external B1-E audit scope, integration incompatibility and controlled port plan.
 - New integration branch: `integration/b1-mtf-architecture-2026-11-27`, based on `b1/contract-review`. No source code changed in this documentation-only step; main unchanged.
+
+
+
+
+## 19. B1-E current-contract MTF implementation — 2026-11-27
+
+- `CryptoAnalyst_StageA_S6_updated.html`: adds isolated `B1MtfEngine` for synchronized 1D/4H/1H assembly, common provider-time cutoff, 500 ms finality, post-cutoff exclusion accounting, exact closed-window coverage, per-timeframe current B1 validation, immutable aggregate, sibling abort and generation coordination.
+- `B1DataContract.VERSION` and `B1QualityValidator.VERSION` incremented to 1.1.0; canonical schema identity is enforced. `source_diagnostics.excluded_after_cutoff_count` is mandatory and participates in raw-to-canonical row accounting.
+- `window.B1MtfSelfTest`: 12 deterministic cases, including exact coverage/finality, provider spread, local-time rejection, stale/mixed identity, deep freeze, sibling abort and superseded request suppression.
+- `tests/b1-browser-live-check.cjs`: awaits and asserts the MTF suite.
+- `.github/workflows/b1-candidate-verification.yml`: candidate integration branch and PR workflow triggers.
+- `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`: current B1-E behavior and acceptance limits.
+
+Latest CI run `45965680821`: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 12/12; browser UI/chart/gate checks passed, zero page errors. Live Bybit blocked by runner HTTP 403. Integration candidate only; main unchanged.
+
+Note: earlier entry saying no source code changed described the initial documentation-only setup before the subsequent MTF port commits. The source has since been changed on the integration branch.
