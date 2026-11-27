@@ -389,7 +389,7 @@ The module currently covers only:
 
 The B1 finality lag is included in `available_at_ms`; a pivot cannot be consumed before its final right-window candle has passed the same finality safety lag used by the B1 quality policy.
 
-Deterministic tests are in `tests/b2a-causal-swing-engine.test.cjs`. They currently pass 13/13. GitHub Actions run 46005202794 passed on candidate commit `f41c85a3d09cbbec602fe1eaef8902b5f52de685`.
+Deterministic tests are in `tests/b2a-causal-swing-engine.test.cjs`. The original 13/13 suite passed in run 46005202794. An additional seven edge-case tests were added and the expanded 20/20 suite passed in GitHub Actions run 46010999225 on commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
 
 This candidate does not implement B2-B swing sequencing, B2-C BOS/CHoCH, zones, retests, chart integration or trading decisions. It is research code pending review and is not production-enabled. Formal B1 acceptance remains required before integration into the live app.
 
