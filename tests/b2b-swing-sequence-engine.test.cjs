@@ -12,7 +12,7 @@ const POLICY = Object.freeze({
   price_equality_policy: 'EXACT_PRICE_V1'
 });
 
-function pivot(id, type, price, availableAt, sourceTime = availableAt - 1500) {
+function pivot(id, type, price, availableAt, sourceTime = Math.max(1, availableAt - 1500)) {
   return {
     pivot_id: id,
     type,
@@ -176,7 +176,7 @@ run('duplicate pivot IDs are rejected', () => {
 
 run('invalid pivot causal timestamps are rejected', () => {
   const p = pivot('h1', 'SWING_HIGH', 100, 1000);
-  p.available_at_ms = 900;
+  p.available_at_ms = 2400;
   const result = analyze(makeInput([p]));
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'PIVOT_CAUSAL_TIME_INVALID');
