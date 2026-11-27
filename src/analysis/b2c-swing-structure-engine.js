@@ -6,7 +6,7 @@
   'use strict';
 
   const ENGINE_VERSION = '2.0.0-b2c';
-  const REQUIRED_B2B_ENGINE_VERSION = '2.0.0-b2b';
+  const REQUIRED_B2B_ENGINE_VERSION = '2.1.0-b2b';
   const REQUIRED_B2A_ENGINE_VERSION = '2.0.0-b2a';
   const TIMEFRAME_MS = Object.freeze({ '1h': 3600000, '4h': 14400000, '1d': 86400000 });
   const CLOSED_STATES = new Set(['CONFIRMED', 'TIME_DERIVED']);
@@ -38,6 +38,7 @@
         typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
         typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
         policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
+        policy.b2b_same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1' ||
         policy.break_buffer_policy !== 'ZERO_BUFFER_V1' ||
         !Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0) {
       return 'B2C_POLICY_BINDING_INVALID';
@@ -126,7 +127,8 @@
         source.snapshot_id !== snapshot.snapshot_id || source.symbol !== snapshot.canonical_symbol ||
         source.timeframe !== timeframe || source.analysis_as_of_ms !== asOf ||
         source.comparison_policy !== policy.price_equality_policy ||
-        source.sequence_order_basis !== 'B2A_AVAILABLE_AT_ORDER_STABLE' ||
+        source.sequence_order_basis !== 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS' ||
+        source.admission.same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy ||
         !isObject(source.admission) || source.admission.status !== 'ADMITTED' ||
         source.admission.snapshot_id !== snapshot.snapshot_id ||
         source.admission.b2a_engine_version !== policy.b2a_engine_version ||
@@ -192,9 +194,21 @@
       if (pivot.available_at_ms < previousAvailable) return blocked('INVALID', 'B2B_RAW_PIVOT_ORDER_INVALID', meta);
       previousAvailable = pivot.available_at_ms;
     }
+    const typesBySourceTime = new Map();
+    for (const pivot of source.raw_pivots) {
+      if (!typesBySourceTime.has(pivot.source_time_ms)) typesBySourceTime.set(pivot.source_time_ms, new Set());
+      typesBySourceTime.get(pivot.source_time_ms).add(pivot.type);
+    }
+    const ambiguousSourceTimes = new Set([...typesBySourceTime.entries()]
+      .filter(([, types]) => types.has('SWING_HIGH') && types.has('SWING_LOW'))
+      .map(([sourceTime]) => sourceTime));
     const expectedSequence = [];
     const expectedRawStatus = new Map();
     for (const rawPivot of source.raw_pivots) {
+      if (ambiguousSourceTimes.has(rawPivot.source_time_ms)) {
+        expectedRawStatus.set(rawPivot.pivot_id, { status: 'AMBIGUOUS_FOR_SEQUENCE', superseded_by: null });
+        continue;
+      }
       const last = expectedSequence.length ? expectedSequence[expectedSequence.length - 1] : null;
       if (last && last.type === rawPivot.type) {
         const moreExtreme = rawPivot.type === 'SWING_HIGH'
@@ -228,7 +242,8 @@
     for (const rawPivot of source.raw_pivots) {
       const expectedStatus = expectedRawStatus.get(rawPivot.pivot_id);
       if (!expectedStatus || rawPivot.sequence_status !== expectedStatus.status ||
-          (rawPivot.superseded_by ?? null) !== expectedStatus.superseded_by) {
+          (rawPivot.superseded_by ?? null) !== expectedStatus.superseded_by ||
+          (rawPivot.exclusion_reason ?? null) !== (expectedStatus.status === 'AMBIGUOUS_FOR_SEQUENCE' ? 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE' : null)) {
         return blocked('INVALID', 'B2B_RAW_SEQUENCE_STATUS_MISMATCH', meta);
       }
     }
