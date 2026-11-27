@@ -193,6 +193,19 @@ async function main() {
       const staleReport = B1QualityValidator.validate(normalizedSnapshot, B1_QUALITY_POLICY, Date.now() + 121000).report;
       const staleAnalysis = BasicAnalyticsEngine.analyze({ ...normalized, qualityReport: staleReport });
 
+      // Exercise the real DOM renderer with an invalid report. The panel must explain
+      // why the quality gate blocked directional analysis, not merely show INVALID.
+      renderSuccess({ ...normalized, qualityReport: invalidReport }, invalidAnalysis);
+      const qualityPanelText = document.getElementById('dataQualityList').textContent;
+      const decisionBadgeText = document.getElementById('decisionBadge').textContent;
+      const uiGate = {
+        statusVisible: qualityPanelText.includes('INVALID'),
+        reasonVisible: qualityPanelText.includes('VOLUME_NEGATIVE'),
+        blockedVisible: qualityPanelText.includes('Заблокирована'),
+        waitVisible: decisionBadgeText === 'WAIT',
+        panelText: qualityPanelText
+      };
+
       return {
         blocked,
         missing: { decision: missing.decision, blocked: missing.qualityGate && missing.qualityGate.blocked },
@@ -227,6 +240,7 @@ async function main() {
           blocked: invalidAnalysis.qualityGate && invalidAnalysis.qualityGate.blocked,
           ema20Count: invalidAnalysis.ema20.length
         },
+        uiGate,
         stale: {
           status: staleReport.status, decision: staleAnalysis.decision,
           blocked: staleAnalysis.qualityGate && staleAnalysis.qualityGate.blocked,
@@ -260,6 +274,9 @@ async function main() {
       ...(gate.invalid.status !== 'INVALID' || gate.invalid.decision !== 'WAIT' ||
           gate.invalid.blocked !== true || gate.invalid.ema20Count !== 0
         ? [{ case: 'invalid-validation-gate', ...gate.invalid }] : []),
+      ...(gate.uiGate.statusVisible !== true || gate.uiGate.reasonVisible !== true ||
+          gate.uiGate.blockedVisible !== true || gate.uiGate.waitVisible !== true
+        ? [{ case: 'quality-gate-ui', ...gate.uiGate }] : []),
       ...(gate.stale.status !== 'STALE' || gate.stale.decision !== 'WAIT' ||
           gate.stale.blocked !== true || gate.stale.ema20Count !== 0
         ? [{ case: 'stale-validation-gate', ...gate.stale }] : [])
