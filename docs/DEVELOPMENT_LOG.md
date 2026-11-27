@@ -766,3 +766,12 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Created `integration/b2-clean-preview-2026-11-27` from the current `main` tree and overlaid the integrated B1/B2 preview snapshot, preserving newer main-only documentation.
 - Opened draft PR #22: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/22.
 - No merge performed. `main` remains unchanged.
+
+### Latest clean-branch verification
+
+- PR #22 clean branch head `3d6c721044118f5a04f5498e60f03c1e13b7597b`, based on current main commit `bc8af9270dfa5f3d475ae928731476b6dae87b2a`; 9 commits ahead, 0 behind.
+- B2 integration workflow 46034803848 passed, including all module steps and Chromium/mobile integration.
+- B2 research suite 46034803544 passed: 182/182 deterministic tests.
+- B1 browser/data workflow 46034808544 passed; deterministic groups 50/50, 32/32, 72/72 and 20/20; zero page errors.
+- Live Bybit REST probe was skipped because GitHub runner requests to api.bybit.com and api.bytick.com returned HTTP 403. This remains unverified on live exchange from this environment.
+- Synthetic browser test covered 220 closed candles and 390px viewport without horizontal overflow. This is not a substitute for iPhone Safari owner verification.
