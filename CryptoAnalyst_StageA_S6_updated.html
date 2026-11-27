@@ -1734,9 +1734,10 @@
     })();
 
     window.B1MtfSelfTest = {
-      runAll() {
+      async runAll() {
         const results = [];
         const test = (name, fn) => { try { fn(); results.push({ name, passed: true }); } catch (error) { results.push({ name, passed: false, error: error.message }); } };
+        const asyncTests = [];
         const expect = (condition, message) => { if (!condition) throw new Error(message); };
         const step = { '1d': 86400000, '4h': 14400000, '1h': 3600000 };
         const baseBoundary = Math.floor(1800000000000 / step['1d']) * step['1d'] + 12 * step['4h'];
@@ -1831,6 +1832,57 @@
             Object.isFrozen(result.timeframes['1d'].analysis_candles) &&
             Object.isFrozen(result.timeframes['1d'].analysis_candles[0]), 'MTF result is not deeply immutable');
         });
+        asyncTests.push(['11 failed timeframe request aborts sibling fetches', async () => {
+          const seen = [];
+          const adapter = {
+            fetchMarketSnapshot(_symbol, interval, signal) {
+              seen.push({ interval, signal });
+              if (interval === '240') return Promise.reject(new Error('synthetic timeframe failure'));
+              return new Promise((resolve, reject) => {
+                signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+              });
+            }
+          };
+          let rejected = false;
+          try {
+            await B1MtfEngine.fetchAndAssemble(adapter, 'BTCUSDT', null, {
+              maxProviderTimeSpreadMs: spread, closedCandleCount: count
+            });
+          } catch (_) { rejected = true; }
+          expect(rejected && seen.length === 3 && seen.every(item => item.signal.aborted),
+            'failed timeframe did not abort all sibling requests');
+        }]);
+        asyncTests.push(['12 superseded MTF generation cannot publish late results', async () => {
+          let requestCount = 0;
+          const adapter = {
+            fetchMarketSnapshot(_symbol, interval, signal) {
+              requestCount++;
+              if (requestCount <= 3) {
+                return new Promise((resolve, reject) => {
+                  signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+                });
+              }
+              const tf = { D: '1d', '240': '4h', '60': '1h' }[interval];
+              const providerTime = { '1d': cutoff, '4h': cutoff + 100, '1h': cutoff + 200 }[tf];
+              const dataset = make(tf, providerTime);
+              dataset.fetchedAtLocalMs = Date.now();
+              return Promise.resolve(dataset);
+            }
+          };
+          const coordinator = B1MtfEngine.createCoordinator();
+          const options = { maxProviderTimeSpreadMs: spread, closedCandleCount: count };
+          const first = coordinator.fetch(adapter, 'BTCUSDT', options);
+          const second = coordinator.fetch(adapter, 'BTCUSDT', options);
+          const latest = await second;
+          const obsolete = await first;
+          expect(latest.superseded === false && latest.result.directional_allowed,
+            'latest generation did not publish a valid synchronized result');
+          expect(obsolete.superseded === true, 'superseded generation published a result');
+        }]);
+        for (const [name, fn] of asyncTests) {
+          try { await fn(); results.push({ name, passed: true }); }
+          catch (error) { results.push({ name, passed: false, error: error.message }); }
+        }
         return { results, totals: { total: results.length, passed: results.filter(x => x.passed).length, failed: results.filter(x => !x.passed).length } };
       }
     };
