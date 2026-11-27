@@ -3707,8 +3707,9 @@
           ? canonicalCandles[canonicalCandles.length - 1].close : null;
         const lastClosedPriceMatches = Boolean(
           candleSeriesMatches && dataset.prices &&
-          Number.isFinite(canonicalLastClose) &&
-          dataset.prices.lastClosedPrice === canonicalLastClose
+          (canonicalCandles.length === 0
+            ? dataset.prices.lastClosedPrice == null
+            : Number.isFinite(canonicalLastClose) && dataset.prices.lastClosedPrice === canonicalLastClose)
         );
         const analysisInputValid = candleSeriesMatches && lastClosedPriceMatches;
         const snapshotIdentityMatches = Boolean(
