@@ -216,3 +216,68 @@ run('B1 quality-policy version must match the engine finality policy', () => {
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'QUALITY_REPORT_IDENTITY_MISMATCH');
 });
+
+
+run('longer plateau waits for right-strength candles after its final candle', () => {
+  const input = makeInput(30, { lowPlateau: false });
+  const candles = input.snapshot.candles_by_timeframe['1h'];
+  candles[5].high = 25;
+  candles[6].high = 25;
+  candles[7].high = 25;
+  const result = analyze(input);
+  const pivot = result.pivots.find(p => p.type === 'SWING_HIGH' && p.price === 25);
+  assert.ok(pivot);
+  assert.equal(pivot.source_time_ms, candles[7].open_time_ms);
+  assert.equal(pivot.confirmed_at_ms, candles[9].close_time_ms);
+});
+
+run('a non-contiguous equal high inside the left window prevents a false pivot', () => {
+  const input = makeInput(24, { lowPlateau: false });
+  const candles = input.snapshot.candles_by_timeframe['1h'];
+  candles[3].high = 20;
+  const result = analyze(input);
+  assert.equal(result.pivots.some(p => p.type === 'SWING_HIGH' && p.price === 20), false);
+});
+
+run('an equal high inside the right window prevents a false pivot', () => {
+  const input = makeInput(24, { lowPlateau: false });
+  const candles = input.snapshot.candles_by_timeframe['1h'];
+  candles[8].high = 20;
+  const result = analyze(input);
+  assert.equal(result.pivots.some(p => p.type === 'SWING_HIGH' && p.price === 20), false);
+});
+
+run('a plateau without the full right window is not emitted', () => {
+  const input = makeInput(8, { lowPlateau: false });
+  const result = analyze(input);
+  assert.equal(result.status, 'VALID');
+  assert.equal(result.pivots.some(p => p.type === 'SWING_HIGH' && p.price === 20), false);
+});
+
+run('pivot output and nested evidence are deeply immutable', () => {
+  const result = analyze(makeInput());
+  const pivot = result.pivots.find(p => p.type === 'SWING_HIGH' && p.price === 20);
+  assert.ok(Object.isFrozen(result));
+  assert.ok(Object.isFrozen(result.pivots));
+  assert.ok(Object.isFrozen(pivot));
+  assert.ok(Object.isFrozen(pivot.confirmation));
+});
+
+run('duplicate closed-candle timestamps fail closed', () => {
+  const input = makeInput();
+  const candles = input.snapshot.candles_by_timeframe['1h'];
+  candles[4].open_time_ms = candles[3].open_time_ms;
+  candles[4].close_time_ms = candles[3].close_time_ms;
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'CANDLE_DUPLICATE_TIMESTAMP');
+});
+
+run('out-of-order closed candles fail closed', () => {
+  const input = makeInput();
+  const candles = input.snapshot.candles_by_timeframe['1h'];
+  [candles[4], candles[5]] = [candles[5], candles[4]];
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'CANDLE_ORDER_INVALID');
+});
