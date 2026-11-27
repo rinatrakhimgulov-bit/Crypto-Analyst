@@ -88,6 +88,8 @@
     }
     if (policy.b2a_engine_version !== REQUIRED_B2A_ENGINE_VERSION ||
         typeof policy.b2a_policy_version !== 'string' || !policy.b2a_policy_version.trim() ||
+        typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
+        typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
         policy.price_equality_policy !== 'EXACT_PRICE_V1') {
       return blocked('INVALID', 'B2A_POLICY_BINDING_INVALID', { policyVersion: policy.version });
     }
@@ -108,7 +110,11 @@
         !isObject(source.admission) || source.admission.status !== 'ADMITTED' ||
         source.admission.snapshot_id !== source.snapshot_id ||
         !isObject(source.admission.quality_report) ||
-        source.admission.quality_report.snapshot_id !== source.snapshot_id) {
+        source.admission.quality_report.snapshot_id !== source.snapshot_id ||
+        source.admission.quality_report.validator_version !== policy.b1_validator_version ||
+        source.admission.quality_report.policy_version !== policy.b1_quality_policy_version ||
+        !Number.isSafeInteger(source.admission.quality_report.checked_at_ms) ||
+        source.admission.quality_report.checked_at_ms < 0) {
       return blocked('INVALID', 'B2A_ADMISSION_IDENTITY_MISMATCH', meta);
     }
     if (typeof source.snapshot_id !== 'string' || !source.snapshot_id ||
