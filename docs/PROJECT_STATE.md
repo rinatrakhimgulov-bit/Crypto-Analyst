@@ -364,3 +364,37 @@ The canonical contract and validator were incremented to 1.1.0. The canonical va
 The MTF engine remains isolated: it is not connected to the chart, existing selected-timeframe analysis, or LONG/SHORT/WAIT decision path. The exact current-contract port has not yet received independent review. Live concurrent captures and spread calibration remain outstanding. Latest quality-panel reason-code/blocked-WAIT detail still needs Safari visual verification. B1 is not accepted; B2 has not started; main remains unchanged.
 
 Specification: `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
+
+
+
+
+## CURRENT AUTHORITATIVE STATE — 2026-11-27 (supersedes stale header/status above)
+
+**Current integration branch:** `integration/b1-mtf-architecture-2026-11-27`  
+**Main:** unchanged; HTML blob `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf`, 188,954 bytes.  
+**Integration candidate HTML:** blob `3f1a739b90e3a187292b29cd9f0ca5c1beafbd5c`, 295,555 bytes.  
+**Branch comparison:** 48 commits ahead of main, 0 behind.  
+**Draft PR:** #8, integration consolidation; not merged.
+
+### Implemented on the integration candidate
+- B1-A canonical data contract and Bybit adapter.
+- B1-B deterministic quality validator, current version 1.1.0.
+- B1-C fail-closed analytics quality gate and visible reason/status panel.
+- C1 EMA overlays and volume pane on the chart.
+- B1-E isolated current-contract MTF assembler for 1D/4H/1H with common provider-time cutoff, 500 ms finality lag, explicit post-cutoff row accounting, exact closed-window coverage, per-timeframe validation, aggregate fail-closed status, deep immutability and request-generation cancellation.
+- Architecture decision register and current-contract MTF specification.
+
+### Latest recorded CI evidence
+GitHub Actions run `45965680821`: Stage A 44/44; B1 contract 32/32; B1 validator 64/64; B1 MTF 12/12; B1 gate/UI and C1 chart assertions passed; zero browser page errors. The live Bybit check was blocked by HTTP 403 from both public REST hosts in GitHub Actions. This is a successful synthetic/browser regression run, not a live-exchange verification.
+
+### Remaining B1 acceptance gates
+1. Independent review of exact candidate HTML blob `3f1a739b90e3a187292b29cd9f0ca5c1beafbd5c` (review prompt saved under `docs/audits/PROMPT_B1_CURRENT_CONTRACT_INDEPENDENT_REVIEW_2026-11-27.md`).
+2. Recorded concurrent live Bybit 1D/4H/1H responses and measured provider-time spread policy.
+3. Actual browser transport-level abort/cancellation verification.
+4. iPhone Safari visual check of the latest quality reason-code and blocked-WAIT panel. C1 chart layout was previously user-verified.
+5. Explicit owner acceptance before merge to main.
+
+**B1 is not yet accepted. B2 Market Structure has not started.** MTF is not connected to LONG/SHORT/WAIT and must not be described as a completed trading signal engine.
+
+### Global product architecture decisions
+The authoritative decision register is `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`. It fixes the initial product scope, Bybit/USDT linear market, BTC/ETH, 1D/4H/1H, REST-first + WS LOG-ONLY, closed-candle directional analysis, provider-neutral layered architecture, causal market-structure sequence, browser-first JavaScript runtime and no auto-execution. Backend/database/hosting vendor, framework migration, additional exchanges, news and order-flow are explicitly deferred until justified by a real requirement. These are deliberate deferrals, not blockers to building the analytical core.
