@@ -1759,7 +1759,8 @@
         const asyncTests = [];
         const expect = (condition, message) => { if (!condition) throw new Error(message); };
         const step = { '1d': 86400000, '4h': 14400000, '1h': 3600000 };
-        const baseBoundary = Math.floor(1800000000000 / step['1d']) * step['1d'] + 12 * step['4h'];
+        // Anchor fixtures to the current UTC day so provider-time future checks stay deterministic across years.
+        const baseBoundary = Math.floor(Date.now() / step['1d']) * step['1d'];
         const cutoff = Math.floor(baseBoundary / step['1h']) * step['1h'] + step['1h'] - 100;
         const spread = 200, count = 120, now = cutoff + 5000;
         const make = (tf, providerTime, opts = {}) => {
