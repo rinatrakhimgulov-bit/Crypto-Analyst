@@ -5,8 +5,10 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function createB2CSwingStructureEngine() {
   'use strict';
 
-  const ENGINE_VERSION = '2.0.0-b2c';
-  const REQUIRED_B2B_ENGINE_VERSION = '2.1.0-b2b';
+  const ENGINE_VERSION = '2.1.0-b2c';
+  const REQUIRED_B2B_ENGINE_VERSION = '2.2.0-b2b';
+  const REQUIRED_B2B_POLICY_VERSION = 'b2b-swing-sequence-v3';
+  const REQUIRED_POLICY_VERSION = 'b2c-state-v2';
   const REQUIRED_B2A_ENGINE_VERSION = '2.0.0-b2a';
   const TIMEFRAME_MS = Object.freeze({ '1h': 3600000, '4h': 14400000, '1d': 86400000 });
   const CLOSED_STATES = new Set(['CONFIRMED', 'TIME_DERIVED']);
@@ -29,9 +31,9 @@
     });
   }
   function validatePolicy(policy) {
-    if (!isObject(policy) || typeof policy.version !== 'string' || !policy.version.trim()) return 'B2C_POLICY_INVALID';
+    if (!isObject(policy) || policy.version !== REQUIRED_POLICY_VERSION) return 'B2C_POLICY_INVALID';
     if (policy.b2b_engine_version !== REQUIRED_B2B_ENGINE_VERSION ||
-        typeof policy.b2b_policy_version !== 'string' || !policy.b2b_policy_version.trim() ||
+        policy.b2b_policy_version !== REQUIRED_B2B_POLICY_VERSION ||
         policy.b2a_engine_version !== REQUIRED_B2A_ENGINE_VERSION ||
         typeof policy.b2a_policy_version !== 'string' || !policy.b2a_policy_version.trim() ||
         typeof policy.b1_contract_version !== 'string' || !policy.b1_contract_version.trim() ||
@@ -127,9 +129,8 @@
         source.snapshot_id !== snapshot.snapshot_id || source.symbol !== snapshot.canonical_symbol ||
         source.timeframe !== timeframe || source.analysis_as_of_ms !== asOf ||
         source.comparison_policy !== policy.price_equality_policy ||
-        source.sequence_order_basis !== 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS' ||
-        source.admission.same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy ||
-        !isObject(source.admission) || source.admission.status !== 'ADMITTED' ||
+        source.sequence_order_basis !== 'B2A_AVAILABLE_AT_ORDER_STABLE_EXCLUDING_DUAL_PIVOTS_WITH_HISTORY' ||
+        !isObject(source.admission) || source.admission.same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy || source.admission.status !== 'ADMITTED' ||
         source.admission.snapshot_id !== snapshot.snapshot_id ||
         source.admission.b2a_engine_version !== policy.b2a_engine_version ||
         source.admission.b2a_policy_version !== policy.b2a_policy_version ||
@@ -166,7 +167,7 @@
       return blocked('INVALID', 'B1_FORMING_OR_UNKNOWN_OVERLAP', meta);
     }
 
-    if (!Array.isArray(source.raw_pivots) || !Array.isArray(source.sequence)) return blocked('INVALID', 'B2B_SEQUENCE_SHAPE_INVALID', meta);
+    if (!Array.isArray(source.raw_pivots) || !Array.isArray(source.sequence) || !Array.isArray(source.sequence_history)) return blocked('INVALID', 'B2B_SEQUENCE_SHAPE_INVALID', meta);
     if (source.raw_pivots.length !== b2aSource.pivots.length) {
       return blocked('INVALID', 'B2A_PIVOT_SET_MISMATCH', meta);
     }
@@ -203,6 +204,7 @@
       .filter(([, types]) => types.has('SWING_HIGH') && types.has('SWING_LOW'))
       .map(([sourceTime]) => sourceTime));
     const expectedSequence = [];
+    const expectedHistory = [];
     const expectedRawStatus = new Map();
     for (const rawPivot of source.raw_pivots) {
       if (ambiguousSourceTimes.has(rawPivot.source_time_ms)) {
@@ -228,14 +230,28 @@
         : rawPivot.type === 'SWING_HIGH'
           ? (delta > 0 ? 'HH' : delta < 0 ? 'LH' : 'EQH')
           : (delta > 0 ? 'HL' : delta < 0 ? 'LL' : 'EQL');
+      const expectedComparisonId = previousSameSide ? previousSameSide.pivot_id : null;
+      const expectedRelativeDelta = previousSameSide ? (delta / previousSameSide.price) * 100 : null;
       expectedSequence.push({
         pivot_id: rawPivot.pivot_id,
         type: rawPivot.type,
         price: rawPivot.price,
         structure_label: expectedLabel,
-        comparison_pivot_id: previousSameSide ? previousSameSide.pivot_id : null,
+        comparison_pivot_id: expectedComparisonId,
         price_delta: delta,
-        relative_delta_pct: previousSameSide ? (delta / previousSameSide.price) * 100 : null
+        relative_delta_pct: expectedRelativeDelta
+      });
+      expectedHistory.push({
+        ...rawPivot,
+        confirmation: { ...rawPivot.confirmation },
+        sequence_status: 'ACCEPTED_AT_AVAILABILITY',
+        exclusion_reason: null,
+        structure_label: expectedLabel,
+        comparison_pivot_id: expectedComparisonId,
+        price_delta: delta,
+        relative_delta_pct: expectedRelativeDelta,
+        superseded_by: null,
+        sequence_index_at_availability: expectedSequence.length - 1
       });
       expectedRawStatus.set(rawPivot.pivot_id, { status: 'ACCEPTED', superseded_by: null });
     }
@@ -248,6 +264,33 @@
       }
     }
     if (source.sequence.length !== expectedSequence.length) return blocked('INVALID', 'B2B_SEQUENCE_DERIVATION_MISMATCH', meta);
+    if (source.sequence_history.length !== expectedHistory.length) return blocked('INVALID', 'B2B_SEQUENCE_HISTORY_DERIVATION_MISMATCH', meta);
+
+    const historyIds = new Set();
+    let historyAvailableAt = -1;
+    for (let i = 0; i < expectedHistory.length; i++) {
+      const actual = source.sequence_history[i];
+      const expected = expectedHistory[i];
+      if (!actual || historyIds.has(actual.pivot_id) ||
+          actual.pivot_id !== expected.pivot_id || actual.type !== expected.type ||
+          actual.price !== expected.price || actual.source_time_ms !== expected.source_time_ms ||
+          actual.confirmed_at_ms !== expected.confirmed_at_ms || actual.available_at_ms !== expected.available_at_ms ||
+          actual.sequence_status !== 'ACCEPTED_AT_AVAILABILITY' || actual.exclusion_reason !== null ||
+          actual.structure_label !== expected.structure_label ||
+          actual.comparison_pivot_id !== expected.comparison_pivot_id ||
+          actual.price_delta !== expected.price_delta ||
+          actual.relative_delta_pct !== expected.relative_delta_pct ||
+          actual.superseded_by !== null ||
+          actual.sequence_index_at_availability !== expected.sequence_index_at_availability ||
+          actual.available_at_ms < historyAvailableAt ||
+          !isObject(actual.confirmation) ||
+          actual.confirmation.equality_policy !== expected.confirmation.equality_policy ||
+          actual.confirmation.finality_safety_lag_ms !== expected.confirmation.finality_safety_lag_ms) {
+        return blocked('INVALID', 'B2B_SEQUENCE_HISTORY_DERIVATION_MISMATCH', meta);
+      }
+      historyIds.add(actual.pivot_id);
+      historyAvailableAt = actual.available_at_ms;
+    }
 
     const sequenceIds = new Set();
     let lastSequenceType = null;
@@ -308,6 +351,7 @@
     }
 
     const pivots = source.sequence.map(p => ({ ...p, confirmation: { ...p.confirmation } }));
+    const eventPivots = source.sequence_history.map(p => ({ ...p, confirmation: { ...p.confirmation } }));
     const events = [];
     const consumed = new Set();
     let state = 'UNESTABLISHED';
@@ -360,8 +404,8 @@
 
     for (const candle of candles) {
       // Only pivots available strictly before this candle closes can influence its break test.
-      while (pivotCursor < pivots.length && pivots[pivotCursor].available_at_ms < candle.close_time_ms) {
-        addPivot(pivots[pivotCursor++]);
+      while (pivotCursor < eventPivots.length && eventPivots[pivotCursor].available_at_ms < candle.close_time_ms) {
+        addPivot(eventPivots[pivotCursor++]);
       }
 
       let bullishLevel = null;
@@ -426,7 +470,7 @@
       }
 
       // Pivots becoming available at this candle close are admitted only after break evaluation.
-      while (pivotCursor < pivots.length && pivots[pivotCursor].available_at_ms <= candle.close_time_ms) {
+      while (pivotCursor < eventPivots.length && eventPivots[pivotCursor].available_at_ms <= candle.close_time_ms) {
         addPivot(pivots[pivotCursor++]);
       }
     }
@@ -459,7 +503,7 @@
         type: continuationLevel.type, available_at_ms: continuationLevel.available_at_ms
       } : null,
       diagnostics: {
-        candle_count: candles.length, pivot_count: pivots.length, event_count: events.length,
+        candle_count: candles.length, pivot_count: pivots.length, event_pivot_count: eventPivots.length, event_count: events.length,
         consumed_level_count: consumed.size,
         protected_level_unavailable: state !== 'UNESTABLISHED' && !protectedLevel,
         protected_level_status: state === 'UNESTABLISHED' ? 'NOT_APPLICABLE' : protectedLevel ? 'AVAILABLE' : 'PROTECTED_LEVEL_UNAVAILABLE'
