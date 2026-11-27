@@ -591,3 +591,15 @@ Next B2 work must remain staged: independently review B2-A's exact source and te
 - PR #13 is draft and unmerged, based on the B2-A candidate branch. This code is research-only; it is not wired into the app or LONG/SHORT path. B1 remains NOT ACCEPTED.
 
 Next: independent review of exact B2-A/B2-B source and tests; then B2-C protected swings and BOS/CHoCH only as a separate isolated increment, still gated from production by B1 acceptance.
+
+
+## B2 status update — 2026-11-27 (audit branch)
+
+- B2-A through B2-G modules remain isolated in research/feature branches; no B2 code has been merged into `main` or wired into the production HTML.
+- Dedicated full-chain deterministic workflow passed: GitHub Actions run [#46032422972](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46032422972), commit `5af559abedd49f0764c8c5815f543eee814375c3`, 180/180 tests (A 21, B 21, C 34, D 21, E 24, F 30, G 29).
+- Follow-up independent review: `docs/audits/B2_INDEPENDENT_REVIEW_2026-11-27.md`.
+- Deterministic CI is not historical-market validation. The complete B2-A→B2-G replay on Bybit BTCUSDT/ETHUSDT 1H/4H/1D remains outstanding.
+- B2-F's 50 ms provider-time spread threshold remains a test configuration, not an empirically calibrated production threshold. MTF directional use remains disabled.
+- B1 live acquisition → B2 runtime integration and B2-G chart UI integration remain unverified.
+- The later adaptive market-research direction is deferred. Current module separation preserves a path to add a separate research/adaptation layer later without rewriting B2.
+- Production integration gate remains closed. Do not merge PRs #12–#20 or alter `main` until historical replay, MTF calibration, and browser/runtime integration checks are complete.
