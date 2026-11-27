@@ -469,7 +469,7 @@ run('B2-B sequence label tampering fails closed', () => {
 });
 
 run('pivot price must match its actual source candle', () => {
-  const input = fixture(initialBull);
+  const input = fixture(initialBull.map(p => ({ ...p, confirmation: { ...p.confirmation } })));
   input.b2b_result.raw_pivots[1].price = 101;
   input.b2b_result.sequence[1].price = 101;
   input.b2a_result.pivots[1].price = 101;
@@ -603,9 +603,10 @@ run('B2-C rejects forged raw supersession metadata', () => {
 
 run('a consumed BOS swing high cannot emit repeated BOS on later closes', () => {
   const pivots = [
-    ...initialBull,
-    makePivot('l95', 'SWING_LOW', 95, 3, 4),
-    makePivot('h110', 'SWING_HIGH', 110, 4, 5)
+    makePivot('l90x', 'SWING_LOW', 90, 0, 1),
+    makePivot('h100x', 'SWING_HIGH', 100, 1, 2),
+    makePivot('l95x', 'SWING_LOW', 95, 3, 4),
+    makePivot('h110x', 'SWING_HIGH', 110, 4, 5)
   ];
   const input = fixture(pivots, {
     3: { open: 100, close: 105, high: 106, low: 95 },
