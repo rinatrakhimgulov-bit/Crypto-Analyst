@@ -112,6 +112,7 @@ function fixture(options = {}) {
     makePivot('l91', 'SWING_LOW', 91, 4, 5)
   ];
   if (options.futureResistance) raw.push(makePivot('h102', 'SWING_HIGH', 102, 7, 8));
+  if (options.preBreakHigherResistance) raw.push(makePivot('h102pre', 'SWING_HIGH', 102, 4, 5));
   raw.sort((a, b) => a.available_at_ms - b.available_at_ms || a.source_time_ms - b.source_time_ms);
 
   for (const p of raw) {
@@ -137,7 +138,7 @@ function fixture(options = {}) {
   rows[breakIndex] = {
     ...rows[breakIndex],
     open: direction === 'BULLISH' ? 100 : 91,
-    close: direction === 'BULLISH' ? 102 : 89,
+    close: options.breakoutClose ?? (direction === 'BULLISH' ? 102 : 89),
     high: direction === 'BULLISH' ? 103 : 92,
     low: direction === 'BULLISH' ? 100 : 88
   };
@@ -355,6 +356,19 @@ run('historical zone is reconstructed from pivots available before the break, no
   assert.deepEqual(result.lifecycles[0].historical_zone.pivot_ids, ['h100', 'h101']);
   assert.equal(result.lifecycles[0].historical_zone.upper_bound, 101);
   assert.deepEqual(result.lifecycles[0].historical_zone.touches.map(t => t.pivot_id), ['h100', 'h101']);
+});
+
+run('a pivot break inside the historical zone does not start a zone retest lifecycle', () => {
+  const input = fixture({
+    preBreakHigherResistance: true,
+    breakoutClose: 101.5,
+    touchAt: 7
+  });
+  const result = analyze(input);
+  assert.equal(result.lifecycles.length, 0);
+  assert.equal(result.unmatched_breakouts.length, 1);
+  assert.equal(result.unmatched_breakouts[0].reason, 'ZONE_BOUNDARY_NOT_CLEARED_AT_BREAK');
+  assert.equal(result.unmatched_breakouts[0].zone_upper_bound, 102);
 });
 
 run('a zone that did not have enough independent touches before the break is unmatched', () => {
