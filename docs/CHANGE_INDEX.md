@@ -281,3 +281,11 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 - B2-C: HH/LL-only continuation, protected-pivot re-arming on state transition, exact B2-A pivot-set binding; 33/33 passed (run 46015831238).
 - B2-D: isolated S/R zone engine; 21/21 passed (run 46015873986). Absolute tolerance needs per-instrument/timeframe calibration; freshness unclassified; IDs membership-derived.
 - All remain research-only, draft and unmerged; B1 remains NOT ACCEPTED.
+
+
+### B2-E breakout/retest/failure lifecycle — 2026-11-27
+- `src/analysis/b2e-breakout-retest-engine.js`: isolated historical-zone-aware breakout/retest lifecycle and role-reversal confirmation.
+- Validates B2-C event semantics and B2-D zone evidence; historical zones are reconstructed only from pivots available before breakout close.
+- `tests/b2e-breakout-retest-engine.test.cjs`: 22 deterministic tests including full B1 → B2-A → B2-B → B2-C → B2-D → B2-E execution.
+- GitHub Actions run `46016401705` passed 22/22 on commit `493a15e8006784d2b78262770725c26bd05c2e85`.
+- PR #17 remains draft/unmerged. No app/main integration; B1 acceptance remains mandatory.
