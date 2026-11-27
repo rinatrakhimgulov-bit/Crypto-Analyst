@@ -657,3 +657,14 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - No BOS/CHoCH, protected-swing state, zones, retests or trade recommendations.
 - No live Bybit or profitability claims.
 - B1 remains NOT ACCEPTED; production integration is prohibited until B1 acceptance and explicit owner approval.
+
+
+## 2026-11-27 — B2 full deterministic chain audit
+
+- Added `.github/workflows/b2-audit-full-suite.yml` to run B2-A through B2-G together on the audit branch.
+- First runs exposed outdated B2-B sequence-order expectation and stale integration-fixture policy bindings in B2-B/B2-C, plus an incorrect B2-G test total after an added regression case.
+- Corrected test expectations/fixtures only; no B2 engine implementation source was modified in this follow-up.
+- Successful GitHub Actions run: [#46032422972](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46032422972).
+- Final deterministic result: 180/180 passing (B2-A 21, B2-B 21, B2-C 34, B2-D 21, B2-E 24, B2-F 30, B2-G 29).
+- This is synthetic deterministic verification only. Full historical replay, empirical MTF provider-time spread calibration, live B1-to-B2 browser integration, and B2-G UI wiring remain open.
+- No changes to `main`; no PR merged. The adaptive market-research concept remains deferred and is not part of the current B2 scope.
