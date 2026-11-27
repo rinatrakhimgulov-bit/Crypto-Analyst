@@ -1256,3 +1256,22 @@ B2-E candidate hardening completed:
 B2-E v1 produces one lifecycle per breakout event; it does not persist zone-role state across later breakouts or invalidate a prior successful role reversal. Same-candle range-touch plus close beyond the success boundary is accepted as an OHLC bar-level convention, not intrabar tick-path evidence. Thresholds remain uncalibrated synthetic inputs.
 
 PR #18 was closed as a duplicate design draft. PR #17 is the active B2-E candidate. All B2 PRs #12/#13/#15/#16/#17 remain draft/unmerged; B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no app HTML integration.
+
+
+## B2-F multi-timeframe structure confluence — 2026-11-27
+
+Draft PR #19 adds an isolated B2-F engine combining B2-C structure states across 1D/4H/1H on the B1-E common cutoff.
+
+- Exact B1 MTF contract and common-cutoff admission.
+- Exact per-timeframe snapshot/quality report and B2-C result identity.
+- Provider-time spread recomputed and bound to an explicit max spread policy.
+- Correct distinction between B1 MTF display market label and canonical snapshot market type.
+- Actual B1 quality policy binding: `b1-quality-policy-2026-11-27-v1`.
+- Full/partial/mixed/unestablished structure alignment, hierarchical interpretation and 4H/1H consensus.
+- No weighted score or trade decision.
+
+Verification: B2-F 30/30 and integrated B2-A through B2-F 149/149. Latest candidate head `4a2cf7fc621cb9120f7e5cd5cc10bab99aac3b32`; B2-F run 46020226993, integrated run 46020227119. PR #19 remains draft/unmerged.
+
+Important limitation: the Node test suite uses actual B2-A/B/C engines but a synthetic B1-E-shaped MTF result. The actual B1MtfEngine is statically inspected, not executed. No live Bybit MTF or iPhone/Safari verification. B1 remains NOT ACCEPTED.
+
+PR #18 is closed as a superseded duplicate draft. PR #19 is the active B2-F candidate. PRs #12/#13/#15/#16/#17/#19 remain draft/unmerged. B1 PRs #8/#9 remain draft/unmerged. Main unchanged; no B2 module is imported into application HTML.
