@@ -560,6 +560,8 @@ run('prefix replay preserves every event already available at the prefix cutoff'
   prefix.quality_report.checked_at_ms = prefix.analysis_as_of_ms - 100;
   prefix.quality_report.closed_count = 5;
   prefix.quality_report.valid_count = 5;
+  prefix.b2a_result.analysis_as_of_ms = prefix.analysis_as_of_ms;
+  prefix.b2a_result.admission.quality_report.checked_at_ms = prefix.quality_report.checked_at_ms;
   prefix.b2b_result.analysis_as_of_ms = prefix.analysis_as_of_ms;
   prefix.b2b_result.admission.b2a_quality_report.checked_at_ms = prefix.quality_report.checked_at_ms;
   const replay = analyze(prefix);
