@@ -759,3 +759,10 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Historical archive ends 2025-12-05 and uses a synthetic B1-valid wrapper.
 - Pivot strength, zone span and retest tolerance are not production-calibrated.
 - No B2 output is connected to LONG/SHORT/WAIT.
+
+
+### Clean PR packaging
+
+- Created `integration/b2-clean-preview-2026-11-27` from the current `main` tree and overlaid the integrated B1/B2 preview snapshot, preserving newer main-only documentation.
+- Opened draft PR #22: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/22.
+- No merge performed. `main` remains unchanged.
