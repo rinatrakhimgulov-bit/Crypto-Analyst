@@ -274,3 +274,13 @@ Crypto Analyst развивается как независимая от кон�
 - None of these candidates is imported into the application HTML or connected to LONG/SHORT.
 - No production integration until B1 acceptance and explicit owner approval.
 - Next work: independent exact-source review of B2-A/B/C. After review, proceed to B2-D support/resistance zones as a separate increment.
+
+
+### B2-D — Support/resistance zones
+**Статус: ИЗОЛИРОВАННЫЙ ИССЛЕДОВАТЕЛЬСКИЙ КАНДИДАТ; production integration заблокирована до принятия B1.**
+
+- Separate pure zone engine from confirmed B2-C raw pivot evidence.
+- Support and resistance remain separate roles.
+- Explicit absolute max-span policy scoped to instrument/timeframe; no implicit tolerance.
+- 20/20 deterministic tests passed in run 46014759139, including full B1 → B2-A → B2-B → B2-C → B2-D fixture.
+- PR #16 draft/unmerged. Absolute tolerance calibration against live market data remains outstanding.
