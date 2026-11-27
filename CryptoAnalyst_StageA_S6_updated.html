@@ -527,7 +527,7 @@
         <div class="subcard">
           <h4>Не реализовано (Этапы 2 и 3)</h4>
           <ul>
-            <li><strong>Потоковый WebSocket:</strong> пока используется периодический REST-опрос, а не постоянный WS-поток.</li>
+            <li><strong>Потоковый WebSocket:</strong> Bybit ticker обновляет текущую цену и ценовую линию; kline-поток обновляет формирующуюся свечу. REST остаётся источником истории, контрольной сверки и восстановления.</li>
             <li><strong>Полноценные зоны уровней, структура и режимы:</strong> оценка ретестов/реакций/пробоев уровней, классификация <code>BOS / CHoCH</code>, рыночные режимы и мультитаймфреймовый движок (<code>1D + 4H + 1H</code>) — в Этапе 2.</li>
             <li><strong>Библиотека моделей, пороги объёма и риск-калькулятор:</strong> проверка порогов на истории, модели, цели TP/SL с учётом комиссий/проскальзывания и алерты — в Этапах 2–3.</li>
             <li><strong>Полноценный офлайн PWA и бэктест:</strong> отдельные PNG-иконки, Service Worker и исторический прогон стратегий — в Этапах 2–3.</li>
@@ -2453,7 +2453,7 @@
       // Верхняя граница числа отслеживаемых «брошенных» сокетов (защита от неограниченного роста, если onclose не приходит).
       maxAbandonedTracked: 8,
 
-      hooks: { onStatus: null, onRecovered: null },
+      hooks: { onStatus: null, onRecovered: null, onTicker: null, onKline: null },
 
       state: {
         ws: null,
@@ -3315,6 +3315,22 @@
           cs: msg.cs,
           recvAt
         });
+        const lastPrice = Number(entry.state && entry.state.lastPrice);
+        if (Number.isFinite(lastPrice) && lastPrice > 0) {
+          const event = Object.freeze({
+            symbol: sym,
+            lastPrice,
+            providerEventTimeMs: BybitAdapter.parseProviderTime(msg.ts),
+            receivedAtMs: recvAt,
+            cs: hasCs ? msg.cs : null,
+            type: msg.type,
+            connGen: cGen
+          });
+          const onTicker = this.hooks && this.hooks.onTicker;
+          if (typeof onTicker === 'function') {
+            try { onTicker(event); } catch (err) { this._log('error', 'onTicker hook failed', err && err.message ? err.message : err); }
+          }
+        }
       },
 
       _handleKlineMessage(msg, recvAt, cGen) {
@@ -3322,15 +3338,97 @@
           this.state.staleMessagesDropped += 1;
           return;
         }
+        const parts = typeof msg.topic === 'string' ? msg.topic.split('.') : [];
+        const interval = parts.length === 3 ? parts[1] : null;
+        const symbol = parts.length === 3 ? parts[2] : null;
+        const stepMs = BybitAdapter.intervalToMs(interval);
         const items = Array.isArray(msg.data) ? msg.data : [];
-        const lastItem = items.length ? items[items.length - 1] : null;
-        this._log('log', `Kline ${msg.topic} (${msg.type || 'unknown'})`, {
-          count: items.length,
-          start: lastItem ? lastItem.start : undefined,
-          close: lastItem ? lastItem.close : undefined,
-          confirm: lastItem ? lastItem.confirm : undefined,
-          recvAt
-        });
+        const onKline = this.hooks && this.hooks.onKline;
+        const reject = (reason) => {
+          this.state.invalidStreamMessages += 1;
+          this._log('warn', `Kline ${msg.topic}: сообщение отклонено — ${reason}`);
+          if (typeof onKline === 'function') {
+            try { onKline(Object.freeze({ valid: false, symbol, interval, reason, receivedAtMs: recvAt, connGen: cGen })); }
+            catch (err) { this._log('error', 'onKline hook failed', err && err.message ? err.message : err); }
+          }
+        };
+        if (parts.length !== 3 || !stepMs || symbol !== this.state.symbol || interval !== this.state.interval) {
+          reject('topic symbol/interval не совпадает с активной подпиской');
+          return;
+        }
+        if (!['snapshot', 'delta'].includes(msg.type) || items.length === 0) {
+          reject('неподдерживаемый тип сообщения или пустой data');
+          return;
+        }
+        for (const item of items) {
+          if (!item || typeof item !== 'object' || String(item.interval) !== interval) {
+            reject('некорректный объект свечи или interval');
+            continue;
+          }
+          const parseIntMs = (value) => {
+            const n = typeof value === 'number' ? value :
+              (typeof value === 'string' && /^\\d+$/.test(value) ? Number(value) : NaN);
+            return Number.isSafeInteger(n) && n > 0 ? n : null;
+          };
+          const parseDecimal = (value) => {
+            if (typeof value !== 'string' && typeof value !== 'number') return null;
+            if (typeof value === 'string' && !/^[+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?$/.test(value)) return null;
+            const n = Number(value);
+            return Number.isFinite(n) ? n : null;
+          };
+          const start = parseIntMs(item.start);
+          const end = parseIntMs(item.end);
+          const open = parseDecimal(item.open);
+          const high = parseDecimal(item.high);
+          const low = parseDecimal(item.low);
+          const close = parseDecimal(item.close);
+          const volume = parseDecimal(item.volume);
+          const turnover = parseDecimal(item.turnover);
+          if (!start || !end || open === null || high === null || low === null || close === null ||
+              volume === null || turnover === null || typeof item.confirm !== 'boolean') {
+            reject('отсутствуют или некорректны обязательные поля OHLCV/time/confirm');
+            continue;
+          }
+          if (!BybitAdapter.isAlignedToUtcGrid(start, interval) || end !== start + stepMs - 1) {
+            reject('timestamp свечи не выровнен по сетке таймфрейма');
+            continue;
+          }
+          if (open <= 0 || high <= 0 || low <= 0 || close <= 0 || volume < 0 || turnover < 0 ||
+              high < Math.max(open, close, low) || low > Math.min(open, close, high)) {
+            reject('нарушены ограничения OHLCV');
+            continue;
+          }
+          const candle = Object.freeze({
+            ts: start,
+            closeTs: start + stepMs,
+            open,
+            high,
+            low,
+            close,
+            volume,
+            turnover,
+            confirmed: item.confirm
+          });
+          const event = Object.freeze({
+            valid: true,
+            symbol,
+            interval,
+            candle,
+            providerEventTimeMs: BybitAdapter.parseProviderTime(msg.ts),
+            receivedAtMs: recvAt,
+            connGen: cGen,
+            messageType: msg.type
+          });
+          this._log('log', `Kline ${msg.topic} (${msg.type})`, {
+            start,
+            close,
+            confirm: item.confirm,
+            recvAt
+          });
+          if (typeof onKline === 'function') {
+            try { onKline(event); } catch (err) { this._log('error', 'onKline hook failed', err && err.message ? err.message : err); }
+          }
+        }
       },
 
       _handleMessage(event, cGen) {
@@ -3973,6 +4071,48 @@
         this.render();
       }
 
+      updateMarketPrice(price) {
+        if (!Number.isFinite(price) || price <= 0) return false;
+        this.marketPrice = price;
+        this.render();
+        return true;
+      }
+
+      upsertLiveCandle(candle, stepMs) {
+        if (!candle || !Number.isSafeInteger(candle.ts) || !Number.isFinite(stepMs) || stepMs <= 0 ||
+            ![candle.open, candle.high, candle.low, candle.close, candle.volume, candle.turnover].every(Number.isFinite) ||
+            candle.open <= 0 || candle.high <= 0 || candle.low <= 0 || candle.close <= 0 ||
+            candle.volume < 0 || candle.turnover < 0 ||
+            candle.high < Math.max(candle.open, candle.close, candle.low) ||
+            candle.low > Math.min(candle.open, candle.close, candle.high)) {
+          return { status: 'invalid' };
+        }
+        if (!this.candles.length) return { status: 'no-base' };
+        const lastIndex = this.candles.length - 1;
+        const last = this.candles[lastIndex];
+        if (candle.ts < last.ts) return { status: 'older' };
+        if (candle.ts === last.ts) {
+          const sameOpen = Math.abs(candle.open - last.open) <= 1e-10;
+          const monotonic = candle.high >= last.high && candle.low <= last.low &&
+            candle.volume >= last.volume && candle.turnover >= last.turnover;
+          if (!sameOpen || !monotonic) return { status: 'conflict' };
+          const next = { ...last, ...candle };
+          const unchanged = ['high', 'low', 'close', 'volume', 'turnover', 'confirmed']
+            .every((key) => next[key] === last[key]);
+          if (unchanged) return { status: 'duplicate' };
+          this.candles = this.candles.slice();
+          this.candles[lastIndex] = next;
+          this.render();
+          return { status: 'updated' };
+        }
+        if (candle.ts !== last.ts + stepMs) return { status: 'gap' };
+        if (this.offsetFromEnd > 0) this.offsetFromEnd += 1;
+        this.candles = this.candles.concat([{ ...candle }]);
+        this.clampOffset();
+        this.render();
+        return { status: 'appended' };
+      }
+
       resetView() {
         this.visibleCount = 80;
         this.offsetFromEnd = 0;
@@ -4475,12 +4615,100 @@
       pendingSyncToken: null,
       snapshotsByKey: new Map(),
       timerId: null,
-      selfTestRunning: false
+      selfTestRunning: false,
+      liveTicker: null,
+      liveTickerTimer: null,
+      liveReconcileTimer: null,
+      lastConfirmedCandleKey: null
     };
 
     // Единственное место создания 30-секундного REST-polling. Идемпотентна: повторный вызов
     // не создаёт второй интервал (сначала снимает существующий).
     const POLL_INTERVAL_MS = 30000;
+    const LIVE_TICKER_STALE_MS = 10000;
+    const LIVE_CONFIRM_RECONCILE_DELAY_MS = B1_FINALITY_SAFETY_LAG_MS + 250;
+    function clearLiveDataState() {
+      if (state.liveTickerTimer !== null) clearTimeout(state.liveTickerTimer);
+      if (state.liveReconcileTimer !== null) clearTimeout(state.liveReconcileTimer);
+      state.liveTickerTimer = null;
+      state.liveReconcileTimer = null;
+      state.liveTicker = null;
+      state.lastConfirmedCandleKey = null;
+    }
+    function freshLiveTicker(symbol = state.symbol) {
+      const item = state.liveTicker;
+      return item && item.symbol === symbol && Number.isFinite(item.lastPrice) &&
+        item.lastPrice > 0 && Number.isFinite(item.receivedAtMs) &&
+        Date.now() - item.receivedAtMs <= LIVE_TICKER_STALE_MS ? item : null;
+    }
+    function renderLivePrice(updateChart = true) {
+      const live = freshLiveTicker();
+      const cached = state.snapshotsByKey.get(makeKey(state.symbol, state.interval));
+      const restPrices = cached && cached.dataset ? cached.dataset.prices : null;
+      let displayPrice = null;
+      let sourceText = 'Источник цены: —';
+      let sourceClass = 'meta';
+      if (live) {
+        displayPrice = live.lastPrice;
+        const ageMs = Math.max(0, Date.now() - live.receivedAtMs);
+        sourceText = `Источник цены: Bybit WS lastPrice · ${ageMs < 1000 ? ageMs + ' мс' : (ageMs / 1000).toFixed(1) + ' с'}`;
+        sourceClass = 'meta status-ok';
+      } else if (restPrices && Number.isFinite(restPrices.currentMarketPrice)) {
+        displayPrice = restPrices.currentMarketPrice;
+        const wsStale = state.liveTicker && state.liveTicker.symbol === state.symbol;
+        sourceText = `Источник цены: ${restPrices.currentPriceSource || 'Bybit REST'}${wsStale ? ' · WS устарел' : ''}`;
+        sourceClass = wsStale ? 'meta status-warn' : 'meta status-ok';
+      } else if (state.liveTicker && state.liveTicker.symbol === state.symbol) {
+        displayPrice = state.liveTicker.lastPrice;
+        sourceText = 'Источник цены: Bybit WS lastPrice · УСТАРЕЛ';
+        sourceClass = 'meta status-warn';
+      }
+      if (displayPrice !== null) document.getElementById('livePrice').textContent = fmtPrice(displayPrice);
+      document.getElementById('priceSourceLabel').textContent = sourceText;
+      document.getElementById('priceSourceLabel').className = sourceClass;
+      if (updateChart && displayPrice !== null) chart.updateMarketPrice(displayPrice);
+    }
+    function scheduleLiveRestReconciliation(delayMs, reason) {
+      if (state.liveReconcileTimer !== null) return;
+      const symbol = state.symbol;
+      const interval = state.interval;
+      state.liveReconcileTimer = setTimeout(() => {
+        state.liveReconcileTimer = null;
+        if (symbol !== state.symbol || interval !== state.interval) return;
+        console.info('[CryptoAnalyst][B1-D] REST reconciliation:', reason);
+        loadAndAnalyze(false);
+      }, Math.max(0, delayMs));
+    }
+    function handleLiveTicker(event) {
+      if (!event || event.symbol !== state.symbol || !Number.isFinite(event.lastPrice) || event.lastPrice <= 0) return;
+      state.liveTicker = event;
+      renderLivePrice(true);
+      if (state.liveTickerTimer !== null) clearTimeout(state.liveTickerTimer);
+      state.liveTickerTimer = setTimeout(() => {
+        state.liveTickerTimer = null;
+        renderLivePrice(true);
+      }, LIVE_TICKER_STALE_MS + 25);
+    }
+    function handleLiveKline(event) {
+      if (!event || event.symbol !== state.symbol || event.interval !== state.interval) return;
+      if (!event.valid || !event.candle) {
+        scheduleLiveRestReconciliation(0, event.reason || 'invalid WebSocket kline');
+        return;
+      }
+      const stepMs = BybitAdapter.intervalToMs(event.interval);
+      const result = chart.upsertLiveCandle(event.candle, stepMs);
+      if (['invalid', 'no-base', 'older', 'conflict', 'gap'].includes(result.status)) {
+        scheduleLiveRestReconciliation(0, 'WebSocket kline requires REST reconciliation: ' + result.status);
+        return;
+      }
+      if (event.candle.confirmed) {
+        const key = `${event.symbol}:${event.interval}:${event.candle.ts}`;
+        if (state.lastConfirmedCandleKey !== key) {
+          state.lastConfirmedCandleKey = key;
+          scheduleLiveRestReconciliation(LIVE_CONFIRM_RECONCILE_DELAY_MS, 'confirmed candle ' + key);
+        }
+      }
+    }
     function startPeriodicPoll() {
       if (state.timerId !== null) clearInterval(state.timerId);
       state.timerId = setInterval(() => loadAndAnalyze(false), POLL_INTERVAL_MS);
@@ -4515,6 +4743,7 @@
 
     function clearDisplayForNewInstrument(symbol, interval, hasCachedSnapshot) {
       const tfText = tfLabel(interval);
+      clearLiveDataState();
       setStaleBanner(null);
       resetMetricsUi();
       document.getElementById('chartTitle').textContent = `График — ${symbol} (${tfText})`;
@@ -4617,7 +4846,10 @@
         { k: 'Допуск аналитики', v: qualityGateBlocked ? 'Заблокирована · WAIT' : 'Допущена к расчёту', cls: qualityGateBlocked ? 'status-err' : 'status-ok' }
       ]);
 
-      chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis, pInfo.currentMarketPrice);
+      const live = freshLiveTicker(dataset.symbol);
+      chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis,
+        live ? live.lastPrice : pInfo.currentMarketPrice);
+      renderLivePrice(false);
     }
 
     function renderError(symbol, interval, errorMsg) {
@@ -5749,8 +5981,10 @@
 
     document.getElementById('refreshBtn').addEventListener('click', () => loadAndAnalyze(false));
     document.getElementById('resetViewBtn').addEventListener('click', () => chart.resetView());
-    BybitWsClient.hooks.onStatus = () => renderConnStatus();
+    BybitWsClient.hooks.onStatus = () => { renderConnStatus(); renderLivePrice(); };
     BybitWsClient.hooks.onRecovered = (_reason, syncMeta) => loadAndAnalyze(false, syncMeta);
+    BybitWsClient.hooks.onTicker = handleLiveTicker;
+    BybitWsClient.hooks.onKline = handleLiveKline;
     BybitWsClient.attachLifecycle();
 
     loadAndAnalyze(true);
