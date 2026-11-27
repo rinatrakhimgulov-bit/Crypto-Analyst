@@ -61,7 +61,8 @@ async function main() {
     await page.waitForFunction(() =>
       window.StageASelfTest &&
       window.B1DataContractSelfTest &&
-      window.B1QualityValidatorSelfTest,
+      window.B1QualityValidatorSelfTest &&
+      window.B1MtfSelfTest,
       { timeout: 15000 }
     );
 
@@ -69,7 +70,8 @@ async function main() {
       const stage = await window.StageASelfTest.runAll();
       const contract = window.B1DataContractSelfTest.runAll();
       const quality = window.B1QualityValidatorSelfTest.runAll();
-      return { stage, contract, quality };
+      const mtf = window.B1MtfSelfTest.runAll();
+      return { stage, contract, quality, mtf };
     });
 
     for (const [name, result] of Object.entries(suites)) {
@@ -466,6 +468,7 @@ async function main() {
       stageA: suites.stage.totals,
       b1Contract: suites.contract.totals,
       b1Quality: suites.quality.totals,
+      b1Mtf: suites.mtf.totals,
       b1Gate: gate,
       chartVisual,
       mobileChartVisual,
