@@ -189,7 +189,32 @@ function fixture(pivots, overrides = {}, options = {}) {
     raw_pivots: pivots,
     sequence
   };
-  return { policy: { ...POLICY, ...(options.policy || {}) }, snapshot, quality_report: report, b2b_result: b2b, analysis_as_of_ms: asOf, timeframe: '1h' };
+  const b2a = {
+    engine_version: '2.0.0-b2a',
+    policy_version: 'b2a-causal-swing-v1',
+    status: 'VALID',
+    admission: {
+      status: 'ADMITTED',
+      snapshot_id: SNAPSHOT_ID,
+      quality_report: {
+        snapshot_id: SNAPSHOT_ID,
+        validator_version: '1.1.0',
+        policy_version: 'b1-quality-v1',
+        checked_at_ms: report.checked_at_ms
+      }
+    },
+    snapshot_id: SNAPSHOT_ID,
+    symbol: 'BTCUSDT',
+    timeframe: '1h',
+    analysis_as_of_ms: asOf,
+    pivots: pivots.map(p => ({
+      pivot_id: p.pivot_id, type: p.type, price: p.price,
+      source_time_ms: p.source_time_ms, source_index: p.source_index,
+      confirmed_at_ms: p.confirmed_at_ms, available_at_ms: p.available_at_ms,
+      confirmation: { ...p.confirmation }
+    }))
+  };
+  return { policy: { ...POLICY, ...(options.policy || {}) }, snapshot, quality_report: report, b2a_result: b2a, b2b_result: b2b, analysis_as_of_ms: asOf, timeframe: '1h' };
 }
 
 function run(name, fn) {
@@ -210,7 +235,7 @@ const initialBull = [
 run('initial bullish break is named once and initializes protected low', () => {
   const input = fixture(initialBull, { 3: { close: 105, high: 106, low: 95, open: 100 } });
   const result = analyze(input);
-  assert.equal(result.status, 'VALID');
+  assert.equal(result.status, 'VALID', JSON.stringify(result.admission.reasons));
   assert.equal(result.structure_state, 'UP');
   assert.equal(result.events.length, 1);
   assert.equal(result.events[0].event_type, 'INITIAL_BULLISH_BREAK');
@@ -272,6 +297,22 @@ run('bullish BOS requires a later confirmed continuation high', () => {
   assert.equal(result.events[1].source_pivot_id, 'h110');
 });
 
+run('a lower high after bullish transition cannot become a bullish BOS level', () => {
+  const pivots = [
+    ...initialBull,
+    makePivot('l95', 'SWING_LOW', 95, 3, 4),
+    makePivot('h99', 'SWING_HIGH', 99, 4, 5)
+  ];
+  const input = fixture(pivots, {
+    3: { open: 100, close: 105, high: 106, low: 95 },
+    6: { open: 98, close: 100, high: 100, low: 97 }
+  });
+  const result = analyze(input);
+  assert.equal(result.structure_state, 'UP');
+  assert.deepEqual(result.events.map(e => e.event_type), ['INITIAL_BULLISH_BREAK']);
+  assert.equal(result.continuation_level, null);
+});
+
 run('bearish BOS requires a later confirmed continuation low', () => {
   const pivots = [
     makePivot('h110', 'SWING_HIGH', 110, 0, 1),
@@ -287,6 +328,23 @@ run('bearish BOS requires a later confirmed continuation low', () => {
   assert.equal(result.structure_state, 'DOWN');
   assert.deepEqual(result.events.map(e => e.event_type), ['INITIAL_BEARISH_BREAK', 'BEARISH_BOS']);
   assert.equal(result.events[1].source_pivot_id, 'l90');
+});
+
+run('a higher low after bearish transition cannot become a bearish BOS level', () => {
+  const pivots = [
+    makePivot('h110', 'SWING_HIGH', 110, 0, 1),
+    makePivot('l100', 'SWING_LOW', 100, 1, 2),
+    makePivot('h105', 'SWING_HIGH', 105, 3, 4),
+    makePivot('l101', 'SWING_LOW', 101, 4, 5)
+  ];
+  const input = fixture(pivots, {
+    3: { open: 100, close: 95, high: 105, low: 94 },
+    6: { open: 102, close: 100.5, high: 103, low: 100 }
+  });
+  const result = analyze(input);
+  assert.equal(result.structure_state, 'DOWN');
+  assert.deepEqual(result.events.map(e => e.event_type), ['INITIAL_BEARISH_BREAK']);
+  assert.equal(result.continuation_level, null);
 });
 
 run('bearish close through protected HL emits bullish-to-bearish CHoCH', () => {
@@ -318,6 +376,41 @@ run('bullish close through protected LH emits bearish-to-bullish CHoCH', () => {
   assert.equal(result.structure_state, 'UP');
   assert.deepEqual(result.events.map(e => e.event_type), ['INITIAL_BEARISH_BREAK', 'BULLISH_CHOCH']);
   assert.equal(result.events[1].source_pivot_id, 'h105');
+});
+
+run('a consumed initial high can later serve as the protected bullish reversal level', () => {
+  const pivots = [
+    ...initialBull,
+    makePivot('l95', 'SWING_LOW', 95, 3, 4)
+  ];
+  const input = fixture(pivots, {
+    3: { open: 100, close: 105, high: 106, low: 95 },
+    5: { open: 96, close: 90, high: 97, low: 89 },
+    6: { open: 95, close: 101, high: 102, low: 94 }
+  });
+  const result = analyze(input);
+  assert.equal(result.structure_state, 'UP');
+  assert.deepEqual(result.events.map(e => e.event_type), [
+    'INITIAL_BULLISH_BREAK', 'BEARISH_CHOCH', 'BULLISH_CHOCH'
+  ]);
+});
+
+run('a consumed initial low can later serve as the protected bearish reversal level', () => {
+  const pivots = [
+    makePivot('h110', 'SWING_HIGH', 110, 0, 1),
+    makePivot('l100', 'SWING_LOW', 100, 1, 2),
+    makePivot('h105', 'SWING_HIGH', 105, 3, 4)
+  ];
+  const input = fixture(pivots, {
+    3: { open: 100, close: 95, high: 105, low: 94 },
+    5: { open: 104, close: 111, high: 112, low: 103 },
+    6: { open: 105, close: 99, high: 106, low: 98 }
+  });
+  const result = analyze(input);
+  assert.equal(result.structure_state, 'DOWN');
+  assert.deepEqual(result.events.map(e => e.event_type), [
+    'INITIAL_BEARISH_BREAK', 'BULLISH_CHOCH', 'BEARISH_CHOCH'
+  ]);
 });
 
 run('a same-candle pivot cannot be used for that candle break', () => {
@@ -376,9 +469,10 @@ run('B2-B sequence label tampering fails closed', () => {
 });
 
 run('pivot price must match its actual source candle', () => {
-  const input = fixture(initialBull);
+  const input = fixture(initialBull.map(p => ({ ...p, confirmation: { ...p.confirmation } })));
   input.b2b_result.raw_pivots[1].price = 101;
   input.b2b_result.sequence[1].price = 101;
+  input.b2a_result.pivots[1].price = 101;
   const result = analyze(input);
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'B2B_PIVOT_CANDLE_PROVENANCE_MISMATCH');
@@ -466,6 +560,8 @@ run('prefix replay preserves every event already available at the prefix cutoff'
   prefix.quality_report.checked_at_ms = prefix.analysis_as_of_ms - 100;
   prefix.quality_report.closed_count = 5;
   prefix.quality_report.valid_count = 5;
+  prefix.b2a_result.analysis_as_of_ms = prefix.analysis_as_of_ms;
+  prefix.b2a_result.admission.quality_report.checked_at_ms = prefix.quality_report.checked_at_ms;
   prefix.b2b_result.analysis_as_of_ms = prefix.analysis_as_of_ms;
   prefix.b2b_result.admission.b2a_quality_report.checked_at_ms = prefix.quality_report.checked_at_ms;
   const replay = analyze(prefix);
@@ -480,6 +576,15 @@ run('B2-C independently reconstructs B2-B sequence and rejects omitted pivots', 
   const result = analyze(input);
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'B2B_SEQUENCE_DERIVATION_MISMATCH');
+});
+
+run('B2-C rejects a pivot omitted from both B2-B raw evidence and sequence', () => {
+  const input = fixture(initialBull);
+  input.b2b_result.raw_pivots.pop();
+  input.b2b_result.sequence.pop();
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'B2A_PIVOT_SET_MISMATCH');
 });
 
 run('B2-C rejects forged raw supersession metadata', () => {
@@ -498,9 +603,10 @@ run('B2-C rejects forged raw supersession metadata', () => {
 
 run('a consumed BOS swing high cannot emit repeated BOS on later closes', () => {
   const pivots = [
-    ...initialBull,
-    makePivot('l95', 'SWING_LOW', 95, 3, 4),
-    makePivot('h110', 'SWING_HIGH', 110, 4, 5)
+    makePivot('l90x', 'SWING_LOW', 90, 0, 1),
+    makePivot('h100x', 'SWING_HIGH', 100, 1, 2),
+    makePivot('l95x', 'SWING_LOW', 95, 3, 4),
+    makePivot('h110x', 'SWING_HIGH', 110, 4, 5)
   ];
   const input = fixture(pivots, {
     3: { open: 100, close: 105, high: 106, low: 95 },
@@ -508,7 +614,7 @@ run('a consumed BOS swing high cannot emit repeated BOS on later closes', () => 
     7: { open: 112, close: 115, high: 116, low: 111 }
   });
   const result = analyze(input);
-  assert.equal(result.events.filter(e => e.event_type === 'BULLISH_BOS').length, 1);
+  assert.equal(result.events.filter(e => e.event_type === 'BULLISH_BOS').length, 1, JSON.stringify({ events: result.events, pivots: result.pivots, continuation: result.continuation_level }));
 });
 
 
@@ -633,6 +739,7 @@ run('full B1 snapshot → B2-A → B2-B → B2-C chain emits a causal initial br
     },
     snapshot,
     quality_report: qualityReport,
+    b2a_result: b2a,
     b2b_result: b2b,
     analysis_as_of_ms: asOf,
     timeframe: '1h'
