@@ -179,6 +179,15 @@ run('full bullish alignment is explicit and unweighted', () => {
   assert.equal(result.alignment_direction, 'BULLISH');
   assert.equal(result.hierarchical_interpretation, 'FULL_TIMEFRAME_ALIGNMENT');
 });
+run('MTF display market label may differ from canonical snapshot market type', () => {
+  const input = makeInput();
+  input.mtf_result.market_type = 'Linear Perpetual';
+  const result = analyze(input);
+  assert.equal(result.status, 'VALID');
+  assert.equal(result.market_type, 'linear_perpetual');
+  assert.equal(result.source_market_type_label, 'Linear Perpetual');
+});
+
 run('full bearish alignment is symmetric', () => {
   const result = analyze(makeInput({ '1d': 'DOWN', '4h': 'DOWN', '1h': 'DOWN' }));
   assert.equal(result.alignment_status, 'FULL_BEARISH');
@@ -401,5 +410,5 @@ run('full B1-E three-timeframe snapshot plus actual B2-A/B/C engines yields UP|U
   assert.equal(result.hierarchical_interpretation, '1H_PULLBACK_AGAINST_BULLISH_1D_4H');
 });
 
-console.log('B2-F TESTS: ' + passed + '/24 passed');
-if (passed !== 24) process.exitCode = 1;
+console.log('B2-F TESTS: ' + passed + '/25 passed');
+if (passed !== 25) process.exitCode = 1;
