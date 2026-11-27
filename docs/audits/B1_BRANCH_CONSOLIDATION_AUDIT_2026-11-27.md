@@ -127,3 +127,9 @@ The controlled port described above has now been implemented on `integration/b1-
 The current branch is 48 commits ahead of main and 0 behind. Main HTML blob remains `02cbfb60d1a562e7b73e2734d1ab49b4cf91e2bf`. No merge has occurred.
 
 **Current audit status: implementation port complete; integration review still open.** The older independent review does not cover this current blob. The exact-artifact review request is in `docs/audits/PROMPT_B1_CURRENT_CONTRACT_INDEPENDENT_REVIEW_2026-11-27.md`. Remaining gates: independent review, live concurrent capture and spread calibration, browser transport abort verification, latest iPhone Safari panel check, owner acceptance. B2 remains gated.
+
+
+
+## Latest verification refresh — 2026-11-27
+
+The current HTML candidate blob is `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest completed CI run `45966502044`: Stage A 44/44, contract 32/32, validator 64/64, MTF 18/18, gate/UI/chart checks passed, zero browser page errors; 158/158 named self-tests. The new MTF tests ensure missing history depth fails before network calls and pending-finality candles remain context-only. Branch is 66 ahead / 0 behind main. Live Bybit is still blocked by HTTP 403 from both public hosts on GitHub Actions. No independent audit or owner acceptance has been received; main remains unchanged.
