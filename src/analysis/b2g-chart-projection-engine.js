@@ -290,7 +290,8 @@
     for (const [sourceTime, group] of ambiguousGroups) {
       const high = group.find(p => p.type === 'SWING_HIGH');
       const low = group.find(p => p.type === 'SWING_LOW');
-      if (group.length !== 2 || !high || !low) return blocked('AMBIGUOUS_PIVOT_PAIR_INVALID', meta);
+      if (group.length !== 2 || !high || !low || high.confirmed_at_ms !== low.confirmed_at_ms ||
+          high.available_at_ms !== low.available_at_ms) return blocked('AMBIGUOUS_PIVOT_PAIR_INVALID', meta);
       const statusVisibleAt = Math.max(high.available_at_ms, low.available_at_ms);
       if (statusVisibleAt > asOf) return blocked('AMBIGUOUS_STATUS_AFTER_CUTOFF', meta);
       for (const p of group) ambiguousPivots.push({
