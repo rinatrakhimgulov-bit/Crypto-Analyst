@@ -216,3 +216,16 @@ The integration branch now contains the current-contract B1-E MTF implementation
 GitHub Actions run `45965680821` passed Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 12/12, quality-gate/UI and chart assertions, with zero browser page errors. The live Bybit probe was blocked by HTTP 403 from both REST hosts in the GitHub runner. This does not prove live exchange availability or production MTF calibration.
 
 B1-E remains isolated from the existing directional decision path. The current-contract implementation still requires an independent review of this exact blob, recorded concurrent live Bybit 1D/4H/1H captures and measured provider-time spread policy, transport-level cancellation verification, latest quality-panel Safari visual check, and explicit owner acceptance. No merge to main has occurred. B2 Market Structure remains gated on B1 acceptance.
+
+
+
+
+## 14. Latest quality identity hardening and verification — 2026-11-27
+
+The canonical quality report is now bound to the exact canonical snapshot. A non-empty `snapshot_id` is required by the B1 validator, emitted in every report, and checked by both B1-C and B1-E. A version-correct `VALID` report for another snapshot is not admissible and results in WAIT. This closes a report/snapshot association gap found during internal review.
+
+B1-E also requires an explicit `closedCandleCount` in `fetchAndAssemble()`; there is no silent default. Pending-finality candles are retained in a dedicated context collection and remain outside the closed-only analysis slice.
+
+Latest candidate HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Latest completed CI run `45966700299`: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18, gate/UI and C1 chart assertions passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public hosts on the runner. This does not certify live market connectivity or strategy performance.
+
+The current candidate is more thoroughly regression-tested, but still not accepted: exact-artifact independent review, live concurrent provider-time capture and spread calibration, transport-level abort verification, latest iPhone Safari panel check, and explicit owner acceptance remain open. Main remains unchanged.
