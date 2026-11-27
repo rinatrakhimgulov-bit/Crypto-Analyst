@@ -1834,7 +1834,7 @@
         });
         test('11 forming and pending-finality candles never enter the closed-only analysis slice', () => {
           const result = run();
-          for (const tf of REQUIRED) {
+          for (const tf of B1MtfEngine.REQUIRED_TIMEFRAMES) {
             expect(result.timeframes[tf].analysis_candles.every(c =>
               c.closed_state === 'TIME_DERIVED' &&
               c.open_time_ms <= result.analysis_as_of_ms &&
