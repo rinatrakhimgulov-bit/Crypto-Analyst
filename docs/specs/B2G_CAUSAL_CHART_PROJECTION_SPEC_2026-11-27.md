@@ -48,7 +48,8 @@ A historical chart may anchor an item to an earlier source candle, but it must n
 
 Return only overlay data:
 - `swing_markers`: active sequence pivots with label, type, price, source/confirmation/availability times and sequence IDs;
-- `superseded_pivots`: raw pivots excluded from the active alternating sequence, clearly marked;
+- `superseded_pivots`: raw pivots excluded by same-side replacement, clearly marked;
+- `ambiguous_pivots`: same-candle high/low pairs preserved as raw evidence but excluded from the active alternating sequence;
 - `structure_events`: B2-C event type, direction, level, source pivot, break candle and availability;
 - `zones`: confirmed B2-D bounds, role, representative price, touch count, first/last touch, availability and freshness status;
 - `candidate_levels`: optional B2-D candidates, clearly distinct from confirmed zones;
