@@ -343,3 +343,28 @@ B1 находится в исследовании. Основной HTML не и
 Предложен минимальный план B1: сохранить текущий JS adapter как первый provider, добавить canonical mapping + pure validator + mandatory gate + stale suppression, затем common cutoff и только потом второй provider. Предварительная рекомендация: не мигрировать на Python backend до доказанной необходимости.
 
 Подробности: `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`. Код приложения не изменён.
+
+
+
+## 14. B1-A/B/C implementation and candidate verification — 2026-11-27
+
+**Branch:** `b1/contract-review` (candidate only; `main` untouched).
+
+**B1-A:** provider-neutral canonical snapshot mapping; explicit provenance and provider-time semantics; 500 ms finality safety lag; OPEN/TIME_DERIVED/UNKNOWN states; raw source-order evidence; identical duplicate counting; conflicting duplicate timestamp quarantine; strict seven-field Bybit V5 kline row validation; local fallback cannot certify legacy closed candles.
+
+**B1-B:** pure deterministic `B1QualityValidator.validate(snapshot, policy, validationNowMs)`; explicit policy and clock; provenance/schema/OHLCV/time/finality/freshness/history/gap/duplicate/order checks; fail-closed status precedence. Latest suites: canonical contract 32/32 and validator 63/63.
+
+**B1-C:** versioned policy `b1-quality-policy-2026-11-27-v1`; validation inserted between canonical mapping and analytics; only VALID permits directional calculations; all other/missing statuses produce WAIT. Cached data on failed REST refresh is revalidated, forced STALE unless INVALID, and cannot retain LONG/SHORT. UI exposes B1 status.
+
+**Verification:** GitHub Actions Chromium run passed: StageASelfTest 44/44, B1 contract 32/32, B1 validator 63/63, B1 gate cases (five non-VALID statuses + missing report + VALID pass-through), cleanup restoration assertions, zero page errors. Manual iPhone Safari check by user passed for BTCUSDT/ETHUSDT and 1H/4H/1D switching and refresh.
+
+**Live API limitation:** GitHub-hosted runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`; browser fetch also failed in that runner. Workflow reports `SKIPPED_PROVIDER_BLOCKED` rather than claiming live verification. The user's iPhone UI check (BTC/ETH, 1H/4H/1D, refresh) was performed before the B1-C gate/UI change; the latest B1-C build needs a final iPhone retest. CI has not independently sampled live Bybit candles.
+
+Candidate not merged. Remaining acceptance work: independent review of B1-C diff and a fresh reproducible live REST capture from an environment not blocked by Bybit. No B2 work started.
+
+Details: `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md`.
+
+
+### B1-C gate identity binding and end-to-end regression hardening — 2026-11-27
+
+The mandatory gate now requires the current validator version and current policy version as well as status VALID. Mismatched or missing report identity fails closed as INVALID. The Playwright harness now exercises real normalization → canonical snapshot → validator → engine using deterministic synthetic Bybit-format rows: VALID yields 159 closed candles and populated EMA20/EMA50/ATR14; negative volume yields INVALID/WAIT with empty indicators; expired transport age yields STALE/WAIT with empty indicators. Latest Actions run passed Stage A 44/44, contract 32/32, validator 63/63, gate assertions, cleanup restoration, and zero page errors. Live API check was skipped because GitHub Actions receives HTTP 403 from both Bybit hosts. Candidate remains unmerged; latest UI still needs iPhone Safari verification.

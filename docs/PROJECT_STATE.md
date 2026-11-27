@@ -283,3 +283,26 @@ B0 acceptance: StageASelfTest 44/44 в изолированном harness; EMA/A
 ## B1 current adapter mapping — 2026-11-26
 
 Подготовлен `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md`: сопоставление BybitAdapter с canonical Candle/Snapshot/QualityReport и 11 конкретных разрывов (canonical contract, duplicates, future timestamps, provider-time fallback, closed-state, quality gate, coverage, pagination, MTF cutoff, stale cache). Предложен минимальный план B1 без переписывания приложения и предварительная рекомендация сохранить JavaScript на первом проходе; Python backend оставить открытой опцией при доказанной необходимости. Это спецификация, не реализация.
+
+
+
+## Актуальное состояние B1 — 2026-11-27 (candidate, не слит в main)
+
+* Ветка реализации и проверки: `b1/contract-review`. `main` не изменялся.
+* B1-A: canonical snapshot mapping, provider provenance/time, closed/open/unknown candle states, raw-order diagnostics, duplicate conflict quarantine, strict Bybit 7-field row schema, no local-clock certification of closed candles.
+* B1-B: deterministic pure validator with explicit policy and validation time; 63 regression cases. Canonical contract suite: 32 cases.
+* B1-C: mandatory fail-closed gate is now connected to `BasicAnalyticsEngine.analyze()`. Only `VALID` with matching validator and policy versions permits directional calculation. Missing/mismatched report, `UNASSESSED`, `DEGRADED`, `INSUFFICIENT`, `STALE`, and `INVALID` produce WAIT.
+* Cached snapshot after REST refresh failure is revalidated and forced to STALE (unless INVALID); stale chart may remain visible, directional analysis is suppressed.
+* GitHub Actions Chromium run: Stage A 44/44, B1 contract 32/32, B1 validator 63/63; gate assertions pass; no page errors; cleanup restoration assertions pass.
+* CI live Bybit requests were blocked by HTTP 403 from both public REST hosts on GitHub runner. This is recorded as skipped, not passed. User manually verified iPhone Safari BTC/ETH and 1H/4H/1D switching and refresh on the pre-B1-C candidate. The latest B1-C build still needs a short iPhone retest of the new B1 status row and WAIT behavior. Earlier capture artifacts documented 180 successful REST samples, but those captures predate the final candidate hardening.
+* Candidate still requires independent code review and explicit acceptance before merge to main. Do not start B2 or claim trading-signal validation.
+
+Canonical implementation spec: `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md`.
+
+
+### B1-C additional hardening and latest CI — 2026-11-27
+
+* Gate verifies not only `status === VALID`, but also exact validator and policy versions. Missing/old/mismatched report identity is treated as INVALID (`QUALITY_REPORT_VERSION_MISMATCH`).
+* Browser integration harness now tests the actual adapter → canonical snapshot → validator → engine path with synthetic Bybit rows. VALID produced 159 closed candles and populated EMA20/EMA50/ATR14; negative volume → INVALID/WAIT/no indicators; expired transport age → STALE/WAIT/no indicators.
+* Latest Actions run passed: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, gate tests, cleanup restoration, zero page errors.
+* Live Bybit remains unverified from GitHub Actions because both hosts return HTTP 403 to the runner. Latest B1-C UI still needs the user's iPhone Safari retest of the new status row and blocked-data WAIT behavior.

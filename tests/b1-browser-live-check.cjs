@@ -1,0 +1,333 @@
+const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
+const { chromium } = require('playwright');
+
+const HTML = path.resolve('CryptoAnalyst_StageA_S6_updated.html');
+const PORT = 4173;
+
+async function getBybitKlines(symbol, interval) {
+  const failures = [];
+  for (const host of ['https://api.bybit.com', 'https://api.bytick.com']) {
+    const url = new URL('/v5/market/kline', host);
+    url.searchParams.set('category', 'linear');
+    url.searchParams.set('symbol', symbol);
+    url.searchParams.set('interval', interval);
+    url.searchParams.set('limit', '200');
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (response.status === 403) {
+        failures.push(`${new URL(host).host}: HTTP 403`);
+        continue;
+      }
+      if (!response.ok) throw new Error(`Bybit HTTP ${response.status} for ${symbol}/${interval} at ${host}`);
+      const json = await response.json();
+      if (json.retCode !== 0 || !Array.isArray(json.result?.list) || !Number.isSafeInteger(Number(json.time))) {
+        throw new Error(`Invalid Bybit payload for ${symbol}/${interval}: ${JSON.stringify(json).slice(0, 500)}`);
+      }
+      return {
+        symbol, interval, rows: json.result.list,
+        providerServerTimeMs: Number(json.time),
+        hostUsed: new URL(host).host
+      };
+    } catch (error) {
+      if (error && error.message && /HTTP 403/.test(error.message)) {
+        failures.push(error.message);
+        continue;
+      }
+      throw error;
+    }
+  }
+  const blocked = new Error(`Bybit denied GitHub Actions runner on both public REST hosts: ${failures.join('; ')}`);
+  blocked.code = 'PROVIDER_BLOCKED';
+  throw blocked;
+}
+
+async function main() {
+  if (!fs.existsSync(HTML)) throw new Error(`Missing candidate HTML: ${HTML}`);
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    fs.createReadStream(HTML).pipe(res);
+  });
+  await new Promise(resolve => server.listen(PORT, '127.0.0.1', resolve));
+
+  const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+  const page = await browser.newPage();
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+
+  try {
+    await page.goto(`http://127.0.0.1:${PORT}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForFunction(() =>
+      window.StageASelfTest &&
+      window.B1DataContractSelfTest &&
+      window.B1QualityValidatorSelfTest,
+      { timeout: 15000 }
+    );
+
+    const suites = await page.evaluate(async () => {
+      const stage = await window.StageASelfTest.runAll();
+      const contract = window.B1DataContractSelfTest.runAll();
+      const quality = window.B1QualityValidatorSelfTest.runAll();
+      return { stage, contract, quality };
+    });
+
+    for (const [name, result] of Object.entries(suites)) {
+      if (result.rejected) throw new Error(`${name}: test run was rejected`);
+      if (result.setupError) throw new Error(`${name}: setup error: ${result.setupError}`);
+      if (result.cleanupErrors && result.cleanupErrors.length) {
+        throw new Error(`${name}: cleanup errors: ${result.cleanupErrors.join('; ')}`);
+      }
+      if (!result.totals || result.totals.failed !== 0) {
+        const failed = (result.results || []).filter(x => !x.passed);
+        throw new Error(`${name}: ${JSON.stringify(result.totals)}; failed: ${JSON.stringify(failed)}`);
+      }
+    }
+
+    const gate = await page.evaluate(() => {
+      const candles = Array.from({ length: 120 }, (_, i) => {
+        const close = 100 + i * 0.2 + Math.sin(i / 3);
+        return {
+          ts: 1700000000000 + i * 3600000,
+          closeTs: 1700000000000 + (i + 1) * 3600000,
+          open: close - 0.1, high: close + 1, low: close - 1,
+          close, volume: 100 + (i % 7) * 3, turnover: close * (100 + (i % 7) * 3)
+        };
+      });
+      const base = {
+        closedCandles: candles,
+        prices: {
+          lastClosedPrice: candles[candles.length - 1].close,
+          formingClosePrice: null, tickerLastPrice: null,
+          currentMarketPrice: candles[candles.length - 1].close,
+          currentPriceSource: 'gate-test', priceWarning: null
+        }
+      };
+      const blockedStatuses = ['UNASSESSED', 'INVALID', 'STALE', 'INSUFFICIENT', 'DEGRADED'];
+      const blocked = blockedStatuses.map(status => {
+        const analysis = BasicAnalyticsEngine.analyze({
+          ...base,
+          qualityReport: {
+            status, validator_version: B1QualityValidator.VERSION,
+            policy_version: B1_QUALITY_POLICY.version,
+            reasons: [{ code: 'GATE_TEST_' + status }]
+          }
+        });
+        return {
+          status, decision: analysis.decision,
+          blocked: analysis.qualityGate && analysis.qualityGate.blocked,
+          gateStatus: analysis.qualityGate && analysis.qualityGate.status,
+          emptyIndicators: analysis.ema20.length === 0 && analysis.ema50.length === 0 && analysis.atr14.length === 0,
+          emptyLevels: analysis.levels.resistance === null && analysis.levels.support === null
+        };
+      });
+      const missing = BasicAnalyticsEngine.analyze(base);
+      const valid = BasicAnalyticsEngine.analyze({
+        ...base, qualityReport: {
+          status: 'VALID', validator_version: B1QualityValidator.VERSION,
+          policy_version: B1_QUALITY_POLICY.version, reasons: []
+        }
+      });
+      const mismatched = BasicAnalyticsEngine.analyze({
+        ...base, qualityReport: {
+          status: 'VALID', validator_version: 'old-validator',
+          policy_version: B1_QUALITY_POLICY.version, reasons: []
+        }
+      });
+      const policyMismatched = BasicAnalyticsEngine.analyze({
+        ...base, qualityReport: {
+          status: 'VALID', validator_version: B1QualityValidator.VERSION,
+          policy_version: 'old-policy', reasons: []
+        }
+      });
+      const now = Date.now();
+      const step = 3600000;
+      const lastOpen = Math.floor(now / step) * step;
+      const rows = [];
+      for (let i = 0; i < 160; i++) {
+        const ts = lastOpen - i * step;
+        const close = 50000 + (159 - i) * 2 + Math.sin((159 - i) / 5);
+        const open = close - 0.4;
+        const high = close + 2;
+        const low = open - 2;
+        const volume = 100 + (i % 9);
+        rows.push([String(ts), open.toFixed(2), high.toFixed(2), low.toFixed(2), close.toFixed(2), String(volume), (volume * close).toFixed(2)]);
+      }
+      const normalized = BybitAdapter.normalize(rows, {
+        symbol: 'BTCUSDT', interval: '60', hostUsed: 'api.bybit.com',
+        serverTimeMs: now, providerServerTimeMs: now, timeSource: 'provider',
+        clockSkewMs: 0, requestedCount: 160,
+        tickerStatus: { available: false, price: null, timeMs: null, hostUsed: 'api.bybit.com', error: 'gate fixture' }
+      });
+      const normalizedSnapshot = B1DataContract.toSnapshot(normalized);
+      const normalizedReport = B1QualityValidator.validate(normalizedSnapshot, B1_QUALITY_POLICY, Date.now()).report;
+      const normalizedAnalysis = BasicAnalyticsEngine.analyze({ ...normalized, qualityReport: normalizedReport });
+
+      const badSnapshot = structuredClone(normalizedSnapshot);
+      badSnapshot.candles_by_timeframe['1h'][0].volume_base = -1;
+      const invalidReport = B1QualityValidator.validate(badSnapshot, B1_QUALITY_POLICY, Date.now()).report;
+      const invalidAnalysis = BasicAnalyticsEngine.analyze({ ...normalized, qualityReport: invalidReport });
+
+      const staleReport = B1QualityValidator.validate(normalizedSnapshot, B1_QUALITY_POLICY, Date.now() + 121000).report;
+      const staleAnalysis = BasicAnalyticsEngine.analyze({ ...normalized, qualityReport: staleReport });
+
+      return {
+        blocked,
+        missing: { decision: missing.decision, blocked: missing.qualityGate && missing.qualityGate.blocked },
+        valid: {
+          decision: valid.decision, blocked: valid.qualityGate && valid.qualityGate.blocked,
+          status: valid.qualityGate && valid.qualityGate.status,
+          ema20Count: valid.ema20.length, ema50Count: valid.ema50.length, atr14Count: valid.atr14.length
+        },
+        mismatched: { decision: mismatched.decision, blocked: mismatched.qualityGate && mismatched.qualityGate.blocked, status: mismatched.qualityGate && mismatched.qualityGate.status, reasonCodes: mismatched.qualityGate && mismatched.qualityGate.reasonCodes },
+        policyMismatched: {
+          decision: policyMismatched.decision,
+          blocked: policyMismatched.qualityGate && policyMismatched.qualityGate.blocked,
+          status: policyMismatched.qualityGate && policyMismatched.qualityGate.status,
+          reasonCodes: policyMismatched.qualityGate && policyMismatched.qualityGate.reasonCodes
+        },
+        normalized: {
+          status: normalizedReport.status, validCount: normalizedReport.valid_count,
+          rawCount: normalized.quality.totalFetched, invalidRows: normalized.quality.invalidRows,
+          blocked: normalizedAnalysis.qualityGate && normalizedAnalysis.qualityGate.blocked,
+          ema20Count: normalizedAnalysis.ema20.length,
+          ema50Count: normalizedAnalysis.ema50.length,
+          atr14Count: normalizedAnalysis.atr14.length
+        },
+        invalid: {
+          status: invalidReport.status, decision: invalidAnalysis.decision,
+          blocked: invalidAnalysis.qualityGate && invalidAnalysis.qualityGate.blocked,
+          ema20Count: invalidAnalysis.ema20.length
+        },
+        stale: {
+          status: staleReport.status, decision: staleAnalysis.decision,
+          blocked: staleAnalysis.qualityGate && staleAnalysis.qualityGate.blocked,
+          ema20Count: staleAnalysis.ema20.length
+        }
+      };
+    });
+    const gateFailures = [
+      ...gate.blocked.filter(x =>
+        x.decision !== 'WAIT' || x.blocked !== true || x.gateStatus !== x.status ||
+        x.emptyIndicators !== true || x.emptyLevels !== true
+      ),
+      ...(gate.missing.decision !== 'WAIT' || gate.missing.blocked !== true ? [{ case: 'missing-report', ...gate.missing }] : []),
+      ...(gate.valid.blocked !== false || gate.valid.status !== 'VALID' ||
+          gate.valid.ema20Count === 0 || gate.valid.ema50Count === 0 || gate.valid.atr14Count === 0
+        ? [{ case: 'valid-report', ...gate.valid }] : []),
+      ...(gate.mismatched.decision !== 'WAIT' || gate.mismatched.blocked !== true ||
+          gate.mismatched.status !== 'INVALID' || !gate.mismatched.reasonCodes.includes('QUALITY_REPORT_VERSION_MISMATCH')
+          ? [{ case: 'validator-version-mismatch', ...gate.mismatched }] : []),
+      ...(gate.policyMismatched.decision !== 'WAIT' || gate.policyMismatched.blocked !== true ||
+          gate.policyMismatched.status !== 'INVALID' || !gate.policyMismatched.reasonCodes.includes('QUALITY_REPORT_VERSION_MISMATCH')
+          ? [{ case: 'policy-version-mismatch', ...gate.policyMismatched }] : []),
+      ...(gate.normalized.status !== 'VALID' || gate.normalized.validCount < 100 ||
+          gate.normalized.rawCount !== 160 || gate.normalized.invalidRows !== 0 ||
+          gate.normalized.blocked !== false || gate.normalized.ema20Count === 0 ||
+          gate.normalized.ema50Count === 0 || gate.normalized.atr14Count === 0
+        ? [{ case: 'normalized-valid-fixture', ...gate.normalized }] : []),
+      ...(gate.invalid.status !== 'INVALID' || gate.invalid.decision !== 'WAIT' ||
+          gate.invalid.blocked !== true || gate.invalid.ema20Count !== 0
+        ? [{ case: 'invalid-validation-gate', ...gate.invalid }] : []),
+      ...(gate.stale.status !== 'STALE' || gate.stale.decision !== 'WAIT' ||
+          gate.stale.blocked !== true || gate.stale.ema20Count !== 0
+        ? [{ case: 'stale-validation-gate', ...gate.stale }] : [])
+    ];
+    if (gateFailures.length) throw new Error(`B1 mandatory gate failures: ${JSON.stringify(gateFailures)}`);
+
+    const post = suites.stage.post || {};
+    const requiredRestoration = [
+      'fetchRestored', 'hooksRestored', 'configRestored',
+      'snapshotsRestored', 'clockRestored', 'visibilityRestored', 'onLineRestored'
+    ];
+    const unrestored = requiredRestoration.filter(key => post[key] !== true);
+    if (unrestored.length) throw new Error(`Stage A cleanup did not restore: ${unrestored.join(', ')}`);
+
+    // GitHub-hosted runners may be denied by Bybit. Record this as an explicit
+    // environment limitation, never as a successful live-data test.
+    const browserFetchProbe = await page.evaluate(async () => {
+      try {
+        const response = await fetch('https://api.bybit.com/v5/market/time', { cache: 'no-store' });
+        return { ok: response.ok, status: response.status };
+      } catch (error) {
+        return { ok: false, error: error.message };
+      }
+    });
+
+    let liveBybit;
+    try {
+      const inputs = [];
+      for (const symbol of ['BTCUSDT', 'ETHUSDT']) {
+        for (const interval of ['60', '240', 'D']) inputs.push(await getBybitKlines(symbol, interval));
+      }
+      const checks = await page.evaluate(items => {
+        const policy = {
+          version: 'ci-live-smoke-2026-11-27',
+          finality_safety_lag_ms: 500,
+          future_tolerance_ms: 30000,
+          max_transport_age_ms: 120000,
+          max_market_series_lag_ms_by_timeframe: {
+            '1h': 7200000, '4h': 28800000, '1d': 172800000
+          },
+          minimum_required_count_by_timeframe: {
+            '1h': 100, '4h': 100, '1d': 100
+          },
+          allow_identical_duplicates: true
+        };
+        return items.map(input => {
+          const providerTime = input.providerServerTimeMs;
+          const dataset = BybitAdapter.normalize(input.rows, {
+            symbol: input.symbol, interval: input.interval,
+            hostUsed: input.hostUsed, serverTimeMs: providerTime,
+            providerServerTimeMs: providerTime, timeSource: 'provider',
+            clockSkewMs: providerTime - Date.now(), requestedCount: 200,
+            tickerStatus: {
+              available: false, price: null, timeMs: null,
+              hostUsed: input.hostUsed, error: 'Ticker excluded from kline quality smoke test'
+            }
+          });
+          const snapshot = B1DataContract.toSnapshot(dataset);
+          const report = B1QualityValidator.validate(snapshot, policy, Date.now()).report;
+          return {
+            symbol: input.symbol, interval: input.interval, host: dataset.hostUsed,
+            timeSource: dataset.timeSource, rawRows: dataset.quality.totalFetched,
+            invalidRows: dataset.quality.invalidRows, candles: dataset.allCandles.length,
+            closedCandles: dataset.closedCandles.length, status: report.status,
+            reasons: report.reasons.map(reason => reason.code)
+          };
+        });
+      });
+      const bad = checks.filter(x =>
+        !['api.bybit.com', 'api.bytick.com'].includes(x.host) ||
+        x.timeSource !== 'provider' || x.rawRows !== 200 || x.invalidRows !== 0 ||
+        x.candles < 100 || x.closedCandles < 100 ||
+        !['VALID', 'DEGRADED'].includes(x.status)
+      );
+      if (bad.length) throw new Error(`Live Bybit data-quality checks failed: ${JSON.stringify(bad)}`);
+      liveBybit = { status: 'PASS', checks };
+    } catch (error) {
+      if (error && error.code === 'PROVIDER_BLOCKED') {
+        liveBybit = { status: 'SKIPPED_PROVIDER_BLOCKED', reason: error.message };
+      } else {
+        throw error;
+      }
+    }
+
+    if (pageErrors.length) throw new Error(`Browser page errors: ${pageErrors.join(' | ')}`);
+    console.log(JSON.stringify({
+      stageA: suites.stage.totals,
+      b1Contract: suites.contract.totals,
+      b1Quality: suites.quality.totals,
+      b1Gate: gate,
+      cleanup: post, browserFetchProbe, liveBybit, pageErrors
+    }, null, 2));
+  } finally {
+    await browser.close();
+    await new Promise(resolve => server.close(resolve));
+  }
+}
+
+main().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

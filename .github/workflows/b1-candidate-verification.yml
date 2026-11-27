@@ -1,0 +1,28 @@
+name: B1 candidate browser and live-data verification
+
+on:
+  push:
+    branches:
+      - b1/contract-review
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-and-live-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run browser, self-test, and live Bybit verification
+        run: node tests/b1-browser-live-check.cjs

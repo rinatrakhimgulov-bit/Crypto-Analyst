@@ -237,3 +237,22 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 ## 14. B1 current adapter mapping — 2026-11-26
 
 `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps Stage A `BybitAdapter` to the proposed provider-neutral contract and records 11 implementation gaps. Proposed minimal path: retain JS for B1 first pass; canonical mapping, pure validator, mandatory quality gate, stale-cache suppression, then MTF cutoff and second provider. Specification only; no code changes.
+
+
+
+## 15. B1-A/B/C candidate implementation — 2026-11-27
+
+* `CryptoAnalyst_StageA_S6_updated.html`: canonical B1 snapshot mapping, pure validator, mandatory fail-closed gate, stale-cache signal suppression, validator status UI, strengthened mock fixtures.
+* `tests/b1-browser-live-check.cjs`: Playwright Chromium harness for Stage A, B1 contract, B1 validator, gate, cleanup restoration, and live provider probe.
+* `.github/workflows/b1-candidate-verification.yml`: candidate-branch verification workflow.
+* `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md`: runtime policy, gate behavior, cache handling, recovery semantics, scope.
+* `docs/specs/B1B_QUALITY_VALIDATOR_SPEC_2026-11-27.md`: appended B1-C integration section.
+
+CI results: 44/44 Stage A, 32/32 B1 contract, 63/63 B1 validator; gate assertions passed. Live Bybit CI probe skipped because both public hosts returned HTTP 403 to GitHub runner. Candidate only; main unchanged.
+
+
+### B1-C hardening — 2026-11-27
+
+* `BasicAnalyticsEngine.analyze()`: requires exact active validator and policy version identity, otherwise fail-closed INVALID/WAIT.
+* `tests/b1-browser-live-check.cjs`: end-to-end synthetic normalization/contract/validator/engine checks for VALID, INVALID, STALE; verifies indicator arrays only appear for VALID.
+* Latest CI: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, gate/cleanup checks passed; live Bybit probe skipped on runner HTTP 403.

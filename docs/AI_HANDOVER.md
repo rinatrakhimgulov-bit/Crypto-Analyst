@@ -1166,3 +1166,21 @@ B1 adapter mapping update — 26.11.2026:
 * `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps the exact Stage A `BybitAdapter` (lines 546–857) to the proposed canonical contract and lists 11 gaps.
 * Keep current JS adapter as first provider; do not rewrite or migrate to Python before proving need. Proposed B1 first pass: canonical mapping → pure validator → quality gate → stale-cache suppression → MTF cutoff → second provider.
 * This is a specification only; canonical HTML remains unchanged.
+
+
+
+## B1 candidate handover — 2026-11-27
+
+* Candidate branch: `b1/contract-review`. Never assume candidate changes are in `main`; main remains the source of truth until explicit acceptance and merge.
+* B1-A/B/C are implemented on the candidate. B1-C now gates `BasicAnalyticsEngine.analyze()`: only quality status VALID permits directional calculations; all other statuses and missing reports return WAIT.
+* Runtime policy: `b1-quality-policy-2026-11-27-v1`; 500 ms finality lag, 30 s future tolerance, 120 s transport age, two-interval market-series lag, 100 closed candles minimum, identical duplicates accepted as evidence but remain DEGRADED and therefore blocked.
+* Cached data after a failed REST refresh is revalidated and forced STALE unless INVALID. The chart can remain visible; directional analysis must be WAIT.
+* GitHub Actions Chromium verification passed: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, B1 gate cases passed, cleanup restored, zero page errors.
+* GitHub Actions could not access live Bybit: both `api.bybit.com` and `api.bytick.com` returned HTTP 403; browser fetch failed from runner. Do not describe this as live API success. User's iPhone Safari check passed on the pre-B1-C candidate; the latest B1-C build needs a final iPhone retest. Earlier capture logs predate final hardening.
+* Do not merge until independent review of B1-C and a fresh reproducible live REST capture from a non-blocked environment. Do not start B2 yet.
+* Full specification: `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-11-27.md`.
+
+
+### B1-C gate hardening — 2026-11-27
+
+The engine requires exact `validator_version` and `policy_version` identity in addition to `status: VALID`. A hand-built or outdated report cannot pass. The latest browser harness exercises actual synthetic adapter → canonical → validator → engine flow; VALID produces populated EMA/ATR arrays, while INVALID negative volume and STALE transport age produce WAIT with no indicators. Latest Actions: 44/44 Stage A, 32/32 contract, 63/63 validator; gate and cleanup passed; no page errors. GitHub-hosted runner is blocked by Bybit HTTP 403 on both public REST hosts. Latest B1-C status-row/blocked-WAIT behavior still requires user-side iPhone Safari confirmation. Do not merge or start B2 until acceptance conditions are satisfied.

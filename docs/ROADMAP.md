@@ -78,20 +78,20 @@ Crypto Analyst развивается как независимая от кон�
 Критерий завершения: аудит покрывает полный путь данных и все используемые в UI аналитические выводы; спорные выводы имеют воспроизводимые доказательства.
 
 ### B1 — Надёжный аналитический набор данных
-**Статус: В ИССЛЕДОВАНИИ (rinng/CCXT проверены; draft data contract подготовлен; реализация не начата).**
+**Статус: НА ПРОВЕРКЕ (B1-A/B/C реализованы в candidate branch; latest Chromium CI passed; iPhone Safari check of the new B1-C UI and fresh live REST evidence remain outstanding; merge in main not performed).**
 
-- Единый контракт dataset, независимый от конкретной биржи/поставщика данных (draft: `docs/specs/B1_DATA_CONTRACT_DRAFT.md`).
-- Адаптеры источников с обязательными метаданными provenance, временем биржи/получения и правилами преобразования.
-- Синхронизированное получение 1D / 4H / 1H.
-- Разделение закрытых и формирующихся свечей.
-- Проверка пропусков, дубликатов, сортировки, временных границ, аномалий и свежести.
-- Явный quality status и причины проблем.
-- Запрет LONG/SHORT при критических дефектах данных; WAIT с понятной причиной.
-- Тесты на фиксированных известных наборах и граничных случаях.
-- Устранение D0-01: INVALID quality не может пропустить LONG/SHORT.
-- Устранение D0-02: stale cache не может отображать старый LONG/SHORT как актуальный сигнал.
+- Единый provider-neutral dataset contract; canonical mapping сохраняет provenance, provider time, volume/turnover, finality state и raw diagnostics.
+- Bybit V5 adapter требует строгую семипольную kline row schema; conflicting duplicates quarantine; local clock fallback не сертифицирует закрытые свечи.
+- B1-B deterministic quality validator проверяет provenance, timestamps, OHLCV, finality, freshness, history coverage, gaps, duplicates и raw ordering.
+- B1-C подключает validator к активному `BasicAnalyticsEngine.analyze()`: только `VALID` разрешает расчёт directional-признаков; остальные статусы и отсутствие отчёта дают WAIT без EMA/ATR и S/R.
+- Gate требует совпадения `validator_version` и `policy_version` с текущими реализациями; несовпадение трактуется как INVALID.
+- Cached data после REST refresh failure повторно валидируется и принудительно становится STALE (кроме INVALID); прежний LONG/SHORT не сохраняется как актуальный.
+- Последняя Chromium CI-проверка: Stage A 44/44, B1 contract 32/32, B1 validator 63/63; VALID synthetic pipeline создал 159 closed candles и EMA20/EMA50/ATR14; negative volume → INVALID/WAIT; expired transport age → STALE/WAIT; gate identity mismatch tests passed; cleanup restored; zero page errors.
+- Live Bybit CI probe не пройден и не считается успешным: GitHub runner получает HTTP 403 от `api.bybit.com` и `api.bytick.com`. Пользователь проверил предыдущую сборку на iPhone, но ещё не проверял новый B1-C status row и WAIT при заблокированном качестве.
+- Кандидат находится в `b1/contract-review`; `main` не менялся.
 
-Критерий завершения: аналитика получает согласованный и проверяемый набор данных, а дефекты качества невозможно незаметно превратить в торговый сигнал.
+Критерий завершения: аналитика получает согласованный и проверяемый набор данных, а дефекты качества невозможно незаметно превратить в торговый сигнал. До приёмки нужны независимая проверка B1-C, повторный Safari-тест последней сборки и свежий воспроизводимый REST-захват из среды, доступной Bybit.
+
 
 ### B2 — Market Structure Engine
 **Статус: НЕ НАЧАТ.**
@@ -258,6 +258,6 @@ Crypto Analyst развивается как независимая от кон�
 
 ## 8. Ближайшее действие
 
-Начать с B0: провести полный аудит текущего аналитического конвейера без изменения исходника. На выходе получить проверяемую карту фактической реализации и точную спецификацию B1.
+Завершить приёмку candidate-ветки B1-A/B/C: проверить latest B1-C UI на iPhone Safari (B1 status row и WAIT при заблокированном качестве), провести независимый review интеграции quality gate и получить свежую воспроизводимую проверку REST Bybit из среды, которую провайдер не блокирует. После явного принятия перенести проверенный candidate в `main` и обновить этот Roadmap. До этого B2 не начинать.
 
-**Не переходить к реализации B1, пока B0 не завершён, не проверен и не принят.**
+**Текущая проверка не равна merge/acceptance: `main` остаётся нетронутым.**

@@ -543,6 +543,8 @@
     // =========================================================================
     // 1. СЛОЙ ЗАГРУЗКИ И НОРМАЛИЗАЦИИ ДАННЫХ (Bybit V5 Linear Perpetual)
     // =========================================================================
+    const B1_FINALITY_SAFETY_LAG_MS = 500;
+
     const BybitAdapter = {
       source: 'Bybit',
       marketType: 'Linear Perpetual',
@@ -556,6 +558,12 @@
         if (interval === '240') return 4 * 60 * 60 * 1000;
         if (interval === 'D') return 24 * 60 * 60 * 1000;
         return null;
+      },
+
+      parseProviderTime(value) {
+        const parsed = typeof value === 'number' ? value :
+          (typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : NaN);
+        return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
       },
 
       isAlignedToUtcGrid(openTs, interval) {
@@ -609,17 +617,22 @@
         try {
           const tickerUrl = `${baseHost}/v5/market/tickers?category=linear&symbol=${encodeURIComponent(symbol)}`;
           const tickerJson = await this.fetchJsonWithTimeout(tickerUrl, externalSignal, 9000);
-          if (!tickerJson.result || !Array.isArray(tickerJson.result.list) || tickerJson.result.list.length === 0) {
+          if (!tickerJson.result || !Array.isArray(tickerJson.result.list) ||
+              tickerJson.result.list.length !== 1 || !tickerJson.result.list[0] ||
+              tickerJson.result.list[0].symbol !== symbol) {
             return {
               available: false,
               price: null,
               timeMs: null,
               hostUsed: hostLabel,
-              error: 'Пустой список тикеров'
+              error: 'Ответ тикера не содержит ровно один инструмент с запрошенным symbol'
             };
           }
           const tItem = tickerJson.result.list[0];
-          const parsedLast = Number(tItem.lastPrice);
+          const lastPriceRaw = tItem && tItem.lastPrice;
+          const parsedLast = typeof lastPriceRaw === 'string' &&
+            /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(lastPriceRaw)
+            ? Number(lastPriceRaw) : NaN;
           if (!Number.isFinite(parsedLast) || parsedLast <= 0) {
             return {
               available: false,
@@ -629,9 +642,7 @@
               error: 'Некорректное значение lastPrice'
             };
           }
-          const tickerTimeMs = Number.isFinite(Number(tickerJson.time)) && Number(tickerJson.time) > 0
-            ? Number(tickerJson.time)
-            : null;
+          const tickerTimeMs = this.parseProviderTime(tickerJson.time);
           return {
             available: true,
             price: parsedLast,
@@ -674,17 +685,20 @@
               throw new Error('Некорректный формат списка свечей');
             }
 
-            const serverTimeMs = Number.isFinite(Number(klineJson.time)) && Number(klineJson.time) > 0
-              ? Number(klineJson.time)
-              : Date.now();
-            const clockSkewMs = serverTimeMs - Date.now();
+            const providerServerTimeMs = this.parseProviderTime(klineJson.time);
+            const timeSource = providerServerTimeMs !== null ? 'provider' : 'local_fallback';
+            const serverTimeMs = providerServerTimeMs !== null ? providerServerTimeMs : Date.now();
+            const clockSkewMs = providerServerTimeMs !== null ? providerServerTimeMs - Date.now() : null;
 
             return this.normalize(klineJson.result.list, {
               symbol,
               interval,
               hostUsed: hostLabel,
               serverTimeMs,
+              providerServerTimeMs,
+              timeSource,
               clockSkewMs,
+              requestedCount: limit,
               tickerStatus
             });
           } catch (err) {
@@ -700,21 +714,43 @@
       },
 
       normalize(rawList, meta) {
-        const { symbol, interval, hostUsed, serverTimeMs, clockSkewMs, tickerStatus } = meta;
+        const { symbol, interval, hostUsed, serverTimeMs, providerServerTimeMs, timeSource, clockSkewMs, requestedCount, tickerStatus } = meta;
         const stepMs = this.intervalToMs(interval);
         const parsed = [];
         let invalidRows = 0;
         let invalidTimestamps = 0;
 
-        for (const row of rawList) {
+        for (let rawIndex = 0; rawIndex < rawList.length; rawIndex++) {
+          const row = rawList[rawIndex];
+          // Bybit V5 REST klines are arrays of seven fields. Reject malformed
+          // entries before indexing so null/object payloads cannot abort the
+          // whole normalization pass and erase otherwise usable diagnostics.
+          if (!Array.isArray(row) || row.length !== 7) {
+            invalidRows++;
+            invalidTimestamps++;
+            continue;
+          }
+          if (typeof row[0] !== 'string' || !/^\d+$/.test(row[0])) {
+            invalidTimestamps++;
+            invalidRows++;
+            continue;
+          }
+          const numericFields = row.slice(1, 7);
+          const numericStringPattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
+          if (numericFields.some(value => typeof value !== 'string' || !numericStringPattern.test(value))) {
+            invalidRows++;
+            continue;
+          }
+
           const openTs = Number(row[0]);
           const open = Number(row[1]);
           const high = Number(row[2]);
           const low = Number(row[3]);
           const close = Number(row[4]);
           const volume = Number(row[5]);
+          const turnover = Number(row[6]);
 
-          if (!Number.isFinite(openTs) || !Number.isInteger(openTs) || openTs <= 0 || openTs > serverTimeMs + 24 * 60 * 60 * 1000) {
+          if (!Number.isSafeInteger(openTs) || openTs <= 0 || openTs > serverTimeMs + 24 * 60 * 60 * 1000) {
             invalidTimestamps++;
             invalidRows++;
             continue;
@@ -726,6 +762,7 @@
             Number.isFinite(low) && low > 0 &&
             Number.isFinite(close) && close > 0 &&
             Number.isFinite(volume) && volume >= 0 &&
+            Number.isFinite(turnover) && turnover >= 0 &&
             high >= Math.max(open, close, low) &&
             low <= Math.min(open, close, high);
 
@@ -735,20 +772,53 @@
           }
 
           const closeTs = stepMs ? openTs + stepMs : null;
-          parsed.push({ ts: openTs, closeTs, open, high, low, close, volume });
+          parsed.push({ ts: openTs, closeTs, open, high, low, close, volume, turnover, rawIndex });
         }
 
-        parsed.sort((a, b) => a.ts - b.ts);
+        // Preserve source-order and duplicate evidence BEFORE sorting.
+        // Bybit V5 kline rows are expected newest-first (descending open time).
+        let rawOutOfOrderCount = 0;
+        for (let i = 1; i < parsed.length; i++) {
+          if (parsed[i].ts > parsed[i - 1].ts) rawOutOfOrderCount++;
+        }
+
+        parsed.sort((a, b) => a.ts - b.ts || a.rawIndex - b.rawIndex);
 
         const deduped = [];
         let duplicates = 0;
-        for (const c of parsed) {
-          if (deduped.length && deduped[deduped.length - 1].ts === c.ts) {
-            duplicates++;
-            deduped[deduped.length - 1] = c;
+        let identicalDuplicateCount = 0;
+        let conflictingDuplicateCount = 0;
+        const conflictingDuplicateTimestamps = [];
+        for (let i = 0; i < parsed.length;) {
+          let j = i + 1;
+          while (j < parsed.length && parsed[j].ts === parsed[i].ts) j++;
+          const group = parsed.slice(i, j);
+          const extraRows = group.length - 1;
+          if (extraRows > 0) {
+            duplicates += extraRows;
+            const first = group[0];
+            const identical = group.every(c =>
+              c.open === first.open &&
+              c.high === first.high &&
+              c.low === first.low &&
+              c.close === first.close &&
+              c.volume === first.volume &&
+              c.turnover === first.turnover &&
+              c.closeTs === first.closeTs
+            );
+            if (identical) {
+              identicalDuplicateCount += extraRows;
+              deduped.push(first);
+            } else {
+              conflictingDuplicateCount += extraRows;
+              conflictingDuplicateTimestamps.push(first.ts);
+              // Do not silently choose one conflicting provider row.
+              // The entire timestamp is quarantined from the normalized series.
+            }
           } else {
-            deduped.push(c);
+            deduped.push(group[0]);
           }
+          i = j;
         }
 
         let gaps = 0;
@@ -779,12 +849,17 @@
           }
         }
 
-        const finalityBufferMs = 500;
+        const finalityBufferMs = B1_FINALITY_SAFETY_LAG_MS;
         const closedCandles = [];
         const openCandles = [];
+        const hasAuthoritativeProviderTime = timeSource === 'provider' &&
+          Number.isSafeInteger(providerServerTimeMs) && providerServerTimeMs > 0;
 
         for (const c of deduped) {
-          if (stepMs && (c.ts + stepMs + finalityBufferMs) <= serverTimeMs) {
+          // Local wall-clock fallback may support display freshness, but it must
+          // never certify candle finality for the legacy analytics consumer.
+          if (hasAuthoritativeProviderTime && stepMs &&
+              (c.ts + stepMs + finalityBufferMs) <= providerServerTimeMs) {
             closedCandles.push(c);
           } else {
             openCandles.push(c);
@@ -824,6 +899,8 @@
           hostUsed,
           fetchedAtLocalMs: Date.now(),
           serverTimeMs,
+          providerServerTimeMs: Number.isFinite(providerServerTimeMs) ? providerServerTimeMs : null,
+          timeSource: timeSource === 'provider' ? 'provider' : 'local_fallback',
           clockSkewMs,
           allCandles: deduped,
           closedCandles,
@@ -840,11 +917,19 @@
           },
           quality: {
             totalFetched: rawList.length,
+            requestedCount: Number.isSafeInteger(requestedCount) && requestedCount > 0 ? requestedCount : null,
+            responseShortfall: Number.isSafeInteger(requestedCount) && requestedCount > rawList.length ? requestedCount - rawList.length : 0,
             closedCount: closedCandles.length,
             hasForming: Boolean(formingCandle),
             invalidRows,
             invalidTimestamps,
             duplicates,
+            identicalDuplicateCount,
+            conflictingDuplicateCount,
+            conflictingDuplicateTimestamps,
+            rawOutOfOrderCount,
+            rawOrderExpected: 'descending',
+            rawOrderDirection: parsed.length < 2 ? 'insufficient_samples' : (rawOutOfOrderCount === 0 ? 'descending' : 'descending_with_violations'),
             gaps,
             anomalousIntervals,
             misalignedTimestamps,
@@ -854,6 +939,923 @@
             formingCloseTs: formingCandle ? formingCandle.closeTs : null
           }
         };
+      }
+    };
+
+    // =========================================================================
+    // 1.1. B1 CANONICAL DATA CONTRACT (B1-A; mapping only, no decision gate yet)
+    // =========================================================================
+    const B1DataContract = (() => {
+      const VERSION = '1.0.0';
+      const NORMALIZER_VERSION = 'bybit-rest-v1';
+      const TIMEFRAME_MAP = { '60': '1h', '240': '4h', D: '1d' };
+
+      function canonicalSymbol(providerSymbol) {
+        const value = String(providerSymbol || '').toUpperCase();
+        const match = value.match(/^([A-Z0-9]+)(USDT|USDC)$/);
+        return match ? `${match[1]}/${match[2]}` : value;
+      }
+
+      function unassessedQuality(dataset, timeframe) {
+        const q = dataset.quality || {};
+        return {
+          status: 'UNASSESSED',
+          reasons: [{
+            code: 'VALIDATION_NOT_RUN',
+            severity: 'INFO',
+            timeframe,
+            message: 'B1 quality validator has not run yet.'
+          }],
+          expected_count: null,
+          received_count: Number.isFinite(q.totalFetched) ? q.totalFetched : (Array.isArray(dataset.allCandles) ? dataset.allCandles.length : 0),
+          valid_count: null,
+          missing_count: Number.isFinite(q.gaps) ? q.gaps : null,
+          duplicate_count: Number.isFinite(q.duplicates) ? q.duplicates : null,
+          out_of_order_count: null,
+          invalid_ohlc_count: null,
+          non_finite_count: null,
+          negative_volume_count: null,
+          misaligned_timestamp_count: Number.isFinite(q.misalignedTimestamps) ? q.misalignedTimestamps : null,
+          future_timestamp_count: null,
+          stale_age_ms: null,
+          insufficient_history: null
+        };
+      }
+
+      function toCanonicalCandle(candle, dataset, timeframe) {
+        let closedState = 'UNKNOWN';
+        const providerTime = dataset.providerServerTimeMs;
+        const closeBoundary = candle.closeTs;
+        if (
+          dataset.timeSource === 'provider' &&
+          Number.isSafeInteger(providerTime) &&
+          Number.isSafeInteger(closeBoundary) &&
+          closeBoundary > candle.ts
+        ) {
+          if (providerTime < closeBoundary) closedState = 'OPEN';
+          else if (providerTime >= closeBoundary + B1_FINALITY_SAFETY_LAG_MS) closedState = 'TIME_DERIVED';
+        }
+        return {
+          provider_id: 'bybit-v5-rest',
+          venue: 'bybit',
+          market_type: 'linear_perpetual',
+          canonical_symbol: canonicalSymbol(dataset.symbol),
+          provider_symbol: dataset.symbol,
+          timeframe,
+          open_time_ms: candle.ts,
+          close_time_ms: candle.closeTs,
+          open: candle.open,
+          high: candle.high,
+          low: candle.low,
+          close: candle.close,
+          volume_base: candle.volume,
+          volume_quote: Number.isFinite(candle.turnover) ? candle.turnover : null,
+          trade_count: null,
+          taker_buy_volume_base: null,
+          closed_state: closedState,
+          provider_event_time_ms: Number.isFinite(dataset.providerServerTimeMs) ? dataset.providerServerTimeMs : null,
+          received_at_ms: dataset.fetchedAtLocalMs,
+          source_reference: {
+            endpoint: '/v5/market/kline',
+            host: dataset.hostUsed,
+            raw_index: Number.isInteger(candle.rawIndex) ? candle.rawIndex : null
+          },
+          normalizer_version: NORMALIZER_VERSION
+        };
+      }
+
+      function toSnapshot(dataset) {
+        if (!dataset || !Array.isArray(dataset.allCandles) || !Array.isArray(dataset.closedCandles)) {
+          throw new TypeError('B1DataContract.toSnapshot: invalid legacy dataset');
+        }
+        const timeframe = TIMEFRAME_MAP[dataset.interval];
+        if (!timeframe) throw new RangeError(`Unsupported Bybit interval: ${dataset.interval}`);
+
+        const all = dataset.allCandles.map(c => toCanonicalCandle(c, dataset, timeframe));
+        const closed = all.filter(c => c.closed_state === 'CONFIRMED' || c.closed_state === 'TIME_DERIVED');
+        const openCandles = all.filter(c => c.closed_state === 'OPEN');
+        if (openCandles.length > 1) {
+          throw new RangeError('B1DataContract.toSnapshot: more than one forming candle for a single timeframe.');
+        }
+        const forming = openCandles[0] || null;
+        const unclassified = all.filter(c => c.closed_state === 'UNKNOWN');
+        const q = unassessedQuality(dataset, timeframe);
+        const ticker = dataset.tickerStatus || {};
+        const quoteAvailable = Boolean(ticker.available && Number.isFinite(ticker.price) && ticker.price > 0);
+
+        return {
+          contract_version: VERSION,
+          snapshot_id: `bybit-v5-rest:${dataset.symbol}:${timeframe}:${dataset.fetchedAtLocalMs}`,
+          canonical_symbol: canonicalSymbol(dataset.symbol),
+          market_type: 'linear_perpetual',
+          analysis_as_of_ms: Number.isFinite(dataset.providerServerTimeMs) ? dataset.providerServerTimeMs : null,
+          provider_metadata: {
+            provider_id: 'bybit-v5-rest',
+            venue: 'bybit',
+            provider_symbol: dataset.symbol,
+            host: dataset.hostUsed,
+            time_source: dataset.timeSource || 'unknown'
+          },
+          provider_server_time_ms: Number.isFinite(dataset.providerServerTimeMs) ? dataset.providerServerTimeMs : null,
+          received_at_ms: dataset.fetchedAtLocalMs,
+          candles_by_timeframe: { [timeframe]: closed },
+          forming_candle_by_timeframe: { [timeframe]: forming },
+          unclassified_candles_by_timeframe: { [timeframe]: unclassified },
+          quality_by_timeframe: { [timeframe]: q },
+          aggregate_quality: {
+            status: 'UNASSESSED',
+            reasons: q.reasons.slice()
+          },
+          source_diagnostics: {
+            requested_count: Number.isSafeInteger(dataset.quality && dataset.quality.requestedCount) ? dataset.quality.requestedCount : null,
+            response_shortfall: Number.isSafeInteger(dataset.quality && dataset.quality.responseShortfall) ? dataset.quality.responseShortfall : null,
+            raw_row_count: Number.isFinite(dataset.quality && dataset.quality.totalFetched) ? dataset.quality.totalFetched : null,
+            invalid_row_count: Number.isFinite(dataset.quality && dataset.quality.invalidRows) ? dataset.quality.invalidRows : null,
+            duplicate_count: Number.isFinite(dataset.quality && dataset.quality.duplicates) ? dataset.quality.duplicates : null,
+            identical_duplicate_count: Number.isFinite(dataset.quality && dataset.quality.identicalDuplicateCount) ? dataset.quality.identicalDuplicateCount : null,
+            conflicting_duplicate_count: Number.isFinite(dataset.quality && dataset.quality.conflictingDuplicateCount) ? dataset.quality.conflictingDuplicateCount : null,
+            conflicting_duplicate_timestamps: Array.isArray(dataset.quality && dataset.quality.conflictingDuplicateTimestamps) ? dataset.quality.conflictingDuplicateTimestamps.slice() : null,
+            raw_out_of_order_count: Number.isFinite(dataset.quality && dataset.quality.rawOutOfOrderCount) ? dataset.quality.rawOutOfOrderCount : null,
+            raw_order_expected: dataset.quality && dataset.quality.rawOrderExpected ? dataset.quality.rawOrderExpected : null
+          },
+          quote: {
+            available: quoteAvailable,
+            provider_id: quoteAvailable ? 'bybit-v5-rest' : null,
+            provider_symbol: dataset.symbol,
+            market_type: 'linear_perpetual',
+            price: quoteAvailable ? ticker.price : null,
+            provider_event_time_ms: Number.isFinite(ticker.timeMs) ? ticker.timeMs : null,
+            received_at_ms: dataset.fetchedAtLocalMs,
+            host: ticker.hostUsed || dataset.hostUsed,
+            error: quoteAvailable ? null : (ticker.error || 'Ticker unavailable')
+          }
+        };
+      }
+
+      return { VERSION, NORMALIZER_VERSION, canonicalSymbol, toSnapshot };
+    })();
+
+    // =========================================================================
+    // 1.2. B1 QUALITY VALIDATOR (pure deterministic validation; no decision gate)
+    // =========================================================================
+    const B1QualityValidator = (() => {
+      const VERSION = '1.0.0';
+      const TF_MS = { '1h': 3600000, '4h': 14400000, '1d': 86400000 };
+
+      function validate(snapshot, policy, validationNowMs) {
+        const reasons = [];
+        const add = (code, severity, timeframe, details) => reasons.push({
+          code, severity, timeframe: timeframe || null,
+          ...(details === undefined ? {} : { details })
+        });
+        const invalid = (code, details) => add(code, 'CRITICAL', null, details);
+        const policyValid = policy && typeof policy === 'object' &&
+          typeof policy.version === 'string' && policy.version.trim().length > 0 &&
+          Number.isSafeInteger(policy.finality_safety_lag_ms) && policy.finality_safety_lag_ms >= 0 &&
+          Number.isSafeInteger(policy.future_tolerance_ms) && policy.future_tolerance_ms >= 0 &&
+          Number.isSafeInteger(policy.max_transport_age_ms) && policy.max_transport_age_ms >= 0 &&
+          policy.max_market_series_lag_ms_by_timeframe && typeof policy.max_market_series_lag_ms_by_timeframe === 'object' &&
+          policy.minimum_required_count_by_timeframe && typeof policy.minimum_required_count_by_timeframe === 'object' &&
+          typeof policy.allow_identical_duplicates === 'boolean';
+        const nowValid = Number.isSafeInteger(validationNowMs) && validationNowMs >= 0;
+        if (!policyValid) invalid('POLICY_INVALID', 'A complete, versioned validation policy is required.');
+        if (!nowValid) invalid('VALIDATION_TIME_INVALID', 'validationNowMs must be a non-negative safe integer.');
+        const snapshotIdentityValid = Boolean(snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) &&
+          typeof snapshot.contract_version === 'string' && snapshot.contract_version.trim().length > 0 &&
+          typeof snapshot.canonical_symbol === 'string' && snapshot.canonical_symbol.trim().length > 0 &&
+          typeof snapshot.market_type === 'string' && snapshot.market_type.trim().length > 0);
+        const providerMetadata = snapshot && snapshot.provider_metadata;
+        const providerMetadataValid = Boolean(providerMetadata && typeof providerMetadata === 'object' && !Array.isArray(providerMetadata) &&
+          typeof providerMetadata.provider_id === 'string' && providerMetadata.provider_id.trim().length > 0 &&
+          typeof providerMetadata.venue === 'string' && providerMetadata.venue.trim().length > 0 &&
+          typeof providerMetadata.provider_symbol === 'string' && providerMetadata.provider_symbol.trim().length > 0 &&
+          typeof providerMetadata.host === 'string' && providerMetadata.host.trim().length > 0 &&
+          (providerMetadata.time_source === 'provider' || providerMetadata.time_source === 'local_fallback'));
+        if (!snapshotIdentityValid) invalid('SNAPSHOT_SCHEMA_INVALID', 'Canonical snapshot identity fields must be non-empty strings.');
+        if (!providerMetadataValid) invalid('PROVIDER_METADATA_INVALID', 'Provider id, venue, provider symbol, host, and recognized time source are required.');
+        const emptyReport = {
+          validator_version: VERSION,
+          policy_version: policyValid ? policy.version : null,
+          status: 'INVALID',
+          reasons,
+          symbol: snapshot && snapshot.canonical_symbol || null,
+          timeframe: null,
+          analysis_as_of_ms: snapshot && snapshot.analysis_as_of_ms || null,
+          received_at_ms: snapshot && snapshot.received_at_ms || null,
+          expected_count: null, requested_count: null, raw_received_count: null, response_shortfall: null,
+          received_count: 0, valid_count: 0, missing_count: null,
+          duplicate_count: null, conflicting_duplicate_count: null, out_of_order_count: null,
+          invalid_ohlc_count: 0, non_finite_count: 0, negative_volume_count: 0,
+          misaligned_timestamp_count: 0, future_timestamp_count: 0, invalid_time_count: 0,
+          transport_age_ms: null, market_series_lag_ms: null, stale_age_ms: null,
+          insufficient_history: null, minimum_required_count: null,
+          closed_count: 0, forming_count: 0, unknown_finality_count: 0,
+          gap_ranges: [], checked_at_ms: nowValid ? validationNowMs : null
+        };
+        if (!policyValid || !nowValid || !snapshotIdentityValid || !providerMetadataValid) return { report: emptyReport };
+        
+        const maps = [
+          snapshot.candles_by_timeframe,
+          snapshot.forming_candle_by_timeframe,
+          snapshot.unclassified_candles_by_timeframe
+        ];
+        if (maps.some(m => !m || typeof m !== 'object' || Array.isArray(m))) {
+          invalid('CANDLE_MAP_INVALID', 'Canonical candle maps must be objects.');
+          return { report: emptyReport };
+        }
+        const timeframeKeys = new Set(maps.flatMap(m => Object.keys(m)));
+        if (timeframeKeys.size !== 1) {
+          invalid('TIMEFRAME_SCOPE_INVALID', 'A B1 snapshot must contain exactly one timeframe in this contract version.');
+          return { report: emptyReport };
+        }
+        const timeframe = [...timeframeKeys][0];
+        const stepMs = TF_MS[timeframe];
+        emptyReport.timeframe = timeframe;
+        if (!stepMs || !Number.isSafeInteger(policy.max_market_series_lag_ms_by_timeframe[timeframe]) ||
+            policy.max_market_series_lag_ms_by_timeframe[timeframe] < 0 ||
+            !Number.isSafeInteger(policy.minimum_required_count_by_timeframe[timeframe]) ||
+            policy.minimum_required_count_by_timeframe[timeframe] < 1) {
+          invalid('TIMEFRAME_POLICY_INVALID', 'Unsupported timeframe or missing timeframe-specific freshness/history policy.');
+          return { report: emptyReport };
+        }
+        const hasClosedKey = Object.prototype.hasOwnProperty.call(snapshot.candles_by_timeframe, timeframe);
+        const hasFormingKey = Object.prototype.hasOwnProperty.call(snapshot.forming_candle_by_timeframe, timeframe);
+        const hasUnknownKey = Object.prototype.hasOwnProperty.call(snapshot.unclassified_candles_by_timeframe, timeframe);
+        if (!hasClosedKey || !hasFormingKey || !hasUnknownKey) {
+          invalid('CANDLE_COLLECTION_KEY_MISSING', 'Each canonical candle map must explicitly define the selected timeframe.');
+          return { report: emptyReport };
+        }
+        const closed = snapshot.candles_by_timeframe[timeframe];
+        const formingValue = snapshot.forming_candle_by_timeframe[timeframe];
+        const unknown = snapshot.unclassified_candles_by_timeframe[timeframe];
+        if (!Array.isArray(closed) || !Array.isArray(unknown) ||
+            !(formingValue === null || (formingValue && typeof formingValue === 'object' && !Array.isArray(formingValue)))) {
+          invalid('CANDLE_COLLECTION_INVALID', 'Closed and unclassified collections must be arrays; forming candle must be null or one object.');
+          return { report: emptyReport };
+        }
+        const forming = formingValue ? [formingValue] : [];
+        const all = [...closed, ...forming, ...unknown];
+        const providerTime = snapshot.provider_server_time_ms;
+        const providerTimeValid = Number.isSafeInteger(providerTime) && providerTime > 0 &&
+          snapshot.provider_metadata.time_source === 'provider';
+        const receivedAt = snapshot.received_at_ms;
+        const receivedAtValid = Number.isSafeInteger(receivedAt) && receivedAt > 0;
+        const transportAge = receivedAtValid ? validationNowMs - receivedAt : null;
+        const diagnostics = snapshot.source_diagnostics || {};
+        const rawDiagnosticsPresent =
+          Number.isSafeInteger(diagnostics.requested_count) && diagnostics.requested_count > 0 &&
+          Number.isSafeInteger(diagnostics.response_shortfall) && diagnostics.response_shortfall >= 0 &&
+          Number.isSafeInteger(diagnostics.raw_row_count) && diagnostics.raw_row_count >= 0 &&
+          Number.isSafeInteger(diagnostics.invalid_row_count) && diagnostics.invalid_row_count >= 0 &&
+          Number.isSafeInteger(diagnostics.duplicate_count) && diagnostics.duplicate_count >= 0 &&
+          Number.isSafeInteger(diagnostics.identical_duplicate_count) && diagnostics.identical_duplicate_count >= 0 &&
+          Number.isSafeInteger(diagnostics.conflicting_duplicate_count) && diagnostics.conflicting_duplicate_count >= 0 &&
+          Array.isArray(diagnostics.conflicting_duplicate_timestamps) &&
+          diagnostics.conflicting_duplicate_timestamps.every(ts => Number.isSafeInteger(ts) && ts > 0) &&
+          new Set(diagnostics.conflicting_duplicate_timestamps).size === diagnostics.conflicting_duplicate_timestamps.length &&
+          Number.isSafeInteger(diagnostics.raw_out_of_order_count) && diagnostics.raw_out_of_order_count >= 0 &&
+          diagnostics.raw_order_expected === 'descending';
+        
+        Object.assign(emptyReport, {
+          expected_count: Number.isSafeInteger(diagnostics.requested_count) ? diagnostics.requested_count : null,
+          requested_count: Number.isSafeInteger(diagnostics.requested_count) ? diagnostics.requested_count : null,
+          raw_received_count: Number.isSafeInteger(diagnostics.raw_row_count) ? diagnostics.raw_row_count : null,
+          response_shortfall: Number.isSafeInteger(diagnostics.response_shortfall) ? diagnostics.response_shortfall : null,
+          received_count: all.length,
+          duplicate_count: Number.isSafeInteger(diagnostics.duplicate_count) ? diagnostics.duplicate_count : null,
+          conflicting_duplicate_count: Number.isSafeInteger(diagnostics.conflicting_duplicate_count) ? diagnostics.conflicting_duplicate_count : null,
+          out_of_order_count: Number.isSafeInteger(diagnostics.raw_out_of_order_count) ? diagnostics.raw_out_of_order_count : null,
+          transport_age_ms: transportAge,
+          stale_age_ms: transportAge,
+          minimum_required_count: policy.minimum_required_count_by_timeframe[timeframe]
+        });
+        if (!rawDiagnosticsPresent) invalid('RAW_DIAGNOSTICS_MISSING', 'Requested count, raw row, invalid row, duplicate and source-order evidence is incomplete.');
+        if (rawDiagnosticsPresent && diagnostics.raw_row_count > diagnostics.requested_count) {
+          invalid('RAW_RESPONSE_EXCEEDS_REQUEST', { requested_count: diagnostics.requested_count, raw_row_count: diagnostics.raw_row_count });
+        }
+        if (rawDiagnosticsPresent && diagnostics.response_shortfall !== Math.max(0, diagnostics.requested_count - diagnostics.raw_row_count)) {
+          invalid('RAW_COUNT_PROVENANCE_INCONSISTENT', {
+            requested_count: diagnostics.requested_count,
+            raw_row_count: diagnostics.raw_row_count,
+            reported_shortfall: diagnostics.response_shortfall,
+            expected_shortfall: Math.max(0, diagnostics.requested_count - diagnostics.raw_row_count)
+          });
+        }
+        if (rawDiagnosticsPresent && diagnostics.invalid_row_count > diagnostics.raw_row_count) {
+          invalid('INVALID_ROW_COUNT_EXCEEDS_RAW', { invalid_row_count: diagnostics.invalid_row_count, raw_row_count: diagnostics.raw_row_count });
+        }
+        if (rawDiagnosticsPresent && diagnostics.conflicting_duplicate_count > 0 && diagnostics.conflicting_duplicate_timestamps.length === 0) {
+          invalid('CONFLICTING_DUPLICATE_TIMESTAMPS_MISSING', 'Conflicting duplicate rows require timestamp-level quarantine evidence.');
+        }
+        if (rawDiagnosticsPresent && diagnostics.conflicting_duplicate_timestamps.length > diagnostics.conflicting_duplicate_count) {
+          invalid('CONFLICT_GROUP_COUNT_EXCEEDS_DUPLICATE_ROWS', {
+            conflicting_timestamp_groups: diagnostics.conflicting_duplicate_timestamps.length,
+            conflicting_duplicate_count: diagnostics.conflicting_duplicate_count
+          });
+        }
+        if (rawDiagnosticsPresent) {
+          // Raw rows = invalid rows + duplicate extras + retained normalized rows
+          // + one quarantined representative per conflicting timestamp group.
+          const expectedNormalizedCount = diagnostics.raw_row_count -
+            diagnostics.invalid_row_count -
+            diagnostics.duplicate_count -
+            diagnostics.conflicting_duplicate_timestamps.length;
+          if (expectedNormalizedCount !== all.length) {
+            invalid('NORMALIZED_ROW_ACCOUNTING_MISMATCH', {
+              raw_row_count: diagnostics.raw_row_count,
+              invalid_row_count: diagnostics.invalid_row_count,
+              duplicate_count: diagnostics.duplicate_count,
+              conflicting_timestamp_groups: diagnostics.conflicting_duplicate_timestamps.length,
+              expected_normalized_count: expectedNormalizedCount,
+              actual_normalized_count: all.length
+            });
+          }
+        }
+        if (rawDiagnosticsPresent && diagnostics.duplicate_count !== diagnostics.identical_duplicate_count + diagnostics.conflicting_duplicate_count) {
+          invalid('DUPLICATE_COUNT_PROVENANCE_INCONSISTENT', {
+            duplicate_count: diagnostics.duplicate_count,
+            identical_duplicate_count: diagnostics.identical_duplicate_count,
+            conflicting_duplicate_count: diagnostics.conflicting_duplicate_count
+          });
+        }
+        if (rawDiagnosticsPresent && diagnostics.response_shortfall > 0) {
+          add('RESPONSE_SHORTFALL', 'WARNING', timeframe, { requested_count: diagnostics.requested_count, raw_row_count: diagnostics.raw_row_count, shortfall: diagnostics.response_shortfall });
+        }
+        if (Number.isSafeInteger(diagnostics.conflicting_duplicate_count) && diagnostics.conflicting_duplicate_count > 0) {
+          invalid('CONFLICTING_DUPLICATES', { count: diagnostics.conflicting_duplicate_count });
+        }
+        if (Number.isSafeInteger(diagnostics.invalid_row_count) && diagnostics.invalid_row_count > 0) {
+          invalid('INVALID_RAW_ROWS', { count: diagnostics.invalid_row_count });
+        }
+        if (Number.isSafeInteger(diagnostics.duplicate_count) && diagnostics.duplicate_count > 0) {
+          if (diagnostics.conflicting_duplicate_count > 0) {
+            // Conflicting duplicates are already rejected above.
+          } else if (!policy.allow_identical_duplicates) {
+            invalid('IDENTICAL_DUPLICATES_NOT_ALLOWED', { count: diagnostics.identical_duplicate_count });
+          } else {
+            add('IDENTICAL_DUPLICATES_COLLAPSED', 'WARNING', timeframe, { count: diagnostics.identical_duplicate_count });
+          }
+        }
+        if (Number.isSafeInteger(diagnostics.raw_out_of_order_count) && diagnostics.raw_out_of_order_count > 0) {
+          add('RAW_SOURCE_ORDER_ANOMALY', 'WARNING', timeframe, { count: diagnostics.raw_out_of_order_count });
+        }
+        if (!receivedAtValid) invalid('RECEIVE_TIME_INVALID', 'Snapshot receive timestamp must be a positive safe integer Unix-millisecond timestamp.');
+        else if (transportAge < -policy.future_tolerance_ms) invalid('RECEIVE_TIME_IN_FUTURE', { age_ms: transportAge });
+        else if (transportAge > policy.max_transport_age_ms) add('TRANSPORT_STALE', 'STALE', timeframe, { age_ms: transportAge, max_age_ms: policy.max_transport_age_ms });
+        if (!providerTimeValid) invalid('PROVIDER_TIME_UNAVAILABLE', 'Provider time is required for candle finality and market-series freshness.');
+        if (providerTimeValid && snapshot.analysis_as_of_ms !== providerTime) {
+          invalid('ANALYSIS_TIME_PROVENANCE_MISMATCH', {
+            analysis_as_of_ms: snapshot.analysis_as_of_ms,
+            provider_server_time_ms: providerTime
+          });
+        }
+        
+        const seen = new Set();
+        const sorted = all.slice().sort((a,b) => (a && Number.isFinite(a.open_time_ms) ? a.open_time_ms : 0) - (b && Number.isFinite(b.open_time_ms) ? b.open_time_ms : 0));
+        let validCount = 0, invalidOhlc = 0, nonFinite = 0, negativeVolume = 0;
+        let misaligned = 0, future = 0, invalidTime = 0, closedCount = 0, formingCount = 0, unknownCount = 0;
+        const groupEntries = [
+          ...closed.map(c => ({ candle:c, group:'closed' })),
+          ...forming.map(c => ({ candle:c, group:'forming' })),
+          ...unknown.map(c => ({ candle:c, group:'unknown' }))
+        ];
+        for (const entry of groupEntries) {
+          const c = entry.candle;
+          if (!c || typeof c !== 'object' || Array.isArray(c)) {
+            invalidTime++;
+            add('CANDLE_ENTRY_INVALID','CRITICAL',timeframe,{group:entry.group});
+            continue;
+          }
+          let candleValid = true;
+          const identityMismatch = [];
+          if (c.canonical_symbol !== snapshot.canonical_symbol) identityMismatch.push('canonical_symbol');
+          if (c.market_type !== snapshot.market_type) identityMismatch.push('market_type');
+          if (c.timeframe !== timeframe) identityMismatch.push('timeframe');
+          if (c.provider_id !== snapshot.provider_metadata.provider_id) identityMismatch.push('provider_id');
+          if (providerTimeValid && c.provider_event_time_ms !== providerTime) identityMismatch.push('provider_event_time_ms');
+          if (c.received_at_ms !== receivedAt) identityMismatch.push('received_at_ms');
+          if (identityMismatch.length) {
+            candleValid = false;
+            add('CANDLE_PROVENANCE_MISMATCH','CRITICAL',timeframe,{
+              fields:identityMismatch,
+              open_time_ms:c.open_time_ms
+            });
+          }
+          const openTime = c.open_time_ms, closeTime = c.close_time_ms;
+          const timeOk = Number.isSafeInteger(openTime) && Number.isSafeInteger(closeTime) &&
+            openTime > 0 && closeTime > openTime && closeTime - openTime === stepMs;
+          if (!timeOk) { candleValid = false; invalidTime++; add('CANDLE_TIME_INVALID','CRITICAL',timeframe,{open_time_ms:openTime,close_time_ms:closeTime}); }
+          else {
+            if (openTime % stepMs !== 0) { candleValid = false; misaligned++; add('TIMESTAMP_MISALIGNED','CRITICAL',timeframe,{open_time_ms:openTime}); }
+            if (providerTimeValid && openTime > providerTime + policy.future_tolerance_ms) { candleValid = false; future++; add('CANDLE_FROM_FUTURE','CRITICAL',timeframe,{open_time_ms:openTime}); }
+            if (seen.has(openTime)) { candleValid = false; add('CANONICAL_DUPLICATE_TIMESTAMP','CRITICAL',timeframe,{open_time_ms:openTime}); }
+            seen.add(openTime);
+            if (providerTimeValid) {
+              const expectedState = providerTime < closeTime ? 'OPEN' :
+                (providerTime >= closeTime + policy.finality_safety_lag_ms ? 'TIME_DERIVED' : 'UNKNOWN');
+              if (c.closed_state !== expectedState) { candleValid = false; add('CANDLE_FINALITY_MISMATCH','CRITICAL',timeframe,{open_time_ms:openTime,expected:expectedState,actual:c.closed_state,group:entry.group}); }
+              const expectedGroup = expectedState === 'TIME_DERIVED' ? 'closed' :
+                (expectedState === 'OPEN' ? 'forming' : 'unknown');
+              if (entry.group !== expectedGroup) {
+                candleValid = false;
+                add('CANDLE_COLLECTION_STATE_MISMATCH','CRITICAL',timeframe,{
+                  open_time_ms:openTime, expected_group:expectedGroup, actual_group:entry.group,
+                  expected_state:expectedState, actual_state:c.closed_state
+                });
+              }
+            } else if (c.closed_state !== 'UNKNOWN') {
+              candleValid = false;
+              add('FINALITY_CLAIM_WITHOUT_PROVIDER_TIME','CRITICAL',timeframe,{open_time_ms:openTime,actual:c.closed_state});
+            }
+          }
+          const values=[c.open,c.high,c.low,c.close];
+          if (values.some(v => typeof v !== 'number' || !Number.isFinite(v))) { candleValid = false; nonFinite++; add('OHLC_NON_FINITE','CRITICAL',timeframe,{open_time_ms:openTime}); }
+          else if (values.some(v => v <= 0) || c.high < Math.max(c.open,c.close,c.low) || c.low > Math.min(c.open,c.close,c.high)) {
+            candleValid = false;
+            invalidOhlc++; add('OHLC_INVALID','CRITICAL',timeframe,{open_time_ms:openTime});
+          }
+          for (const key of ['volume_base','volume_quote']) {
+            const v=c[key];
+            if (v !== null && v !== undefined && (typeof v !== 'number' || !Number.isFinite(v))) {
+              candleValid = false;
+              nonFinite++; add('VOLUME_NON_FINITE','CRITICAL',timeframe,{open_time_ms:openTime,field:key});
+            } else if (typeof v === 'number' && v < 0) {
+              candleValid = false;
+              negativeVolume++; add('VOLUME_NEGATIVE','CRITICAL',timeframe,{open_time_ms:openTime,field:key});
+            }
+          }
+          if (entry.group==='closed' && candleValid) validCount++;
+          if (entry.group==='closed') closedCount++;
+          else if (entry.group==='forming') formingCount++;
+          else unknownCount++;
+        }
+        let outOfOrder = 0;
+        for (const list of [closed,forming,unknown]) {
+          for (let i=1;i<list.length;i++) {
+            if (Number.isSafeInteger(list[i-1] && list[i-1].open_time_ms) &&
+                Number.isSafeInteger(list[i] && list[i].open_time_ms) &&
+                list[i].open_time_ms <= list[i-1].open_time_ms) outOfOrder++;
+          }
+        }
+        if (outOfOrder>0) add('CANONICAL_ORDER_INVALID','CRITICAL',timeframe,{count:outOfOrder});
+        const gapRanges=[];
+        let missingCount=0;
+        for(let i=1;i<sorted.length;i++){
+          const prev=sorted[i-1], curr=sorted[i];
+          if(!prev || typeof prev!=='object' || Array.isArray(prev) || !curr || typeof curr!=='object' || Array.isArray(curr)) continue;
+          if(Number.isSafeInteger(prev.open_time_ms)&&Number.isSafeInteger(curr.open_time_ms)){
+            const diff=curr.open_time_ms-prev.open_time_ms;
+            if(diff>stepMs && diff%stepMs===0){
+              const missing=(diff/stepMs)-1;
+              missingCount+=missing;
+              gapRanges.push({from_open_time_ms:prev.open_time_ms+stepMs,to_open_time_ms:curr.open_time_ms-stepMs,missing_count:missing});
+            } else if(diff<=0) {
+              add('CANONICAL_DUPLICATE_TIMESTAMP','CRITICAL',timeframe,{open_time_ms:curr.open_time_ms});
+            } else if(diff!==stepMs) {
+              // A non-integral multiple is a broken interval boundary, not a normal missing-candle gap.
+              add('IRREGULAR_CANDLE_INTERVAL','CRITICAL',timeframe,{
+                from_open_time_ms:prev.open_time_ms,
+                to_open_time_ms:curr.open_time_ms,
+                delta_ms:diff,
+                expected_interval_ms:stepMs
+              });
+            }
+          }
+        }
+        if(missingCount>0) add('CANDLE_GAPS','WARNING',timeframe,{missing_count:missingCount});
+        let marketLag=null;
+        if(providerTimeValid && Number.isSafeInteger(policy.finality_safety_lag_ms) && closed.length > 0){
+          const expectedClosedBoundary=Math.floor((providerTime-policy.finality_safety_lag_ms)/stepMs)*stepMs;
+          const latestClosed=closed.reduce((best,c)=>Number.isSafeInteger(c&&c.close_time_ms)&&c.close_time_ms>best?c.close_time_ms:best,0);
+          marketLag=Math.max(0,expectedClosedBoundary-latestClosed);
+          if(marketLag>policy.max_market_series_lag_ms_by_timeframe[timeframe]){
+            add('MARKET_SERIES_STALE','STALE',timeframe,{lag_ms:marketLag,max_lag_ms:policy.max_market_series_lag_ms_by_timeframe[timeframe]});
+          }
+        }
+        const minRequired=policy.minimum_required_count_by_timeframe[timeframe];
+        const insufficient=validCount<minRequired;
+        if(insufficient) add('INSUFFICIENT_HISTORY','INSUFFICIENT',timeframe,{available:validCount,required:minRequired});
+        Object.assign(emptyReport,{
+          valid_count:validCount, missing_count:missingCount, invalid_ohlc_count:invalidOhlc,
+          non_finite_count:nonFinite, negative_volume_count:negativeVolume,
+          misaligned_timestamp_count:misaligned, future_timestamp_count:future, invalid_time_count:invalidTime,
+          market_series_lag_ms:marketLag, insufficient_history:insufficient,
+          closed_count:closedCount, forming_count:formingCount, unknown_finality_count:unknownCount,
+          gap_ranges:gapRanges
+        });
+        const critical=reasons.some(r=>r.severity==='CRITICAL');
+        const staleReason=reasons.some(r=>r.severity==='STALE');
+        const insufficientReason=reasons.some(r=>r.severity==='INSUFFICIENT');
+        const warning=reasons.some(r=>r.severity==='WARNING');
+        emptyReport.status=critical?'INVALID':staleReason?'STALE':insufficientReason?'INSUFFICIENT':warning?'DEGRADED':'VALID';
+        return { report: emptyReport };
+      }
+
+      return { VERSION, validate };
+    })();
+
+    // Versioned fail-closed policy used by the mandatory analytics gate.
+    const B1_QUALITY_POLICY = Object.freeze({
+      version: 'b1-quality-policy-2026-11-27-v1',
+      finality_safety_lag_ms: 500,
+      future_tolerance_ms: 30000,
+      max_transport_age_ms: 120000,
+      max_market_series_lag_ms_by_timeframe: Object.freeze({ '1h': 7200000, '4h': 28800000, '1d': 172800000 }),
+      minimum_required_count_by_timeframe: Object.freeze({ '1h': 100, '4h': 100, '1d': 100 }),
+      allow_identical_duplicates: true
+    });
+
+    window.B1DataContractSelfTest = {
+      runAll() {
+        const results = [];
+        const assert = (name, condition, detail = '') => results.push({ name, passed: Boolean(condition), detail });
+        const base = {
+          symbol: 'BTCUSDT',
+          interval: '60',
+          hostUsed: 'api.bybit.com',
+          timeSource: 'provider',
+          providerServerTimeMs: 7200500,
+          fetchedAtLocalMs: 7200200,
+          allCandles: [
+            { ts: 3600000, closeTs: 7200000, open: 100, high: 110, low: 90, close: 105, volume: 2, turnover: 210, rawIndex: 1 },
+            { ts: 7200000, closeTs: 10800000, open: 105, high: 112, low: 101, close: 108, volume: 3, turnover: 324, rawIndex: 0 }
+          ],
+          closedCandles: [{ ts: 3600000, closeTs: 7200000, open: 100, high: 110, low: 90, close: 105, volume: 2, turnover: 210, rawIndex: 1 }],
+          formingCandle: { ts: 7200000, closeTs: 10800000, open: 105, high: 112, low: 101, close: 108, volume: 3, turnover: 324, rawIndex: 0 },
+          tickerStatus: { available: true, price: 109, timeMs: 7200200, hostUsed: 'api.bybit.com' },
+          quality: { gaps: 0, duplicates: 0, invalidRows: 0, misalignedTimestamps: 0 }
+        };
+        const snapshot = B1DataContract.toSnapshot(base);
+        const tf = snapshot.candles_by_timeframe['1h'][0];
+        const forming = snapshot.forming_candle_by_timeframe['1h'];
+        assert('canonical symbol maps BTCUSDT to BTC/USDT', snapshot.canonical_symbol === 'BTC/USDT');
+        assert('market type is provider-neutral linear_perpetual', snapshot.market_type === 'linear_perpetual');
+        assert('Bybit base volume is preserved', tf.volume_base === 2);
+        assert('Bybit quote turnover is preserved separately', tf.volume_quote === 210);
+        assert('closed REST candle is TIME_DERIVED, not CONFIRMED', tf.closed_state === 'TIME_DERIVED');
+        assert('forming candle is separate and OPEN', forming && forming.closed_state === 'OPEN');
+        assert('ticker quote is separate from OHLCV candles', snapshot.quote.available && snapshot.quote.price === 109 && !('price' in tf));
+        assert('quality remains UNASSESSED until B1-B', snapshot.aggregate_quality.status === 'UNASSESSED');
+        assert('source row index is preserved as provenance', tf.source_reference.raw_index === 1);
+        assert('REST finality uses provider time and safety lag, not legacy closed array', tf.closed_state === 'TIME_DERIVED');
+        const beforeLag = Object.assign({}, base, { providerServerTimeMs: 7200499 });
+        const beforeLagSnapshot = B1DataContract.toSnapshot(beforeLag);
+        assert('candle remains UNKNOWN immediately before safety-lag threshold', beforeLagSnapshot.unclassified_candles_by_timeframe['1h'].some(c => c.open_time_ms === 3600000));
+        const atLag = Object.assign({}, base, { providerServerTimeMs: 7200500 });
+        const atLagSnapshot = B1DataContract.toSnapshot(atLag);
+        assert('candle becomes TIME_DERIVED exactly at safety-lag threshold', atLagSnapshot.candles_by_timeframe['1h'].some(c => c.open_time_ms === 3600000));
+        const afterLag = Object.assign({}, base, { providerServerTimeMs: 7200501 });
+        const afterLagSnapshot = B1DataContract.toSnapshot(afterLag);
+        assert('candle remains TIME_DERIVED immediately after safety-lag threshold', afterLagSnapshot.candles_by_timeframe['1h'].some(c => c.open_time_ms === 3600000));
+
+        const ethSnapshot = B1DataContract.toSnapshot(Object.assign({}, base, { symbol: 'ETHUSDT', interval: '240' }));
+        assert('canonical symbol maps ETHUSDT to ETH/USDT', ethSnapshot.canonical_symbol === 'ETH/USDT');
+        assert('Bybit 240 interval maps to 4h', Array.isArray(ethSnapshot.candles_by_timeframe['4h']));
+        const dailySnapshot = B1DataContract.toSnapshot(Object.assign({}, base, { interval: 'D' }));
+        assert('Bybit D interval maps to 1d', Array.isArray(dailySnapshot.candles_by_timeframe['1d']));
+        const noTickerSnapshot = B1DataContract.toSnapshot(Object.assign({}, base, {
+          tickerStatus: { available: false, price: null, timeMs: null, hostUsed: 'api.bybit.com', error: 'simulated unavailable' }
+        }));
+        assert('unavailable ticker is not converted into a quote price', noTickerSnapshot.quote.available === false && noTickerSnapshot.quote.price === null);
+
+        const multipleForming = Object.assign({}, base, {
+          allCandles: base.allCandles.concat([{ts:10800000,closeTs:14400000,open:108,high:112,low:107,close:110,volume:1,turnover:110,rawIndex:2}])
+        });
+        let multipleFormingRejected = false;
+        try { B1DataContract.toSnapshot(multipleForming); } catch (err) { multipleFormingRejected = err instanceof RangeError; }
+        assert('multiple forming candles for one timeframe are rejected rather than silently dropping all but one',multipleFormingRejected);
+        const noProviderTime = Object.assign({}, base, { timeSource: 'local_fallback', providerServerTimeMs: null });
+        const unknownSnapshot = B1DataContract.toSnapshot(noProviderTime);
+        assert('local clock fallback cannot claim candle finality', unknownSnapshot.candles_by_timeframe['1h'].length === 0);
+        assert('candles without provider time are kept unclassified', unknownSnapshot.unclassified_candles_by_timeframe['1h'].length === 2);
+        assert('missing provider time is explicit in metadata', unknownSnapshot.provider_metadata.time_source === 'local_fallback');
+
+        const normalizeMeta = {
+          symbol: 'BTCUSDT', interval: '60', hostUsed: 'selftest', requestedCount: 200,
+          serverTimeMs: 10801000, providerServerTimeMs: 10801000,
+          timeSource: 'provider', clockSkewMs: 0,
+          tickerStatus: { available: false, price: null, timeMs: null, hostUsed: 'selftest' }
+        };
+        const row = (ts, open, high, low, close, volume, turnover) =>
+          [String(ts), String(open), String(high), String(low), String(close), String(volume), String(turnover)];
+        assert('provider time parser accepts positive safe integer milliseconds',BybitAdapter.parseProviderTime(10800000)===10800000&&BybitAdapter.parseProviderTime('10800000')===10800000);
+        assert('provider time parser rejects booleans, decimals, zero, and unsafe integers',BybitAdapter.parseProviderTime(true)===null&&BybitAdapter.parseProviderTime('1.5')===null&&BybitAdapter.parseProviderTime(0)===null&&BybitAdapter.parseProviderTime(Number.MAX_SAFE_INTEGER+1)===null);
+        const localClockOnly=BybitAdapter.normalize([
+          row(7200000,100,110,90,105,2,210),
+          row(3600000,99,105,95,100,1,100)
+        ],{...normalizeMeta,serverTimeMs:10801000,providerServerTimeMs:null,timeSource:'local_fallback'});
+        assert('local wall clock cannot place any REST candle into legacy closedCandles used by analytics',
+          localClockOnly.closedCandles.length===0 &&
+          localClockOnly.quality.closedCount===0 &&
+          localClockOnly.formingCandle!==null);
+        const malformedRawRows = BybitAdapter.normalize([null, {}, ['3600000', '100', '110', '90', '105', '2']], normalizeMeta);
+        assert('null, object, and truncated raw kline rows are counted without aborting normalization',
+          malformedRawRows.quality.invalidRows === 3 &&
+          malformedRawRows.quality.invalidTimestamps === 3 &&
+          malformedRawRows.allCandles.length === 0);
+        const extendedRawRow=BybitAdapter.normalize([row(3600000,100,110,90,105,2,210).concat('unexpected')],normalizeMeta);
+        assert('raw kline rows with unexpected extra fields fail closed instead of silently ignoring schema drift',extendedRawRow.quality.invalidRows===1&&extendedRawRow.allCandles.length===0);
+        const malformedNumericRows = BybitAdapter.normalize([
+          ['7200000', true, '110', '90', '105', '2', '210'],
+          ['3600000', '0x64', '110', '90', '105', '2', '210']
+        ], normalizeMeta);
+        assert('raw OHLCV fields must be decimal numeric strings, not booleans or coercible hex values',
+          malformedNumericRows.quality.invalidRows === 2 && malformedNumericRows.allCandles.length === 0);
+        const negativeTurnoverRows = BybitAdapter.normalize([
+          ['7200000', '100', '110', '90', '105', '2', '-1']
+        ], normalizeMeta);
+        assert('negative quote turnover is rejected instead of silently erased',
+          negativeTurnoverRows.quality.invalidRows === 1 && negativeTurnoverRows.allCandles.length === 0);
+
+        const identicalDup = BybitAdapter.normalize([
+          row(7200000, 100, 110, 90, 105, 2, 210),
+          row(3600000, 99, 105, 95, 100, 1, 100),
+          row(3600000, 99, 105, 95, 100, 1, 100)
+        ], normalizeMeta);
+        assert('identical raw duplicate is counted and deterministically collapsed', identicalDup.quality.duplicates === 1 && identicalDup.quality.identicalDuplicateCount === 1 && identicalDup.quality.conflictingDuplicateCount === 0 && identicalDup.allCandles.length === 2);
+        assert('adapter preserves requested limit separately from raw rows received', identicalDup.quality.requestedCount === 200 && identicalDup.quality.totalFetched === 3 && identicalDup.quality.responseShortfall === 197);
+        const conflictingDup = BybitAdapter.normalize([
+          row(7200000, 100, 110, 90, 105, 2, 210),
+          row(3600000, 99, 105, 95, 100, 1, 100),
+          row(3600000, 99, 106, 95, 100, 1, 100)
+        ], normalizeMeta);
+        assert('conflicting duplicate timestamp is quarantined, not silently selected', conflictingDup.quality.conflictingDuplicateCount === 1 && conflictingDup.quality.conflictingDuplicateTimestamps[0] === 3600000 && !conflictingDup.allCandles.some(c => c.ts === 3600000));
+        const rawOrder = BybitAdapter.normalize([
+          row(7200000, 100, 110, 90, 105, 2, 210),
+          row(3600000, 99, 105, 95, 100, 1, 100),
+          row(5400000, 100, 106, 96, 102, 1, 102)
+        ], normalizeMeta);
+        assert('Bybit newest-first raw ordering anomaly is retained before sorting', rawOrder.quality.rawOutOfOrderCount === 1 && rawOrder.quality.rawOrderExpected === 'descending' && rawOrder.allCandles[0].ts === 3600000);
+
+        const totals = { total: results.length, passed: results.filter(x => x.passed).length, failed: results.filter(x => !x.passed).length };
+        return { results, totals };
+      }
+    };
+
+    window.B1QualityValidatorSelfTest = {
+      runAll() {
+        const results=[];
+        const assert=(name,condition,detail='')=>results.push({name,passed:Boolean(condition),detail});
+        const step=3600000, lag=500, baseOpen=3600000, baseClose=7200000, now=7201000;
+        const candle=(openTime,closeTime,state='TIME_DERIVED',overrides={})=>({
+          provider_id:'bybit-v5-rest',venue:'bybit',market_type:'linear_perpetual',
+          canonical_symbol:'BTC/USDT',provider_symbol:'BTCUSDT',timeframe:'1h',
+          open_time_ms:openTime,close_time_ms:closeTime,
+          open:100,high:110,low:90,close:105,volume_base:2,volume_quote:210,
+          closed_state:state,provider_event_time_ms:now,received_at_ms:now-100,
+          source_reference:{endpoint:'/v5/market/kline',host:'api.bybit.com',raw_index:0},
+          normalizer_version:'bybit-rest-v1',...overrides
+        });
+        const policy={
+          version:'test-policy-1',finality_safety_lag_ms:lag,future_tolerance_ms:1000,
+          max_transport_age_ms:5000,
+          max_market_series_lag_ms_by_timeframe:{'1h':0,'4h':0,'1d':0},
+          minimum_required_count_by_timeframe:{'1h':1,'4h':1,'1d':1},
+          allow_identical_duplicates:true
+        };
+        const makeSnapshot=(opts={})=>{
+          const providerTime=opts.providerTime===undefined?now:opts.providerTime;
+          const receivedAt=opts.receivedAt===undefined?now-100:opts.receivedAt;
+          const state=opts.state||'TIME_DERIVED';
+          const c=candle(baseOpen,baseClose,state,{provider_event_time_ms:providerTime,received_at_ms:receivedAt,...(opts.candleOverrides||{})});
+          const stampEvidence=list=>list.map(x=>x&&typeof x==='object'?({...x,provider_event_time_ms:providerTime,received_at_ms:receivedAt}):x);
+          return {
+            contract_version:'1.0.0',snapshot_id:'selftest',canonical_symbol:'BTC/USDT',
+            market_type:'linear_perpetual',analysis_as_of_ms:providerTime,
+            provider_metadata:{provider_id:'bybit-v5-rest',venue:'bybit',provider_symbol:'BTCUSDT',host:'api.bybit.com',time_source:opts.timeSource||'provider'},
+            provider_server_time_ms:providerTime,received_at_ms:receivedAt,
+            candles_by_timeframe:{'1h':opts.closed===undefined?[c]:stampEvidence(opts.closed)},
+            forming_candle_by_timeframe:{'1h':opts.forming===undefined?null:stampEvidence([opts.forming])[0]},
+            unclassified_candles_by_timeframe:{'1h':stampEvidence(opts.unknown||[])},
+            quality_by_timeframe:{'1h':{status:'UNASSESSED'}},aggregate_quality:{status:'UNASSESSED',reasons:[]},
+            source_diagnostics:{requested_count:1,response_shortfall:0,raw_row_count:1,invalid_row_count:0,duplicate_count:0,identical_duplicate_count:0,conflicting_duplicate_count:0,conflicting_duplicate_timestamps:[],raw_out_of_order_count:0,raw_order_expected:'descending'}
+          };
+        };
+        const run=(snap,pol=policy,at=now)=>B1QualityValidator.validate(snap,pol,at).report;
+        const valid=run(makeSnapshot());
+        assert('complete fresh snapshot passes VALID',valid.status==='VALID'&&valid.valid_count===1);
+        assert('requested count and raw response count remain distinct',valid.requested_count===1&&valid.raw_received_count===1&&valid.expected_count===1&&valid.response_shortfall===0);
+        const missingProviderId=makeSnapshot();
+        delete missingProviderId.provider_metadata.provider_id;
+        assert('provider metadata without provider_id is rejected before candle checks',run(missingProviderId).status==='INVALID'&&run(missingProviderId).reasons.some(r=>r.code==='PROVIDER_METADATA_INVALID'));
+        const arrayProviderMetadata=makeSnapshot();
+        arrayProviderMetadata.provider_metadata=[];
+        assert('array is not accepted as provider metadata object',run(arrayProviderMetadata).status==='INVALID'&&run(arrayProviderMetadata).reasons.some(r=>r.code==='PROVIDER_METADATA_INVALID'));
+        const missingClosedMapKey=makeSnapshot();
+        delete missingClosedMapKey.candles_by_timeframe['1h'];
+        assert('all canonical timeframe maps must explicitly contain the selected key',run(missingClosedMapKey).status==='INVALID'&&run(missingClosedMapKey).reasons.some(r=>r.code==='CANDLE_COLLECTION_KEY_MISSING'));
+        const nullClosedCollection=makeSnapshot();
+        nullClosedCollection.candles_by_timeframe['1h']=null;
+        assert('null closed collection is malformed, not an empty history',run(nullClosedCollection).status==='INVALID'&&run(nullClosedCollection).reasons.some(r=>r.code==='CANDLE_COLLECTION_INVALID'));
+        const arrayFormingCollection=makeSnapshot();
+        arrayFormingCollection.forming_candle_by_timeframe['1h']=[];
+        assert('forming collection cannot be represented by an array',run(arrayFormingCollection).status==='INVALID'&&run(arrayFormingCollection).reasons.some(r=>r.code==='CANDLE_COLLECTION_INVALID'));
+        const missingTime=makeSnapshot({providerTime:null,timeSource:'local_fallback',state:'UNKNOWN',closed:[],unknown:[candle(baseOpen,baseClose,'UNKNOWN')]});
+        assert('local fallback time cannot pass finality validation',run(missingTime).status==='INVALID');
+        const shortResponse=makeSnapshot();
+        shortResponse.source_diagnostics.requested_count=200;
+        shortResponse.source_diagnostics.response_shortfall=199;
+        const shortReport=run(shortResponse);
+        assert('short provider response is reported without fabricating missing candle gaps',shortReport.status==='DEGRADED'&&shortReport.response_shortfall===199&&shortReport.missing_count===0);
+        const stale=makeSnapshot({receivedAt:now-6000});
+        assert('transport age above policy threshold is STALE',run(stale).status==='STALE'&&run(stale).reasons.some(r=>r.code==='TRANSPORT_STALE'));
+        const zeroReceiveTime=makeSnapshot({receivedAt:0});
+        assert('zero receive timestamp is invalid provenance, not a valid transport age',run(zeroReceiveTime).status==='INVALID'&&run(zeroReceiveTime).reasons.some(r=>r.code==='RECEIVE_TIME_INVALID'));
+        const negativeReceiveTime=makeSnapshot({receivedAt:-1});
+        assert('negative receive timestamp is rejected',run(negativeReceiveTime).status==='INVALID'&&run(negativeReceiveTime).reasons.some(r=>r.code==='RECEIVE_TIME_INVALID'));
+        const exactTransportBoundary=makeSnapshot({receivedAt:now-policy.max_transport_age_ms});
+        assert('transport age exactly at policy threshold remains acceptable',run(exactTransportBoundary).status==='VALID');
+        const overTransportBoundary=makeSnapshot({receivedAt:now-policy.max_transport_age_ms-1});
+        assert('transport age one millisecond above threshold becomes STALE',run(overTransportBoundary).status==='STALE');
+        const badOhlc=makeSnapshot({candleOverrides:{high:80}});
+        assert('impossible OHLC relationship is rejected',run(badOhlc).status==='INVALID'&&run(badOhlc).invalid_ohlc_count===1);
+        const negativeVolume=makeSnapshot({candleOverrides:{volume_base:-0.1}});
+        assert('negative base volume is rejected',run(negativeVolume).status==='INVALID'&&run(negativeVolume).negative_volume_count===1);
+        assert('closed candle with negative volume is excluded from valid history',run(negativeVolume).valid_count===0);
+        const zeroVolume=makeSnapshot({candleOverrides:{volume_base:0,volume_quote:0}});
+        assert('zero volumes are valid numeric observations',run(zeroVolume).status==='VALID');
+        const gapCandle=candle(4*step,5*step,'TIME_DERIVED');
+        const gapNow=5*step+lag;
+        const gapSnap=makeSnapshot({providerTime:gapNow,receivedAt:gapNow-100,closed:[candle(step,2*step,'TIME_DERIVED'),gapCandle]});
+        gapSnap.source_diagnostics.requested_count=2;
+        gapSnap.source_diagnostics.raw_row_count=2;
+        const gapReport=run(gapSnap,policy,gapNow);
+        assert('internal missing candle is reported as DEGRADED',gapReport.status==='DEGRADED'&&gapReport.missing_count===2);
+        const insufficient=makeSnapshot({closed:[]});
+        insufficient.source_diagnostics.requested_count=1;
+        insufficient.source_diagnostics.raw_row_count=0;
+        insufficient.source_diagnostics.response_shortfall=1;
+        const insufficientPolicy={...policy,max_market_series_lag_ms_by_timeframe:{...policy.max_market_series_lag_ms_by_timeframe,'1h':2*step}};
+        const insufficientReport=run(insufficient,insufficientPolicy);
+        assert('missing required history has distinct INSUFFICIENT status',insufficientReport.status==='INSUFFICIENT'&&insufficientReport.insufficient_history===true);
+        const noClosedDefaultReport=run(insufficient);
+        assert('empty closed series is INSUFFICIENT, not falsely classified as market-stale',noClosedDefaultReport.status==='INSUFFICIENT'&&noClosedDefaultReport.market_series_lag_ms===null);
+        const finalityMismatch=makeSnapshot({state:'OPEN'});
+        assert('closed collection with OPEN finality state is rejected',run(finalityMismatch).status==='INVALID');
+        const unknownBeforeThreshold=makeSnapshot({providerTime:baseClose+lag-1,closed:[],unknown:[candle(baseOpen,baseClose,'UNKNOWN')]});
+        const finalityBoundaryPolicy={...policy,max_market_series_lag_ms_by_timeframe:{...policy.max_market_series_lag_ms_by_timeframe,'1h':step}};
+        const beforeThresholdReport=run(unknownBeforeThreshold,finalityBoundaryPolicy,baseClose+lag-1);
+        assert('UNKNOWN is accepted only in the unclassified collection immediately before finality threshold',beforeThresholdReport.status==='INSUFFICIENT'&&beforeThresholdReport.unknown_finality_count===1&&!beforeThresholdReport.reasons.some(r=>r.code==='CANDLE_FINALITY_MISMATCH'));
+        const atThreshold=makeSnapshot({providerTime:baseClose+lag,state:'TIME_DERIVED'});
+        const atThresholdReport=run(atThreshold,policy,baseClose+lag);
+        assert('TIME_DERIVED closed candle is accepted exactly at finality threshold',atThresholdReport.status==='VALID'&&atThresholdReport.closed_count===1);
+        const formingOnly=makeSnapshot({providerTime:baseOpen+1000,closed:[],forming:candle(baseOpen,baseClose,'OPEN')});
+        const formingOnlyPolicy={...policy,max_market_series_lag_ms_by_timeframe:{...policy.max_market_series_lag_ms_by_timeframe,'1h':step}};
+        assert('forming candle cannot satisfy minimum closed-history requirement',run(formingOnly,formingOnlyPolicy).status==='INSUFFICIENT'&&run(formingOnly,formingOnlyPolicy).valid_count===0);
+        const wrongSymbol=makeSnapshot({candleOverrides:{canonical_symbol:'ETH/USDT'}});
+        assert('candle from a different symbol is rejected',run(wrongSymbol).status==='INVALID'&&run(wrongSymbol).reasons.some(r=>r.code==='CANDLE_PROVENANCE_MISMATCH'));
+        const wrongTimeframe=makeSnapshot({candleOverrides:{timeframe:'4h'}});
+        assert('candle timeframe must match snapshot timeframe',run(wrongTimeframe).status==='INVALID'&&run(wrongTimeframe).reasons.some(r=>r.code==='CANDLE_PROVENANCE_MISMATCH'));
+        const wrongReceiveTime=makeSnapshot({candleOverrides:{received_at_ms:now-99}});
+        assert('candle receive time must match snapshot receive time',run(wrongReceiveTime).status==='INVALID'&&run(wrongReceiveTime).reasons.some(r=>r.code==='CANDLE_PROVENANCE_MISMATCH'));
+        const wrongAnalysisTime=makeSnapshot();
+        wrongAnalysisTime.analysis_as_of_ms=now-1;
+        assert('analysis as-of time must match provider server time',run(wrongAnalysisTime).status==='INVALID'&&run(wrongAnalysisTime).reasons.some(r=>r.code==='ANALYSIS_TIME_PROVENANCE_MISMATCH'));
+        const dailyStep=86400000, dayOpen=10*dailyStep, dayClose=11*dailyStep;
+        const dailyNow=dayClose+3600000;
+        const dailyClosed=candle(dayOpen,dayClose,'TIME_DERIVED',{timeframe:'1d',provider_event_time_ms:dailyNow,received_at_ms:dailyNow-100});
+        const dailyForming=candle(dayClose,dayClose+dailyStep,'OPEN',{timeframe:'1d',provider_event_time_ms:dailyNow,received_at_ms:dailyNow-100});
+        const dailySnapshot={
+          contract_version:'1.0.0',snapshot_id:'daily-selftest',canonical_symbol:'BTC/USDT',market_type:'linear_perpetual',
+          analysis_as_of_ms:dailyNow,provider_metadata:{provider_id:'bybit-v5-rest',venue:'bybit',provider_symbol:'BTCUSDT',host:'api.bybit.com',time_source:'provider'},provider_server_time_ms:dailyNow,received_at_ms:dailyNow-100,
+          candles_by_timeframe:{'1d':[dailyClosed]},forming_candle_by_timeframe:{'1d':dailyForming},
+          unclassified_candles_by_timeframe:{'1d':[]},
+          source_diagnostics:{requested_count:2,response_shortfall:0,raw_row_count:2,invalid_row_count:0,duplicate_count:0,identical_duplicate_count:0,conflicting_duplicate_count:0,conflicting_duplicate_timestamps:[],raw_out_of_order_count:0,raw_order_expected:'descending'}
+        };
+        const dailyPolicy={...policy,minimum_required_count_by_timeframe:{...policy.minimum_required_count_by_timeframe,'1d':1}};
+        const dailyReport=B1QualityValidator.validate(dailySnapshot,dailyPolicy,dailyNow).report;
+        assert('forming daily candle does not make previous closed daily candle stale',dailyReport.status==='VALID'&&dailyReport.market_series_lag_ms===0);
+        const staleMarketSnapshot=makeSnapshot({providerTime:now+2*step,receivedAt:now-100});
+        const staleMarketReport=run(staleMarketSnapshot,policy,now+2*step);
+        assert('market-series lag above policy threshold has distinct STALE status',staleMarketReport.status==='STALE'&&staleMarketReport.reasons.some(r=>r.code==='MARKET_SERIES_STALE'));
+        const marketLagBoundary=makeSnapshot({providerTime:now+step,receivedAt:now+step-100});
+        const marketBoundaryPolicy={...policy,max_market_series_lag_ms_by_timeframe:{...policy.max_market_series_lag_ms_by_timeframe,'1h':step}};
+        const marketBoundaryReport=run(marketLagBoundary,marketBoundaryPolicy,now+step);
+        assert('market-series lag exactly at policy threshold remains acceptable',marketBoundaryReport.status==='VALID'&&marketBoundaryReport.market_series_lag_ms===step);
+        const misaligned=makeSnapshot({candleOverrides:{open_time_ms:baseOpen+1000,close_time_ms:baseClose+1000}});
+        assert('non-UTC-grid candle timestamp is rejected',run(misaligned).status==='INVALID'&&run(misaligned).misaligned_timestamp_count===1);
+        const future=makeSnapshot({candleOverrides:{open_time_ms:now+2000,close_time_ms:now+step+2000}});
+        assert('candle beyond provider future tolerance is rejected',run(future).status==='INVALID'&&run(future).future_timestamp_count===1);
+        const duplicateCanonical=makeSnapshot({closed:[candle(baseOpen,baseClose),candle(baseOpen,baseClose)]});
+        assert('duplicate canonical timestamp is rejected',run(duplicateCanonical).status==='INVALID'&&run(duplicateCanonical).reasons.some(r=>r.code==='CANONICAL_DUPLICATE_TIMESTAMP'));
+        const irregularGap=makeSnapshot({providerTime:14000000,closed:[
+          candle(baseOpen,baseClose),
+          candle(8100000,11700000)
+        ]});
+        irregularGap.source_diagnostics.requested_count=2;
+        irregularGap.source_diagnostics.raw_row_count=2;
+        assert('non-integral candle interval delta is INVALID, not a zero-sized gap',
+          run(irregularGap).status==='INVALID' &&
+          run(irregularGap).reasons.some(r=>r.code==='IRREGULAR_CANDLE_INTERVAL') &&
+          run(irregularGap).missing_count===0);
+        const malformedEntry=makeSnapshot({closed:[null]});
+        const malformedEntryReport=run(malformedEntry);
+        assert('null candle entries fail closed without crashing gap analysis',malformedEntryReport.status==='INVALID'&&malformedEntryReport.reasons.some(r=>r.code==='CANDLE_ENTRY_INVALID'));
+        const nonFiniteVolume=makeSnapshot({candleOverrides:{volume_base:NaN}});
+        assert('non-finite volume is rejected',run(nonFiniteVolume).status==='INVALID'&&run(nonFiniteVolume).non_finite_count===1);
+        assert('closed candle with non-finite volume is excluded from valid history',run(nonFiniteVolume).valid_count===0);
+        const infiniteVolume=makeSnapshot({candleOverrides:{volume_quote:Infinity}});
+        assert('infinite quote volume is rejected',run(infiniteVolume).status==='INVALID'&&run(infiniteVolume).non_finite_count===1);
+        const stringVolume=makeSnapshot({candleOverrides:{volume_base:'2'}});
+        assert('string volume is rejected rather than silently coerced',run(stringVolume).status==='INVALID'&&run(stringVolume).non_finite_count===1);
+        const oversizedResponse=makeSnapshot();
+        oversizedResponse.source_diagnostics.requested_count=1;
+        oversizedResponse.source_diagnostics.raw_row_count=2;
+        oversizedResponse.source_diagnostics.response_shortfall=0;
+        assert('raw response exceeding requested count is rejected',run(oversizedResponse).status==='INVALID'&&run(oversizedResponse).reasons.some(r=>r.code==='RAW_RESPONSE_EXCEEDS_REQUEST'));
+        const inconsistentShortfall=makeSnapshot();
+        inconsistentShortfall.source_diagnostics.requested_count=200;
+        inconsistentShortfall.source_diagnostics.raw_row_count=1;
+        inconsistentShortfall.source_diagnostics.response_shortfall=198;
+        assert('inconsistent requested/raw/shortfall diagnostics fail closed',run(inconsistentShortfall).status==='INVALID'&&run(inconsistentShortfall).reasons.some(r=>r.code==='RAW_COUNT_PROVENANCE_INCONSISTENT'));
+        const normalizedAccounting=makeSnapshot();
+        normalizedAccounting.source_diagnostics.requested_count=2;
+        normalizedAccounting.source_diagnostics.raw_row_count=2;
+        assert('raw/invalid/duplicate/conflict counts must reconcile with normalized candle collections',
+          run(normalizedAccounting).status==='INVALID' &&
+          run(normalizedAccounting).reasons.some(r=>r.code==='NORMALIZED_ROW_ACCOUNTING_MISMATCH'));
+        const wrongRawOrderContract=makeSnapshot();
+        wrongRawOrderContract.source_diagnostics.raw_order_expected='ascending';
+        assert('raw order direction expectation is mandatory and must match the Bybit adapter contract',run(wrongRawOrderContract).status==='INVALID'&&run(wrongRawOrderContract).reasons.some(r=>r.code==='RAW_DIAGNOSTICS_MISSING'));
+        const missingConflictEvidence=makeSnapshot();
+        missingConflictEvidence.source_diagnostics.conflicting_duplicate_timestamps=null;
+        assert('conflicting duplicate timestamp evidence is mandatory even when no conflicts are reported',
+          run(missingConflictEvidence).status==='INVALID' &&
+          run(missingConflictEvidence).reasons.some(r=>r.code==='RAW_DIAGNOSTICS_MISSING'));
+        const missingConflictTimestamp=makeSnapshot();
+        missingConflictTimestamp.source_diagnostics.duplicate_count=1;
+        missingConflictTimestamp.source_diagnostics.conflicting_duplicate_count=1;
+        assert('conflicting duplicate rows require timestamp-level quarantine evidence',
+          run(missingConflictTimestamp).status==='INVALID' &&
+          run(missingConflictTimestamp).reasons.some(r=>r.code==='CONFLICTING_DUPLICATE_TIMESTAMPS_MISSING'));
+        const negativeRawCount=makeSnapshot();
+        negativeRawCount.source_diagnostics.raw_row_count=-1;
+        assert('negative raw row count is rejected as missing critical provenance',run(negativeRawCount).status==='INVALID'&&run(negativeRawCount).reasons.some(r=>r.code==='RAW_DIAGNOSTICS_MISSING'));
+        const invalidRowsExceedRaw=makeSnapshot();
+        invalidRowsExceedRaw.source_diagnostics.invalid_row_count=2;
+        assert('invalid raw row count cannot exceed total raw rows',run(invalidRowsExceedRaw).status==='INVALID'&&run(invalidRowsExceedRaw).reasons.some(r=>r.code==='INVALID_ROW_COUNT_EXCEEDS_RAW'));
+        const duplicateBreakdownMismatch=makeSnapshot();
+        duplicateBreakdownMismatch.source_diagnostics.duplicate_count=2;
+        duplicateBreakdownMismatch.source_diagnostics.identical_duplicate_count=1;
+        assert('duplicate count must equal identical plus conflicting duplicate rows',run(duplicateBreakdownMismatch).status==='INVALID'&&run(duplicateBreakdownMismatch).reasons.some(r=>r.code==='DUPLICATE_COUNT_PROVENANCE_INCONSISTENT'));
+        const duplicateBreakdownValid=makeSnapshot();
+        duplicateBreakdownValid.source_diagnostics.duplicate_count=2;
+        duplicateBreakdownValid.source_diagnostics.identical_duplicate_count=2;
+        duplicateBreakdownValid.source_diagnostics.raw_row_count=3;
+        duplicateBreakdownValid.source_diagnostics.requested_count=3;
+        assert('consistent identical duplicate row counts remain DEGRADED when permitted',run(duplicateBreakdownValid).status==='DEGRADED');
+        const duplicateRejectPolicy={...policy,allow_identical_duplicates:false};
+        const duplicateRejectReport=run(duplicateBreakdownValid,duplicateRejectPolicy);
+        assert('identical duplicates are rejected when policy disallows them',duplicateRejectReport.status==='INVALID'&&duplicateRejectReport.reasons.some(r=>r.code==='IDENTICAL_DUPLICATES_NOT_ALLOWED'));
+        const openInClosed=makeSnapshot({providerTime:baseOpen+1000,closed:[candle(baseOpen,baseClose,'OPEN')]});
+        assert('OPEN candle cannot be stored in closed collection',run(openInClosed).status==='INVALID'&&run(openInClosed).reasons.some(r=>r.code==='CANDLE_COLLECTION_STATE_MISMATCH'));
+        const closedInForming=makeSnapshot({closed:[],forming:candle(baseOpen,baseClose,'TIME_DERIVED')});
+        assert('TIME_DERIVED candle cannot be stored in forming collection',run(closedInForming).status==='INVALID'&&run(closedInForming).reasons.some(r=>r.code==='CANDLE_COLLECTION_STATE_MISMATCH'));
+        const unknownInClosed=makeSnapshot({closed:[candle(baseOpen,baseClose,'UNKNOWN')],providerTime:baseClose+100});
+        assert('UNKNOWN candle cannot be stored in closed collection during safety lag',run(unknownInClosed).status==='INVALID'&&run(unknownInClosed).reasons.some(r=>r.code==='CANDLE_COLLECTION_STATE_MISMATCH'));
+        const quoteExtreme=makeSnapshot();
+        quoteExtreme.quote={available:true,price:1e99,provider_event_time_ms:now,received_at_ms:now-100};
+        assert('quote price is isolated from candle quality validation',run(quoteExtreme).status==='VALID');
+        const fourHourStep=4*step,fourHourOpen=4*fourHourStep,fourHourClose=fourHourOpen+fourHourStep;
+        const fourHourNow=fourHourClose+lag;
+        const fourHourCandle=candle(fourHourOpen,fourHourClose,'TIME_DERIVED',{timeframe:'4h',provider_event_time_ms:fourHourNow,received_at_ms:fourHourNow-100});
+        const fourHourSnapshot={
+          contract_version:'1.0.0',snapshot_id:'4h-selftest',canonical_symbol:'BTC/USDT',market_type:'linear_perpetual',
+          analysis_as_of_ms:fourHourNow,provider_metadata:{provider_id:'bybit-v5-rest',venue:'bybit',provider_symbol:'BTCUSDT',host:'api.bybit.com',time_source:'provider'},provider_server_time_ms:fourHourNow,received_at_ms:fourHourNow-100,
+          candles_by_timeframe:{'4h':[fourHourCandle]},forming_candle_by_timeframe:{'4h':null},
+          unclassified_candles_by_timeframe:{'4h':[]},
+          source_diagnostics:{requested_count:1,response_shortfall:0,raw_row_count:1,invalid_row_count:0,duplicate_count:0,identical_duplicate_count:0,conflicting_duplicate_count:0,conflicting_duplicate_timestamps:[],raw_out_of_order_count:0,raw_order_expected:'descending'}
+        };
+        const fourHourReport=B1QualityValidator.validate(fourHourSnapshot,policy,fourHourNow).report;
+        assert('4h aligned closed candle passes the same quality contract',fourHourReport.status==='VALID'&&fourHourReport.valid_count===1);
+        assert('1d aligned closed candle passes quality contract',dailyReport.status==='VALID'&&dailyReport.closed_count===1&&dailyReport.forming_count===1);
+        const deterministicA=run(makeSnapshot()),deterministicB=run(makeSnapshot());
+        assert('same input and explicit time produce deterministic report',JSON.stringify(deterministicA)===JSON.stringify(deterministicB));
+        const immutableSnapshot=makeSnapshot();
+        const immutableBefore=JSON.stringify(immutableSnapshot);
+        run(immutableSnapshot);
+        assert('validator does not mutate canonical snapshot',JSON.stringify(immutableSnapshot)===immutableBefore);
+        const emptyPolicyVersion=run(makeSnapshot(),{...policy,version:'   '},now);
+        assert('policy version must be a non-empty identifier',emptyPolicyVersion.status==='INVALID'&&emptyPolicyVersion.reasons.some(r=>r.code==='POLICY_INVALID'));
+        const invalidPolicy=run(makeSnapshot(),{version:'broken'},now);
+        assert('incomplete policy fails closed',invalidPolicy.status==='INVALID'&&invalidPolicy.reasons.some(r=>r.code==='POLICY_INVALID'));
+        const integrationNow=10800500;
+        const integrationRows=[
+          ['7200000','100','110','90','105','2','210'],
+          ['3600000','99','105','95','100','1','100']
+        ];
+        const integrationDataset=BybitAdapter.normalize(integrationRows,{
+          symbol:'BTCUSDT',interval:'60',requestedCount:2,hostUsed:'selftest',serverTimeMs:integrationNow,
+          providerServerTimeMs:integrationNow,timeSource:'provider',clockSkewMs:0,
+          tickerStatus:{available:false,price:null,timeMs:null,hostUsed:'selftest'}
+        });
+        integrationDataset.fetchedAtLocalMs=integrationNow-100;
+        const integrationSnapshot=B1DataContract.toSnapshot(integrationDataset);
+        const integrationPolicy={...policy,minimum_required_count_by_timeframe:{...policy.minimum_required_count_by_timeframe,'1h':2}};
+        const integrationReport=B1QualityValidator.validate(integrationSnapshot,integrationPolicy,integrationNow).report;
+        assert('Bybit normalizer → canonical snapshot → quality validator integration passes',integrationReport.status==='VALID'&&integrationReport.valid_count===2);
+        const totals={total:results.length,passed:results.filter(x=>x.passed).length,failed:results.filter(x=>!x.passed).length};
+        return {results,totals};
       }
     };
 
@@ -2160,6 +3162,37 @@
       },
 
       analyze(dataset) {
+        const qualityReport = dataset && dataset.qualityReport;
+        const reportVersionValid = Boolean(
+          qualityReport &&
+          qualityReport.validator_version === B1QualityValidator.VERSION &&
+          qualityReport.policy_version === B1_QUALITY_POLICY.version
+        );
+        if (!reportVersionValid || qualityReport.status !== 'VALID') {
+          const prices = dataset && dataset.prices ? dataset.prices : {};
+          const status = !qualityReport ? 'UNASSESSED' : !reportVersionValid ? 'INVALID' : (qualityReport.status || 'UNASSESSED');
+          const codes = Array.isArray(qualityReport && qualityReport.reasons)
+            ? qualityReport.reasons.map(reason => reason && reason.code).filter(Boolean).slice(0, 5)
+            : [];
+          if (qualityReport && !reportVersionValid) codes.unshift('QUALITY_REPORT_VERSION_MISMATCH');
+          const detail = codes.length ? ` Причины: ${codes.join(', ')}.` : '';
+          return {
+            decision: 'WAIT',
+            reasons: [`Направленный анализ заблокирован фильтром качества данных: ${status}.${detail}`],
+            ema20: [], ema50: [], atr14: [],
+            swings: { highs: [], lows: [] },
+            levels: { resistance: null, support: null },
+            qualityGate: { blocked: true, status, reasonCodes: codes },
+            metrics: {
+              lastClosedPrice: prices.lastClosedPrice ?? null,
+              formingClosePrice: prices.formingClosePrice ?? null,
+              tickerLastPrice: prices.tickerLastPrice ?? null,
+              currentMarketPrice: prices.currentMarketPrice ?? null,
+              currentPriceSource: prices.currentPriceSource ?? 'Нет данных',
+              priceWarning: prices.priceWarning ?? null
+            }
+          };
+        }
         const candles = dataset.closedCandles;
         const {
           lastClosedPrice,
@@ -2179,6 +3212,7 @@
             atr14: [],
             swings: { highs: [], lows: [] },
             levels: { resistance: null, support: null },
+            qualityGate: { blocked: false, status: 'VALID', validatorVersion: B1QualityValidator.VERSION, policyVersion: B1_QUALITY_POLICY.version, reasonCodes: [] },
             metrics: {
               lastClosedPrice,
               formingClosePrice,
@@ -2289,6 +3323,7 @@
           atr14,
           swings,
           levels: { resistance: nearestResistance, support: nearestSupport },
+          qualityGate: { blocked: false, status: 'VALID', reasonCodes: [] },
           metrics: {
             lastClosedPrice,
             formingClosePrice,
@@ -2918,7 +3953,8 @@
         { k: 'Последняя закрытая (закр. UTC)', v: fmtUtc(q.lastClosedCloseTs) },
         { k: 'Текущая свеча (старт → закр.)', v: q.hasForming ? `${fmtUtc(q.formingOpenTs)} → ${fmtUtc(q.formingCloseTs)}` : 'Нет открытой свечи', cls: 'status-warn' },
         { k: 'Пропуски свечей / Аномал. инт.', v: `${q.gaps} / ${q.anomalousIntervals}`, cls: (q.gaps > 0 || q.anomalousIntervals > 0) ? 'status-warn' : 'status-ok' },
-        { k: 'Дубли / Битые / Сдвиг UTC / Метки', v: `${q.duplicates} / ${q.invalidRows} / ${q.misalignedTimestamps} / ${q.invalidTimestamps}`, cls: issuesClass }
+        { k: 'Дубли / Битые / Сдвиг UTC / Метки', v: `${q.duplicates} / ${q.invalidRows} / ${q.misalignedTimestamps} / ${q.invalidTimestamps}`, cls: issuesClass },
+        { k: 'B1-фильтр перед анализом', v: dataset.qualityReport ? `${dataset.qualityReport.status} · ${dataset.qualityReport.validator_version || 'validator'}` : 'UNASSESSED', cls: dataset.qualityReport && dataset.qualityReport.status === 'VALID' ? 'status-ok' : 'status-warn' }
       ]);
 
       chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis, pInfo.currentMarketPrice);
@@ -2931,6 +3967,13 @@
 
       const cached = state.snapshotsByKey.get(makeKey(symbol, interval));
       if (cached) {
+        const refreshedReport = B1QualityValidator.validate(cached.dataset.canonicalSnapshot, B1_QUALITY_POLICY, Date.now()).report;
+        cached.dataset.qualityReport = {
+          ...refreshedReport,
+          status: refreshedReport.status === 'INVALID' ? 'INVALID' : 'STALE',
+          reasons: [...refreshedReport.reasons, { code: 'REST_REFRESH_FAILED', severity: 'STALE', timeframe: null }]
+        };
+        cached.analysis = BasicAnalyticsEngine.analyze(cached.dataset);
         renderSuccess(cached.dataset, cached.analysis);
         setRestStatus('ошибка связи · показан устаревший снимок', 'status-err');
         const lastTime = new Date(cached.dataset.fetchedAtLocalMs).toLocaleTimeString('ru-RU');
@@ -3006,6 +4049,8 @@
 
       try {
         const dataset = await BybitAdapter.fetchMarketSnapshot(reqSymbol, reqInterval, controller.signal, 160);
+        dataset.canonicalSnapshot = B1DataContract.toSnapshot(dataset);
+        dataset.qualityReport = B1QualityValidator.validate(dataset.canonicalSnapshot, B1_QUALITY_POLICY, Date.now()).report;
 
         if (reqId !== state.requestSeq || reqSymbol !== state.symbol || reqInterval !== state.interval) {
           return;
@@ -3183,14 +4228,16 @@
           const nowMs = Date.now();
           const lastOpen = Math.floor(nowMs / step) * step;
           const rows = [];
-          for (let i = 159; i >= 0; i--) {
+          for (let i = 0; i < 160; i++) {
             const ts = lastOpen - i * step;
             const base = 60000 + 400 * Math.sin((159 - i) / 7) + (159 - i) * 3;
             const o = base, c = base + 50 * Math.cos((159 - i) / 3);
-            rows.push([String(ts), o.toFixed(2), (Math.max(o, c) + 40).toFixed(2), (Math.min(o, c) - 40).toFixed(2), c.toFixed(2), '100']);
+            const volume = 100;
+            rows.push([String(ts), o.toFixed(2), (Math.max(o, c) + 40).toFixed(2), (Math.min(o, c) - 40).toFixed(2), c.toFixed(2), String(volume), (volume * c).toFixed(2)]);
           }
           return BybitAdapter.normalize(rows, {
-            symbol, interval, hostUsed: 'selftest-mock (СИМУЛЯЦИЯ)', serverTimeMs: nowMs, clockSkewMs: 0,
+            symbol, interval, hostUsed: 'selftest-mock (СИМУЛЯЦИЯ)', serverTimeMs: nowMs,
+            providerServerTimeMs: nowMs, timeSource: 'provider', clockSkewMs: 0, requestedCount: 160,
             tickerStatus: { available: false, price: null, timeMs: null, hostUsed: 'selftest-mock', error: 'симуляция StageASelfTest' }
           });
         };
