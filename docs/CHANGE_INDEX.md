@@ -443,3 +443,15 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 ### Integration status
 
 All B2 modules remain isolated in the draft candidate PR #20. No app HTML or main branch changes. B1 is NOT ACCEPTED; independent audit, live MTF provider-time calibration, parameter calibration and iPhone/Safari acceptance remain required.
+
+
+
+### B2 app integration candidate — 2026-11-27
+- `CryptoAnalyst_StageA_S6_updated.html`: inlined B2-A…B2-G engines; added B2 panel; added causal swing/event/zone chart overlays; kept B2 isolated from LONG/SHORT/WAIT.
+- MTF B2-F intentionally disabled in app pending measured live Bybit provider-time spread.
+- Confirmed S/R zones draw only from `visible_from_ms`; no backdated zone overlay.
+- Added/fixed B2-G single-timeframe projection with explicit null MTF context.
+- `tests/b2-app-browser-integration.cjs`: verifies VALID B1→B2 runtime, stale-input fail-closed behavior, chart projection attachment, causal zone x-position and 390×844 mobile layout.
+- B2 app integration CI [46034275312](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034275312) passed all module and browser/mobile checks.
+- B1 browser/data CI [46034276646](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034276646) passed; live Bybit REST explicitly skipped due HTTP 403 from GitHub Actions.
+- Branch `integration/b2-market-structure-ui-2026-11-27`; no `main` merge. Awaiting iPhone/Safari and live MTF calibration.
