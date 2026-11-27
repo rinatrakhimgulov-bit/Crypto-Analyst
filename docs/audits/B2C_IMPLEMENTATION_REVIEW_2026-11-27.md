@@ -50,3 +50,25 @@ The suite covers both initial directions, BOS and CHoCH symmetry, protected swin
 ## Recommendation
 
 Keep PR #15 draft and isolated. Request an independent exact-source review of B2-A/B/C, then proceed to B2-D support/resistance as a separate research increment. Do not merge automatically.
+
+
+## Addendum — hardening after initial review (2026-11-27)
+
+The candidate was further hardened after the earlier 28-test review:
+- B2-A rejects missing candle intervals; 21/21 pass in run 46014698432.
+- B2-C requires HH for bullish BOS continuation and LL for bearish BOS continuation; LH/HL false-BOS regressions are included.
+- B2-C re-arms a pivot when it becomes the protected reversal level after a regime transition, so a previously consumed initial/continuation level can correctly support the opposite CHoCH.
+- B2-C requires the exact B2-A result and compares B2-B raw pivots against B2-A pivots, rejecting a pivot omitted from both B2-B raw evidence and sequence.
+- Latest B2-C suite: 33/33 passed in run 46015831238 on head `e9590ddb65c9f3a09a28279efdb064b6caa6a4a2`.
+
+## B2-D review notes
+
+B2-D candidate adds support/resistance clusters from confirmed raw pivot evidence. 21/21 deterministic tests passed in run 46015873986 on head `9012e514a29b755ac9208f1f495c3f560638b0a1`.
+
+No critical implementation defect was identified in the static review of the B2-D cluster construction. Remaining limitations are material and explicit:
+1. `MAX_TOTAL_SPAN_V1` uses absolute price units. It is scoped to an exact symbol/timeframe, but thresholds still require empirical calibration per instrument/timeframe; a universal threshold would be wrong.
+2. Freshness age is reported but not classified. The engine does not claim that a zone is currently active or relevant.
+3. Zone IDs are derived from current cluster membership and can change when membership changes. They must not be used as persistent B2-E lifecycle identifiers.
+4. All confirmed raw pivots are touch evidence, including pivots superseded for the alternating B2-B sequence; the output exposes each touch's sequence status.
+
+This is an internal static review, not an independent external audit or live-market validation. B1 remains NOT ACCEPTED; B2-D is research-only, draft and unmerged.
