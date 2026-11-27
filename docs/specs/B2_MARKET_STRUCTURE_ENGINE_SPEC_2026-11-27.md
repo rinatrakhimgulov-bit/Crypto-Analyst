@@ -392,3 +392,10 @@ The B1 finality lag is included in `available_at_ms`; a pivot cannot be consumed
 Deterministic tests are in `tests/b2a-causal-swing-engine.test.cjs`. They currently pass 10/10 in the development JavaScript harness. The dedicated GitHub Actions run has not yet been independently confirmed.
 
 This candidate does not implement B2-B swing sequencing, B2-C BOS/CHoCH, zones, retests, chart integration or trading decisions. It is research code pending review and is not production-enabled. Formal B1 acceptance remains required before integration into the live app.
+
+
+## 17. B1 version binding hardening — 2026-11-27
+
+B2-A admission now binds to the exact accepted B1 canonical contract and validator versions, in addition to the exact B1 quality-policy version. The candidate policy must explicitly declare `b1_contract_version` and `b1_validator_version`; the snapshot contract version and quality report validator version must match those values exactly. A merely non-empty validator version is insufficient. Missing policy versions or mismatched snapshot/report versions fail closed.
+
+The B2-A regression suite now contains 13 deterministic cases, including explicit rejection of an unsupported canonical contract version and a stale/mismatched validator version. This is still isolated research code. It does not waive B1 acceptance or authorize application integration.
