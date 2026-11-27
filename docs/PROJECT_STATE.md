@@ -591,3 +591,8 @@ Next B2 work must remain staged: independently review B2-A's exact source and te
 - PR #13 is draft and unmerged, based on the B2-A candidate branch. This code is research-only; it is not wired into the app or LONG/SHORT path. B1 remains NOT ACCEPTED.
 
 Next: independent review of exact B2-A/B2-B source and tests; then B2-C protected swings and BOS/CHoCH only as a separate isolated increment, still gated from production by B1 acceptance.
+
+
+### B2-B integration verification refresh — 2026-11-27
+
+The B2-B suite now contains 20 tests, including a direct end-to-end fixture that runs the actual B2-A raw pivot engine and passes its VALID result into B2-B. It verifies the causal sequence labels `INITIAL_HIGH`, `INITIAL_LOW`, `HH`, `HL`, `LH`, `LL`. GitHub Actions run 46012201698 passed 20/20 on commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`. This confirms the tested B2-A→B2-B contract on deterministic fixtures only; it is not production or live-market validation.
