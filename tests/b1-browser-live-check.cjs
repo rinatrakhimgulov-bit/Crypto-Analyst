@@ -514,6 +514,9 @@ async function main() {
         if (this.strokeStyle === '#eab308') stats.ema200MaxX = Math.max(stats.ema200MaxX, x);
         return originalLineTo(x, y);
       };
+      // This chart-render regression specifically verifies EMA200. The app's
+      // Clean preset intentionally hides EMA overlays, so enable them for this test.
+      const emaLayerSetResult = chart.setDisplayLayer('emas', true);
       chart.visibleCount = 80;
       chart.offsetFromEnd = 0;
       chart.setData([...closed, forming], closed.length, {
@@ -532,6 +535,7 @@ async function main() {
       const lastClosedCenterX = metrics.padLeft + 78.5 * stepX;
       return {
         ...stats,
+        emaLayerEnabled: emaLayerSetResult && chart.displayLayers.emas === true,
         expectedMinimumVolumeBars: 70,
         ema200StayedOnClosedCandles: stats.ema200MaxX <= lastClosedCenterX + 0.5,
         canvasWidth: canvas.clientWidth,
@@ -540,6 +544,7 @@ async function main() {
     });
     if (chartVisual.volumeBars < chartVisual.expectedMinimumVolumeBars ||
         chartVisual.formingVolumeMuted < 1 ||
+        chartVisual.emaLayerEnabled !== true ||
         chartVisual.ema200Strokes < 1 ||
         chartVisual.ema200StayedOnClosedCandles !== true ||
         chartVisual.canvasWidth < 100 || chartVisual.canvasHeight < 100) {

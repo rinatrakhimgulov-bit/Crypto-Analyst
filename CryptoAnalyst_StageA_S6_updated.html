@@ -51,12 +51,12 @@
     }
 
     .app {
-      max-width: 1280px;
+      max-width: 1440px;
       margin: 0 auto;
-      padding: 12px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
     /* Верхняя панель */
@@ -172,16 +172,19 @@
     /* Основная сетка */
     .grid-main {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 12px;
+      min-width: 0;
     }
 
     @media (min-width: 960px) {
       .grid-main {
-        grid-template-columns: 2.15fr 1fr;
+        grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr);
         align-items: start;
       }
     }
+
+    .chart-card { min-width: 0; }
 
     .card {
       background: var(--panel);
@@ -209,7 +212,7 @@
     .chart-wrap {
       position: relative;
       width: 100%;
-      height: 410px;
+      height: 540px;
       border-radius: 8px;
       overflow: hidden;
       background: #0d1320;
@@ -218,7 +221,97 @@
     }
 
     @media (max-width: 600px) {
-      .chart-wrap { height: 320px; }
+      .app { padding: 7px; gap: 8px; }
+      .card { padding: 10px; }
+      .chart-wrap { height: clamp(440px, 58svh, 640px); }
+      .topbar { padding: 9px 10px; gap: 8px; }
+      .price-box { gap: 6px 9px; }
+      .price { font-size: 19px; }
+      #liveDiagnostics { display: none; }
+      .chart-card .card-header { margin-bottom: 7px; }
+      .chart-legend { gap: 7px 10px; font-size: 10.5px; }
+    }
+
+    .chart-toolbar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      min-width: 0;
+      margin: 0 0 9px;
+    }
+
+    .chart-mode-controls, .chart-layer-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .chart-mode-controls {
+      width: fit-content;
+      max-width: 100%;
+      min-width: 0;
+      padding: 3px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+    }
+
+    .chart-mode-btn, .chart-layer-btn {
+      flex: 0 0 auto;
+      min-height: 34px;
+      padding: 7px 11px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .chart-mode-btn.active {
+      background: var(--accent);
+      color: #061018;
+    }
+
+    .chart-layer-controls {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      flex: 0 1 100%;
+      overflow-x: auto;
+      padding: 1px 0 4px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .chart-layer-controls::-webkit-scrollbar { display: none; }
+
+    .chart-layer-btn {
+      border-color: var(--border);
+      background: rgba(23, 32, 51, 0.72);
+    }
+
+    .chart-layer-btn[aria-pressed="true"] {
+      color: var(--text);
+      border-color: rgba(56, 189, 248, 0.55);
+      background: rgba(56, 189, 248, 0.12);
+    }
+
+    .chart-toolbar-hint {
+      color: var(--muted);
+      font-size: 10.5px;
+      line-height: 1.35;
+    }
+
+    @media (min-width: 960px) {
+      .chart-toolbar { flex-direction: row; align-items: center; flex-wrap: wrap; }
+      .chart-layer-controls { flex: 1 1 100%; }
     }
 
     canvas {
@@ -437,11 +530,28 @@
 
     <!-- Основной блок: график + решение + контроль данных -->
     <div class="grid-main">
-      <section class="card">
+      <section class="card chart-card">
         <div class="card-header">
           <span class="card-title" id="chartTitle">График — BTCUSDT (4H)</span>
           <span class="meta" id="chartHint">Перетаскивание — скролл · Колесо / жест — масштаб относительно курсора/жеста · Кнопка «Сброс»</span>
           <button type="button" class="btn" id="resetViewBtn">Сброс вида</button>
+        </div>
+
+        <div class="chart-toolbar" aria-label="Настройки отображения графика">
+          <div class="chart-mode-controls" id="chartModeSeg" role="group" aria-label="Режим графика">
+            <button type="button" class="chart-mode-btn active" data-chart-mode="clean" aria-pressed="true">Чистый</button>
+            <button type="button" class="chart-mode-btn" data-chart-mode="structure" aria-pressed="false">Структура</button>
+            <button type="button" class="chart-mode-btn" data-chart-mode="full" aria-pressed="false">Полный</button>
+          </div>
+          <div class="chart-layer-controls" id="chartLayerControls" role="group" aria-label="Слои графика">
+            <button type="button" class="chart-layer-btn" data-chart-layer="zones" aria-pressed="true">Зоны S/R</button>
+            <button type="button" class="chart-layer-btn" data-chart-layer="pivots" aria-pressed="true">Экстремумы</button>
+            <button type="button" class="chart-layer-btn" data-chart-layer="events" aria-pressed="false">BOS / CHoCH</button>
+            <button type="button" class="chart-layer-btn" data-chart-layer="retests" aria-pressed="false">Ретесты</button>
+            <button type="button" class="chart-layer-btn" data-chart-layer="emas" aria-pressed="true">EMA</button>
+            <button type="button" class="chart-layer-btn" data-chart-layer="volume" aria-pressed="true">Объём</button>
+          </div>
+          <div class="chart-toolbar-hint">Режим задаёт готовый набор слоёв. Любой слой можно включить или выключить отдельно.</div>
         </div>
 
         <div class="chart-wrap">
@@ -6970,6 +7080,11 @@
         this.analysis = null;
         this.marketStructure = null;
         this.marketPrice = null;
+        this.displayMode = 'clean';
+        this.displayLayers = {
+          zones: true, pivots: true, events: false, retests: false,
+          emas: false, volume: true, legacyLevels: false
+        };
         this.visibleCount = 80;
         this.offsetFromEnd = 0;
         this.isDragging = false;
@@ -6979,6 +7094,27 @@
         this.lastTouchMidX = null;
 
         this.bindEvents();
+      }
+
+      setDisplayMode(mode) {
+        const presets = {
+          clean: { zones: true, pivots: true, events: false, retests: false, emas: false, volume: true, legacyLevels: false },
+          structure: { zones: true, pivots: true, events: true, retests: true, emas: true, volume: true, legacyLevels: false },
+          full: { zones: true, pivots: true, events: true, retests: true, emas: true, volume: true, legacyLevels: true }
+        };
+        if (!Object.prototype.hasOwnProperty.call(presets, mode)) return false;
+        this.displayMode = mode;
+        this.displayLayers = { ...presets[mode] };
+        this.render();
+        return true;
+      }
+
+      setDisplayLayer(layer, enabled) {
+        if (!Object.prototype.hasOwnProperty.call(this.displayLayers, layer) || typeof enabled !== 'boolean') return false;
+        this.displayLayers = { ...this.displayLayers, [layer]: enabled };
+        this.displayMode = 'custom';
+        this.render();
+        return true;
       }
 
       setData(candles, closedCount, analysis, marketPrice) {
@@ -7243,12 +7379,15 @@
 
         let minP = Infinity;
         let maxP = -Infinity;
+        const visibleEmaSeries = this.displayLayers.emas && this.analysis
+          ? [this.analysis.ema20, this.analysis.ema50, this.analysis.ema200]
+          : [];
         for (const c of slice) {
           if (c.low < minP) minP = c.low;
           if (c.high > maxP) maxP = c.high;
           const closedIdx = tsToClosedIdx.get(c.ts);
-          if (closedIdx !== undefined && this.analysis) {
-            for (const series of [this.analysis.ema20, this.analysis.ema50, this.analysis.ema200]) {
+          if (closedIdx !== undefined) {
+            for (const series of visibleEmaSeries) {
               const value = Array.isArray(series) ? series[closedIdx] : null;
               if (Number.isFinite(value)) {
                 minP = Math.min(minP, value);
@@ -7259,13 +7398,13 @@
         }
 
         const levels = this.analysis && this.analysis.levels ? this.analysis.levels : {};
-        for (const lvl of [levels.resistance, levels.support]) {
+        for (const lvl of (this.displayLayers.legacyLevels ? [levels.resistance, levels.support] : [])) {
           if (typeof lvl === 'number' && lvl >= minP * 0.985 && lvl <= maxP * 1.015) {
             minP = Math.min(minP, lvl);
             maxP = Math.max(maxP, lvl);
           }
         }
-        const b2ZonesForScale = this.marketStructure && Array.isArray(this.marketStructure.zones)
+        const b2ZonesForScale = this.displayLayers.zones && this.marketStructure && Array.isArray(this.marketStructure.zones)
           ? this.marketStructure.zones : [];
         for (const zone of b2ZonesForScale) {
           if (Number.isFinite(zone.lower_bound) && Number.isFinite(zone.upper_bound) &&
@@ -7279,7 +7418,7 @@
         minP -= span * 0.06;
         maxP += span * 0.06;
 
-        const pricePlotH = Math.max(50, plotH * 0.72);
+        const pricePlotH = Math.max(50, plotH * (this.displayLayers.volume ? 0.72 : 0.9));
         const volumeTop = padTop + pricePlotH + 10;
         const volumeBottom = padTop + plotH - 12;
         const volumeHeight = Math.max(10, volumeBottom - volumeTop);
@@ -7303,8 +7442,9 @@
           ctx.fillText(fmtPrice(priceVal), padLeft + plotW + 6, y + 4);
         }
 
-        const b2Zones = this.marketStructure && Array.isArray(this.marketStructure.zones)
+        const b2Zones = this.displayLayers.zones && this.marketStructure && Array.isArray(this.marketStructure.zones)
           ? this.marketStructure.zones : [];
+        const visibleZoneIds = new Set(b2Zones.slice(-3).map(zone => zone.id));
         for (const zone of b2Zones) {
           if (!Number.isFinite(zone.lower_bound) || !Number.isFinite(zone.upper_bound) ||
               !Number.isSafeInteger(zone.visible_from_ms) ||
@@ -7321,14 +7461,16 @@
           const yBottom = yForPrice(zone.lower_bound);
           const isSupport = zone.role === 'SUPPORT';
           ctx.save();
-          ctx.fillStyle = isSupport ? 'rgba(56, 189, 248, 0.075)' : 'rgba(245, 158, 11, 0.075)';
-          ctx.strokeStyle = isSupport ? 'rgba(56, 189, 248, 0.38)' : 'rgba(245, 158, 11, 0.38)';
+          ctx.fillStyle = isSupport ? 'rgba(56, 189, 248, 0.055)' : 'rgba(245, 158, 11, 0.055)';
+          ctx.strokeStyle = isSupport ? 'rgba(56, 189, 248, 0.24)' : 'rgba(245, 158, 11, 0.24)';
           ctx.lineWidth = 1;
           ctx.fillRect(zoneStartX, yTop, zoneWidth, Math.max(1, yBottom - yTop));
           ctx.strokeRect(zoneStartX, yTop, zoneWidth, Math.max(1, yBottom - yTop));
-          ctx.fillStyle = isSupport ? '#7dd3fc' : '#fcd34d';
-          ctx.font = '10px sans-serif';
-          ctx.fillText((isSupport ? 'SUP' : 'RES') + ' ' + fmtPrice(zone.representative_price), zoneStartX + 5, Math.max(padTop + 10, yTop + 11));
+          if (visibleZoneIds.has(zone.id) && yBottom - yTop >= 10) {
+            ctx.fillStyle = isSupport ? 'rgba(125, 211, 252, 0.85)' : 'rgba(252, 211, 77, 0.85)';
+            ctx.font = '9px sans-serif';
+            ctx.fillText((isSupport ? 'S ' : 'R ') + fmtPrice(zone.representative_price), Math.max(padLeft + 3, zoneStartX + 4), Math.max(padTop + 10, yTop + 10));
+          }
           ctx.restore();
         }
 
@@ -7350,8 +7492,10 @@
           ctx.restore();
         };
 
-        drawLevelLine(levels.resistance, 'rgba(245, 158, 11, 0.85)', 'SH');
-        drawLevelLine(levels.support, 'rgba(56, 189, 248, 0.85)', 'SL');
+        if (this.displayLayers.legacyLevels) {
+          drawLevelLine(levels.resistance, 'rgba(245, 158, 11, 0.85)', 'SH');
+          drawLevelLine(levels.support, 'rgba(56, 189, 248, 0.85)', 'SL');
+        }
 
         for (let i = 0; i < slice.length; i++) {
           const globalIdx = startIdx + i;
@@ -7394,39 +7538,40 @@
           }
         }
 
-        // Volume is rendered in its own lower pane and uses the same candle slice/index.
-        // Forming-candle volume is shown muted; no volume value enters EMA calculations.
-        const volumeValues = slice.map(c => Number.isFinite(c.volume) && c.volume >= 0 ? c.volume : 0);
-        const maxVisibleVolume = Math.max(0, ...volumeValues);
-        const volumeBaselineY = volumeBottom;
-        ctx.save();
-        ctx.strokeStyle = 'rgba(143, 161, 191, 0.22)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(padLeft, volumeTop);
-        ctx.lineTo(padLeft + plotW, volumeTop);
-        ctx.moveTo(padLeft, volumeBaselineY);
-        ctx.lineTo(padLeft + plotW, volumeBaselineY);
-        ctx.stroke();
-        ctx.fillStyle = '#8fa1bf';
-        ctx.font = '9px sans-serif';
-        ctx.fillText('VOL', padLeft + 3, volumeTop + 10);
-        if (maxVisibleVolume > 0) {
-          for (let i = 0; i < slice.length; i++) {
-            const c = slice[i];
-            const value = volumeValues[i];
-            if (value <= 0) continue;
-            const globalIdx = startIdx + i;
-            const isForming = globalIdx >= this.closedCount;
-            const barHeight = Math.max(1, (value / maxVisibleVolume) * Math.max(4, volumeHeight - 4));
-            const cx = padLeft + (i + 0.5) * stepX;
-            ctx.fillStyle = isForming
-              ? 'rgba(148, 163, 184, 0.35)'
-              : (c.close >= c.open ? 'rgba(34, 197, 94, 0.62)' : 'rgba(239, 68, 68, 0.62)');
-            ctx.fillRect(cx - Math.max(1, bodyW / 2), volumeBaselineY - barHeight, Math.max(1, bodyW), barHeight);
+        if (this.displayLayers.volume) {
+          // Volume uses the same candle slice/index and remains independent of analysis inputs.
+          const volumeValues = slice.map(c => Number.isFinite(c.volume) && c.volume >= 0 ? c.volume : 0);
+          const maxVisibleVolume = Math.max(0, ...volumeValues);
+          const volumeBaselineY = volumeBottom;
+          ctx.save();
+          ctx.strokeStyle = 'rgba(143, 161, 191, 0.22)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(padLeft, volumeTop);
+          ctx.lineTo(padLeft + plotW, volumeTop);
+          ctx.moveTo(padLeft, volumeBaselineY);
+          ctx.lineTo(padLeft + plotW, volumeBaselineY);
+          ctx.stroke();
+          ctx.fillStyle = '#8fa1bf';
+          ctx.font = '9px sans-serif';
+          ctx.fillText('VOL', padLeft + 3, volumeTop + 10);
+          if (maxVisibleVolume > 0) {
+            for (let i = 0; i < slice.length; i++) {
+              const c = slice[i];
+              const value = volumeValues[i];
+              if (value <= 0) continue;
+              const globalIdx = startIdx + i;
+              const isForming = globalIdx >= this.closedCount;
+              const barHeight = Math.max(1, (value / maxVisibleVolume) * Math.max(4, volumeHeight - 4));
+              const cx = padLeft + (i + 0.5) * stepX;
+              ctx.fillStyle = isForming
+                ? 'rgba(148, 163, 184, 0.35)'
+                : (c.close >= c.open ? 'rgba(34, 197, 94, 0.62)' : 'rgba(239, 68, 68, 0.62)');
+              ctx.fillRect(cx - Math.max(1, bodyW / 2), volumeBaselineY - barHeight, Math.max(1, bodyW), barHeight);
+            }
           }
+          ctx.restore();
         }
-        ctx.restore();
 
         const drawLineSeries = (arr, color) => {
           if (!arr || !arr.length || !tsToClosedIdx.size) return;
@@ -7458,63 +7603,104 @@
         };
 
         if (this.analysis) {
-          drawLineSeries(this.analysis.ema20, '#38bdf8');
-          drawLineSeries(this.analysis.ema50, '#a855f7');
-          drawLineSeries(this.analysis.ema200, '#eab308');
+          if (this.displayLayers.emas) {
+            drawLineSeries(this.analysis.ema20, '#38bdf8');
+            drawLineSeries(this.analysis.ema50, '#a855f7');
+            drawLineSeries(this.analysis.ema200, '#eab308');
+          }
 
-          if (!this.marketStructure) {
+          if (!this.marketStructure && this.displayLayers.pivots) {
             const swings = this.analysis.swings || { highs: [], lows: [] };
+            const visibleLimit = this.displayMode === 'clean' ? 3 : this.displayMode === 'structure' ? 7 : Infinity;
+            const visibleHighs = swings.highs.filter(point => {
+              const idx = tsToGlobalIdx.get(point.ts);
+              return Number.isFinite(point.ts) && idx !== undefined && idx >= startIdx && idx < endIdx;
+            }).slice(-visibleLimit);
+            const visibleLows = swings.lows.filter(point => {
+              const idx = tsToGlobalIdx.get(point.ts);
+              return Number.isFinite(point.ts) && idx !== undefined && idx >= startIdx && idx < endIdx;
+            }).slice(-visibleLimit);
             ctx.font = '10px sans-serif';
-            for (const hPt of swings.highs) {
-              if (!Number.isFinite(hPt.ts)) continue;
+            for (const hPt of visibleHighs) {
               const gIdx = tsToGlobalIdx.get(hPt.ts);
-              if (gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx) {
-                const i = gIdx - startIdx;
-                const cx = padLeft + (i + 0.5) * stepX;
-                const cy = yForPrice(hPt.price) - 6;
-                ctx.fillStyle = '#f59e0b';
-                ctx.fillText('SH', cx - 6, cy);
-              }
+              const i = gIdx - startIdx;
+              const cx = padLeft + (i + 0.5) * stepX;
+              const cy = yForPrice(hPt.price) - 6;
+              ctx.fillStyle = '#f59e0b';
+              ctx.fillText('SH', cx - 6, cy);
             }
-            for (const lPt of swings.lows) {
-              if (!Number.isFinite(lPt.ts)) continue;
+            for (const lPt of visibleLows) {
               const gIdx = tsToGlobalIdx.get(lPt.ts);
-              if (gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx) {
-                const i = gIdx - startIdx;
-                const cx = padLeft + (i + 0.5) * stepX;
-                const cy = yForPrice(lPt.price) + 13;
-                ctx.fillStyle = '#38bdf8';
-                ctx.fillText('SL', cx - 5, cy);
-              }
+              const i = gIdx - startIdx;
+              const cx = padLeft + (i + 0.5) * stepX;
+              const cy = yForPrice(lPt.price) + 13;
+              ctx.fillStyle = '#38bdf8';
+              ctx.fillText('SL', cx - 5, cy);
             }
           }
 
           const projection = this.marketStructure;
           if (projection) {
-            ctx.font = 'bold 9px sans-serif';
-            for (const marker of projection.swing_markers || []) {
-              const gIdx = tsToGlobalIdx.get(marker.anchor_time_ms);
-              if (gIdx === undefined || gIdx < startIdx || gIdx >= endIdx ||
-                  !Number.isFinite(marker.price)) continue;
-              const candle = this.candles[gIdx];
-              const i = gIdx - startIdx;
-              const cx = padLeft + (i + 0.5) * stepX;
-              const isHigh = marker.pivot_type === 'SWING_HIGH';
-              const cy = yForPrice(marker.price) + (isHigh ? -8 : 15);
-              ctx.fillStyle = isHigh ? '#fbbf24' : '#7dd3fc';
-              ctx.fillText(marker.label || (isHigh ? 'SH' : 'SL'), cx - 9, cy);
+            if (this.displayLayers.pivots) {
+              const visibleMarkers = (projection.swing_markers || []).filter(marker => {
+                const gIdx = tsToGlobalIdx.get(marker.anchor_time_ms);
+                return gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx && Number.isFinite(marker.price);
+              });
+              const markerLimit = this.displayMode === 'clean' ? 6 : this.displayMode === 'structure' ? 14 : visibleMarkers.length;
+              ctx.font = 'bold 9px sans-serif';
+              for (const marker of visibleMarkers.slice(-markerLimit)) {
+                const gIdx = tsToGlobalIdx.get(marker.anchor_time_ms);
+                const i = gIdx - startIdx;
+                const cx = padLeft + (i + 0.5) * stepX;
+                const isHigh = marker.pivot_type === 'SWING_HIGH';
+                const cy = yForPrice(marker.price) + (isHigh ? -8 : 15);
+                ctx.fillStyle = isHigh ? 'rgba(251, 191, 36, 0.9)' : 'rgba(125, 211, 252, 0.9)';
+                ctx.fillText(marker.label || (isHigh ? 'SH' : 'SL'), cx - 9, cy);
+              }
             }
-            ctx.font = 'bold 9px sans-serif';
-            for (const event of (projection.structure_events || []).slice(-30)) {
-              const gIdx = tsToGlobalIdx.get(event.anchor_time_ms);
-              if (gIdx === undefined || gIdx < startIdx || gIdx >= endIdx ||
-                  !Number.isFinite(event.level_price)) continue;
-              const i = gIdx - startIdx;
-              const cx = padLeft + (i + 0.5) * stepX;
-              const cy = yForPrice(event.level_price) + (event.direction === 'BULLISH' ? -10 : 17);
-              const label = String(event.event_type || '').replace('BULLISH_', '↑').replace('BEARISH_', '↓').replace('_', ' ');
-              ctx.fillStyle = event.direction === 'BULLISH' ? '#4ade80' : '#fb7185';
-              ctx.fillText(label.slice(0, 11), Math.max(padLeft, cx - 18), cy);
+
+            if (this.displayLayers.events) {
+              const visibleEvents = (projection.structure_events || []).filter(event => {
+                const gIdx = tsToGlobalIdx.get(event.anchor_time_ms);
+                return gIdx !== undefined && gIdx >= startIdx && gIdx < endIdx && Number.isFinite(event.level_price);
+              });
+              const eventLimit = this.displayMode === 'full' ? 30 : 8;
+              ctx.font = 'bold 9px sans-serif';
+              for (const event of visibleEvents.slice(-eventLimit)) {
+                const gIdx = tsToGlobalIdx.get(event.anchor_time_ms);
+                const i = gIdx - startIdx;
+                const cx = padLeft + (i + 0.5) * stepX;
+                const cy = yForPrice(event.level_price) + (event.direction === 'BULLISH' ? -10 : 17);
+                const label = String(event.event_type || '').replace('BULLISH_', '↑').replace('BEARISH_', '↓').replace('_', ' ');
+                ctx.fillStyle = event.direction === 'BULLISH' ? '#4ade80' : '#fb7185';
+                ctx.fillText(label.slice(0, 11), Math.max(padLeft, cx - 18), cy);
+              }
+            }
+
+            if (this.displayLayers.retests) {
+              const eventById = new Map((projection.structure_events || []).map(event => [event.id, event]));
+              const visibleRetests = (projection.retest_lifecycles || []).filter(lifecycle => {
+                const gIdx = this.candles.findIndex(c => c.ts >= lifecycle.visible_at_ms);
+                return gIdx >= startIdx && gIdx < endIdx;
+              });
+              for (const lifecycle of visibleRetests.slice(-8)) {
+                const gIdx = this.candles.findIndex(c => c.ts >= lifecycle.visible_at_ms);
+                if (gIdx < 0) continue;
+                const event = eventById.get(lifecycle.breakout_event_id);
+                const price = lifecycle.touch && Number.isFinite(lifecycle.touch.price)
+                  ? lifecycle.touch.price : event && Number.isFinite(event.level_price) ? event.level_price : null;
+                if (!Number.isFinite(price)) continue;
+                const i = gIdx - startIdx;
+                const cx = padLeft + (i + 0.5) * stepX;
+                const cy = yForPrice(price) + (lifecycle.direction === 'BULLISH' ? -18 : 24);
+                const label = lifecycle.status === 'RETEST_SUCCESSFUL' ? 'RT ✓'
+                  : lifecycle.status === 'RETEST_FAILED' ? 'RT ×'
+                  : lifecycle.status === 'RETEST_UNRESOLVED' || lifecycle.status === 'RETEST_PENDING_CONFIRMATION' ? 'RT ?' : 'RT …';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.fillStyle = lifecycle.status === 'RETEST_SUCCESSFUL' ? '#4ade80'
+                  : lifecycle.status === 'RETEST_FAILED' ? '#fb7185' : '#fbbf24';
+                ctx.fillText(label, Math.max(padLeft, cx - 10), cy);
+              }
             }
           }
         }
@@ -7789,6 +7975,34 @@
     }
 
     const chart = new CandleChart(document.getElementById('chartCanvas'));
+
+    function syncChartDisplayControls() {
+      document.querySelectorAll('[data-chart-mode]').forEach(button => {
+        const active = button.dataset.chartMode === chart.displayMode;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+      document.querySelectorAll('[data-chart-layer]').forEach(button => {
+        const enabled = chart.displayLayers[button.dataset.chartLayer] === true;
+        button.setAttribute('aria-pressed', String(enabled));
+      });
+    }
+
+    document.querySelectorAll('[data-chart-mode]').forEach(button => {
+      button.addEventListener('click', () => {
+        chart.setDisplayMode(button.dataset.chartMode);
+        syncChartDisplayControls();
+      });
+    });
+    document.querySelectorAll('[data-chart-layer]').forEach(button => {
+      button.addEventListener('click', () => {
+        const layer = button.dataset.chartLayer;
+        chart.setDisplayLayer(layer, chart.displayLayers[layer] !== true);
+        syncChartDisplayControls();
+      });
+    });
+    syncChartDisplayControls();
+
     if (new URLSearchParams(window.location.search).get('test') === '1') {
       window.__CryptoAnalystTestHooks = Object.freeze({
         chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient, runB2Analysis, renderB2Panel

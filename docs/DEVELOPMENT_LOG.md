@@ -795,3 +795,33 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B2-D/E lifecycle behavior was exercised across five sampled 160-candle windows per series and a final synchronized MTF window. Do not describe this as a full-series B2-D/E replay.
 - Synthetic MTF fixture used zero provider-time spread; this does not calibrate live Bybit timing.
 - The archive ends 2025-12-05. No trading edge, profitability or 2026 adaptation has been established.
+
+
+## 2026-11-27 — B3 chart UI redesign started
+
+- Created branch `feature/b3-chart-ui-redesign-2026-11-27` from main after PR #22 merge commit `d2b8220572ec407a62c5a359af3c0264919932b1`.
+- Updated `CryptoAnalyst_StageA_S6_updated.html`: responsive 440–640 px mobile chart area; Clean/Structure/Full display presets; independent controls for S/R zones, extrema, BOS/CHoCH, retests, EMA and volume; custom mode after manual layer changes.
+- Clean preset hides EMA overlays and BOS/CHoCH/retest labels, limits recent B2 extrema to six and softens zone fills/labels. Structure limits extrema to 14 and events/retests to eight; Full exposes all supported overlays and legacy levels.
+- Retest annotations are placed at the first candle at or after lifecycle `visible_at_ms`, preserving causal availability rather than backdating the status to breakout.
+- Updated `tests/b2-app-browser-integration.cjs` with assertions for mobile chart height, all three presets, custom layer toggles and button state. Updated `.github/workflows/b2-app-integration.yml` to run on the B3 branch.
+- Added `docs/specs/B3_CHART_UI_REDESIGN_SPEC_2026-11-27.md`.
+- JavaScript syntax check: both inline scripts PASS. Browser test/CI and owner iPhone Safari review are not yet confirmed. Candidate only; no merge.
+
+
+### B3 browser/CI verification — 2026-11-27
+
+- B2 application integration workflow [46038517628](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46038517628): SUCCESS. B2-A…B2-G deterministic suites passed; browser integration and mobile chart UI assertions passed; zero browser page errors.
+- B1 candidate browser/data workflow [46038517602](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46038517602): SUCCESS. Stage A 50/50, B1 contract 32/32, quality 72/72, MTF 20/20; browser chart/volume and mobile layout checks passed; zero page errors.
+- B3 browser test verified Clean/Structure/Full presets, manual layer toggle/custom mode, 390×844 mobile viewport, chart height >=440 px, no horizontal overflow, and causal S/R zone positioning.
+- Live Bybit REST probe was skipped as `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass or evidence of provider unavailability elsewhere.
+- The first CI attempt exposed mobile horizontal overflow from chart controls and an old B1 visual test assumption that EMA200 was always visible. Both were corrected: chart grid/control containers now constrain width, and the EMA regression explicitly enables the EMA layer before testing it.
+- Candidate remains in `feature/b3-chart-ui-redesign-2026-11-27`, draft PR #23. No merge. iPhone/Safari owner visual acceptance remains pending.
+
+
+### B3 verification update
+
+- Initial browser run exposed a real regression: the existing EMA200 visual regression test expected EMA overlays while the Clean preset intentionally hid them. The test was made explicit about enabling the EMA layer before checking EMA200 rendering; no production chart logic was weakened to satisfy the test.
+- The first mobile browser run also exposed horizontal overflow from the new layer controls. CSS was corrected with min-width:0/minmax(0,1fr) constraints and a full-width horizontally scrollable layer strip.
+- GitHub Actions on commit `c8a79a2429f10fafdca28987c28e384ecba467db`: B1 browser/live-data verification SUCCESS; B2 application integration SUCCESS. The latter includes B2-A…G deterministic suites and mobile browser integration/layout assertions.
+- A follow-up test-only cleanup commit `931d29fea93dc144520a2a94db680b6a072963bd` removed temporary diagnostics while retaining an explicit assertion that EMA visibility is enabled during its regression check. CI for this latest test-only commit is pending.
+- No iPhone/Safari visual acceptance yet; no merge.
