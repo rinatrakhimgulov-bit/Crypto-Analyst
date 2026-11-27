@@ -36,7 +36,8 @@ B2-F must have the same canonical symbol and common cutoff, and its selected tim
 Every projected item has both an anchor time and an earliest visibility time.
 
 - Swing marker: anchor at pivot `source_time_ms`; visible only at/after pivot `available_at_ms`. Preserve `confirmed_at_ms` separately.
-- Superseded raw pivot: same time fields, but clearly marked `SUPERSEDED_FOR_SEQUENCE`; never present it as an active HH/HL/LH/LL.
+- Ambiguous same-candle high/low pair: each raw pivot marker is visible at its own `available_at_ms`; the ambiguous status is visible only at `status_visible_at_ms = max(high.available_at_ms, low.available_at_ms)`. Before that time, the first confirmed member must not be labelled as an already-known ambiguous pair.
+- Superseded raw pivot: marker is visible at its own pivot `available_at_ms`; the superseded status is visible only at `status_visible_at_ms = max(pivot.available_at_ms, superseding_pivot.available_at_ms)`. Preserve both times; never backdate the superseded label.
 - BOS/CHoCH/sweep marker: anchor at the breaking candle open; visible only at/after event `available_at_ms`; preserve breaking candle close and source pivot time.
 - Support/resistance zone: `visible_from_ms = zone.available_at_ms`. Do not backdate the confirmed zone to its first touch. Preserve first/last touch as evidence metadata.
 - Retest lifecycle: visible after the breakout event becomes available; touch state visible after the touch candle finality time; success/failure visible only after its confirmation candle availability.
@@ -48,8 +49,8 @@ A historical chart may anchor an item to an earlier source candle, but it must n
 
 Return only overlay data:
 - `swing_markers`: active sequence pivots with label, type, price, source/confirmation/availability times and sequence IDs;
-- `superseded_pivots`: raw pivots excluded by same-side replacement, clearly marked;
-- `ambiguous_pivots`: same-candle high/low pairs preserved as raw evidence but excluded from the active alternating sequence;
+- `superseded_pivots`: raw pivots excluded by same-side replacement, with both `visible_at_ms` (pivot availability) and `status_visible_at_ms` (when replacement makes the superseded status knowable);
+- `ambiguous_pivots`: same-candle high/low pairs preserved as raw evidence but excluded from the active alternating sequence, with separate pivot and ambiguity visibility times;
 - `structure_events`: B2-C event type, direction, level, source pivot, break candle and availability;
 - `zones`: confirmed B2-D bounds, role, representative price, touch count, first/last touch, availability and freshness status;
 - `candidate_levels`: optional B2-D candidates, clearly distinct from confirmed zones;
@@ -77,7 +78,8 @@ Do not return candle arrays, price series, trade signals, entry/exit, probabilit
 3. B2-A/C/D/E non-VALID result blocks.
 4. B2-F mismatch or missing selected timeframe blocks.
 5. Active pivots map with source, confirmation and availability times.
-6. Superseded raw pivots remain separate and labelled.
+6. Superseded raw pivots remain separate; their status transition is not backdated before the superseding pivot is available.
+6a. Ambiguous dual pivots preserve each pivot availability and pair-status availability separately.
 7. No pivot/event/zone/lifecycle can be visible before availability.
 8. BOS/CHoCH anchor and break-candle metadata are preserved.
 9. Zone visible-from equals B2-D availability, not first touch.
