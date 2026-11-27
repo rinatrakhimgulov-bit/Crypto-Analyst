@@ -28,13 +28,13 @@ No API key, account login, order placement, or trading permission is used. The f
 4. GitHub Codespaces should forward port 8080. Open the private forwarded URL from the **Ports** panel on the iPhone. Keep the Codespace running while viewing the dashboard.
 5. Leave it running for at least 5 minutes. The test runner logs the feed continuously.
 6. Stop the runner with Ctrl+C in the terminal.
-7. Generate the summary:
+7. Generate the summary and evidence ZIP:
 
    ```bash
    python tools/orderflow-cloud-test/analyze.py
    ```
 
-The report and raw data are saved in `orderflow-cloud-test-output/`.
+The report prints in the terminal. Raw data is saved in `orderflow-cloud-test-output/`, and `orderflow-cloud-test-evidence.zip` is created in the repository root so it can be downloaded from the Codespaces file explorer.
 
 ## What counts as a successful test
 
