@@ -393,7 +393,7 @@ The B1 finality lag is included in `available_at_ms`; a pivot cannot be consumed
 
 Deterministic tests are in `tests/b2a-causal-swing-engine.test.cjs`. The original 13/13 suite passed in run 46005202794. An additional seven edge-case tests were added and the expanded 20/20 suite passed in GitHub Actions run 46010999225 on commit `8583d5d58158a183a3185fb1397abb3cbe8cb233`.
 
-This candidate does not implement B2-B swing sequencing, B2-C BOS/CHoCH, zones, retests, chart integration or trading decisions. It is research code pending review and is not production-enabled. Formal B1 acceptance remains required before integration into the live app.
+At the time of the original B2-A-only milestone, this candidate did not yet implement B2-B swing sequencing, B2-C BOS/CHoCH, zones, retests or chart projection. That historical status is superseded by the B2-A–B2-G research candidate described in the later sections and draft PR #20. The modules remain isolated from application HTML; formal B1 acceptance and independent review remain required before integration.
 
 
 ## 17. B1 version binding hardening — 2026-11-27
@@ -414,7 +414,7 @@ The isolated candidate is implemented in `src/analysis/b2b-swing-sequence-engine
 - The module returns a deeply immutable result without freezing nested objects owned by the upstream B2-A input.
 - Deterministic suite: 19/19 passed in GitHub Actions run 46011622297 on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
 
-This remains an isolated research candidate in draft PR #13, based on the B2-A candidate branch. It does not implement BOS/CHoCH, protected swings, zones, retests, MTF, UI or trading decisions. B1 formal acceptance remains mandatory before production integration.
+At the time of the original B2-B-only milestone, this remained an isolated research candidate in draft PR #13. That milestone is superseded by the later B2-A–B2-G chain in draft PR #20. The current chain is still research-only, not imported into application HTML, and B1 formal acceptance remains mandatory before production integration.
 
 
 ## Causal sequence-history contract (B2-B 2.2.0 / policy v3)
