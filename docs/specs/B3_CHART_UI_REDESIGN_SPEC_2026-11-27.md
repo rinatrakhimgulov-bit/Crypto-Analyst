@@ -66,3 +66,14 @@ The first candidate adds the three presets, six layer toggles, responsive chart 
 - Browser checks passed for all display presets, custom layer toggles, mobile 390×844 layout, minimum 440 px chart height, no horizontal overflow and causal zone start position.
 - Live Bybit REST probe was skipped due HTTP 403 from the GitHub runner on both public REST hosts. No live-market claim is made.
 - Owner iPhone/Safari visual acceptance remains a release gate. The PR is draft and unmerged.
+
+
+## 7. Verification results (2026-11-27)
+
+- JavaScript syntax compilation: both inline scripts PASS.
+- Browser integration and mobile layout test on commit `c8a79a2429f10fafdca28987c28e384ecba467db`: PASS.
+- B2-A, B2-B, B2-C, B2-D, B2-E, B2-F, B2-G deterministic suites: PASS.
+- B1 browser/live-data verification workflow: PASS.
+- Mobile viewport assertions include 390×844, minimum 440 px chart canvas, no horizontal overflow, three display presets and independent layer toggles.
+- Latest test-only cleanup and documentation commits are newer than the successful run; CI must be green on the final PR HEAD before requesting owner review.
+- iPhone Safari visual acceptance remains outstanding.
