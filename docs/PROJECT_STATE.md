@@ -452,3 +452,8 @@ Latest verification: B1-E 32/32 PASS; B1 Quality 65/65 PASS; both inline scripts
 The assembled MTF result and failure results are now deeply frozen, including nested per-timeframe diagnostics, canonical candle arrays, candle objects and quality reports. The provider-time-spread failure path was adjusted to preserve the immutable result contract.
 
 Latest HTML blob: 842c361a8386c358a68f22407814c376fd3bde1b. Final isolated V8 verification: B1-E 33/33 PASS; B1 Quality 65/65 PASS; both inline JavaScript blocks parse. This remains a candidate only: no live Bybit, browser/UI, Chrome/iPhone Safari or full StageASelfTest verification. MTFDataEngine is not connected to the UI/decision pipeline. PR #6 remains draft and unmerged; main unchanged.
+
+
+### Independent B1-A/B/E audit — 2026-11-27
+
+External audit of exact HTML blob `842c361a8386c358a68f22407814c376fd3bde1b` and spec blob `0481400d46be50ff353b73783c769e220ca60bda`: **APPROVE WITH CONDITIONS**. Independent suites: B1-E 33/33 and B1 Quality 65/65 PASS. No CRITICAL defect found. Forming-candle OHLCV validation remains deferred because forming data is not used by MTF directional decisions. Live Bybit spread/limit evidence and production `maxProviderTimeSpreadMs` policy remain outstanding. Source inspection confirms AbortSignal is propagated through the adapter to the actual `fetch()` call; transport-level abort behavior is not yet independently exercised. MTF remains isolated and disconnected from UI/directional decisions. Research/observability can proceed under fail-closed spread configuration; directional MTF is NOT APPROVED. See `docs/audits/B1_A_B_E_INDEPENDENT_AUDIT_2026-11-27.md`.
