@@ -124,3 +124,18 @@ The MTF suite was expanded with explicit assertions that forming/pending-finalit
 Latest run: GitHub Actions `45966127523` passed Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 64/64, B1 MTF 16/16, UI/gate/chart checks, zero browser page errors. Live Bybit remained blocked by HTTP 403 from both public REST hosts.
 
 Exact current HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`.
+
+
+
+
+## Current hardening and verification — 2026-11-27
+
+- `fetchAndAssemble()` now requires an explicit positive safe-integer `closedCandleCount`; it no longer silently substitutes a default history length. Missing count is rejected before any adapter/network request.
+- Pending-finality candles are preserved in `pending_finality_context`; they are not included in `analysis_candles`. The closed-only slice is checked against the common cutoff and finality lag.
+- Per-timeframe quality admission additionally requires `quality_report.snapshot_id === snapshot.snapshot_id`.
+- The current B1 validator requires a non-empty canonical `snapshot_id` and places it into the quality report. B1-C checks that the report snapshot ID matches the exact dataset canonical snapshot before allowing directional analysis.
+- MTF suite: 18 deterministic tests. B1 validator suite: 65 tests.
+
+**Latest completed run:** GitHub Actions `45966700299` passed Stage A 44/44, B1 Data Contract 32/32, B1 Quality Validator 65/65, B1 MTF 18/18, B1 gate/UI and C1 chart assertions, with zero browser page errors. Live Bybit remained blocked by HTTP 403 from both public REST hosts.
+
+Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 bytes). Browser harness blob: `8700f7ebedf6f4091b37d5e7d4c04ba22c2d92a8`. Main remains unchanged. Independent review, live concurrent capture/spread calibration, transport-level abort verification, latest Safari quality-panel check and owner acceptance remain open.
