@@ -253,3 +253,11 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 - B2-B suite: 20/20 deterministic cases, including actual B2-A engine output passed into B2-B.
 - GitHub Actions run `46012201698` passed on code commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`.
 - This confirms deterministic module contract only; no live Bybit or app integration.
+
+
+### B2-C causal BOS/CHoCH state machine — 2026-11-27
+- `src/analysis/b2c-swing-structure-engine.js`: isolated UNESTABLISHED/UP/DOWN state machine; initial breaks, BOS, protected-swing CHoCH, wick sweeps, gap-through, strict zero-buffer close and one-time level consumption.
+- B1/B2 identity binding, candle and pivot source provenance, continuity/finality checks, independent reconstruction of B2-B sequence from raw pivots, append-only immutable output.
+- `tests/b2c-swing-structure-engine.test.cjs`: 28 deterministic tests including end-to-end B1 → B2-A → B2-B → B2-C flow.
+- GitHub Actions run `46013846058` passed 28/28 on commit `a58441aa4f39aa6e3b98650624f07a2041e7152a`.
+- PR #15 is draft/unmerged. Research-only; no main/app integration. B1 acceptance remains mandatory.
