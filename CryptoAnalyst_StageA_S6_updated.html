@@ -1311,6 +1311,14 @@
         else if (transportAge < -policy.future_tolerance_ms) invalid('RECEIVE_TIME_IN_FUTURE', { age_ms: transportAge });
         else if (transportAge > policy.max_transport_age_ms) add('TRANSPORT_STALE', 'STALE', timeframe, { age_ms: transportAge, max_age_ms: policy.max_transport_age_ms });
         if (!providerTimeValid) invalid('PROVIDER_TIME_UNAVAILABLE', 'Provider time is required for candle finality and market-series freshness.');
+        if (providerTimeValid && providerTime - validationNowMs > policy.future_tolerance_ms) {
+          invalid('PROVIDER_TIME_IN_FUTURE', {
+            provider_time_ms: providerTime,
+            validation_now_ms: validationNowMs,
+            ahead_ms: providerTime - validationNowMs,
+            tolerance_ms: policy.future_tolerance_ms
+          });
+        }
         if (providerTimeValid && snapshot.analysis_as_of_ms !== providerTime) {
           invalid('ANALYSIS_TIME_PROVENANCE_MISMATCH', {
             analysis_as_of_ms: snapshot.analysis_as_of_ms,
@@ -2253,6 +2261,10 @@
         const wrongAnalysisTime=makeSnapshot();
         wrongAnalysisTime.analysis_as_of_ms=now-1;
         assert('analysis as-of time must match provider server time',run(wrongAnalysisTime).status==='INVALID'&&run(wrongAnalysisTime).reasons.some(r=>r.code==='ANALYSIS_TIME_PROVENANCE_MISMATCH'));
+        const providerTimeAtFutureTolerance=makeSnapshot({providerTime:now+policy.future_tolerance_ms});
+        assert('provider time exactly at future tolerance remains acceptable',run(providerTimeAtFutureTolerance).status==='VALID');
+        const providerTimeBeyondFutureTolerance=makeSnapshot({providerTime:now+policy.future_tolerance_ms+1});
+        assert('provider time one millisecond beyond future tolerance is rejected',run(providerTimeBeyondFutureTolerance).status==='INVALID'&&run(providerTimeBeyondFutureTolerance).reasons.some(r=>r.code==='PROVIDER_TIME_IN_FUTURE'));
         const dailyStep=86400000, dayOpen=10*dailyStep, dayClose=11*dailyStep;
         const dailyNow=dayClose+3600000;
         const dailyClosed=candle(dayOpen,dayClose,'TIME_DERIVED',{timeframe:'1d',provider_event_time_ms:dailyNow,received_at_ms:dailyNow-100});
