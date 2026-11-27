@@ -274,3 +274,12 @@ CI results: 44/44 Stage A, 32/32 B1 contract, 63/63 B1 validator; gate assertion
 - Browser harness verifies an INVALID negative-volume fixture renders VOLUME_NEGATIVE, Заблокирована · WAIT, and decision badge WAIT.
 - CI run 45963443614: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate passed, no page errors.
 - Latest panel-detail change awaits iPhone Safari visual check; independent B1 review and formal acceptance still pending.
+
+
+
+
+## 18. Architecture baseline and B1 consolidation — 2026-11-27
+
+- `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`: product scope, layer boundaries, provider-neutral data contract, REST/WS roles, common-cutoff MTF requirements, causal/no-lookahead analytics, scenario evidence contract, runtime/deployment/storage choices, security, testing and deferred decisions.
+- `docs/audits/B1_BRANCH_CONSOLIDATION_AUDIT_2026-11-27.md`: branch divergence, exact candidate HTML identities, external B1-E audit scope, integration incompatibility and controlled port plan.
+- New integration branch: `integration/b1-mtf-architecture-2026-11-27`, based on `b1/contract-review`. No source code changed in this documentation-only step; main unchanged.
