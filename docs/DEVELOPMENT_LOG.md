@@ -606,3 +606,29 @@ B2 design review is recorded with blockers. Production implementation remains NO
 - Added two regression cases: unsupported canonical contract and mismatched validator version. Total B2-A tests: 13/13.
 - GitHub Actions run 46005202794 passed on commit `f41c85a3d09cbbec602fe1eaef8902b5f52de685`.
 - B2-A remains one-timeframe-per-invocation, isolated research code. No UI/HTML or LONG/SHORT connection. B1 formal acceptance remains mandatory before production integration.
+
+
+## B2-A causal pivot edge-case hardening — 2026-11-27
+
+**Branch:** `feature/b2a-causal-swing-engine-2026-11-27`  
+**PR:** #12 (draft, unmerged)  
+**Starting candidate commit:** `c7912236a819913f198a99d0570d9aeb3120f424`  
+**Resulting commit:** `8583d5d58158a183a3185fb1397abb3cbe8cb233`
+
+### Work completed
+Expanded `tests/b2a-causal-swing-engine.test.cjs` from 13 to 20 deterministic cases. Added checks for:
+- right-strength counting after the final candle of a longer equal-price plateau;
+- equal highs in non-contiguous left and right comparison windows;
+- no pivot emission before a complete right confirmation window;
+- deep immutability of returned pivot evidence;
+- duplicate candle timestamps;
+- out-of-order closed candles.
+
+### Verification
+GitHub Actions run [46010999225](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46010999225) completed successfully. Job `b2a-unit-tests` passed. The test command completed successfully with the expanded suite (20 cases).
+
+### Scope and limits
+- Test-only change plus documentation updates; B2-A engine source and application HTML were not changed.
+- No live Bybit, browser, or profitability test was performed.
+- B1 remains NOT ACCEPTED. B2-A is isolated research code and is not connected to the running application or LONG/SHORT decisions.
+- Stage 1 visual chart polish is deferred by owner decision; data-quality gates remain mandatory.
