@@ -138,3 +138,29 @@ The user's latest iPhone diagnostic text confirms a fresh WS lastPrice event and
 - Application code and `main`: **unchanged**.
 
 This review is a design-hardening artifact, not evidence that Market Structure Engine exists or that the application can yet identify profitable market structure.
+
+
+---
+
+## 7. Resolution pass — 2026-11-27
+
+The specification now contains a frozen v1 policy section (Section 15) addressing the implementation blockers R1–R7:
+
+| Review item | Resolution in spec | Status |
+|---|---|---|
+| R1 plateau confirmation | Maximal contiguous plateau, rightmost representative, right window counted after plateau end | Resolved in design |
+| R2 same-side replacement | Immutable raw evidence; more-extreme pivot retained in sequence; exact tie retains earlier | Resolved in design |
+| R3 protected swing | Explicit initialization and HL/LH-only advancement, with provenance | Resolved in design |
+| R4 initial trend | UNESTABLISHED state and immutable INITIAL_*_BREAK event names | Resolved in design |
+| R5 break boundary | ZERO_BUFFER_V1; strict close beyond level; equality is not a break | Resolved in design |
+| R6 event ordering | Break evaluation precedes same-candle pivot confirmation; append-only event history | Resolved in design |
+| R7 zones/retests | Explicitly excluded from first B2-A/B/C scope; separate future policies required | Deferred by design |
+
+### What this resolution does and does not mean
+
+- The seven specification ambiguities are now addressed at design level.
+- This is still an internal design resolution, not an independent external audit and not a proof that the policy is profitable or universally optimal.
+- Exact-price equality and zero break buffer are deliberately conservative baseline policies. Their practical behavior must be assessed on replay fixtures before any chart-facing interpretation.
+- The spec is implementation-ready only for a **post-B1-acceptance** B2-A/B/C development proposal. It does not authorize implementation before B1 acceptance.
+- B1 remains NOT ACCEPTED. B2 production code, UI integration and LONG/SHORT integration remain NOT STARTED.
+- No application code or `main` branch was changed.
