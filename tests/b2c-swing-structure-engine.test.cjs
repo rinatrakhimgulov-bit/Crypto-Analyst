@@ -189,7 +189,32 @@ function fixture(pivots, overrides = {}, options = {}) {
     raw_pivots: pivots,
     sequence
   };
-  return { policy: { ...POLICY, ...(options.policy || {}) }, snapshot, quality_report: report, b2b_result: b2b, analysis_as_of_ms: asOf, timeframe: '1h' };
+  const b2a = {
+    engine_version: '2.0.0-b2a',
+    policy_version: 'b2a-causal-swing-v1',
+    status: 'VALID',
+    admission: {
+      status: 'ADMITTED',
+      snapshot_id: SNAPSHOT_ID,
+      quality_report: {
+        snapshot_id: SNAPSHOT_ID,
+        validator_version: '1.1.0',
+        policy_version: 'b1-quality-v1',
+        checked_at_ms: report.checked_at_ms
+      }
+    },
+    snapshot_id: SNAPSHOT_ID,
+    symbol: 'BTCUSDT',
+    timeframe: '1h',
+    analysis_as_of_ms: asOf,
+    pivots: pivots.map(p => ({
+      pivot_id: p.pivot_id, type: p.type, price: p.price,
+      source_time_ms: p.source_time_ms, source_index: p.source_index,
+      confirmed_at_ms: p.confirmed_at_ms, available_at_ms: p.available_at_ms,
+      confirmation: { ...p.confirmation }
+    }))
+  };
+  return { policy: { ...POLICY, ...(options.policy || {}) }, snapshot, quality_report: report, b2a_result: b2a, b2b_result: b2b, analysis_as_of_ms: asOf, timeframe: '1h' };
 }
 
 function run(name, fn) {
@@ -447,6 +472,7 @@ run('pivot price must match its actual source candle', () => {
   const input = fixture(initialBull);
   input.b2b_result.raw_pivots[1].price = 101;
   input.b2b_result.sequence[1].price = 101;
+  input.b2a_result.pivots[1].price = 101;
   const result = analyze(input);
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'B2B_PIVOT_CANDLE_PROVENANCE_MISMATCH');
@@ -548,6 +574,15 @@ run('B2-C independently reconstructs B2-B sequence and rejects omitted pivots', 
   const result = analyze(input);
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'B2B_SEQUENCE_DERIVATION_MISMATCH');
+});
+
+run('B2-C rejects a pivot omitted from both B2-B raw evidence and sequence', () => {
+  const input = fixture(initialBull);
+  input.b2b_result.raw_pivots.pop();
+  input.b2b_result.sequence.pop();
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'B2A_PIVOT_SET_MISMATCH');
 });
 
 run('B2-C rejects forged raw supersession metadata', () => {
