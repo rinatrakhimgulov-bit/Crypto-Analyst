@@ -386,3 +386,9 @@ B1 remains in review. Independent exact-artifact review, live 1D/4H/1H capture a
 ## Latest candidate refresh — 2026-11-27
 
 Current PR #8 head: `f6cc90e51096e30bd524a6e883f3ca0ad1273d79` (draft, not merged). HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes); browser harness blob `a23585f9688b9a04336c7f99da7a972513882f8e` (29,130 bytes). Branch 101 ahead / 0 behind main. Latest CI run `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; gate/UI/chart assertions passed, zero page errors; 161/161 tests. B1-C now verifies canonical/legacy candle series and last-closed price equivalence, and preserves INSUFFICIENT for an empty matching series. Live Bybit remains blocked by HTTP 403 from both hosts on GitHub Actions. B1 acceptance gates remain open.
+
+
+
+## Browser transport verification — 2026-11-27
+
+Latest CI `45968566553` passed 161/161 named tests (Stage A 44, contract 32, validator 65, MTF 20), gate/UI/C1/probe checks and zero browser page errors. Added a real Chromium fetch cancellation test through `BybitAdapter.fetchMarketSnapshot`: external abort cancelled both parallel requests and the timeout cancelled a delayed request; local server observed 3/3 client sockets closed. This validates browser-side cancellation wiring, not live Bybit connectivity. Fetch deadlines now surface as `TimeoutError`. Live Bybit still returns HTTP 403 to the GitHub runner. Exact current HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf`; harness blob `70399a984b44f5f85024afcdf11289e4a73a6361`. Branch 124 ahead / 0 behind main. B1 acceptance remains open.
