@@ -265,4 +265,4 @@ CI results: 44/44 Stage A, 32/32 B1 contract, 63/63 B1 validator; gate assertion
 - `CandleChart.render()` draws EMA200, scales/clips moving-average overlays to the price pane, and renders synchronized volume bars in a separate lower pane.
 - Chart legend documents EMA200 and base-asset volume.
 - `tests/b1-browser-live-check.cjs` adds EMA200 warm-up and chart-rendering assertions.
-- Candidate branch only; test status pending.
+- Candidate branch only. CI run `45962613748` passed all suites and chart-specific desktop/mobile rendering assertions; live Bybit probe skipped on runner HTTP 403; iPhone Safari retest pending.
