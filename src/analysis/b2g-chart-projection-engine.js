@@ -252,28 +252,56 @@
     if (expectedActiveIds.length !== actualActiveIds.length || expectedActiveIds.some((id, i) => id !== actualActiveIds[i])) {
       return blocked('B2C_ACTIVE_PIVOT_SET_MISMATCH', meta);
     }
+    const rawById = new Map(b2c.raw_pivots.map(p => [p.pivot_id, p]));
     const superseded = b2c.raw_pivots.filter(p => p.sequence_status === 'SUPERSEDED_FOR_SEQUENCE');
-    const supersededPivots = superseded.map(p => ({
-      id: p.pivot_id,
-      kind: 'SUPERSEDED_RAW_PIVOT',
-      label: 'SUPERSEDED_FOR_SEQUENCE',
-      pivot_type: p.type,
-      price: p.price,
-      anchor_time_ms: p.source_time_ms,
-      source_time_ms: p.source_time_ms,
-      confirmed_at_ms: p.confirmed_at_ms,
-      visible_at_ms: p.available_at_ms,
-      superseded_by: p.superseded_by || null,
-      visibility_rule: 'SHOW_ONLY_AT_OR_AFTER_VISIBLE_AT'
-    }));
+    const supersededPivots = [];
+    for (const p of superseded) {
+      const replacement = rawById.get(p.superseded_by);
+      const moreExtreme = replacement && replacement.type === p.type &&
+        (p.type === 'SWING_HIGH' ? replacement.price > p.price : replacement.price < p.price);
+      if (!replacement || replacement.pivot_id === p.pivot_id || !moreExtreme ||
+          !['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE'].includes(replacement.sequence_status)) {
+        return blocked('SUPERSEDED_PIVOT_REPLACEMENT_INVALID', meta);
+      }
+      const statusVisibleAt = Math.max(p.available_at_ms, replacement.available_at_ms);
+      if (statusVisibleAt > asOf) return blocked('SUPERSEDED_STATUS_AFTER_CUTOFF', meta);
+      supersededPivots.push({
+        id: p.pivot_id,
+        kind: 'SUPERSEDED_RAW_PIVOT',
+        label: 'SUPERSEDED_FOR_SEQUENCE',
+        pivot_type: p.type,
+        price: p.price,
+        anchor_time_ms: p.source_time_ms,
+        source_time_ms: p.source_time_ms,
+        confirmed_at_ms: p.confirmed_at_ms,
+        visible_at_ms: p.available_at_ms,
+        status_visible_at_ms: statusVisibleAt,
+        superseded_by: p.superseded_by,
+        visibility_rule: 'SHOW_MARKER_AT_VISIBLE_AT; APPLY_SUPERSEDED_STATUS_AT_STATUS_VISIBLE_AT'
+      });
+    }
 
-    const ambiguousPivots = b2c.raw_pivots.filter(p => p.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE').map(p => ({
-      id: p.pivot_id, kind: 'AMBIGUOUS_DUAL_PIVOT', label: 'AMBIGUOUS_FOR_SEQUENCE',
-      pivot_type: p.type, price: p.price, anchor_time_ms: p.source_time_ms,
-      source_time_ms: p.source_time_ms, confirmed_at_ms: p.confirmed_at_ms,
-      visible_at_ms: p.available_at_ms, exclusion_reason: p.exclusion_reason,
-      visibility_rule: 'SHOW_ONLY_AT_OR_AFTER_VISIBLE_AT'
-    }));
+    const ambiguousGroups = new Map();
+    for (const p of b2c.raw_pivots.filter(p => p.sequence_status === 'AMBIGUOUS_FOR_SEQUENCE')) {
+      if (!ambiguousGroups.has(p.source_time_ms)) ambiguousGroups.set(p.source_time_ms, []);
+      ambiguousGroups.get(p.source_time_ms).push(p);
+    }
+    const ambiguousPivots = [];
+    for (const [sourceTime, group] of ambiguousGroups) {
+      const high = group.find(p => p.type === 'SWING_HIGH');
+      const low = group.find(p => p.type === 'SWING_LOW');
+      if (group.length !== 2 || !high || !low) return blocked('AMBIGUOUS_PIVOT_PAIR_INVALID', meta);
+      const statusVisibleAt = Math.max(high.available_at_ms, low.available_at_ms);
+      if (statusVisibleAt > asOf) return blocked('AMBIGUOUS_STATUS_AFTER_CUTOFF', meta);
+      for (const p of group) ambiguousPivots.push({
+        id: p.pivot_id, kind: 'AMBIGUOUS_DUAL_PIVOT', label: 'AMBIGUOUS_FOR_SEQUENCE',
+        pivot_type: p.type, price: p.price, anchor_time_ms: sourceTime,
+        source_time_ms: p.source_time_ms, confirmed_at_ms: p.confirmed_at_ms,
+        visible_at_ms: p.available_at_ms, status_visible_at_ms: statusVisibleAt,
+        exclusion_reason: p.exclusion_reason,
+        visibility_rule: 'SHOW_MARKER_AT_VISIBLE_AT; APPLY_AMBIGUOUS_STATUS_AT_STATUS_VISIBLE_AT'
+      });
+    }
 
     const historyById = new Map();
     let historyAvailableAt = -1;
@@ -500,7 +528,7 @@
       snapshot_id: snapshot.snapshot_id,
       analysis_as_of_ms: asOf,
       swing_markers: sortByTimeAndId(swingMarkers, 'anchor_time_ms', 'id'),
-      superseded_pivots: sortByTimeAndId(supersededPivots, 'anchor_time_ms', 'id'),
+      superseded_pivots: sortByTimeAndId(supersededPivots, 'visible_at_ms', 'id'),
       ambiguous_pivots: sortByTimeAndId(ambiguousPivots, 'visible_at_ms', 'id'),
       structure_events: sortByTimeAndId(structureEvents, 'anchor_time_ms', 'id'),
       zones: sortByTimeAndId(zones, 'visible_from_ms', 'id'),
