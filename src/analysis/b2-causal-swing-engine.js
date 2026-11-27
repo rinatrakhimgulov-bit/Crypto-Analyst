@@ -130,7 +130,10 @@
       return blocked('INVALID', [{ code: 'QUALITY_CANDLE_COUNT_MISMATCH', severity: 'CRITICAL' }], meta);
     }
     for (let i = 1; i < candles.length; i++) {
-      if (candles[i].open_time_ms <= candles[i - 1].open_time_ms) {
+      if (candles[i].open_time_ms === candles[i - 1].open_time_ms) {
+        return blocked('INVALID', [{ code: 'CANDLE_DUPLICATE_TIMESTAMP', severity: 'CRITICAL', timestamp_ms: candles[i].open_time_ms }], meta);
+      }
+      if (candles[i].open_time_ms < candles[i - 1].open_time_ms) {
         return blocked('INVALID', [{ code: 'CANDLE_ORDER_INVALID', severity: 'CRITICAL', index: i }], meta);
       }
     }
