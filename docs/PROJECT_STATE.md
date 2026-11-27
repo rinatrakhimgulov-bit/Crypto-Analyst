@@ -549,3 +549,16 @@ The engine requires a VALID B1 quality report whose snapshot_id, symbol, timefra
 Local deterministic harness verification in the development environment: 11/11 B2-A tests passed. This is not yet a reported GitHub Actions run. The PR remains draft/unmerged; no application HTML or main branch changed.
 
 B1 release acceptance is still a separate gate for production integration. This isolated B2-A candidate is research/verification code only; it does not activate B2 in the running app.
+
+
+## B2-A version-binding hardening and CI verification — 2026-11-27
+
+The isolated B2-A candidate now requires exact B1 version identity, not merely non-empty strings:
+- policy declares `b1_contract_version`, `b1_validator_version`, and `b1_quality_policy_version`;
+- canonical snapshot `contract_version` must match the declared B1 contract version;
+- quality report `validator_version` and `policy_version` must match the declared accepted B1 versions exactly;
+- missing or mismatched versions fail closed.
+
+The B2-A input remains one canonical timeframe snapshot per invocation. This is intentional and matches the B2 design contract; it does not mean the engine accepts an unsynchronized outer MTF object. MTF synthesis remains gated on B1 acceptance.
+
+Regression suite: 13/13. GitHub Actions run [46005202794](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46005202794) completed successfully on commit `f41c85a3d09cbbec602fe1eaef8902b5f52de685`. Candidate remains isolated, draft and unmerged. No application HTML or `main` changes.
