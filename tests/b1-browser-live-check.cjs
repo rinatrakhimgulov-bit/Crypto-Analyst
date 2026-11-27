@@ -426,8 +426,8 @@ async function main() {
           state: { symbol: 'BTCUSDT', lastPrice: '65000' }
         }]]);
         const base = [
-          { ts: 1000, closeTs: 2000, open: 100, high: 101, low: 99, close: 100, volume: 1, turnover: 100 },
-          { ts: 2000, closeTs: 3000, open: 100, high: 101, low: 99, close: 100, volume: 1, turnover: 100 }
+          { ts: 1000, closeTs: 2000, open: 65000, high: 65001, low: 64999, close: 65000, volume: 1, turnover: 65000 },
+          { ts: 2000, closeTs: 3000, open: 65000, high: 65001, low: 64999, close: 65000, volume: 1, turnover: 65000 }
         ];
         chart.setData(base, 1, null, 100);
         handleLiveTicker({
@@ -442,8 +442,8 @@ async function main() {
         handleLiveKline({
           valid: true, symbol: 'BTCUSDT', interval: '240', receivedAtMs: Date.now(),
           candle: {
-            ts: 2000, closeTs: 3000, open: 100, high: 102, low: 99,
-            close: 101.5, volume: 2, turnover: 203, confirmed: false
+            ts: 2000, closeTs: 3000, open: 65000, high: 65002, low: 64999,
+            close: 65001.5, volume: 2, turnover: 130003, confirmed: false
           }
         });
         const klineUi = {
@@ -468,7 +468,7 @@ async function main() {
     if (liveUiIntegration.tickerUi.price !== '65001.5' ||
         !liveUiIntegration.tickerUi.source.includes('Bybit WS lastPrice') ||
         liveUiIntegration.tickerUi.chartPrice !== 65001.5 ||
-        liveUiIntegration.klineUi.close !== 101.5 ||
+        liveUiIntegration.klineUi.close !== 65001.5 ||
         liveUiIntegration.klineUi.volume !== 2 ||
         liveUiIntegration.klineUi.closedCount !== 1) {
       throw new Error(`B1-D live UI integration failed: ${JSON.stringify(liveUiIntegration)}`);
