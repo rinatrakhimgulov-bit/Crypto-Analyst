@@ -5247,6 +5247,31 @@
           clock.install();
 
           // ===================== B1-D: live market-data transport =====================
+          await record('B1-D. Symbol switch requires a new ticker snapshot', () => {
+            const events = [];
+            const cachedEth = BybitWsClient._getTickerEntry('ETHUSDT');
+            cachedEth.state = { symbol: 'ETHUSDT', lastPrice: '5000' };
+            cachedEth.snapshotReceived = true;
+            cachedEth.ready = true;
+            cachedEth.csLast = 99;
+            BybitWsClient.hooks.onTicker = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            BybitWsClient.setSubscription('ETHUSDT', '240');
+            assert(cachedEth.state === null && !cachedEth.snapshotReceived && !cachedEth.ready && cachedEth.csLast === null,
+              'Кэш предыдущей подписки ETH должен быть сброшен');
+            ws.triggerMessage({
+              topic: 'tickers.ETHUSDT', type: 'delta', cs: 100, ts: Date.now() + 1,
+              data: { lastPrice: '5001' }
+            });
+            assert(events.length === 0, 'Delta до нового snapshot не должна оживить старую цену');
+            ws.triggerMessage({
+              topic: 'tickers.ETHUSDT', type: 'snapshot', cs: 1, ts: Date.now() + 2,
+              data: { symbol: 'ETHUSDT', lastPrice: '5002' }
+            });
+            assert(events.length === 1 && events[0].lastPrice === 5002, 'Новый snapshot должен открыть поток ETH');
+          });
+
           await record('B1-D. Ticker snapshot and delta emit only validated lastPrice', () => {
             const events = [];
             BybitWsClient.hooks.onTicker = (event) => events.push(event);
