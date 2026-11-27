@@ -6,7 +6,7 @@ on:
       - audit/b2-independent-review-2026-11-27
     paths:
       - "src/analysis/b2-*.js"
-      - "tests/b2*-engine.test.cjs"
+      - "tests/**"
       - ".github/workflows/b2-audit-full-suite.yml"
   workflow_dispatch:
 
