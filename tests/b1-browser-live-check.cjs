@@ -70,7 +70,7 @@ async function main() {
       const stage = await window.StageASelfTest.runAll();
       const contract = window.B1DataContractSelfTest.runAll();
       const quality = window.B1QualityValidatorSelfTest.runAll();
-      const mtf = window.B1MtfSelfTest.runAll();
+      const mtf = await window.B1MtfSelfTest.runAll();
       return { stage, contract, quality, mtf };
     });
 
