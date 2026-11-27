@@ -351,6 +351,7 @@ run('B2-A to B2-B integration preserves causal swing sequence labels', () => {
   });
   assert.equal(b2b.status, 'VALID');
   assert.deepEqual(b2b.sequence.map(p => p.structure_label), [
-    'INITIAL_HIGH', 'INITIAL_LOW', 'HH', 'HL', 'LH'
+    'INITIAL_HIGH', 'INITIAL_LOW', 'HH', 'HL', 'LH', 'LL'
   ]);
+  assert.equal(b2b.sequence.length, 6);
 });
