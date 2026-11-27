@@ -1254,3 +1254,9 @@ Correct current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9` (299,978 b
 ## Current artifact and verification — 2026-11-27
 
 Use PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`. Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes); browser harness blob `a23585f9688b9a04336c7f99da7a972513882f8e` (29,130 bytes). Latest CI `45967551538`: Stage A 44/44, contract 32/32, validator 65/65, MTF 20/20; total 161/161 named tests, UI/chart checks passed, zero browser page errors. B1-C verifies canonical/legacy candle equivalence and preserves INSUFFICIENT for an empty matching series. Branch 101 ahead / 0 behind main. Live Bybit blocked by runner HTTP 403. Independent review, live capture/spread calibration, transport abort, Safari panel check and owner acceptance remain outstanding. Main unchanged.
+
+
+
+## Latest transport test and artifact — 2026-11-27
+
+Current integration branch head `c9d207d6dd3f8194bcc97a4d600e284a85594e04`. HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); browser harness `70399a984b44f5f85024afcdf11289e4a73a6361` (32,071 bytes); probe `3b5df8f0feda730c7e6564808f40ad4526f0e44a`. CI `45968566553` passed 161/161 named tests, UI/chart/probe checks, zero page errors. Real Chromium fetch test confirms external cancellation and timeout close all 3 delayed HTTP requests. Timeout now has named `TimeoutError`. Live Bybit still blocked by runner HTTP 403. Branch 124 ahead / 0 behind main; main unchanged. Independent audit, live captures/spread calibration, Safari panel check and explicit acceptance remain open.
