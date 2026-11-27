@@ -823,5 +823,18 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Initial browser run exposed a real regression: the existing EMA200 visual regression test expected EMA overlays while the Clean preset intentionally hid them. The test was made explicit about enabling the EMA layer before checking EMA200 rendering; no production chart logic was weakened to satisfy the test.
 - The first mobile browser run also exposed horizontal overflow from the new layer controls. CSS was corrected with min-width:0/minmax(0,1fr) constraints and a full-width horizontally scrollable layer strip.
 - GitHub Actions on commit `c8a79a2429f10fafdca28987c28e384ecba467db`: B1 browser/live-data verification SUCCESS; B2 application integration SUCCESS. The latter includes B2-A…G deterministic suites and mobile browser integration/layout assertions.
-- A follow-up test-only cleanup commit `931d29fea93dc144520a2a94db680b6a072963bd` removed temporary diagnostics while retaining an explicit assertion that EMA visibility is enabled during its regression check. CI for this latest test-only commit is pending.
-- No iPhone/Safari visual acceptance yet; no merge.
+- A follow-up test-only cleanup commit `931d29fea93dc144520a2a94db680b6a072963bd` removed temporary diagnostics while retaining an explicit assertion that EMA visibility is enabled during its regression check. Its workflow runs passed.
+- The final PR HEAD `e65715efea1fa97527f03ccb7e883cc8d6737e58` contains only subsequent documentation updates beyond the tested code; B1 run `46039070502` and B2 run `46039070648` both completed SUCCESS on this exact HEAD.
+- PR #23 was merged into `main` as `7d34a3539c9a655bca546bbb7b0c8ff2293b80ee`. iPhone/Safari visual acceptance remains pending after integration.
+
+
+## 2026-11-27 — B3 completed and integrated
+
+- Merged PR #23, `B3: Responsive chart UI and display layers`, into `main` using merge commit `7d34a3539c9a655bca546bbb7b0c8ff2293b80ee`.
+- Final PR HEAD: `e65715efea1fa97527f03ccb7e883cc8d6737e58`. The two commits after the last application/test change were documentation-only.
+- Exact final-HEAD CI: B1 browser/live-data run `46039070502` SUCCESS; B2 application integration run `46039070648` SUCCESS. B2-A…B2-G deterministic suites and browser/mobile integration completed successfully.
+- Main HTML blob after merge: `6b5521195454bc3d3be3e18cc7f4fb10682ee48b` (511,597 bytes).
+- Implemented: responsive 440–640 px mobile chart area; Clean/Structure/Full presets; independent layer controls; reduced label density; custom mode; causal retest marker placement; mobile overflow fixes.
+- A real regression found during validation (EMA200 test assumed EMA was visible by default) was corrected in the test by explicitly enabling the EMA layer. A first-run mobile overflow issue was corrected in CSS and retained in browser assertions.
+- Live Bybit REST verification was not completed: GitHub Actions runner returned HTTP 403 from both public REST hosts. No live-feed validation is claimed.
+- B3 is integrated, but user iPhone/Safari visual acceptance is still pending. No claim is made that mobile rendering has been accepted by the user or that B3 changes trading performance.
