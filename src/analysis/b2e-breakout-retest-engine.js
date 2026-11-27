@@ -122,10 +122,15 @@
           representative_price: median(prices),
           cluster_span_price: Math.max(...prices) - Math.min(...prices),
           touch_count: new Set(cluster.map(p => p.source_time_ms)).size,
+          touch_count: new Set(cluster.map(p => p.source_time_ms)).size,
           first_touch_time_ms: Math.min(...cluster.map(p => p.source_time_ms)),
           last_touch_time_ms: Math.max(...cluster.map(p => p.source_time_ms)),
           available_at_ms: Math.max(...cluster.map(p => p.available_at_ms)),
-          pivot_ids: ids
+          pivot_ids: ids,
+          touches: [...cluster].sort((a, b) => a.source_time_ms - b.source_time_ms || a.pivot_id.localeCompare(b.pivot_id)).map(p => ({
+            pivot_id: p.pivot_id, price: p.price, source_time_ms: p.source_time_ms,
+            confirmed_at_ms: p.confirmed_at_ms, available_at_ms: p.available_at_ms
+          }))
         };
       });
   }
