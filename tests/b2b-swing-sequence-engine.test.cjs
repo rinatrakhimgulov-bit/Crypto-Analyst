@@ -5,12 +5,13 @@ const { analyze } = require('../src/analysis/b2b-swing-sequence-engine.js');
 const { analyze: analyzeB2A } = require('../src/analysis/b2-causal-swing-engine.js');
 
 const POLICY = Object.freeze({
-  version: 'b2b-swing-sequence-v1',
+  version: 'b2b-swing-sequence-v2',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
   b1_validator_version: '1.1.0',
   b1_quality_policy_version: 'b1-quality-v1',
-  price_equality_policy: 'EXACT_PRICE_V1'
+  price_equality_policy: 'EXACT_PRICE_V1',
+  same_candle_dual_pivot_policy: 'EXCLUDE_BOTH_FROM_SEQUENCE_V1'
 });
 
 function pivot(id, type, price, availableAt, sourceTime = Math.max(1, availableAt - 1500)) {
@@ -148,6 +149,21 @@ run('non-monotonic availability order fails closed instead of silently reorderin
   ]));
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'B2A_PIVOT_AVAILABILITY_ORDER_INVALID');
+});
+
+run('same-candle high and low pivots remain raw but are excluded from the sequence', () => {
+  const sourceTime = 1500;
+  const result = analyze(makeInput([
+    pivot('dual-high', 'SWING_HIGH', 110, 3000, sourceTime),
+    pivot('dual-low', 'SWING_LOW', 90, 4000, sourceTime),
+    pivot('later-high', 'SWING_HIGH', 115, 5000, 3500)
+  ]));
+  assert.equal(result.status, 'VALID');
+  assert.deepEqual(result.sequence.map(p => p.pivot_id), ['later-high']);
+  assert.equal(result.raw_pivots[0].sequence_status, 'AMBIGUOUS_FOR_SEQUENCE');
+  assert.equal(result.raw_pivots[1].sequence_status, 'AMBIGUOUS_FOR_SEQUENCE');
+  assert.equal(result.raw_pivots[0].exclusion_reason, 'SIMULTANEOUS_HIGH_LOW_SAME_SOURCE_CANDLE');
+  assert.equal(result.diagnostics.ambiguous_dual_pivot_count, 2);
 });
 
 run('non-VALID B2-A input blocks and emits no sequence', () => {
@@ -341,7 +357,7 @@ run('B2-A to B2-B integration preserves causal swing sequence labels', () => {
   const b2b = analyze({
     b2a_result: b2a,
     policy: {
-      version: 'b2b-swing-sequence-v1',
+      version: 'b2b-swing-sequence-v2',
       b2a_engine_version: '2.0.0-b2a',
       b2a_policy_version: 'b2a-causal-swing-v1',
       b1_validator_version: '1.1.0',
