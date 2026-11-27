@@ -81,6 +81,29 @@ function labelSequence(pivots) {
   });
 }
 
+function deriveFixtureSequence(pivots) {
+  const active = [];
+  for (const p of pivots) {
+    p.sequence_status = 'PENDING';
+    p.superseded_by = null;
+    const last = active.length ? active[active.length - 1] : null;
+    if (last && last.type === p.type) {
+      const moreExtreme = p.type === 'SWING_HIGH' ? p.price > last.price : p.price < last.price;
+      if (!moreExtreme) {
+        p.sequence_status = 'SUPERSEDED_FOR_SEQUENCE';
+        p.superseded_by = last.pivot_id;
+        continue;
+      }
+      last.sequence_status = 'SUPERSEDED_FOR_SEQUENCE';
+      last.superseded_by = p.pivot_id;
+      active.pop();
+    }
+    p.sequence_status = 'ACCEPTED';
+    active.push(p);
+  }
+  return labelSequence(active);
+}
+
 function fixture(pivots, overrides = {}, options = {}) {
   const rows = Array.from({ length: options.count || 8 }, (_, i) => candle(i));
   for (const [indexText, values] of Object.entries(overrides)) {
@@ -113,7 +136,7 @@ function fixture(pivots, overrides = {}, options = {}) {
     }
   }
   const asOf = rows[rows.length - 1].close_time_ms + LAG;
-  const sequence = labelSequence(pivots);
+  const sequence = deriveFixtureSequence(pivots);
   const report = {
     snapshot_id: SNAPSHOT_ID,
     symbol: 'BTCUSDT',
