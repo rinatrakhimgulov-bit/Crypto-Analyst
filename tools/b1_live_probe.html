@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crypto Analyst · B1 Live Data Probe v3</title>
+<style>
+:root{color-scheme:dark;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;background:#10151d;color:#e7edf5}
+body{max-width:980px;margin:0 auto;padding:20px}
+h1{font-size:22px;margin:0 0 8px}p{color:#aab7c8}
+.panel{background:#192230;border:1px solid #2c3b4e;border-radius:12px;padding:16px;margin:14px 0}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+label{display:flex;flex-direction:column;gap:5px;color:#b9c6d6;font-size:13px}
+input,select,button,textarea{font:inherit;border-radius:8px;border:1px solid #3b4c62;background:#111a26;color:#edf3fa;padding:9px}
+button{cursor:pointer;background:#263a52}button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:#245c8d;border-color:#377bb4}
+.status{font-weight:600}.muted{color:#9aa9bb}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid #2b394a;vertical-align:top}
+.good{color:#8ed6a8}.bad{color:#ff9b9b}
+textarea{width:100%;min-height:180px;box-sizing:border-box;font:12px ui-monospace,monospace}
+.small{font-size:12px}.wrap{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<h1>B1 live data probe</h1>
+<p>Read-only diagnostic for public Bybit V5 Linear klines. It captures concurrent 1D / 4H / 1H responses, provider timestamps and raw response payloads. It does not create signals or place orders.</p>
+<div class="panel">
+  <div class="controls">
+    <label>Symbol
+      <select id="symbol"><option>BTCUSDT</option><option>ETHUSDT</option></select>
+    </label>
+    <label>Samples
+      <input id="samples" type="number" min="5" max="60" value="30">
+    </label>
+    <label>Delay between samples (ms)
+      <input id="delay" type="number" min="2000" max="30000" step="500" value="3000">
+    </label>
+    <label>Raw rows per interval
+      <input id="limit" type="number" min="160" max="500" value="200">
+    </label>
+    <button class="primary" id="start">Start capture</button>
+    <button id="stop" disabled>Stop</button>
+    <button id="export" disabled>Export JSON</button>
+  </div>
+  <p class="small muted">Recommended initial run: BTCUSDT, 30 samples, 3000 ms delay, 200 rows. One sample makes three concurrent kline requests. If the primary host fails, the probe tries the configured backup host. Run this page from localhost HTTP, not by opening it as file://. If you press Stop during a sample, that incomplete sample is discarded; previously completed samples remain available for export.</p>
+  <div id="status" class="status">Ready. No requests have been made.</div>
+</div>
+<div class="panel">
+  <h2 style="font-size:16px">Sample results</h2>
+  <div style="overflow:auto">
+  <table><thead><tr><th>#</th><th>Provider spread</th><th>1D</th><th>4H</th><th>1H</th><th>Result</th></tr></thead><tbody id="results"><tr><td colspan="6" class="muted">No samples yet.</td></tr></tbody></table>
+  </div>
+</div>
+<div class="panel">
+  <div class="controls" style="justify-content:space-between">
+    <h2 style="font-size:16px;margin:0">Captured JSON</h2>
+    <button id="copy" disabled>Copy JSON</button>
+  </div>
+  <textarea id="output" readonly placeholder="The capture will appear here. Export JSON to save the complete raw Bybit payloads."></textarea>
+  <p class="small muted">The JSON remains in this browser page until you close it. Nothing is uploaded by this tool. Review the capture before sharing it. Schema v3 preserves timing and HTTP status for failed host attempts too.</p>
+</div>
+<script>
+(() => {
+  'use strict';
+  const HOSTS=['https://api.bybit.com','https://api.bytick.com'];
+  const TIMEFRAMES=[['D','1D'],['240','4H'],['60','1H']];
+  const REQUEST_TIMEOUT_MS=15000;
+  const $=id=>document.getElementById(id);
+  let running=false, stopRequested=false, capture=null, activeControllers=new Set();
+  let pendingSleepTimer=null, pendingSleepResolve=null;
+
+  function sleep(ms){return new Promise(resolve=>{pendingSleepResolve=resolve;pendingSleepTimer=setTimeout(()=>{pendingSleepTimer=null;pendingSleepResolve=null;resolve();},ms);});}
+  function wakeSleep(){if(pendingSleepTimer!==null)clearTimeout(pendingSleepTimer);pendingSleepTimer=null;const resolve=pendingSleepResolve;pendingSleepResolve=null;if(resolve)resolve();}
+  function setStatus(message, bad=false){$('status').textContent=message;$('status').className='status '+(bad?'bad':'');}
+  function renderRows(){
+    const body=$('results');
+    if(!capture||!capture.samples.length){body.innerHTML='<tr><td colspan="6" class="muted">No samples yet.</td></tr>';return;}
+    body.innerHTML=capture.samples.map((s,i)=>{
+      const fmt=(v)=>v==null?'—':new Date(v).toISOString();
+      const item=tf=>s.timeframes[tf];
+      const spread=s.providerTimeSpreadMs==null?'—':s.providerTimeSpreadMs+' ms';
+      const cell=tf=>{const x=item(tf);return x&&x.providerTimeMs!=null?'<span class="good">'+fmt(x.providerTimeMs)+'</span>':'<span class="bad">'+(x&&x.error?'ERROR':'NO TIME')+'</span>';};
+      return '<tr><td>'+(i+1)+'</td><td>'+spread+'</td><td>'+cell('D')+'</td><td>'+cell('240')+'</td><td>'+cell('60')+'</td><td>'+(s.ok?'<span class="good">OK</span>':'<span class="bad">PARTIAL / ERROR</span>')+'</td></tr>';
+    }).join('');
+  }
+  function refreshOutput(){
+    $('output').value=capture?JSON.stringify(capture,null,2):'';
+    $('export').disabled=!capture||!capture.samples.length;
+    $('copy').disabled=!capture||!capture.samples.length;
+    renderRows();
+  }
+  async function fetchOne(symbol,interval,limit){
+    const errors=[], attempts=[];
+    for(const host of HOSTS){
+      const requestStartedAtMs=Date.now();
+      const controller=new AbortController();activeControllers.add(controller);
+      let timedOut=false;
+      let responseHeadersReceivedAtMs=null,responseReceivedAtMs=null,httpStatus=null;
+      const timeoutId=setTimeout(()=>{timedOut=true;controller.abort();},REQUEST_TIMEOUT_MS);
+      const url=host+'/v5/market/kline?category=linear&symbol='+encodeURIComponent(symbol)+'&interval='+encodeURIComponent(interval)+'&limit='+encodeURIComponent(limit);
+      try{
+        const response=await fetch(url,{cache:'no-store',signal:controller.signal});
+        httpStatus=response.status;
+        responseHeadersReceivedAtMs=Date.now();
+        const rawText=await response.text();
+        responseReceivedAtMs=Date.now();
+        let json=null,parseError=null;
+        try{json=JSON.parse(rawText);}catch(e){parseError=String(e);}
+        if(!response.ok)throw new Error('HTTP '+response.status+'; '+rawText.slice(0,300));
+        if(!json||json.retCode!==0||!json.result||!Array.isArray(json.result.list))throw new Error('Invalid V5 response: '+(json&&json.retMsg||parseError||rawText.slice(0,300)));
+        const providerTimeCandidate=typeof json.time==='number'?json.time:(typeof json.time==='string'&&/^\\d+$/.test(json.time)?Number(json.time):null);
+        const providerTimeMs=Number.isSafeInteger(providerTimeCandidate)&&providerTimeCandidate>0?providerTimeCandidate:null;
+        const attempt={host,requestStartedAtMs,responseHeadersReceivedAtMs,responseReceivedAtMs,headersLatencyMs:responseHeadersReceivedAtMs-requestStartedAtMs,totalDurationMs:responseReceivedAtMs-requestStartedAtMs,httpStatus};
+        attempts.push(attempt);
+        return {interval,host,requestStartedAtMs,responseHeadersReceivedAtMs,responseReceivedAtMs,headersLatencyMs:attempt.headersLatencyMs,totalDurationMs:attempt.totalDurationMs,providerTimeMs,rowCount:json.result.list.length,requestedLimit:limit,errorsBeforeSuccess:errors,attempts,raw:json};
+      }catch(error){
+        const failedAtMs=Date.now();
+        attempts.push({host,requestStartedAtMs,responseHeadersReceivedAtMs,responseReceivedAtMs,headersLatencyMs:responseHeadersReceivedAtMs===null?null:responseHeadersReceivedAtMs-requestStartedAtMs,totalDurationMs:failedAtMs-requestStartedAtMs,httpStatus,failedAtMs,timedOut});
+        const message=timedOut?'Request timed out after '+REQUEST_TIMEOUT_MS+' ms':String(error&&error.message||error);
+        errors.push({host,error:message,requestStartedAtMs,responseHeadersReceivedAtMs,responseReceivedAtMs,httpStatus,failedAtMs,timedOut});
+        if(stopRequested||(error&&error.name==='AbortError'&&!timedOut))throw error;
+      }finally{clearTimeout(timeoutId);activeControllers.delete(controller);}
+    }
+    return {interval,providerTimeMs:null,error:errors.map(x=>x.host+': '+x.error).join(' | '),errors,attempts};
+  }
+  async function sampleOnce(index,symbol,limit){
+    const startedAtMs=Date.now();
+    const pairs=await Promise.all(TIMEFRAMES.map(async ([tf])=>[tf,await fetchOne(symbol,tf,limit)]));
+    const timeframes=Object.fromEntries(pairs);
+    const times=Object.values(timeframes).map(x=>x.providerTimeMs).filter(Number.isFinite);
+    const spread=times.length===3?Math.max(...times)-Math.min(...times):null;
+    const finishedAtMs=Date.now();
+    return {index,startedAtMs,finishedAtMs,durationMs:finishedAtMs-startedAtMs,providerTimeSpreadMs:spread,providerTimesCount:times.length,ok:times.length===3&&Object.values(timeframes).every(x=>!x.error),timeframes};
+  }
+  async function start(){
+    if(running)return;
+    stopRequested=false;
+    const symbol=$('symbol').value;
+    const count=Math.max(5,Math.min(60,Number($('samples').value)||30));
+    const delayMs=Math.max(2000,Math.min(30000,Number($('delay').value)||3000));
+    const limit=Math.max(160,Math.min(500,Number($('limit').value)||200));
+    capture={schema:'crypto-analyst-b1-live-capture-v3',toolVersion:'3.0.0',createdAt:new Date().toISOString(),symbol,marketType:'linear',hostOrder:HOSTS.slice(),timeframes:['D','240','60'],sampleTarget:count,delayBetweenSamplesMs:delayMs,rawLimit:limit,samples:[]};
+    running=true;$('start').disabled=true;$('stop').disabled=false;
+    setStatus('Capturing '+count+' samples for '+symbol+'…');
+    refreshOutput();
+    try{
+      for(let i=0;i<count&&running;i++){
+        const s=await sampleOnce(i+1,symbol,limit);
+        capture.samples.push(s);
+        refreshOutput();
+        const valid=capture.samples.filter(x=>x.providerTimeSpreadMs!=null).map(x=>x.providerTimeSpreadMs);
+        const max=valid.length?Math.max(...valid):null;
+        setStatus('Captured '+capture.samples.length+'/'+count+' · latest spread: '+(s.providerTimeSpreadMs==null?'unavailable':s.providerTimeSpreadMs+' ms')+' · observed max: '+(max==null?'—':max+' ms'));
+        if(i+1<count&&running)await sleep(delayMs);
+      }
+    }catch(error){
+      setStatus('Capture stopped: '+String(error&&error.message||error),true);
+    }finally{
+      running=false;$('start').disabled=false;$('stop').disabled=true;
+      if(capture){capture.finishedAt=new Date().toISOString();capture.completedSamples=capture.samples.length;capture.stoppedEarly=stopRequested&&capture.samples.length<capture.sampleTarget;}
+      refreshOutput();
+      if(stopRequested)setStatus('Capture stopped by user after '+(capture?capture.samples.length:0)+' completed samples. Export JSON to preserve them.');
+      else if(capture&&capture.samples.length)setStatus('Finished: '+capture.samples.length+' samples saved locally. Export JSON to preserve the raw payloads.');
+    }
+  }
+  function stop(){
+    stopRequested=true;running=false;wakeSleep();
+    for(const c of activeControllers)c.abort();
+    setStatus('Stopping capture and cancelling active requests…');
+  }
+  function exportJson(){
+    if(!capture)return;
+    const blob=new Blob([JSON.stringify(capture,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;
+    a.download='bybit-b1-live-capture-'+capture.symbol+'-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+    document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  }
+  async function copyJson(){
+    const value=$('output').value;
+    try{await navigator.clipboard.writeText(value);setStatus('JSON copied to clipboard.');}
+    catch(_){$('output').focus();$('output').select();setStatus('Clipboard API unavailable. JSON is selected; use Copy from the browser menu.');}
+  }
+  $('start').addEventListener('click',start);
+  $('stop').addEventListener('click',stop);
+  $('export').addEventListener('click',exportJson);
+  $('copy').addEventListener('click',copyJson);
+})();
+</script>
+</body>
+</html>
