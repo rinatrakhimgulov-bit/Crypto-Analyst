@@ -369,3 +369,28 @@ B1 remains NOT ACCEPTED. B2-A/B are isolated research candidates only. No applic
 ### B2-A → B2-B deterministic contract integration — 2026-11-27
 
 B2-B test suite expanded to 20/20 with a direct fixture that instantiates the actual B2-A engine using a canonical B1 snapshot and matching quality report, then passes the resulting VALID pivot output to B2-B. The test verifies the causal sequence labels `INITIAL_HIGH`, `INITIAL_LOW`, `HH`, `HL`, `LH`, `LL`. GitHub Actions run [46012201698](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46012201698) passed on commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`. This is deterministic contract verification only.
+
+
+## B2-C isolated structure-state engine — 2026-11-27
+
+**Branch:** `feature/b2c-bos-choch-state-machine-2026-11-27`  
+**PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/15 (draft, unmerged)  
+**Verified head:** `a58441aa4f39aa6e3b98650624f07a2041e7152a`
+
+### Work completed
+- Added `src/analysis/b2c-swing-structure-engine.js`, a pure consumer of a VALID B2-B result plus the exact B1 snapshot and quality report.
+- Revalidates B1 snapshot/report identity, B2-A/B engine and policy identities, candle provenance/finality/order/continuity/OHLC, forming/unknown isolation, and each pivot's actual source candle, confirmation candle and finality availability.
+- Independently reconstructs B2-B same-side replacement and sequence labels from raw pivots; rejects omitted pivots, forged labels and forged supersession metadata.
+- Implements UNESTABLISHED / UP / DOWN, initial breaks, bullish/bearish BOS, protected HL/LH advancement, bullish/bearish CHoCH, wick-only sweep evidence, gap-through annotation and consumed-level deduplication.
+- Uses strict close beyond level with ZERO_BUFFER_V1; equality is not a break.
+- Evaluates breaks before admitting pivots that become available at the same candle close, preventing same-candle hindsight.
+- Preserves raw pivot evidence and emits deeply immutable event history.
+
+### Verification
+GitHub Actions run [46013846058](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46013846058) passed **28/28** deterministic tests on exact commit `a58441aa4f39aa6e3b98650624f07a2041e7152a`. Coverage includes bullish/bearish initial breaks, BOS/CHoCH symmetry, protected swing behavior, wick sweeps, equality, same-candle no-lookahead, duplicate-level suppression, prefix replay, malformed provenance and an end-to-end B1 → B2-A → B2-B → B2-C fixture.
+
+### Limits and acceptance boundary
+- Research-only module; not imported into application HTML.
+- No live Bybit test, MTF, S/R zones, retests, chart overlays or LONG/SHORT connection.
+- B1 remains NOT ACCEPTED. Production integration remains blocked until B1 acceptance and explicit owner approval.
+- This is an internal implementation review, not an independent external audit.
