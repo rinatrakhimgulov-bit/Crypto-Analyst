@@ -439,3 +439,31 @@ Current CI:
 B2-D builds support/resistance clusters from all confirmed raw pivots, keeps superseded-pivot status visible, exposes freshness age without classifying freshness, and uses an explicit absolute-price-span policy scoped to instrument/timeframe. Zone identity is membership-derived, not guaranteed stable across snapshots.
 
 PRs #12, #13, #15, #16 remain draft/unmerged. B1 remains NOT ACCEPTED. No production app integration or main branch changes.
+
+
+## B2-E isolated breakout/retest/failure lifecycle — 2026-11-27
+
+**Branch:** `feature/b2e-breakout-retest-lifecycle-2026-11-27`  
+**PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/17 (draft, unmerged)  
+**Verified head:** `493a15e8006784d2b78262770725c26bd05c2e85`
+
+### Work completed
+- Added `src/analysis/b2e-breakout-retest-engine.js`.
+- Consumes only VALID B2-C events and B2-D zones with exact B1/B2-B/B2-C/B2-D identity binding.
+- Revalidates candle, pivot, event and current B2-D zone evidence, including B2-C accepted source pivot, prior state, transition flag, close confirmation and ZERO_BUFFER_V1.
+- Reconstructs a historical zone from only raw pivots available strictly before the breakout candle close. This prevents future pivots from retroactively creating/widening the breakout zone.
+- Maps bullish breakouts to resistance zones and bearish breakouts to support zones.
+- Uses explicit retest touch tolerance, success/failure close buffers, retest window and confirmation window.
+- Emits RETEST_SUCCESSFUL, RETEST_FAILED, RETEST_EXPIRED, RETEST_UNRESOLVED, WAITING_RETEST and RETEST_PENDING_CONFIRMATION.
+- Confirms role reversal only after a successful retest; failed/expired/unresolved outcomes preserve the original role.
+- Records unmatched breakouts where a qualifying historical zone did not exist.
+
+### Verification
+GitHub Actions run [46016401705](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46016401705) passed **22/22** deterministic tests on exact commit `493a15e8006784d2b78262770725c26bd05c2e85`, including a full B1 snapshot → B2-A → B2-B → B2-C → B2-D → B2-E fixture.
+
+### Limits and acceptance boundary
+- Research-only; not imported into application HTML.
+- Retest thresholds are explicit synthetic configuration inputs, not calibrated market facts.
+- No MTF, chart overlays, trade scenarios or LONG/SHORT connection.
+- B1 remains NOT ACCEPTED; production integration is blocked until B1 acceptance and explicit owner approval.
+- Internal review is not an independent external audit.
