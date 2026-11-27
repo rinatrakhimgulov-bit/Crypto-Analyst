@@ -4,7 +4,7 @@
 **Дата актуализации:** 2026-11-27  
 **Основная ветка:** `main`  
 **Основной исходный файл:** `CryptoAnalyst_StageA_S6_updated.html`  
-**Текущее состояние:** B2-A–B2-G интегрированы в `main` через PR #22 (merge commit `d2b8220572ec407a62c5a359af3c0264919932b1`). B3 chart UI реализован в draft PR #23; B1/B2 аналитическое ядро не менялось. Автоматические B1/B2/browser CI проверки прошли; iPhone/Safari acceptance ожидается.
+**Текущее состояние:** B2-A–B2-G интегрированы через PR #22; B3 chart UI интегрирован в `main` через PR #23 (merge commit `7d34a3539c9a655bca546bbb7b0c8ff2293b80ee`). B1/B2 аналитическое ядро и Stage A LONG/SHORT/WAIT не менялись в B3. Автоматические проверки на актуальном PR HEAD прошли; проверка владельцем на iPhone/Safari ожидается.
 
 ---
 
@@ -762,3 +762,14 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - Live Bybit REST probe was skipped as `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass or evidence of provider unavailability elsewhere.
 - The first CI attempt exposed mobile horizontal overflow from chart controls and an old B1 visual test assumption that EMA200 was always visible. Both were corrected: chart grid/control containers now constrain width, and the EMA regression explicitly enables the EMA layer before testing it.
 - Candidate remains in `feature/b3-chart-ui-redesign-2026-11-27`, draft PR #23. No merge. iPhone/Safari owner visual acceptance remains pending.
+
+
+## B3 — завершение реализации и интеграция (2026-11-27)
+
+- PR #23 merged в `main`: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/23.
+- Merge commit: `7d34a3539c9a655bca546bbb7b0c8ff2293b80ee`; проверенный PR HEAD: `e65715efea1fa97527f03ccb7e883cc8d6737e58`.
+- Основной HTML в `main`: blob `6b5521195454bc3d3be3e18cc7f4fb10682ee48b`, 511,597 bytes. B3 UI присутствует в основном файле.
+- На точном PR HEAD успешно завершились B1 browser/live-data workflow `46039070502` и B2 application integration workflow `46039070648`. B2 job включает B2-A…B2-G deterministic suites и Chromium/mobile browser checks; B1 job завершился SUCCESS.
+- Проверки включали 390×844 mobile viewport, высоту canvas не менее 440 px, отсутствие горизонтального переполнения, Clean/Structure/Full presets, ручное переключение слоёв и причинное позиционирование S/R.
+- Live Bybit REST probe пропущен/заблокирован на GitHub runner из-за HTTP 403 от `api.bybit.com` и `api.bytick.com`. Это не подтверждает live Bybit connectivity.
+- iPhone/Safari acceptance остаётся следующим пользовательским этапом после интеграции. B3 меняет представление графика; B1/B2 engine и LONG/SHORT/WAIT не подключались к новым UI переключателям.
