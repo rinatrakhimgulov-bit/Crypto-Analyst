@@ -83,3 +83,6 @@ These checks establish deterministic and synthetic browser integration only. The
 - B2 research suite: [run 46034803544](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034803544), passed.
 - B2 browser/mobile integration: [run 46034803848](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034803848), passed. The chart renderer test confirms that the confirmed-zone fill begins at the projection's causal `visible_from_ms` x-position (observed x=250, expected x=250), not at the left edge of earlier candles.
 - B1 browser/live-data suite: [run 46034803715](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034803715), passed with zero page errors; live Bybit capture was skipped due runner HTTP 403.
+
+
+- Final clean-branch historical replay: [run 46035136810](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46035136810), passed on the current B2-A–B2-G source set. The report explicitly states synthetic B1-valid wrapper and no live-provider/trading-edge claim.
