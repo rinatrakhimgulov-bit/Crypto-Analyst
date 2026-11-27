@@ -275,6 +275,21 @@
       visibility_rule: 'SHOW_ONLY_AT_OR_AFTER_VISIBLE_AT'
     }));
 
+    const historyById = new Map();
+    let historyAvailableAt = -1;
+    for (const pivot of b2c.sequence_history) {
+      const raw = b2c.raw_pivots.find(p => p.pivot_id === (pivot && pivot.pivot_id));
+      if (!raw || historyById.has(pivot.pivot_id) ||
+          pivot.sequence_status !== 'ACCEPTED_AT_AVAILABILITY' ||
+          pivot.exclusion_reason !== null || pivot.superseded_by !== null ||
+          !samePivot(raw, pivot) ||
+          !Number.isSafeInteger(pivot.sequence_index_at_availability) ||
+          pivot.sequence_index_at_availability < 0 ||
+          pivot.available_at_ms < historyAvailableAt) return blocked('B2C_SEQUENCE_HISTORY_INVALID', meta);
+      historyById.set(pivot.pivot_id, pivot);
+      historyAvailableAt = pivot.available_at_ms;
+    }
+
     const eventIds = new Set();
     const structureEvents = [];
     for (const event of b2c.events) {
@@ -285,7 +300,11 @@
           !Number.isSafeInteger(event.breaking_candle_close_time_ms) ||
           event.breaking_candle_open_time_ms <= 0 || event.breaking_candle_open_time_ms % step !== 0 ||
           event.breaking_candle_close_time_ms - event.breaking_candle_open_time_ms !== step ||
-          (event.source_pivot_id !== null && event.source_pivot_id !== undefined && !rawIds.has(event.source_pivot_id))) {
+          (event.source_pivot_id !== null && event.source_pivot_id !== undefined &&
+            (!rawIds.has(event.source_pivot_id) || !historyById.has(event.source_pivot_id) ||
+             historyById.get(event.source_pivot_id).available_at_ms >= event.breaking_candle_close_time_ms ||
+             event.level_price !== historyById.get(event.source_pivot_id).price ||
+             event.pivot_available_at_ms !== historyById.get(event.source_pivot_id).available_at_ms))) {
         return blocked('B2C_EVENT_INVALID', meta);
       }
       eventIds.add(event.event_id);
