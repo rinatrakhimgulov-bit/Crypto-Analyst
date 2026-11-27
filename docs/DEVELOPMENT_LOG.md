@@ -515,3 +515,13 @@ Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2`; harness `a23585f96
 Added a fail-closed equivalence check between the canonical closed-candle series that passed B1 validation and the legacy candle series/last-closed price consumed by `BasicAnalyticsEngine`. If timestamps, OHLCV, turnover, count or last-closed price diverge, the engine returns WAIT and does not calculate directional indicators. Added handling so an empty but internally matching candle series preserves the validator's INSUFFICIENT status and `INSUFFICIENT_HISTORY` reason rather than being mislabeled INVALID.
 
 Latest CI run `45967551538`: Stage A 44/44, B1 contract 32/32, validator 65/65, MTF 20/20; gate/UI/chart checks passed, zero browser page errors; 161/161 named tests. Current HTML blob `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes); browser harness blob `a23585f9688b9a04336c7f99da7a972513882f8e` (29,130 bytes). PR #8 draft head `f6cc90e51096e30bd524a6e883f3ca0ad1273d79`; main unchanged. Live Bybit remains blocked by HTTP 403 from both public hosts on GitHub Actions.
+
+
+
+## Real browser transport cancellation verification — 2026-11-27
+
+Changed fetch deadline abort reason from a generic Error to a named `TimeoutError`. Expanded the Playwright harness with a delayed local HTTP endpoint and exercised the real Chromium fetch stack through the actual `BybitAdapter.fetchMarketSnapshot` method. External AbortSignal cancels the concurrent kline and ticker requests; the independent deadline cancels the delayed request. The server observed 3 requests and 3 closed client connections. This is a real browser transport test, but it does not test the exchange's network or a live Bybit connection.
+
+CI run `45968566553` passed: Stage A 44/44, B1 contract 32/32, validator 65/65, MTF 20/20; 161/161 named self-tests, gate/UI/C1/probe checks passed, zero browser page errors. Live Bybit remains blocked by HTTP 403 from both public hosts on GitHub Actions.
+
+Current HTML blob `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); test harness blob `70399a984b44f5f85024afcdf11289e4a73a6361` (32,071 bytes). PR #8 remains draft; main unchanged.
