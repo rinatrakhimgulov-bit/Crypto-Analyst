@@ -6,6 +6,7 @@ on:
       - feature/b2e-breakout-retest-lifecycle-2026-11-27
       - feature/b2f-mtf-structure-confluence-2026-11-27
       - feature/b2g-chart-projection-contract-2026-11-27
+      - integration/b2-market-structure-ui-2026-11-27
   workflow_dispatch:
 
 permissions:
