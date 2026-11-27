@@ -451,6 +451,8 @@
           <span><i class="dot" style="background:#22c55e"></i>Рост / <i class="dot" style="background:#ef4444"></i>Падение</span>
           <span><i class="dot" style="background:#38bdf8"></i>EMA(20)</span>
           <span><i class="dot" style="background:#a855f7"></i>EMA(50)</span>
+          <span><i class="dot" style="background:#eab308"></i>EMA(200)</span>
+          <span><i class="dot" style="background:rgba(34, 197, 94, 0.62)"></i>Объём (базовый актив)</span>
           <span><i class="dot" style="background:#f59e0b"></i>Локальные экстремумы (SH/SL)</span>
           <span><i class="dot" style="background:#94a3b8"></i>Последняя свеча — формируется</span>
         </div>
@@ -3179,7 +3181,7 @@
           return {
             decision: 'WAIT',
             reasons: [`Направленный анализ заблокирован фильтром качества данных: ${status}.${detail}`],
-            ema20: [], ema50: [], atr14: [],
+            ema20: [], ema50: [], ema200: [], atr14: [],
             swings: { highs: [], lows: [] },
             levels: { resistance: null, support: null },
             qualityGate: { blocked: true, status, reasonCodes: codes },
@@ -3209,6 +3211,7 @@
             reasons: ['Недостаточно закрытых свечей для расчёта базовых индикаторов (нужно минимум 50 свечей для EMA50).'],
             ema20: [],
             ema50: [],
+            ema200: [],
             atr14: [],
             swings: { highs: [], lows: [] },
             levels: { resistance: null, support: null },
@@ -3227,6 +3230,7 @@
         const closes = candles.map(c => c.close);
         const ema20 = this.calcEMA(closes, 20);
         const ema50 = this.calcEMA(closes, 50);
+        const ema200 = this.calcEMA(closes, 200);
         const atr14 = this.calcATR(candles, 14);
         const swings = this.findSwings(candles, 3, 3);
 
@@ -3235,6 +3239,7 @@
         const lastEma20 = ema20[lastIdx];
         const prevEma20 = lastIdx >= 1 ? ema20[lastIdx - 1] : undefined;
         const lastEma50 = ema50[lastIdx];
+        const lastEma200 = ema200[lastIdx];
         const lastAtr = atr14[lastIdx];
         const atrPct = Number.isFinite(lastAtr) ? (lastAtr / lastClosedPrice) * 100 : null;
 
@@ -3320,6 +3325,7 @@
           reasons,
           ema20,
           ema50,
+          ema200,
           atr14,
           swings,
           levels: { resistance: nearestResistance, support: nearestSupport },
@@ -3333,6 +3339,7 @@
             priceWarning,
             lastEma20,
             lastEma50,
+            lastEma200,
             distEma20Pct,
             lastAtr,
             atrPct,
@@ -3557,7 +3564,11 @@
         minP -= span * 0.06;
         maxP += span * 0.06;
 
-        const yForPrice = (p) => padTop + (1 - (p - minP) / (maxP - minP)) * plotH;
+        const pricePlotH = Math.max(50, plotH * 0.72);
+        const volumeTop = padTop + pricePlotH + 10;
+        const volumeBottom = padTop + plotH - 12;
+        const volumeHeight = Math.max(10, volumeBottom - volumeTop);
+        const yForPrice = (p) => padTop + (1 - (p - minP) / (maxP - minP)) * pricePlotH;
         const stepX = plotW / slice.length;
         const bodyW = Math.max(2, Math.min(18, stepX * 0.65));
 
@@ -3568,7 +3579,7 @@
         const rows = 5;
         for (let r = 0; r <= rows; r++) {
           const ratio = r / rows;
-          const y = padTop + ratio * plotH;
+          const y = padTop + ratio * pricePlotH;
           const priceVal = maxP - ratio * (maxP - minP);
           ctx.beginPath();
           ctx.moveTo(padLeft, y);
@@ -3638,6 +3649,40 @@
           }
         }
 
+        // Volume is rendered in its own lower pane and uses the same candle slice/index.
+        // Forming-candle volume is shown muted; no volume value enters EMA calculations.
+        const volumeValues = slice.map(c => Number.isFinite(c.volume) && c.volume >= 0 ? c.volume : 0);
+        const maxVisibleVolume = Math.max(0, ...volumeValues);
+        const volumeBaselineY = volumeBottom;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(143, 161, 191, 0.22)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padLeft, volumeTop);
+        ctx.lineTo(padLeft + plotW, volumeTop);
+        ctx.moveTo(padLeft, volumeBaselineY);
+        ctx.lineTo(padLeft + plotW, volumeBaselineY);
+        ctx.stroke();
+        ctx.fillStyle = '#8fa1bf';
+        ctx.font = '9px sans-serif';
+        ctx.fillText('VOL', padLeft + 3, volumeTop + 10);
+        if (maxVisibleVolume > 0) {
+          for (let i = 0; i < slice.length; i++) {
+            const c = slice[i];
+            const value = volumeValues[i];
+            if (value <= 0) continue;
+            const globalIdx = startIdx + i;
+            const isForming = globalIdx >= this.closedCount;
+            const barHeight = Math.max(1, (value / maxVisibleVolume) * Math.max(4, volumeHeight - 4));
+            const cx = padLeft + (i + 0.5) * stepX;
+            ctx.fillStyle = isForming
+              ? 'rgba(148, 163, 184, 0.35)'
+              : (c.close >= c.open ? 'rgba(34, 197, 94, 0.62)' : 'rgba(239, 68, 68, 0.62)');
+            ctx.fillRect(cx - Math.max(1, bodyW / 2), volumeBaselineY - barHeight, Math.max(1, bodyW), barHeight);
+          }
+        }
+        ctx.restore();
+
         const closedCandlesRef = (this.analysis && Array.isArray(this.analysis.closedCandlesRef))
           ? this.analysis.closedCandlesRef
           : [];
@@ -3675,6 +3720,7 @@
         if (this.analysis) {
           drawLineSeries(this.analysis.ema20, '#38bdf8');
           drawLineSeries(this.analysis.ema50, '#a855f7');
+          drawLineSeries(this.analysis.ema200, '#eab308');
 
           const swings = this.analysis.swings || { highs: [], lows: [] };
           ctx.font = '10px sans-serif';
@@ -4048,7 +4094,7 @@
       }
 
       try {
-        const dataset = await BybitAdapter.fetchMarketSnapshot(reqSymbol, reqInterval, controller.signal, 160);
+        const dataset = await BybitAdapter.fetchMarketSnapshot(reqSymbol, reqInterval, controller.signal, 400);
         dataset.canonicalSnapshot = B1DataContract.toSnapshot(dataset);
         dataset.qualityReport = B1QualityValidator.validate(dataset.canonicalSnapshot, B1_QUALITY_POLICY, Date.now()).report;
 
