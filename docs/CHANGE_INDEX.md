@@ -299,3 +299,12 @@ CI results: 44/44 Stage A, 32/32 B1 contract, 63/63 B1 validator; gate assertion
 Latest CI run `45965680821`: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 12/12; browser UI/chart/gate checks passed, zero page errors. Live Bybit blocked by runner HTTP 403. Integration candidate only; main unchanged.
 
 Note: earlier entry saying no source code changed described the initial documentation-only setup before the subsequent MTF port commits. The source has since been changed on the integration branch.
+
+
+
+
+### B1-E MTF test inventory refresh — 2026-11-27
+
+`window.B1MtfSelfTest` now has 16 cases. Added no-forming/pending leakage, +1 ms spread rejection, multiple post-cutoff rejection, and missing-spread-policy rejection. Async cases verify sibling abort and superseded generation suppression. Latest CI run 45966127523: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 16/16; UI/gate/chart checks passed, zero page errors. Live Bybit blocked by runner HTTP 403.
+
+Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independent audit prompt is pinned to this exact blob.
