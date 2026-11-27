@@ -474,3 +474,10 @@ B2-F remains disabled in the live UI pending empirical provider-time spread cali
 - Draft PR #22: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/22.
 - Branch: `integration/b2-clean-preview-2026-11-27`, based directly on current `main`.
 - The PR is a preview candidate only. B2-F remains disabled pending live MTF spread calibration; iPhone/Safari acceptance and independent review remain outstanding.
+
+### Latest clean PR verification
+
+- Draft PR #22 head `3d6c721044118f5a04f5498e60f03c1e13b7597b`.
+- B2 suite 182/182 passed; B2 application integration and Chromium/mobile checks passed.
+- B1 deterministic/browser suite passed with zero page errors. Live Bybit REST was skipped due HTTP 403 from both provider hosts on the GitHub runner.
+- No merge; main remains unchanged. iPhone Safari owner verification and MTF live calibration remain open.
