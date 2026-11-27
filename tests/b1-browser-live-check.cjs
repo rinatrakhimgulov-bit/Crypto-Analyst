@@ -117,7 +117,7 @@ async function main() {
           status, decision: analysis.decision,
           blocked: analysis.qualityGate && analysis.qualityGate.blocked,
           gateStatus: analysis.qualityGate && analysis.qualityGate.status,
-          emptyIndicators: analysis.ema20.length === 0 && analysis.ema50.length === 0 && analysis.atr14.length === 0,
+          emptyIndicators: analysis.ema20.length === 0 && analysis.ema50.length === 0 && analysis.ema200.length === 0 && analysis.atr14.length === 0,
           emptyLevels: analysis.levels.resistance === null && analysis.levels.support === null
         };
       });
