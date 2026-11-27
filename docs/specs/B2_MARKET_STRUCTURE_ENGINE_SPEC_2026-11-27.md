@@ -410,6 +410,6 @@ The isolated candidate is implemented in `src/analysis/b2b-swing-sequence-engine
 - Consecutive same-type pivots use the frozen symmetric replacement rule: retain the higher high or lower low; exact equality retains the earlier pivot. Superseded raw pivots remain in the evidence output.
 - Sequence labels include INITIAL_HIGH/INITIAL_LOW, HH/LH/EQH and HL/LL/EQL, with comparison pivot ID, price delta and relative percentage delta.
 - The module returns a deeply immutable result without freezing nested objects owned by the upstream B2-A input.
-- Deterministic suite: 19/19 passed in GitHub Actions run 46011622297 on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
+- Deterministic suite: 20/20 passed in GitHub Actions run 46012201698 on commit `9c102e8f3984daccf0d7d94bcb8807c549e0dcf1`. The suite includes an end-to-end B2-A→B2-B contract fixture using the actual B2-A engine.
 
 This remains an isolated research candidate in draft PR #13, based on the B2-A candidate branch. It does not implement BOS/CHoCH, protected swings, zones, retests, MTF, UI or trading decisions. B1 formal acceptance remains mandatory before production integration.
