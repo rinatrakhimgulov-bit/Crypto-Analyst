@@ -109,3 +109,12 @@ The quality panel renders:
 A Chromium DOM integration assertion uses a synthetic INVALID negative-volume snapshot and confirms the panel displays INVALID, VOLUME_NEGATIVE, blocked state, and the WAIT decision badge. CI run 45963443614 passed all suites (Stage A 44/44, B1 contract 32/32, B1 validator 63/63), UI assertion passed, and browser page errors were zero.
 
 The user confirmed the prior C1 candidate works in iPhone Safari. The newest reason-code panel addition needs a brief visual check on device. Independent review and formal acceptance are still required before merge.
+
+
+
+
+## 9. Validator identity update — 2026-11-27
+
+The canonical contract and quality validator have been incremented to 1.1.0 for the MTF cutoff-exclusion accounting extension. The analytics gate continues to require exact active `validator_version` and `policy_version`; reports produced by the previous validator version cannot pass the current gate. The active policy identifier remains `b1-quality-policy-2026-11-27-v1` because its thresholds did not change.
+
+The isolated MTF assembler does not currently feed `BasicAnalyticsEngine.analyze()`. Existing selected-timeframe B1-C behavior remains unchanged. Do not interpret B1-E implementation as approval of directional MTF signals.
