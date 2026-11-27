@@ -353,6 +353,41 @@ run('bullish close through protected LH emits bearish-to-bullish CHoCH', () => {
   assert.equal(result.events[1].source_pivot_id, 'h105');
 });
 
+run('a consumed initial high can later serve as the protected bullish reversal level', () => {
+  const pivots = [
+    ...initialBull,
+    makePivot('l95', 'SWING_LOW', 95, 3, 4)
+  ];
+  const input = fixture(pivots, {
+    3: { open: 100, close: 105, high: 106, low: 95 },
+    5: { open: 96, close: 90, high: 97, low: 89 },
+    6: { open: 95, close: 101, high: 102, low: 94 }
+  });
+  const result = analyze(input);
+  assert.equal(result.structure_state, 'UP');
+  assert.deepEqual(result.events.map(e => e.event_type), [
+    'INITIAL_BULLISH_BREAK', 'BEARISH_CHOCH', 'BULLISH_CHOCH'
+  ]);
+});
+
+run('a consumed initial low can later serve as the protected bearish reversal level', () => {
+  const pivots = [
+    makePivot('h110', 'SWING_HIGH', 110, 0, 1),
+    makePivot('l100', 'SWING_LOW', 100, 1, 2),
+    makePivot('h105', 'SWING_HIGH', 105, 3, 4)
+  ];
+  const input = fixture(pivots, {
+    3: { open: 100, close: 95, high: 105, low: 94 },
+    5: { open: 104, close: 111, high: 112, low: 103 },
+    6: { open: 105, close: 99, high: 106, low: 98 }
+  });
+  const result = analyze(input);
+  assert.equal(result.structure_state, 'DOWN');
+  assert.deepEqual(result.events.map(e => e.event_type), [
+    'INITIAL_BEARISH_BREAK', 'BULLISH_CHOCH', 'BEARISH_CHOCH'
+  ]);
+});
+
 run('a same-candle pivot cannot be used for that candle break', () => {
   const pivots = [
     makePivot('l90', 'SWING_LOW', 90, 0, 1),
