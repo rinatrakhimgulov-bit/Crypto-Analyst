@@ -7,7 +7,7 @@
 
   const ENGINE_VERSION = '2.0.0-b2e';
   const REQUIRED_B2D_ENGINE_VERSION = '2.0.0-b2d';
-  const REQUIRED_B2B_ENGINE_VERSION = '2.0.0-b2b';
+  const REQUIRED_B2B_ENGINE_VERSION = '2.1.0-b2b';
   const REQUIRED_B2C_ENGINE_VERSION = '2.0.0-b2c';
   const BREAK_TYPES = Object.freeze({
     INITIAL_BULLISH_BREAK: 'BULLISH',
@@ -50,7 +50,8 @@
         typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
         typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
         !Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0 ||
-        policy.price_equality_policy !== 'EXACT_PRICE_V1') return 'B2E_UPSTREAM_POLICY_BINDING_INVALID';
+        policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
+        policy.b2b_same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1') return 'B2E_UPSTREAM_POLICY_BINDING_INVALID';
     const rp = policy.retest_policy;
     if (!isObject(rp) || typeof rp.version !== 'string' || !rp.version.trim() ||
         rp.touch_method !== 'RANGE_INTERSECTION_V1' ||
@@ -322,6 +323,7 @@
         b2c.admission.status !== 'ADMITTED' || b2c.admission.snapshot_id !== snapshot.snapshot_id ||
         b2c.admission.b2b_engine_version !== policy.b2b_engine_version ||
         b2c.admission.b2b_policy_version !== policy.b2b_policy_version ||
+        b2c.admission.b2b_same_candle_dual_pivot_policy !== policy.b2b_same_candle_dual_pivot_policy ||
         b2c.admission.b1_validator_version !== policy.b1_validator_version ||
         b2c.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
         !Array.isArray(b2c.raw_pivots) || !Array.isArray(b2c.events) || b2c.events.some(e => !isObject(e))) return blocked('INVALID', 'B2C_ADMISSION_IDENTITY_MISMATCH', meta);
