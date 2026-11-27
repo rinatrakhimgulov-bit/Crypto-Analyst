@@ -1201,3 +1201,18 @@ The older B1-E artifact received an external conditional audit (33/33 MTF, 65/65
 Current candidate browser CI evidence: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate checks passed, no browser page errors. User verified the C1 chart on iPhone. The newest B1-C reason-code / blocked-WAIT panel detail still needs Safari visual verification. GitHub Actions live Bybit access is blocked by HTTP 403 from both public REST hosts. Do not describe this as live verification.
 
 B1 remains unaccepted. B2 remains not started. Next work is the controlled MTF port and tests, then independent review of the exact integrated artifact, live capture/calibration, iPhone check of the latest panel, and explicit owner acceptance before main merge.
+
+
+
+
+## Handover update — B1-E current-contract port — 2026-11-27
+
+Current integration branch now includes isolated `B1MtfEngine` ported to the current B1 canonical contract. Do not copy the older `impl/b1-quality-contract-2026-11-26` branch wholesale. Its MTF engine depended on legacy `DataQualityEngine` and was adapted to current `B1DataContract` / `B1QualityValidator`.
+
+Canonical contract and validator versions: 1.1.0. `source_diagnostics.excluded_after_cutoff_count` is now required; it records normalized rows excluded because they open after the common cutoff and participates in raw-row accounting. B1 policy version remains `b1-quality-policy-2026-11-27-v1`.
+
+Latest CI run `45965680821`: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 12/12, gate/UI/chart checks passed, zero browser page errors. Live Bybit probe remains blocked by HTTP 403 from both public hosts on GitHub Actions.
+
+MTF is isolated and not connected to directional decision output. No production provider-time spread default exists. Real concurrent Bybit capture/spread calibration, independent review of exact current-contract HTML, actual network abort verification, and latest quality-panel iPhone Safari check remain open. C1 chart was already user-verified on iPhone. B1 not accepted, B2 not started, main unchanged.
+
+Spec: `docs/specs/B1E_MTF_CURRENT_CONTRACT_SPEC_2026-11-27.md`.
