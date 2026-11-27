@@ -3,8 +3,8 @@
 **Repository:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst  
 **Branch:** `integration/b1-mtf-architecture-2026-11-27`  
 **Draft PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/8  
-**Exact HTML blob:** `2af63d1bbfec766606325450819d8ddff14173a2` (303,499 bytes)  
-**Browser harness blob:** `a23585f9688b9a04336c7f99da7a972513882f8e`  
+**Exact HTML blob:** `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes)  
+**Browser harness blob:** `70399a984b44f5f85024afcdf11289e4a73a6361`  
 **Read-only live probe blob:** `3b5df8f0feda730c7e6564808f40ad4526f0e44a`
 
 ## Independence requirement
@@ -52,7 +52,7 @@ Review the complete B1-A/B/C/E path and its interaction with Stage A:
 
 ## Reproducible verification evidence
 
-Latest completed GitHub Actions run `45967551538`:
+Latest completed GitHub Actions run `45968566553`:
 - Stage A: 44/44
 - B1 Data Contract: 32/32
 - B1 Quality Validator: 65/65
@@ -84,7 +84,3 @@ These results are claims to verify, not assumptions.
 
 Do not call this profitable trading logic. Do not infer live exchange correctness from mocks or CI that cannot reach Bybit.
 
-
-## Latest transport-change note — 2026-11-27
-
-Current HTML blob to audit: `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); browser harness blob `70399a984b44f5f85024afcdf11289e4a73a6361`. The fetch timeout now uses named `TimeoutError`; Playwright confirms actual Chromium fetch cancellation through the real Bybit adapter and observes all 3 delayed local HTTP connections close. CI `45968566553` passed 161/161 tests, gate/UI/chart/probe checks and zero page errors. Live Bybit remains blocked by HTTP 403 from both hosts on GitHub Actions. Please audit this exact updated blob, not previous hashes.
