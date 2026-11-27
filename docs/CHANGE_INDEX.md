@@ -408,3 +408,12 @@ Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independ
 - `tests/b2b-swing-sequence-engine.test.cjs`: 19 deterministic cases covering sequence behavior, replacement symmetry, equality, causal ordering, fail-closed admission, immutability and determinism.
 - `.github/workflows/b2b-swing-sequence.yml`: isolated B2-B CI workflow. Run `46011622297` passed 19/19 on commit `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`.
 - PR #13 is draft/unmerged and based on B2-A candidate. No main/app changes; B1 acceptance remains required before production integration.
+
+
+## 2026-11-27 — B2 full-chain deterministic verification
+
+- Added audit-only workflow `.github/workflows/b2-audit-full-suite.yml`.
+- Corrected stale B2 test fixture expectations/policy bindings and B2-G test assertion count.
+- Verified 180/180 deterministic tests across B2-A through B2-G in GitHub Actions run [#46032422972](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46032422972).
+- Updated `docs/audits/B2_INDEPENDENT_REVIEW_2026-11-27.md`, `docs/PROJECT_STATE.md`, and `docs/DEVELOPMENT_LOG.md`.
+- No production HTML changes, no `main` changes, and no PR merges. Historical validation and runtime/UI integration remain blockers.
