@@ -632,3 +632,28 @@ GitHub Actions run [46010999225](https://github.com/rinatrakhimgulov-bit/Crypto-
 - No live Bybit, browser, or profitability test was performed.
 - B1 remains NOT ACCEPTED. B2-A is isolated research code and is not connected to the running application or LONG/SHORT decisions.
 - Stage 1 visual chart polish is deferred by owner decision; data-quality gates remain mandatory.
+
+
+## B2-B isolated causal swing sequence candidate — 2026-11-27
+
+**Branch:** `feature/b2b-swing-sequence-2026-11-27`  
+**PR:** https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/13 (draft, unmerged)  
+**Base:** `feature/b2a-causal-swing-engine-2026-11-27`  
+**Verified commit:** `eefa675c5cacab59e7d3aa0c25757dd1c22bbbc8`
+
+### Work completed
+- Added `src/analysis/b2b-swing-sequence-engine.js`, a pure B2-B consumer of VALID B2-A output.
+- Bound B2-B admission to exact B2-A engine/policy identity and the exact B1 validator/quality-policy identity embedded in B2-A's admission record.
+- Preserved all raw pivots and derived a separate alternating sequence in B2-A availability order.
+- Implemented symmetric same-side replacement, equality retention, initial labels and HH/LH/EQH/HL/LL/EQL comparisons.
+- Added comparison pivot IDs, absolute and relative price deltas, explicit sequence-order basis and immutable diagnostics.
+- Added 19 deterministic tests covering sequence labels, both replacement directions, equality, availability ordering, malformed identities/timestamps, duplicate IDs, input immutability and deterministic output.
+
+### Verification
+GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46011622297) completed successfully; all 19/19 tests passed.
+
+### Scope and limits
+- Research-only isolated module; no app HTML/UI, chart, MTF or LONG/SHORT integration.
+- No BOS/CHoCH, protected-swing state, zones, retests or trade recommendations.
+- No live Bybit or profitability claims.
+- B1 remains NOT ACCEPTED; production integration is prohibited until B1 acceptance and explicit owner approval.
