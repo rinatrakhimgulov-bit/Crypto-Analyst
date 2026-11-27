@@ -13,6 +13,8 @@ const POLICY = {
   b1_quality_policy_version: 'b1-quality-policy-2026-11-27-v1',
   b2a_engine_version: '2.0.0-b2a',
   b2a_policy_version: 'b2a-causal-swing-v1',
+  b2b_engine_version: '2.0.0-b2b',
+  b2b_policy_version: 'b2b-swing-sequence-v1',
   b2c_engine_version: '2.0.0-b2c',
   b2c_policy_version: 'b2c-state-v1',
   b2d_engine_version: '2.0.0-b2d',
@@ -286,8 +288,11 @@ function makeInput() {
     status: 'VALID',
     admission: {
       status: 'ADMITTED',
+      b1_contract_version: '1.1.0',
       b1_validator_version: '1.1.0',
       b1_quality_policy_version: POLICY.b1_quality_policy_version,
+      b2c_engine_version: '2.0.0-b2c',
+      b2c_policy_version: 'b2c-state-v1',
       snapshot_ids: { '1d': 'snapshot-1d', '4h': 'snapshot-4h', '1h': snapshotId }
     },
     symbol: 'BTC/USDT',
