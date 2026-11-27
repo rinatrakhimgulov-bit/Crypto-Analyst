@@ -1,7 +1,7 @@
 # B2 Market Structure Engine — Technical Specification
 
 **Date:** 2026-11-27  
-**Status:** Design baseline; implementation is gated on formal B1 acceptance.  
+**Status:** Design baseline with isolated B2-A candidate implementation; production integration is gated on formal B1 acceptance.  
 **Working branch:** `integration/b1-mtf-architecture-2026-11-27`  
 **Scope:** Deterministic, explainable market-structure analysis for the existing Bybit linear-futures prototype.
 
@@ -373,3 +373,22 @@ B2-D zones, B2-E retest/failure lifecycle, and B2-F chart integration remain sep
 - Consumed levels cannot emit duplicate BOS/CHoCH on repeated closes.
 - A contradictory candle cannot arbitrarily choose bullish or bearish direction.
 - Protected swing metadata always resolves to a pivot available before the transition that activated it.
+
+
+## 16. B2-A isolated implementation candidate (2026-11-27)
+
+The first isolated candidate is implemented in `src/analysis/b2-causal-swing-engine.js`. It is deliberately not imported by the application HTML.
+
+The module currently covers only:
+- fail-closed admission using an exact matching B1 quality report and canonical snapshot identity;
+- explicit B1 quality-policy version binding;
+- validation of closed-candle provenance, timeframe grid, order, OHLC and finality safety;
+- symmetric raw swing-high/swing-low detection with maximal exact-price plateaus and rightmost representative;
+- `source_time_ms`, `confirmed_at_ms`, and `available_at_ms` metadata;
+- deterministic result ordering and no mutation of the input snapshot.
+
+The B1 finality lag is included in `available_at_ms`; a pivot cannot be consumed before its final right-window candle has passed the same finality safety lag used by the B1 quality policy.
+
+Deterministic tests are in `tests/b2a-causal-swing-engine.test.cjs`. They currently pass 10/10 in the development JavaScript harness. The dedicated GitHub Actions run has not yet been independently confirmed.
+
+This candidate does not implement B2-B swing sequencing, B2-C BOS/CHoCH, zones, retests, chart integration or trading decisions. It is research code pending review and is not production-enabled. Formal B1 acceptance remains required before integration into the live app.
