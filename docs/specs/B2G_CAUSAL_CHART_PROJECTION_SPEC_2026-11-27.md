@@ -107,3 +107,6 @@ Actual chart rendering is a later B2-H UI integration step, gated by B1 acceptan
 ## 9. Release gates
 
 B2-G is research-only. The DTO may be implemented and tested in isolation. No application HTML or chart integration until B1 is formally accepted, exact B2-A through B2-G source commits are independently reviewed, and the owner explicitly approves integration.
+
+
+Same-source ambiguous high/low pairs must have identical `confirmed_at_ms` and `available_at_ms` under the B2-A symmetric confirmation contract. B2-G rejects staggered same-source pairs rather than inventing a historical ordering. For valid pairs, `status_visible_at_ms` is the shared pair availability time.
