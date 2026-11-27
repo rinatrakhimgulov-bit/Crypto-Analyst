@@ -237,3 +237,13 @@ Research details: `docs/research/B1_DATA_LAYER_CANDIDATES_2026-11-26.md`. B1 rem
 ## 14. B1 current adapter mapping — 2026-11-26
 
 `docs/specs/B1_CURRENT_ADAPTER_MAPPING.md` maps Stage A `BybitAdapter` to the proposed provider-neutral contract and records 11 implementation gaps. Proposed minimal path: retain JS for B1 first pass; canonical mapping, pure validator, mandatory quality gate, stale-cache suppression, then MTF cutoff and second provider. Specification only; no code changes.
+
+
+## Stage 2 / B2 Market Structure candidates — 2026-11-27
+- `docs/specs/B2_MARKET_STRUCTURE_ENGINE_SPEC_2026-11-27.md`: frozen causal B2 policy and B2-A/B isolated candidate status.
+- `docs/audits/B2_SPEC_DESIGN_REVIEW_2026-11-27.md`: internal design review and resolution of seven implementation ambiguities.
+- `src/analysis/b2-causal-swing-engine.js`: B2-A raw causal swing pivots; exact B1 identity/finality admission.
+- `tests/b2a-causal-swing-engine.test.cjs`: 20 deterministic tests; run `46010999225` passed.
+- `src/analysis/b2b-swing-sequence-engine.js`: B2-B alternating sequence and HH/LH/EQH/HL/LL/EQL labels; exact upstream identity binding.
+- `tests/b2b-swing-sequence-engine.test.cjs`: 19 deterministic tests; run `46011622297` passed.
+- PR #12 and #13 remain draft/unmerged, research-only. B1 remains NOT ACCEPTED; no application or `main` integration.
