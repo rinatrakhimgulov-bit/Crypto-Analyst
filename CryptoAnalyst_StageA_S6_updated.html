@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#0b0f17" />
+  <meta name="theme-color" content="#080d18" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Crypto Analyst" />
@@ -15,8 +15,8 @@
         short_name: 'Crypto Analyst',
         start_url: '.',
         display: 'standalone',
-        background_color: '#0b0f17',
-        theme_color: '#0b0f17'
+        background_color: '#080d18',
+        theme_color: '#080d18'
       };
       const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
       const link = document.createElement('link');
@@ -27,16 +27,17 @@
   </script>
   <style>
     :root {
-      --bg: #0b0f17;
-      --panel: #121826;
-      --panel-2: #172033;
-      --border: #243049;
-      --text: #e6edf7;
-      --muted: #8fa1bf;
-      --accent: #38bdf8;
-      --green: #22c55e;
-      --red: #ef4444;
-      --amber: #f59e0b;
+      --bg: #080d18;
+      --panel: #101a2b;
+      --panel-2: #17263d;
+      --border: #293d59;
+      --text: #edf4ff;
+      --muted: #91a6c4;
+      --accent: #8b9cff;
+      --green: #24d6a0;
+      --red: #ff647c;
+      --amber: #ffc46b;
+      --surface-glow: rgba(139, 156, 255, 0.12);
     }
 
     * { box-sizing: border-box; }
@@ -76,6 +77,19 @@
       display: flex;
       align-items: center;
       gap: 10px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      color: #dce5ff;
+      background: linear-gradient(145deg, rgba(139, 156, 255, 0.24), rgba(36, 214, 160, 0.12));
+      border: 1px solid rgba(139, 156, 255, 0.38);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 5px 16px rgba(0,0,0,0.18);
+      flex: 0 0 auto;
     }
 
     .brand-title {
@@ -405,6 +419,13 @@
     <!-- Верхняя панель -->
     <header class="topbar">
       <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 18.5V13M10 18.5V5.5M16 18.5V9M22 18.5V3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M2.8 10.2L7.2 7.8L12.1 11.1L19.8 5.2" stroke="#24D6A0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="19.8" cy="5.2" r="1.4" fill="#24D6A0"/>
+          </svg>
+        </span>
         <span class="brand-title">Crypto Analyst</span>
         <span class="badge">ЭТАП 1 · ПРОТОТИП</span>
       </div>
