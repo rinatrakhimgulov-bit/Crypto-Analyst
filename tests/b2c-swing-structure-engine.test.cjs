@@ -235,7 +235,7 @@ const initialBull = [
 run('initial bullish break is named once and initializes protected low', () => {
   const input = fixture(initialBull, { 3: { close: 105, high: 106, low: 95, open: 100 } });
   const result = analyze(input);
-  assert.equal(result.status, 'VALID');
+  assert.equal(result.status, 'VALID', JSON.stringify(result.admission.reasons));
   assert.equal(result.structure_state, 'UP');
   assert.equal(result.events.length, 1);
   assert.equal(result.events[0].event_type, 'INITIAL_BULLISH_BREAK');
