@@ -308,3 +308,15 @@ Note: earlier entry saying no source code changed described the initial document
 `window.B1MtfSelfTest` now has 16 cases. Added no-forming/pending leakage, +1 ms spread rejection, multiple post-cutoff rejection, and missing-spread-policy rejection. Async cases verify sibling abort and superseded generation suppression. Latest CI run 45966127523: Stage A 44/44, B1 contract 32/32, B1 validator 64/64, MTF 16/16; UI/gate/chart checks passed, zero page errors. Live Bybit blocked by runner HTTP 403.
 
 Latest candidate HTML blob: `4abb9936c96ae19ff231edd86088c1f1b62a2dd0`. Independent audit prompt is pinned to this exact blob.
+
+
+
+
+## 20. B1 snapshot identity and MTF finality hardening — 2026-11-27
+
+- `CryptoAnalyst_StageA_S6_updated.html`: B1 canonical snapshots require non-empty `snapshot_id`; quality reports carry that ID; B1-C and B1-E require exact report-to-snapshot identity before directional permission.
+- `CryptoAnalyst_StageA_S6_updated.html`: MTF fetch requires explicit `closedCandleCount`, retains pending-finality candles in `pending_finality_context`, and excludes them from `analysis_candles`.
+- `tests/b1-browser-live-check.cjs`: gate fixtures now carry matching canonical snapshot IDs and test a mismatched VALID report is blocked.
+- MTF self-test suite: 18/18; B1 validator suite: 65/65.
+- Latest CI run `45966700299`: Stage A 44/44, contract 32/32, validator 65/65, MTF 18/18, gate/UI/chart assertions passed, zero page errors. Live Bybit blocked by runner HTTP 403.
+- Exact current HTML blob: `1cb41cfbc03534441774eeeaac08f36082f19ab9`. Main unchanged; integration candidate only.
