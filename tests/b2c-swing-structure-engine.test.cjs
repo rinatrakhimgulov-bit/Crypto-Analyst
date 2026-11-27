@@ -492,3 +492,19 @@ run('B2-C rejects forged raw supersession metadata', () => {
   assert.equal(result.status, 'INVALID');
   assert.equal(result.admission.reasons[0].code, 'B2B_RAW_SEQUENCE_STATUS_MISMATCH');
 });
+
+
+run('a consumed BOS swing high cannot emit repeated BOS on later closes', () => {
+  const pivots = [
+    ...initialBull,
+    makePivot('l95', 'SWING_LOW', 95, 3, 4),
+    makePivot('h110', 'SWING_HIGH', 110, 4, 5)
+  ];
+  const input = fixture(pivots, {
+    3: { open: 100, close: 105, high: 106, low: 95 },
+    6: { open: 108, close: 112, high: 113, low: 107 },
+    7: { open: 112, close: 115, high: 116, low: 111 }
+  });
+  const result = analyze(input);
+  assert.equal(result.events.filter(e => e.event_type === 'BULLISH_BOS').length, 1);
+});
