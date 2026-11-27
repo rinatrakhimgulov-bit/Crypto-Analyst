@@ -321,3 +321,25 @@ Canonical implementation spec: `docs/specs/B1C_ANALYTICS_QUALITY_GATE_SPEC_2026-
 ### B1-C UI transparency update — 2026-11-27
 
 The candidate quality panel now exposes B1 status/version, up to five validator reason codes, and whether directional analysis is admitted or blocked with WAIT. A Chromium DOM test injects an INVALID negative-volume report and verifies the user-visible panel shows INVALID, VOLUME_NEGATIVE, blocked state, and WAIT. CI run 45963443614 passed: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate checks passed, zero browser page errors. Live Bybit probe remains blocked on GitHub runners by HTTP 403. The user has confirmed the preceding C1 candidate works on iPhone; the latest added quality-panel detail row still needs a brief Safari visual check. Independent B1 review and formal acceptance remain outstanding; main is unchanged.
+
+
+
+
+## Architecture baseline and B1 consolidation — 2026-11-27
+
+**Current working branch:** `integration/b1-mtf-architecture-2026-11-27` (created from `b1/contract-review`). **Main remains unchanged.**
+
+The global architecture decisions are now recorded in `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`. This is the baseline for product scope, data contracts, MTF synchronization, causal analytics, scenario output, testing, runtime, storage, deployment and deferred decisions. It does not claim planned features are implemented.
+
+The branch comparison found two divergent B1 candidates. The current `b1/contract-review` HTML blob is `1c32696a7aa0751a33e628853df1a780aad7f76b`. The older B1-A/B/E HTML blob is `842c361a8386c358a68f22407814c376fd3bde1b`. They share merge base `e53f74cf814638d70f775366e88b6754c95b9e51`, but the older B1-E branch has a much larger divergent history. No wholesale branch merge is planned.
+
+The older B1-E implementation depends on the legacy `DataQualityEngine` API and is not drop-in compatible with the current `B1DataContract` / `B1QualityValidator` / versioned B1-C gate. Its common-cutoff semantics will be ported deliberately into the current contract. The exact older B1-E artifact received an external conditional review (33/33 MTF tests, 65/65 older quality tests), but that review does not certify the current B1-C/C1 artifact or approve directional MTF use.
+
+**Current evidence and remaining gates:**
+- Candidate B1-A/B/C/C1 browser CI: Stage A 44/44, B1 contract 32/32, B1 validator 63/63, UI gate checks passed, no browser page errors in the recorded run.
+- C1 chart display (EMA200 and synchronized volume pane) was subsequently checked by the user on iPhone and reported working. The latest B1-C quality-panel reason-code / blocked-WAIT detail row still needs a visual Safari check.
+- GitHub Actions live Bybit probe is blocked by HTTP 403 from both public REST hosts. No current live verification is claimed.
+- B1-E live provider-time spread calibration, replay of recorded responses, and transport-level cancellation testing remain open.
+- B1 is not accepted; B2 implementation has not started; no merge to main is authorized or performed.
+
+See `docs/audits/B1_BRANCH_CONSOLIDATION_AUDIT_2026-11-27.md` and `docs/ARCHITECTURE_DECISIONS_V1_2026-11-27.md`.
