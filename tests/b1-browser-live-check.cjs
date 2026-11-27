@@ -4,6 +4,7 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 const HTML = path.resolve('CryptoAnalyst_StageA_S6_updated.html');
+const PROBE_HTML = path.resolve('tools/b1_live_probe.html');
 const PORT = 4173;
 
 async function getBybitKlines(symbol, interval) {
@@ -45,9 +46,13 @@ async function getBybitKlines(symbol, interval) {
 
 async function main() {
   if (!fs.existsSync(HTML)) throw new Error(`Missing candidate HTML: ${HTML}`);
+  if (!fs.existsSync(PROBE_HTML)) throw new Error(`Missing live probe HTML: ${PROBE_HTML}`);
   const server = http.createServer((req, res) => {
+    const pathname = new URL(req.url, `http://127.0.0.1:${PORT}`).pathname;
+    const file = pathname === '/tools/b1_live_probe.html' ? PROBE_HTML : HTML;
+    if (!fs.existsSync(file)) { res.writeHead(404); res.end('Not found'); return; }
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-    fs.createReadStream(HTML).pipe(res);
+    fs.createReadStream(file).pipe(res);
   });
   await new Promise(resolve => server.listen(PORT, '127.0.0.1', resolve));
 
@@ -409,6 +414,30 @@ async function main() {
     const unrestored = requiredRestoration.filter(key => post[key] !== true);
     if (unrestored.length) throw new Error(`Stage A cleanup did not restore: ${unrestored.join(', ')}`);
 
+    const probePage = await browser.newPage();
+    probePage.on('pageerror', error => pageErrors.push('live-probe: ' + error.message));
+    const probeExternalRequests = [];
+    probePage.on('request', request => {
+      if (/^https:\\/\\/(api\\.bybit\\.com|api\\.bytick\\.com)\\//.test(request.url())) probeExternalRequests.push(request.url());
+    });
+    await probePage.goto(`http://127.0.0.1:${PORT}/tools/b1_live_probe.html`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    const liveProbeUi = await probePage.evaluate(() => ({
+      title: document.title,
+      ready: document.getElementById('status')?.textContent,
+      startEnabled: !document.getElementById('start')?.disabled,
+      stopDisabled: document.getElementById('stop')?.disabled,
+      exportDisabled: document.getElementById('export')?.disabled,
+      copyDisabled: document.getElementById('copy')?.disabled,
+      schemaV3Present: document.documentElement.innerHTML.includes('crypto-analyst-b1-live-capture-v3')
+    }));
+    if (!liveProbeUi.title.includes('B1 Live Data Probe v3') ||
+        !liveProbeUi.ready.includes('No requests have been made') ||
+        !liveProbeUi.startEnabled || !liveProbeUi.stopDisabled ||
+        !liveProbeUi.exportDisabled || !liveProbeUi.copyDisabled ||
+        !liveProbeUi.schemaV3Present || probeExternalRequests.length !== 0) {
+      throw new Error(`Live probe initial UI checks failed: ${JSON.stringify({ liveProbeUi, probeExternalRequests })}`);
+    }
+
     // GitHub-hosted runners may be denied by Bybit. Record this as an explicit
     // environment limitation, never as a successful live-data test.
     const browserFetchProbe = await page.evaluate(async () => {
@@ -485,6 +514,7 @@ async function main() {
       b1Contract: suites.contract.totals,
       b1Quality: suites.quality.totals,
       b1Mtf: suites.mtf.totals,
+      liveProbeUi,
       b1Gate: gate,
       chartVisual,
       mobileChartVisual,
