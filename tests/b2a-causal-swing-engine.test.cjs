@@ -38,11 +38,11 @@ function makeInput(count = 24, options = {}) {
       normalizer_version: 'bybit-rest-v1'
     });
   }
-  if (options.highPlateau !== false) {
+  if (options.highPlateau !== false && count > 6) {
     candles[5].high = 20;
     candles[6].high = 20;
   }
-  if (options.lowPlateau !== false) {
+  if (options.lowPlateau !== false && count > 13) {
     candles[12].low = 1;
     candles[13].low = 1;
   }
