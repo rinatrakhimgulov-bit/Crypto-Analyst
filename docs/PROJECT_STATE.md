@@ -355,3 +355,29 @@ Next: independent review of exact B2-A/B/C source blobs and tests. Only after th
 - Preserves observed bounds, median representative, pivot IDs, touch times and zone availability; no probability-like strength score.
 - 20/20 deterministic tests passed in GitHub Actions run [46014759139](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014759139) on commit `0574858db12dd2082d7449f5512fa8461fceac63`, including full B1 → B2-A → B2-B → B2-C → B2-D fixture.
 - PR #16 is draft/unmerged. The absolute-span policy is not yet calibrated on live BTC/ETH market data.
+
+
+## Stage 2 audit and hardening update — 2026-11-27 (current)
+
+This entry supersedes earlier candidate counts and records additional defects found during internal review.
+
+### Current isolated candidates and exact CI evidence
+- **B2-A:** head `bb13960e647d399b6b05ee12c21f5a2fdeb8265d`; 21/21 deterministic tests passed in [run 46014698432](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46014698432). New hardening rejects missing candle intervals before pivot detection.
+- **B2-B:** head `b209293212ac1bd910939eed465f140514b9e959`; 20/20 passed in [run 46015818149](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015818149), including actual B2-A → B2-B execution.
+- **B2-C:** head `e9590ddb65c9f3a09a28279efdb064b6caa6a4a2`; 33/33 passed in [run 46015831238](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015831238), including full B1 → B2-A → B2-B → B2-C chain.
+- **B2-D:** head `9012e514a29b755ac9208f1f495c3f560638b0a1`; 21/21 passed in [run 46015873986](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46015873986), including full B1 → B2-A → B2-B → B2-C → B2-D chain.
+
+### Defects found and corrected
+1. B2-A accepted sorted candle arrays containing a missing interval. It now distinguishes duplicate timestamps, out-of-order candles and missing intervals; missing intervals fail closed.
+2. B2-C previously allowed any post-transition swing high/low to become a BOS continuation level. A lower high in UP or higher low in DOWN could create a false BOS. Continuation now requires HH in UP and LL in DOWN.
+3. B2-C's global consumed-pivot set could prevent a previously consumed pivot from serving as the protected reversal level after a state transition. A protected pivot is now re-armed in its new structural role, with symmetric reversal tests.
+4. B2-C previously reconstructed B2-B sequence only from B2-B's own raw list. It now requires the exact B2-A result and verifies B2-B's raw pivot set against B2-A, rejecting a pivot omitted from both B2-B raw evidence and sequence.
+
+### B2-D explicit limitations
+- Cluster tolerance is absolute price span and must be calibrated separately per instrument/timeframe.
+- Last-touch age is exposed, but freshness is deliberately NOT_CLASSIFIED. No zone is described as currently active based on age.
+- Zone IDs are membership-derived and are not guaranteed persistent across changing snapshots. B2-E must not assume these IDs are stable lifecycle keys.
+- Raw confirmed pivot evidence is preserved, including pivots superseded for the alternating sequence.
+
+### Release boundary
+All B2 candidates remain research-only, draft and unmerged. They are not imported into application HTML and do not feed chart, MTF or LONG/SHORT/WAIT. B1 remains NOT ACCEPTED. Deterministic fixtures are not live Bybit evidence. Independent external review and explicit owner acceptance remain outstanding.
