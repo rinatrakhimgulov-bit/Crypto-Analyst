@@ -63,3 +63,16 @@ The integration preview was repackaged on a branch directly based on current `ma
 - Branch: `integration/b2-clean-preview-2026-11-27`
 - Draft PR #22: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/22
 - `main` is unchanged and the PR is not merged.
+
+## Final clean-branch verification update
+
+The clean PR head was re-run after the branch packaging and workflow updates.
+
+- B2 application integration: [run 46034803848](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034803848), success. All seven module test steps and the Chromium/mobile integration step completed successfully.
+- B2 deterministic suite: [run 46034803544](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034803544), success. The suite contains 182 tests across B2-A through B2-G.
+- B1 browser/data suite: [run 46034808544](https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/actions/runs/46034808544), success. B1 deterministic groups reported 50/50, 32/32, 72/72 and 20/20; browser pageErrors were zero.
+- Live Bybit REST check in that B1 run was **not executed successfully**: the runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`, recorded as `SKIPPED_PROVIDER_BLOCKED`. This is an environment restriction, not a Bybit production outage and not live-market verification.
+- Synthetic B2 browser fixture: 220 closed candles; chart projection produced two zones and two retest lifecycles; mobile viewport width 390px reported no horizontal overflow.
+- Main comparison: PR branch is 9 commits ahead, 0 behind, based on the exact current main commit. No merge was performed.
+
+These checks establish deterministic and synthetic browser integration only. They do not establish iPhone Safari behavior, live provider timing, trading profitability, or production-ready thresholds.
