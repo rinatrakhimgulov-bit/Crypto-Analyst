@@ -83,3 +83,8 @@ These results are claims to verify, not assumptions.
 7. Final verdict: APPROVE, APPROVE WITH CONDITIONS, REQUEST CHANGES, or REJECT.
 
 Do not call this profitable trading logic. Do not infer live exchange correctness from mocks or CI that cannot reach Bybit.
+
+
+## Latest transport-change note — 2026-11-27
+
+Current HTML blob to audit: `3d6a2fea8c4724d47a4d91bb73a53c6dedecd8cf` (303,522 bytes); browser harness blob `70399a984b44f5f85024afcdf11289e4a73a6361`. The fetch timeout now uses named `TimeoutError`; Playwright confirms actual Chromium fetch cancellation through the real Bybit adapter and observes all 3 delayed local HTTP connections close. CI `45968566553` passed 161/161 tests, gate/UI/chart/probe checks and zero page errors. Live Bybit remains blocked by HTTP 403 from both hosts on GitHub Actions. Please audit this exact updated blob, not previous hashes.
