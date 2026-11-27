@@ -21,7 +21,7 @@ const POLICY = Object.freeze({
   break_buffer_policy: 'ZERO_BUFFER_V1'
 });
 
-function candle(index, close = 100, high = Math.max(101, close), low = Math.min(99, close), open = 100) {
+function candle(index, close = 100, high = Math.max(100, close), low = Math.min(100, close), open = 100) {
   return {
     open_time_ms: (index + 1) * STEP,
     close_time_ms: (index + 2) * STEP,
