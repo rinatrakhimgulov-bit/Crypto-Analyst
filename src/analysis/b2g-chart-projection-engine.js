@@ -74,11 +74,11 @@
   }
   function lifecycleVisibleAt(item, step, lag) {
     if (item.confirmation) return item.confirmation.available_at_ms;
-    if (item.touch) return item.touch.candle_close_time_ms + lag;
-    if (item.status === 'RETEST_EXPIRED') return item.breakout_candle_close_time_ms + item.retest_window_bars * step + lag;
     if (item.status === 'RETEST_UNRESOLVED') {
       return item.touch.candle_close_time_ms + item.confirmation_window_bars * step + lag;
     }
+    if (item.touch) return item.touch.candle_close_time_ms + lag;
+    if (item.status === 'RETEST_EXPIRED') return item.breakout_candle_close_time_ms + item.retest_window_bars * step + lag;
     return item.breakout_available_at_ms;
   }
 
@@ -356,7 +356,7 @@
     const retestLifecycles = [];
     for (const lifecycle of b2e.lifecycles) {
       if (!isObject(lifecycle) || typeof lifecycle.lifecycle_id !== 'string' || !lifecycle.lifecycle_id ||
-          lifecycleIds.has(lifecycle.lifecycle_id) || !eventIds.has(lifecycle.breakout_event_id) ||
+          lifecycleIds.has(lifecycle.lifecycle_id) ||
           !['RETEST_SUCCESSFUL', 'RETEST_FAILED', 'RETEST_EXPIRED', 'RETEST_UNRESOLVED', 'WAITING_RETEST', 'RETEST_PENDING_CONFIRMATION'].includes(lifecycle.status) ||
           !['BULLISH', 'BEARISH'].includes(lifecycle.direction) ||
           !['SUPPORT', 'RESISTANCE'].includes(lifecycle.original_role) ||
