@@ -63,9 +63,13 @@ function fixture(options={}) {
   const regime = options.regime || (b2cState === 'UP' ? 'UPTREND' : 'DOWNTREND');
   const bias = options.bias || (b2cState === 'UP' ? 'BULLISH' : 'BEARISH');
   const lifeStatus = options.lifecycleStatus || 'RETEST_SUCCESSFUL';
+  const setupDirection = options.direction || (b2cState === 'UP' ? 'LONG' : 'SHORT');
+  const lifecycleDirection = options.lifecycleDirection ||
+    (options.setupType === 'FALSE_BREAKOUT_RECLAIM'
+      ? (setupDirection === 'LONG' ? 'BEARISH' : 'BULLISH')
+      : (setupDirection === 'LONG' ? 'BULLISH' : 'BEARISH'));
   const setup = options.candidate || candidate(options.setupType || 'BREAKOUT_RETEST',
-    options.direction || (b2cState === 'UP' ? 'LONG' : 'SHORT'),
-    options.setupStatus || 'CONFIRMED');
+    setupDirection, options.setupStatus || 'CONFIRMED');
   const b2e = upstream('2.0.0-b2e', POLICY.b2e_policy_version, {
     lifecycles: [lifecycle('life-1', lifeStatus, lifecycleDirection)]
   });
