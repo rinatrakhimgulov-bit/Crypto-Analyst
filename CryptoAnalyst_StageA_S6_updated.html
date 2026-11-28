@@ -8053,6 +8053,9 @@
           event.recoveryGen !== wsState.recoveryGen ||
           event.symbol !== state.symbol || event.interval !== state.interval) return;
       if (!event.valid || !event.candle) {
+        // A malformed stream event breaks confidence in the cached WS candle.
+        // Do not replay an earlier candle over the REST snapshot while reconciling.
+        state.liveKline = null;
         scheduleLiveRestReconciliation(0, event.reason || 'invalid WebSocket kline');
         return;
       }
@@ -9085,6 +9088,38 @@
             });
             assert(events.length === 1 && events[0].valid === false, 'OHLC contradiction must be rejected');
             assert(S().invalidStreamMessages === 1, 'Invalid stream counter must increase');
+          });
+
+          await record('B1-D. Invalid kline invalidates the previous WS candle cache before REST reconciliation', (restoreList) => {
+            const savedLiveKline = state.liveKline;
+            const savedReconcileTimer = state.liveReconcileTimer;
+            if (savedReconcileTimer !== null) clearTimeout(savedReconcileTimer);
+            state.liveReconcileTimer = null;
+            restoreList.push(() => {
+              if (state.liveReconcileTimer !== null) clearTimeout(state.liveReconcileTimer);
+              state.liveReconcileTimer = savedReconcileTimer;
+              state.liveKline = savedLiveKline;
+            });
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            const now = Date.now();
+            state.liveKline = Object.freeze({
+              symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ts: 1, closeTs: 2, open: 60000, high: 60100, low: 59900, close: 60020, volume: 1, turnover: 60000, confirmed: false }),
+              providerEventTimeMs: now - 100,
+              receivedAtMs: now - 50,
+              connGen: S().connGen,
+              recoveryGen: S().recoveryGen
+            });
+            handleLiveKline({
+              valid: false, symbol: 'BTCUSDT', interval: '240',
+              reason: 'invalid provider event timestamp',
+              receivedAtMs: now, connGen: S().connGen, recoveryGen: S().recoveryGen
+            });
+            assert(state.liveKline === null,
+              'An invalid kline event must invalidate the previously cached WS candle before REST reconciliation');
+            assert(state.liveReconcileTimer !== null,
+              'An invalid kline event must still schedule REST reconciliation');
           });
 
           await record('B1-D. Chart live upsert changes forming candle without changing closed count', (restoreList) => {
