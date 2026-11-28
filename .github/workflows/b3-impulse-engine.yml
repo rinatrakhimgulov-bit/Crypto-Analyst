@@ -1,0 +1,27 @@
+name: B3 Impulse Engine
+on:
+  pull_request:
+    paths:
+      - 'src/analysis/b3-impulse-engine.js'
+      - 'tests/b3-impulse-engine.test.cjs'
+      - 'docs/specs/B3_IMPULSE_ENGINE_SPEC_2026-11-28.md'
+      - '.github/workflows/b3-impulse-engine.yml'
+  push:
+    branches:
+      - 'feature/bearish-impulse-selloff-engine-2026-11-28'
+jobs:
+  deterministic-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Parse engine source
+        run: node --check src/analysis/b3-impulse-engine.js
+      - name: Run impulse tests
+        run: node tests/b3-impulse-engine.test.cjs
+      - name: Run B2-D zone context regression tests
+        run: node tests/b2d-zone-context-engine.test.cjs
+      - name: Run B2-E breakout quality regression tests
+        run: node tests/b2e-breakout-quality-engine.test.cjs
