@@ -1042,3 +1042,23 @@ Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
 - Critical storage constraint: B9's localStorage envelope is capped at 3.8 MB and the owner already encountered iPhone quota errors. Full cloud history must not be blindly loaded into localStorage. B10 requires an offline outbox, bounded cache and full-cloud export before any local cleanup.
 - Owner must export the current iPhone JSON journal before first migration. Existing browser-local records are not visible to GitHub CI or the Supabase connector.
 - B10 implementation and live sync have NOT started. No rows were written to Supabase. B9 remains unmerged and still requires owner iPhone Safari acceptance.
+
+
+## B10-A — GitHub OAuth client bootstrap (2026-11-28)
+
+**Status:** implementation committed to the B10 candidate branch; static checks passed; live OAuth not yet accepted.
+
+- Branch: `feature/b10-supabase-journal-sync-2026-11-28`.
+- Commit: `683529dc10a2495bf2b310d2fe464f3cc7e3a4bd`.
+- Updated file: `CryptoAnalyst_StageA_S6_updated.html`.
+- Added a minimal GitHub sign-in/sign-out panel to the B9 journal UI.
+- Added pinned Supabase JS UMD CDN dependency `@supabase/supabase-js@2.119.2`.
+- Initialized Supabase Auth with PKCE, persisted session, auto refresh and URL callback detection.
+- Embedded only the modern publishable key. No service-role/secret key is present.
+- OAuth redirect target is the exact current HTTPS app URL; non-HTTPS origins cannot initiate sign-in.
+- Auth state is displayed separately from the journal status. The UI explicitly says cloud journal sync is not connected yet.
+- No database writes, device registration, journal push/pull, localStorage migration or local journal cleanup were added.
+
+**Verification:** GitHub read-back returned blob `296e21794fbf0697bf0f06ec944bb59f583a1d0e`; all 3 inline script blocks passed V8 syntax parsing; auth UI/CDN/OAuth call presence confirmed; no service-role/secret key markers or journal table write calls found. No Actions run was returned. Browser/iPhone OAuth, callback restoration and actual provider credentials remain unverified.
+
+**Deployment distinction:** GitHub Pages currently serves the `main` file, which was independently checked and contains neither the B9 journal nor Supabase Auth. B9 PR #29 and B10 PR #30 remain draft; no merge or production deployment was performed.
