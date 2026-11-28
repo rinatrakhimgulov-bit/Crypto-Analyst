@@ -1030,3 +1030,15 @@ Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
 - B1 browser/live-data run `46122848461`: SUCCESS. Browser/self-test and data-quality checks passed with zero page errors. Live Bybit probe was explicitly skipped because GitHub Actions received HTTP 403 from both public REST hosts; this is not a live-provider success claim.
 - B8 statistical workflow run `46122848380`: still in progress at this checkpoint; syntax and deterministic evaluator tests passed, pinned replay generation remained active.
 - No merge performed. Owner iPhone Safari acceptance remains mandatory.
+
+
+## B10 Supabase Cloud Journal Sync — 2026-11-28
+
+- Opened dependent branch `feature/b10-supabase-journal-sync-2026-11-28` from the current B9 candidate head; no changes to `main`.
+- Audited the live Supabase project: project is ACTIVE_HEALTHY; the three journal tables exist with RLS enabled; authenticated-only grants and owner-scoped policies are present; record tables are empty; Security Advisor returned no lints.
+- Confirmed a modern Supabase publishable key exists. No secret/service-role key is needed or permitted in the browser app.
+- Defined B10 architecture in `docs/specs/B10_SUPABASE_CLOUD_JOURNAL_SYNC_SPEC_2026-11-28.md`.
+- Authentication is a separate app-level Supabase Auth session. The owner's preferred GitHub OAuth sign-in requires a configured GitHub OAuth App in Supabase Auth Providers; the repository's GitHub App connection is not proof this is configured.
+- Critical storage constraint: B9's localStorage envelope is capped at 3.8 MB and the owner already encountered iPhone quota errors. Full cloud history must not be blindly loaded into localStorage. B10 requires an offline outbox, bounded cache and full-cloud export before any local cleanup.
+- Owner must export the current iPhone JSON journal before first migration. Existing browser-local records are not visible to GitHub CI or the Supabase connector.
+- B10 implementation and live sync have NOT started. No rows were written to Supabase. B9 remains unmerged and still requires owner iPhone Safari acceptance.
