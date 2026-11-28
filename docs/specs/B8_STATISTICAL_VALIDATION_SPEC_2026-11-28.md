@@ -55,9 +55,9 @@ B5 exports a versioned JSON envelope containing immutable observations, append-o
 B8 import must:
 - accept only supported journal format/version and validate the full envelope before processing;
 - preserve original records and IDs; never rewrite or enrich an observation in place;
-- read the captured B7 output only from the original `analysisSnapshot.b2` payload when present and version-compatible;
+- read the captured B7 output only from the original `analysisSnapshot.b2.setups` payload when present and version-compatible; B5's capture path calls `runB2Analysis()`, whose result contains the `setups` field produced by `B7ExplainableSetupEngine`;
 - keep LONG, SHORT, WAIT, quality-blocked WAIT, pending setup, missed setup and no-setup observations in the denominator/reporting;
-- preserve capturedAt and candidate available-at timestamps;
+- preserve capturedAt and candidate available-at timestamps; convert B5 candle fields `ts`, `closeTs`, `open`, `high`, `low`, `close`, `volume`, and `finality` to the evaluator's canonical candle shape without changing timestamps or treating `forming` as closed;
 - report missing B7 snapshots, unsupported versions and incomplete candle windows as exclusions with explicit reason codes;
 - never infer that an observation was traded.
 
