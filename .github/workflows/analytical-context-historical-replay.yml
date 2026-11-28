@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - 'feature/market-regime-engine-v2-2026-11-28'
+      - 'feature/binance-usdm-recent-replay-2026-11-28'
     paths:
       - 'tools/fetch_binance_um_recent_history.cjs'
       - 'tools/binance_usdm_recent_replay.cjs'
@@ -12,9 +13,6 @@ on:
       - 'tests/binance-usdm-recent-replay-report.test.cjs'
       - '.github/workflows/analytical-context-historical-replay.yml'
       - 'src/analysis/**'
-  push:
-    branches:
-      - 'feature/binance-usdm-recent-replay-2026-11-28'
 
 jobs:
   recent-futures-replay:

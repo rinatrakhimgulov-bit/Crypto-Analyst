@@ -122,14 +122,14 @@ function makeCandle(row, symbol, timeframe) {
     timeframe, closed_state: 'TIME_DERIVED'
   };
 }
-function makeSnapshot(rows, symbol, timeframe, asOf, snapshotId) {
+function makeSnapshot(rows, symbol, timeframe, asOf, snapshotId, providerId = 'bybit-v5-rest-archive', venue = 'bybit') {
   const candles = rows.map(r => makeCandle(r, symbol, timeframe));
   const snapshot = {
     contract_version: '1.1.0', snapshot_id: snapshotId,
     canonical_symbol: symbol, market_type: 'linear_perpetual',
     analysis_as_of_ms: asOf, provider_server_time_ms: asOf, received_at_ms: asOf,
     provider_metadata: {
-      provider_id: 'bybit-v5-rest-archive', venue: 'bybit',
+      provider_id: providerId, venue,
       provider_symbol: symbol, market_type: 'linear_perpetual',
       host: 'archive-replay', time_source: 'provider'
     },
@@ -147,8 +147,8 @@ function makeSnapshot(rows, symbol, timeframe, asOf, snapshotId) {
   };
   return { snapshot, quality, candles };
 }
-function runStructure(rows, symbol, timeframe, asOf, id, strength = 2) {
-  const { snapshot, quality } = makeSnapshot(rows, symbol, timeframe, asOf, id);
+function runStructure(rows, symbol, timeframe, asOf, id, strength = 2, providerId = 'bybit-v5-rest-archive', venue = 'bybit') {
+  const { snapshot, quality } = makeSnapshot(rows, symbol, timeframe, asOf, id, providerId, venue);
   const a = analyzeA({ snapshot, quality_report: quality, timeframe, analysis_as_of_ms: asOf, policy: { ...POLICY_A, left_strength: strength, right_strength: strength } });
   assert(a.status === 'VALID', 'B2-A blocked: ' + JSON.stringify(a.admission.reasons));
   const b = analyzeB({ b2a_result: a, policy: POLICY_B });
