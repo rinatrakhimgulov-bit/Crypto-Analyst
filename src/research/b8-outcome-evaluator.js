@@ -26,8 +26,14 @@ function directionalReturn(entry, exit, direction) {
 }
 
 function excursion(entry, high, low, direction) {
-  if (direction === 'LONG') return { mfe: (high - entry) / entry, mae: (entry - low) / entry };
-  return { mfe: (entry - low) / entry, mae: (high - entry) / entry };
+  if (direction === 'LONG') return {
+    mfe: Math.max(0, (high - entry) / entry),
+    mae: Math.max(0, (entry - low) / entry)
+  };
+  return {
+    mfe: Math.max(0, (entry - low) / entry),
+    mae: Math.max(0, (high - entry) / entry)
+  };
 }
 
 function findEntryIndex(candles, availableAtMs, lagMs) {
