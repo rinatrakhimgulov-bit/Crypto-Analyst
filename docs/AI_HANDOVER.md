@@ -1375,3 +1375,5 @@ Latest code commit `730917fb52a33064b204f425dfd57bd9ab2f0490` requires a valid B
 Latest B4 code commit `c5be074817dcee28cb7a7df3e095939150579de7` extends fail-closed provider event-time validation to ticker messages. Missing/invalid ticker `msg.ts` is rejected before ticker cache mutation or live-price callback; a regression verifies this. Kline and ticker now share the same ordering metadata requirement. Recheck B1/B2 exact-head CI after this commit and verify real Bybit ticker/kline payloads on iPhone/Safari.
 
 Latest source commit `109048c38bcaaabf18663e3897e87ecfdbe313d4` also updates valid ticker integration fixtures to include provider `ts`, while preserving the intentional missing-timestamp negative test. Check exact-head B1/B2 CI after this commit.
+
+Latest B4 code commit `4f5e369b52b4262dbad88d9ba54a3fc6d7378301` adds regression coverage for stale WS ticker/kline handling and REST price fallback. It asserts stale cache rejection and the explicit `WS устарел` label. Check exact-head B1/B2 CI after this commit; actual iPhone/Safari fallback remains unverified.
