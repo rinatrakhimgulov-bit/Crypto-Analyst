@@ -8930,7 +8930,7 @@
               providerEventTimeMs: now, receivedAtMs: now,
               connGen: oldConnGen, recoveryGen: oldRecoveryGen
             });
-            const initialTickerEntry = wsState.tickerBySymbol.get('BTCUSDT');
+            const initialTickerEntry = BybitWsClient._getTickerEntry('BTCUSDT');
             initialTickerEntry.ready = true;
             initialTickerEntry.snapshotReceived = true;
             initialTickerEntry.state = { symbol: 'BTCUSDT', lastPrice: '60000' };
