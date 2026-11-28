@@ -4,11 +4,12 @@ on:
   push:
     branches:
       - feature/analytical-engine-historical-replay-2026-11-28
+      - feature/market-regime-engine-v2-2026-11-28
+      - feature/bybit-2026-history-extension-2026-11-28
   pull_request:
     branches:
       - feature/analytical-engine-integration-2026-11-28
       - feature/analytical-engine-historical-replay-2026-11-28
-      - feature/market-regime-engine-v2-2026-11-28
       - feature/market-regime-engine-v2-2026-11-28
     paths:
       - 'tools/analytical_context_historical_replay.cjs'

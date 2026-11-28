@@ -4,8 +4,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const report = JSON.parse(fs.readFileSync('analytical_context_historical_replay_report.json', 'utf8'));
 
-assert.equal(report.report_version, 'analytical-context-historical-replay-v2');
+assert.equal(report.report_version, 'analytical-context-historical-replay-v3');
 assert.equal(report.dataset.commit, '9ca04178df06ce649f00779a49e11094fe5b1c70');
+assert.ok(report.dataset.extension_rows_total > 0);
+assert.ok(Date.parse(report.dataset.coverage_end) >= Date.parse('2026-11-27T00:00:00.000Z'));
+assert.equal(report.dataset.extension_provider, 'Bybit V5 public market kline');
 assert.equal(report.summary.series_count, 6);
 assert.ok(report.summary.total_sampled_windows >= 500);
 
@@ -14,6 +17,8 @@ for (const symbol of ['BTCUSDT', 'ETHUSDT']) {
     const series = report.series[symbol][timeframe];
     assert.ok(series, 'missing series ' + symbol + ' ' + timeframe);
     assert.ok(series.dataset_integrity.rows > 1000);
+    assert.ok(series.dataset_integrity.extension_rows > 0);
+    assert.ok(series.dataset_integrity.archive_rows > 1000);
     assert.equal(series.dataset_integrity.invalid, 0);
     assert.equal(series.dataset_integrity.duplicates, 0);
     assert.equal(series.dataset_integrity.gaps, 0);

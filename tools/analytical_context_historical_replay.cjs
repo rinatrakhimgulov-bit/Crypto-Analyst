@@ -9,6 +9,9 @@ const {
 const WINDOW_BARS = 260; // Enough for EMA200 plus causal structure context.
 const STRIDE_BARS = { '1h': 336, '4h': 84, '1d': 14 }; // Approximately every 14 calendar days.
 const REPORT_PATH = 'analytical_context_historical_replay_report.json';
+const EXTENSION_PATH = 'bybit_2026_history_extension.json';
+const EXTENSION = fs.existsSync(EXTENSION_PATH)
+  ? JSON.parse(fs.readFileSync(EXTENSION_PATH, 'utf8')) : null;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -81,7 +84,51 @@ function compactWindow(result, endRow, symbol, timeframe, index) {
 
 async function replaySeries(symbol, timeframe, file) {
   const loaded = await loadRows(file, timeframe);
-  const rows = loaded.rows;
+  const archiveRows = loaded.rows;
+  const extensionRows = EXTENSION && EXTENSION.series &&
+    EXTENSION.series[symbol] && EXTENSION.series[symbol][timeframe];
+  if (process.env.REQUIRE_BYBIT_EXTENSION === '1') {
+    assert(Array.isArray(extensionRows) && extensionRows.length > 0,
+      'MISSING_2026_BYBIT_EXTENSION:' + symbol + ':' + timeframe);
+  }
+  const rows = [...archiveRows, ...(Array.isArray(extensionRows) ? extensionRows : [])];
+  let invalid = 0, duplicates = 0, gaps = 0, offGrid = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const c = rows[i];
+    if (!Number.isSafeInteger(c.open_time_ms) ||
+        ![c.open, c.high, c.low, c.close, c.volume_base, c.volume_quote].every(Number.isFinite) ||
+        c.open <= 0 || c.high <= 0 || c.low <= 0 || c.close <= 0 ||
+        c.volume_base < 0 || c.volume_quote < 0 ||
+        c.high < Math.max(c.open, c.close, c.low) ||
+        c.low > Math.min(c.open, c.close, c.high)) invalid++;
+    if (c.open_time_ms % STEP[timeframe] !== 0) offGrid++;
+    if (i) {
+      const delta = c.open_time_ms - rows[i - 1].open_time_ms;
+      if (delta === 0) duplicates++;
+      else if (delta !== STEP[timeframe]) gaps++;
+    }
+  }
+  assert(!invalid && !duplicates && !gaps && !offGrid,
+    'COMBINED_DATASET_INTEGRITY_FAILED:' + symbol + ':' + timeframe + ':' +
+    JSON.stringify({ invalid, duplicates, gaps, offGrid }));
+  if (extensionRows && extensionRows.length) {
+    assert(extensionRows[0].open_time_ms === archiveRows[archiveRows.length - 1].open_time_ms + STEP[timeframe],
+      'ARCHIVE_EXTENSION_BOUNDARY_GAP:' + symbol + ':' + timeframe);
+    assert(extensionRows[extensionRows.length - 1].close_time_ms + LAG <= EXTENSION.server_time_ms,
+      'EXTENSION_CONTAINS_FORMING_CANDLE:' + symbol + ':' + timeframe);
+  }
+  const integrity = {
+    ...loaded.integrity,
+    archive_rows: archiveRows.length,
+    extension_rows: Array.isArray(extensionRows) ? extensionRows.length : 0,
+    rows: rows.length, invalid, duplicates, gaps, offGrid,
+    archive_end: loaded.integrity.end,
+    extension_start: extensionRows && extensionRows.length
+      ? new Date(extensionRows[0].open_time_ms).toISOString() : null,
+    extension_end: extensionRows && extensionRows.length
+      ? new Date(extensionRows[extensionRows.length - 1].open_time_ms).toISOString() : null,
+    end: new Date(rows[rows.length - 1].open_time_ms).toISOString()
+  };
   const indices = sampleEndIndices(rows.length, timeframe);
   const distribution = {
     regimes: {}, regimes_v1: {}, regime_scopes: {}, directional_biases: {}, impulse_classifications: {},
@@ -135,7 +182,7 @@ async function replaySeries(symbol, timeframe, file) {
 
   return {
     symbol, timeframe,
-    dataset_integrity: loaded.integrity,
+    dataset_integrity: integrity,
     method: {
       lookback_bars: WINDOW_BARS,
       stride_bars: STRIDE_BARS[timeframe],
@@ -152,13 +199,18 @@ async function replaySeries(symbol, timeframe, file) {
 
 async function main() {
   const output = {
-    report_version: 'analytical-context-historical-replay-v2',
+    report_version: 'analytical-context-historical-replay-v3',
     generated_at: new Date().toISOString(),
     dataset: {
       repository: 'mestoness/btc-eth-candles-history',
       commit: '9ca04178df06ce649f00779a49e11094fe5b1c70',
       venue_description: 'Bybit USDT-M perpetual historical OHLCV archive',
-      coverage_end: '2025-12-05'
+      coverage_end: EXTENSION ? EXTENSION.coverage_end : '2025-12-05',
+      extension_provider: EXTENSION ? EXTENSION.provider : null,
+      extension_server_time: EXTENSION ? new Date(EXTENSION.server_time_ms).toISOString() : null,
+      extension_finality_safety_lag_ms: EXTENSION ? EXTENSION.finality_safety_lag_ms : null,
+      extension_api_host: EXTENSION ? EXTENSION.api_time_host : null,
+      extension_rows_total: EXTENSION ? Object.values(EXTENSION.series).flatMap(x => Object.values(x)).reduce((sum, rows) => sum + rows.length, 0) : 0
     },
     scope: 'Research-only causal replay comparing Market Regime v1 and v2, plus B2-D Zone Context, B2-E Breakout Quality and Market Impulse Event engines. Not a trading strategy backtest.',
     limitations: [
