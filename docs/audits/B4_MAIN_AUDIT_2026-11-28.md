@@ -136,3 +136,5 @@ Audit found that a normal WebSocket `onclose` advances `recoveryGen` but can ret
 The recovery-generation regression fixture now explicitly primes the active ticker snapshot/readiness before asserting a current-cycle ticker cache is fresh; this isolates the intended reconnect-generation behavior rather than relying on subscription ACK to imply ticker readiness. Source commit `40a36c90233c5bcd5186f1d0322620f99bd78939`.
 
 The recovery regression now obtains the ticker entry through the client's `_getTickerEntry` initializer before setting its readiness fixture, avoiding an assumption that a subscription ACK creates ticker cache state. Source commit `a822133fc1b58356d39c2814a462314aa70fcb17`.
+
+Invalid kline rejection callbacks now also carry `recoveryGen`, so the bridge can validate their generation and still trigger REST reconciliation for invalid events instead of silently ignoring them. Source commit `ff3fa83f59883fbe8f32864369dec7e5b697bc95`.
