@@ -829,3 +829,5 @@ B4 also requires valid provider `msg.ts` on ticker messages before mutating tick
 Ticker integration fixtures now provide provider timestamps as required by the stricter B4 contract; the missing-timestamp negative test remains explicit. Latest source commit `109048c38bcaaabf18663e3897e87ecfdbe313d4`; exact-head CI pending.
 
 B4 adds a stale-stream regression: stale ticker and kline caches are ignored, the visible price falls back to REST, and the UI marks the WS ticker stale. Source commit `4f5e369b52b4262dbad88d9ba54a3fc6d7378301`; exact-head CI pending.
+
+B4 now includes a same-socket subscription-switch regression: delayed messages from the old timeframe/symbol are dropped, and new ETHUSDT/60 ticker/kline messages are accepted only after fresh ACKs. Source commit `67dfd2f36d46c58e66b5fcb2f233cca61626da69`; exact-head CI pending.
