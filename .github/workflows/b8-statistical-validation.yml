@@ -4,9 +4,6 @@ on:
     branches:
       - main
       - feature/b7-setup-engine-2026-11-28
-  push:
-    branches:
-      - feature/b8-statistical-validation-2026-11-28
 concurrency:
   group: b8-${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
