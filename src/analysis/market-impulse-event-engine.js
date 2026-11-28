@@ -47,6 +47,8 @@
         typeof policy.b1_contract_version !== 'string' || !policy.b1_contract_version.trim() ||
         typeof policy.b1_validator_version !== 'string' || !policy.b1_validator_version.trim() ||
         typeof policy.b1_quality_policy_version !== 'string' || !policy.b1_quality_policy_version.trim() ||
+        typeof policy.b2e_policy_version !== 'string' || !policy.b2e_policy_version.trim() ||
+        typeof policy.zone_context_policy_version !== 'string' || !policy.zone_context_policy_version.trim() ||
         !Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0) return 'MARKET_IMPULSE_POLICY_INVALID';
     return null;
   }
@@ -116,12 +118,17 @@
         report.policy_version !== policy.b1_quality_policy_version ||
         !Number.isSafeInteger(report.checked_at_ms) || report.checked_at_ms < 0) return blocked('B1_QUALITY_REPORT_IDENTITY_MISMATCH', meta);
     if (b2e.status !== 'VALID' || b2e.engine_version !== REQUIRED_B2E_ENGINE_VERSION ||
+        b2e.policy_version !== policy.b2e_policy_version ||
         b2e.snapshot_id !== snapshot.snapshot_id || b2e.symbol !== snapshot.canonical_symbol ||
         b2e.timeframe !== timeframe || b2e.analysis_as_of_ms !== asOf ||
         b2e.admission?.status !== 'ADMITTED' || b2e.admission.snapshot_id !== snapshot.snapshot_id ||
-        !Array.isArray(b2e.lifecycles)) return blocked('B2E_RESULT_IDENTITY_MISMATCH', meta);
+        !Array.isArray(b2e.lifecycles) || b2e.lifecycles.some(l => !isObject(l) ||
+          !['BULLISH', 'BEARISH'].includes(l.direction) ||
+          !['RETEST_SUCCESSFUL', 'RETEST_FAILED', 'RETEST_EXPIRED', 'WAITING_RETEST',
+            'RETEST_PENDING_CONFIRMATION', 'RETEST_UNRESOLVED'].includes(l.status))) return blocked('B2E_RESULT_IDENTITY_MISMATCH', meta);
     if (zoneContext != null && (zoneContext.status !== 'VALID' ||
         zoneContext.engine_version !== REQUIRED_ZONE_CONTEXT_ENGINE_VERSION ||
+        zoneContext.policy_version !== policy.zone_context_policy_version ||
         zoneContext.snapshot_id !== snapshot.snapshot_id || zoneContext.symbol !== snapshot.canonical_symbol ||
         zoneContext.timeframe !== timeframe || zoneContext.analysis_as_of_ms !== asOf ||
         zoneContext.admission?.status !== 'ADMITTED')) return blocked('B2D_ZONE_CONTEXT_IDENTITY_MISMATCH', meta);
