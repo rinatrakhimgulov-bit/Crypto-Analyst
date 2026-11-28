@@ -112,12 +112,12 @@ function lifecycle(status = 'RETEST_SUCCESSFUL', direction = 'BULLISH') {
 }
 function attachLifecycles(input, items) {
   input.b2e_result.lifecycles = items;
-  input.b2c_result.events = items.map(item => ({
+  input.b2c_result.events = [...new Map(items.map(item => [item.breakout_event_id, {
     event_id: item.breakout_event_id,
     event_type: item.breakout_event_type,
     direction: item.direction,
     available_at_ms: item.breakout_available_at_ms
-  }));
+  }])).values()];
   for (const item of items) {
     if (!item.confirmation) continue;
     const candle = input.snapshot.candles_by_timeframe['1h'].find(row =>
