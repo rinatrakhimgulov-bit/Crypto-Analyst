@@ -121,6 +121,8 @@ function normalizeObservation(record) {
     setups.policy_version === 'b7-explainable-setups-v1');
   const candidates = setups && versionCompatible && setups.status === 'VALID' && Array.isArray(setups.setup_candidates)
     ? setups.setup_candidates.filter(c => c && c.status === 'CONFIRMED' &&
+        typeof c.setup_id === 'string' && c.setup_id.length > 0 &&
+        typeof c.setup_type === 'string' && c.setup_type.length > 0 &&
         (c.direction === 'LONG' || c.direction === 'SHORT') &&
         Number.isSafeInteger(c.available_at_ms) &&
         c.available_at_ms <= record.capturedAtMs &&
