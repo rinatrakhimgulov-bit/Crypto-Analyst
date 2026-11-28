@@ -1062,3 +1062,20 @@ Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
 **Verification:** GitHub read-back returned blob `296e21794fbf0697bf0f06ec944bb59f583a1d0e`; all 3 inline script blocks passed V8 syntax parsing; auth UI/CDN/OAuth call presence confirmed; no service-role/secret key markers or journal table write calls found. No Actions run was returned. Browser/iPhone OAuth, callback restoration and actual provider credentials remain unverified.
 
 **Deployment distinction:** GitHub Pages currently serves the `main` file, which was independently checked and contains neither the B9 journal nor Supabase Auth. B9 PR #29 and B10 PR #30 remain draft; no merge or production deployment was performed.
+
+
+---
+
+## 2026-11-28 — старт Market Regime Engine v1
+
+- Создана отдельная аналитическая ветка feature/market-regime-engine-2026-11-28 от текущей рабочей ветки feature/b11-google-drive-backup-2026-11-28, чтобы сохранить существующую сборку и не менять main.
+- Начат новый изолированный компонент src/analysis/market-regime-engine.js.
+- Первая версия различает UPTREND, DOWNTREND, RANGE, IMPULSE, TRANSITION и UNKNOWN.
+- Вход привязан к точному B1 snapshot/quality report и, если передан, к тому же snapshot/cutoff B2-C result.
+- Расчёт использует только закрытые свечи, EMA20/50/200, ATR14, нормализованные наклоны/разрывы EMA, ширину диапазона и недавнее импульсное смещение.
+- Несовпадение B1 quality, происхождения свечей, finality, непрерывности или B2-C identity приводит к fail-closed результату.
+- Политика обязательная, версионированная и с явными параметрами. Первичные пороги не откалиброваны и предназначены только для детерминированных fixtures.
+- Добавлены tests/market-regime-engine.test.cjs, docs/specs/MARKET_REGIME_ENGINE_SPEC_2026-11-28.md и отдельный GitHub Actions workflow.
+- Локальная проверка точного исходного кандидата: 19/19 детерминированных тестов PASS; syntax parse PASS.
+- Компонент пока не встроен в HTML, не отображается в UI и не влияет на LONG/SHORT/WAIT. Никаких торговых выводов или утверждений о прибыльности не делается.
+- Следующие обязательные шаги: exact-head CI, независимый source review, replay на закреплённом BTC/ETH архиве 1H/4H/1D с prefix cutoffs и анализ чувствительности порогов. Только после этого решать вопрос о read-only UI интеграции.
