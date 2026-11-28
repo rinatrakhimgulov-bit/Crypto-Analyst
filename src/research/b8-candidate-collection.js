@@ -1,5 +1,9 @@
 'use strict';
 
+function canonicalFamily(candidate) {
+  return JSON.stringify({ setup_type: candidate.setup_type, direction: candidate.direction });
+}
+
 function canonicalCandidate(candidate) {
   return JSON.stringify({
     setup_type: candidate.setup_type,
