@@ -8008,9 +8008,9 @@
         return;
       }
       const previousKline = state.liveKline;
-      if (previousKline && previousKline.symbol === event.symbol &&
-          previousKline.interval === event.interval && previousKline.candle &&
-          previousKline.candle.ts === event.candle.ts &&
+      if (previousKline && previousKline.connGen === event.connGen &&
+          previousKline.symbol === event.symbol && previousKline.interval === event.interval &&
+          previousKline.candle && previousKline.candle.ts === event.candle.ts &&
           Number.isSafeInteger(previousKline.providerEventTimeMs) &&
           Number.isSafeInteger(event.providerEventTimeMs) &&
           event.providerEventTimeMs < previousKline.providerEventTimeMs) {
