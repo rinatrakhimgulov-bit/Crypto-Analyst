@@ -3527,6 +3527,11 @@
             reject('нарушены ограничения OHLCV');
             continue;
           }
+          const providerEventTimeMs = BybitAdapter.parseProviderTime(msg.ts);
+          if (!Number.isSafeInteger(providerEventTimeMs)) {
+            reject('отсутствует или некорректна provider event timestamp (msg.ts)');
+            continue;
+          }
           const candle = Object.freeze({
             ts: start,
             closeTs: start + stepMs,
@@ -3543,7 +3548,7 @@
             symbol,
             interval,
             candle,
-            providerEventTimeMs: BybitAdapter.parseProviderTime(msg.ts),
+            providerEventTimeMs,
             receivedAtMs: recvAt,
             connGen: cGen,
             messageType: msg.type
@@ -8764,6 +8769,25 @@
             assert(events.length === 1 && events[0].valid, 'Валидная свеча должна быть передана');
             assert(events[0].candle.ts === start && events[0].candle.confirmed === false, 'Нужны timestamp и явный статус незакрытой свечи');
             assert(events[0].candle.closeTs === start + step, 'closeTs должен быть эксклюзивной границей свечи');
+          });
+
+          await record('B1-D. Kline without provider event timestamp is rejected fail-closed', () => {
+            const events = [];
+            BybitWsClient.hooks.onKline = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            const step = BybitAdapter.intervalToMs('240');
+            const start = Math.floor(Date.now() / step) * step;
+            ws.triggerMessage({
+              topic: 'kline.240.BTCUSDT', type: 'snapshot',
+              data: [{ start: String(start), end: String(start + step - 1), interval: '240',
+                open: '60000', high: '60100', low: '59900', close: '60050',
+                volume: '12', turnover: '720600', confirm: false }]
+            });
+            assert(events.length === 1 && events[0].valid === false,
+              'Kline without provider msg.ts must be rejected before reaching the live chart bridge');
+            assert(events[0].reason.includes('provider event timestamp') && S().invalidStreamMessages === 1,
+              'Missing provider event time must be diagnosed and counted as an invalid stream message');
           });
 
           await record('B1-D. Malformed kline is rejected and requests reconciliation', () => {
