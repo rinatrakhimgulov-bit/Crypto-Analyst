@@ -8,8 +8,7 @@ function canonicalCandidate(candidate) {
   return JSON.stringify({
     setup_type: candidate.setup_type,
     direction: candidate.direction,
-    status: candidate.status,
-    available_at_ms: candidate.available_at_ms
+    status: candidate.status
   });
 }
 
@@ -32,7 +31,9 @@ function deduplicateCandidates(seriesEntries) {
           confirmation_observed_window_end_ms: candidate.status === 'CONFIRMED' && Number.isSafeInteger(window.end_time_ms)
             ? window.end_time_ms : null,
           invalidation_level_conflict: false,
-          invalidation_level_variant_count: 1
+          invalidation_level_variant_count: 1,
+          availability_time_conflict: false,
+          availability_time_variant_count: 1
         };
         const prior = byKey.get(key);
         if (!prior) byKey.set(key, normalized);
@@ -48,10 +49,21 @@ function deduplicateCandidates(seriesEntries) {
             first_seen_window_quantile: prior.first_seen_window_quantile,
             first_seen_window_end_ms: prior.first_seen_window_end_ms,
             confirmation_observed_window_end_ms: Number.isSafeInteger(window.end_time_ms)
-              ? window.end_time_ms : null
+              ? window.end_time_ms : null,
+            available_at_ms: Math.max(prior.available_at_ms, normalized.available_at_ms)
           });
         } else if (canonicalCandidate(prior) !== canonicalCandidate(normalized)) {
           throw new Error('B8_HISTORICAL_DUPLICATE_ID_CONFLICT:' + key);
+        } else if (prior.available_at_ms !== normalized.available_at_ms) {
+          // If sampled windows disagree on availability, choose the later time to avoid optimistic entry.
+          prior.available_at_ms = Math.max(prior.available_at_ms, normalized.available_at_ms);
+          prior.availability_time_conflict = true;
+          prior.availability_time_variant_count = (prior.availability_time_variant_count || 1) + 1;
+          if (prior.invalidation_level !== normalized.invalidation_level) {
+            prior.invalidation_level = null;
+            prior.invalidation_level_conflict = true;
+            prior.invalidation_level_variant_count = (prior.invalidation_level_variant_count || 1) + 1;
+          }
         } else if (prior.invalidation_level !== normalized.invalidation_level) {
           // The stable event identity is unchanged, but a window-derived stop proxy drifted.
           // Do not select a favorable version: disable barrier scoring for this candidate.
