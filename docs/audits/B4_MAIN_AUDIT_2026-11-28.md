@@ -110,3 +110,7 @@ The B1 and B2 workflow push filters now include `feature/b4-live-data-hardening-
 ## Lifecycle regression added — 2026-11-28
 
 A deterministic Stage A regression (`16d`) now exercises the actual registered `pagehide` and `pageshow` listeners: `pagehide` invalidates the old connection generation, clears confirmed topics and closes the active socket; `pageshow` creates a fresh WebSocket generation, begins recovery, and requires fresh topic ACKs before subscriptions are considered confirmed. This closes a test-coverage gap in the previously implemented lifecycle handlers. It does not replace real Safari/iPhone background-resume acceptance.
+
+## Provider event-time fail-closed guard — 2026-11-28
+
+A further audit confirmed that `_handleKlineMessage` previously parsed `msg.ts` but did not require it to be valid before emitting a `valid:true` candle event. `handleLiveKline` could therefore apply an OHLCV update that lacked a provider timestamp, even though that event could not be ordered against REST snapshots or cross-topic ticker events and could not be safely replayed after REST refresh. The parser now rejects missing/invalid `msg.ts` before constructing a valid event. Stage A regression `B1-D. Kline without provider event timestamp is rejected fail-closed` verifies rejection and invalid-message accounting. This is a deterministic parser/contract check; confirm exact-head CI and actual Bybit stream behavior before treating the gate as complete.
