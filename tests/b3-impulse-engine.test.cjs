@@ -8,7 +8,7 @@ const POLICY={
   finality_safety_lag_ms:LAG, atr_period:14, impulse_lookback:4, volume_lookback:10,
   volume_field:'volume_base', min_displacement_atr:1.8, min_range_expansion_atr:1.4,
   min_volume_ratio:1.5, min_directional_body_ratio:0.5,
-  selloff_displacement_atr:3, selloff_volume_ratio:2
+  selloff_displacement_atr:4, selloff_volume_ratio:2
 };
 function candle(i, values={}) {
   const openTime=(i+1)*STEP;
@@ -36,7 +36,7 @@ function fixture(options={}) {
     timeframe:'1h',analysis_as_of_ms:asOf,checked_at_ms:asOf-100,
     validator_version:'1.1.0',policy_version:'b1-quality-v1',
     closed_count:candles.length,valid_count:candles.length,insufficient_history:false};
-  return {policy:{...POLICY,...options.policy},snapshot,quality_report,analysis_as_of_ms:asOf,timeframe:'1h'};
+  return {policy:{...POLICY,...options.policy},snapshot,quality_report:{...quality_report,...options.report},analysis_as_of_ms:asOf,timeframe:'1h'};
 }
 function run(name,fn){try{fn();process.stdout.write('PASS '+name+'\n');}catch(e){process.stderr.write('FAIL '+name+': '+e.message+'\n');process.exitCode=1;}}
 run('detects a confirmed bearish impulse',()=>{const r=analyze(fixture());assert.equal(r.impulse.status,'CONFIRMED');assert.equal(r.impulse.classification,'BEARISH_IMPULSE');});
@@ -49,7 +49,7 @@ run('B1 report identity mismatch fails closed',()=>{assert.equal(analyze(fixture
 run('forming candle fails closed',()=>{const x=fixture();x.snapshot.candles_by_timeframe['1h'][49].closed_state='FORMING';assert.equal(analyze(x).status,'BLOCKED');});
 run('candle gap fails closed',()=>{const x=fixture();x.snapshot.candles_by_timeframe['1h'][20].open_time_ms+=STEP;assert.equal(analyze(x).status,'BLOCKED');});
 run('invalid policy fails closed',()=>{const r=analyze(fixture({policy:{min_volume_ratio:0}}));assert.equal(r.status,'BLOCKED');});
-run('future candle changes after the latest candle are impossible by construction',()=>{const x=fixture();const r1=analyze(x);x.snapshot.candles_by_timeframe['1h'][40].close=1;const r2=analyze(x);assert.deepEqual(r1.impulse,r2.impulse);});
+run('ATR baseline excludes candles inside the impulse window',()=>{const x=fixture();const r1=analyze(x);const c=x.snapshot.candles_by_timeframe['1h'][49];c.high+=20;c.low-=20;const r2=analyze(x);assert.equal(r1.impulse.metrics.atr_before_window,r2.impulse.metrics.atr_before_window);});
 run('result is immutable and input is not mutated',()=>{const x=fixture();const before=JSON.stringify(x);const r=analyze(x);assert.equal(JSON.stringify(x),before);assert.ok(Object.isFrozen(r));assert.ok(Object.isFrozen(r.impulse));});
 run('identical input is deterministic',()=>{const x=fixture();assert.deepEqual(analyze(x),analyze(x));});
 if(process.exitCode)process.exit(process.exitCode);
