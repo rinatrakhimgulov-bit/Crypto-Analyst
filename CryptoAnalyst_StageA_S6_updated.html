@@ -8106,7 +8106,7 @@
               candle.ts > record.analysisSnapshot.analysisAsOfMs ||
               !Number.isSafeInteger(candle.closeTs) || candle.closeTs <= candle.ts ||
               !['CLOSED', 'FORMING'].includes(candle.finality) ||
-              !['REST_CONFIRMED', 'REST_FORMING', 'WS_KLINE', 'WS_TICKER_OVER_REST'].includes(candle.source) ||
+              !['CLOSED_CHART', 'REST_FORMING', 'WS_KLINE', 'WS_TICKER_OVER_REST'].includes(candle.source) ||
               (candle.providerEventTimeMs !== null &&
                 (!Number.isSafeInteger(candle.providerEventTimeMs) || candle.providerEventTimeMs <= 0)) ||
               (candle.localReceivedAtMs !== null &&
@@ -8710,10 +8710,14 @@
 
       const chartMatchesSnapshot = state.chartDataSymbol === dataset.symbol &&
         state.chartDataInterval === dataset.interval && state.chartDataSnapshotId === snapshot.snapshot_id &&
-        Array.isArray(chart.candles) && chart.candles.length > 0 &&
-        Number.isSafeInteger(chart.closedCount);
-      const sourceCandles = chartMatchesSnapshot ? chart.candles : dataset.allCandles;
-      const closedCountAtCapture = chartMatchesSnapshot ? chart.closedCount : dataset.closedCandles.length;
+        Array.isArray(chart.candles) && chart.candles.length === dataset.allCandles.length &&
+        chart.candles.length > 0 && Number.isSafeInteger(chart.closedCount) &&
+        chart.closedCount >= 0 && chart.closedCount <= chart.candles.length &&
+        chart.candles[0].ts === dataset.allCandles[0].ts &&
+        chart.candles[chart.candles.length - 1].ts === dataset.allCandles[dataset.allCandles.length - 1].ts;
+      if (!chartMatchesSnapshot) throw new Error('Текущий график не соответствует последнему B1 снимку');
+      const sourceCandles = chart.candles;
+      const closedCountAtCapture = chart.closedCount;
       const liveKlineAtCapture = freshLiveKline();
       const chartDataAsOfMs = Math.max(
         asOf,
@@ -8743,12 +8747,14 @@
           volume: candle.volume,
           turnover: journalFiniteOrNull(candle.turnover),
           finality,
-          source: finality === 'CLOSED' ? 'REST_CONFIRMED' :
+          source: finality === 'CLOSED' ? 'CLOSED_CHART' :
             (isLiveKline ? 'WS_KLINE' : (live ? 'WS_TICKER_OVER_REST' : 'REST_FORMING')),
           providerEventTimeMs: isLiveKline && Number.isSafeInteger(liveKlineAtCapture.providerEventTimeMs)
-            ? liveKlineAtCapture.providerEventTimeMs : null,
+            ? liveKlineAtCapture.providerEventTimeMs :
+            (finality === 'FORMING' && live && Number.isSafeInteger(live.providerEventTimeMs) ? live.providerEventTimeMs : null),
           localReceivedAtMs: isLiveKline && Number.isSafeInteger(liveKlineAtCapture.receivedAtMs)
-            ? liveKlineAtCapture.receivedAtMs : null
+            ? liveKlineAtCapture.receivedAtMs :
+            (finality === 'FORMING' && live && Number.isSafeInteger(live.receivedAtMs) ? live.receivedAtMs : null)
         };
       });
 
