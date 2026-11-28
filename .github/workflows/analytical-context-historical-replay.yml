@@ -1,70 +1,60 @@
-name: Analytical context historical replay
+name: Binance USD-M Recent Analytical Replay
 
 on:
-  push:
-    branches:
-      - feature/analytical-engine-historical-replay-2026-11-28
   pull_request:
     branches:
-      - feature/analytical-engine-integration-2026-11-28
-      - feature/analytical-engine-historical-replay-2026-11-28
-      - feature/market-regime-engine-v2-2026-11-28
-      - feature/market-regime-engine-v2-2026-11-28
+      - 'feature/market-regime-engine-v2-2026-11-28'
     paths:
-      - 'tools/analytical_context_historical_replay.cjs'
-      - 'tools/fetch_bybit_history_extension.cjs'
-      - 'tests/bybit-history-extension.test.cjs'
+      - 'tools/fetch_binance_um_recent_history.cjs'
+      - 'tools/binance_usdm_recent_replay.cjs'
       - 'tools/b2_historical_replay.cjs'
-      - 'src/analysis/**'
-      - 'tests/analytical-context-historical-replay.test.cjs'
+      - 'tests/binance-usdm-recent-replay.test.cjs'
+      - 'tests/binance-usdm-recent-replay-report.test.cjs'
       - '.github/workflows/analytical-context-historical-replay.yml'
-  workflow_dispatch:
-
-permissions:
-  contents: read
+      - 'src/analysis/**'
+  push:
+    branches:
+      - 'feature/binance-usdm-recent-replay-2026-11-28'
 
 jobs:
-  historical-context-replay:
+  recent-futures-replay:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Market Regime Engine v1 baseline tests
+          node-version: '20'
+      - name: Market Regime v1 baseline tests
         run: node tests/market-regime-engine.test.cjs
-      - name: Market Regime Engine v2 unit tests
+      - name: Market Regime v2 tests
         run: node tests/market-regime-engine-v2.test.cjs
-      - name: Read-only HTML integration assertions
+      - name: Read-only application integration assertions
         run: node tests/analytical-engine-integration.test.cjs
-      - name: Synthetic end-to-end analytical replay tests
+      - name: Synthetic end-to-end replay tests
         run: node tests/analytical-engine-replay.test.cjs
-      - name: Check Bybit history extension parser
+      - name: Check Binance archive parser and replay scripts
         run: |
-          node --check tools/fetch_bybit_history_extension.cjs
-          node tests/bybit-history-extension.test.cjs
-      - name: Fetch closed 2026 Bybit BTC/ETH klines
-        run: node tools/fetch_bybit_history_extension.cjs
-      - name: Replay six historical BTC/ETH series with 2026 extension
-        env:
-          REQUIRE_BYBIT_EXTENSION: '1'
-        run: node tools/analytical_context_historical_replay.cjs
-      - name: Verify report coverage and causal assertions
-        env:
-          REQUIRE_BYBIT_EXTENSION: '1'
-        run: node tests/analytical-context-historical-replay.test.cjs
-      - name: Upload historical analytical context report
+          node --check tools/fetch_binance_um_recent_history.cjs
+          node --check tools/binance_usdm_recent_replay.cjs
+          node tests/binance-usdm-recent-replay.test.cjs
+      - name: Fetch and checksum-verify Binance USD-M futures archive
+        run: node tools/fetch_binance_um_recent_history.cjs
+      - name: Replay recent BTC/ETH futures history
+        run: node tools/binance_usdm_recent_replay.cjs
+      - name: Verify recent replay report
+        run: node tests/binance-usdm-recent-replay-report.test.cjs
+      - name: Upload Binance recent replay report
         uses: actions/upload-artifact@v4
         with:
-          name: analytical-context-historical-replay-report
-          path: analytical_context_historical_replay_report.json
+          name: binance-usdm-recent-replay-report
+          path: binance_usdm_recent_replay_report.json
           if-no-files-found: error
           retention-days: 30
-      - name: Upload raw 2026 extension for reproducibility
+      - name: Upload checksum-verified Binance data
         uses: actions/upload-artifact@v4
         with:
-          name: bybit-2026-history-extension
-          path: bybit_2026_history_extension.json
+          name: binance-usdm-recent-history
+          path: binance_usdm_recent_history.json
           if-no-files-found: error
           retention-days: 30
