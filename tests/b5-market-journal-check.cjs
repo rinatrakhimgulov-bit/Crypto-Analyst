@@ -260,7 +260,7 @@ async function main() {
       const uiEnvelope = MarketJournal.load();
       assert(uiEnvelope.observations.length === 1 && uiEnvelope.observations[0].note === 'UI save test',
         'Save observation button must write an immutable record to browser localStorage');
-      assert(document.getElementById('journalCount').textContent === '1 наблюдений',
+      assert(document.getElementById('journalCount').textContent === '1 наблюдение',
         'Journal UI count must update after save');
       assert(document.getElementById('journalDetail').hidden === false,
         'Saved observation detail should open');
