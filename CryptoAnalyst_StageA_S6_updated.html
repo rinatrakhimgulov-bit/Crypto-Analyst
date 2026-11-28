@@ -8059,17 +8059,22 @@
           throw new Error('Observation market identity invalid');
         }
         if (!isObject(record.priceContext) || !Number.isFinite(record.priceContext.lastPrice) ||
-            record.priceContext.lastPrice <= 0 || typeof record.priceContext.source !== 'string') {
+            record.priceContext.lastPrice <= 0 || typeof record.priceContext.source !== 'string' ||
+            !['WS_FRESH', 'REST_SNAPSHOT'].includes(record.priceContext.freshnessStatus) ||
+            (record.priceContext.providerEventTimeMs !== null &&
+              (!Number.isSafeInteger(record.priceContext.providerEventTimeMs) || record.priceContext.providerEventTimeMs <= 0)) ||
+            !Number.isSafeInteger(record.priceContext.localReceivedAtMs) || record.priceContext.localReceivedAtMs <= 0) {
           throw new Error('Observation price context invalid');
         }
-        if (!isObject(record.dataQuality) || !['VALID', 'INVALID', 'STALE', 'UNASSESSED'].includes(record.dataQuality.status) ||
+        if (!isObject(record.dataQuality) || !['VALID', 'INVALID', 'STALE'].includes(record.dataQuality.status) ||
             !Array.isArray(record.dataQuality.reasonCodes)) throw new Error('Observation data quality invalid');
         if (!isObject(record.decision) || !['LONG', 'SHORT', 'WAIT'].includes(record.decision.value) ||
             !Array.isArray(record.decision.reasons)) throw new Error('Observation decision invalid');
         if (typeof record.snapshotId !== 'string' || !record.snapshotId ||
             !isObject(record.analysisSnapshot) || !Number.isSafeInteger(record.analysisSnapshot.analysisAsOfMs) ||
             record.analysisSnapshot.analysisAsOfMs <= 0 || !isObject(record.analysisSnapshot.basic) ||
-            !isObject(record.analysisSnapshot.structure)) throw new Error('Observation analysis snapshot invalid');
+            !isObject(record.analysisSnapshot.structure) ||
+            !['VALID', 'BLOCKED', 'INVALID'].includes(record.analysisSnapshot.structure.status)) throw new Error('Observation analysis snapshot invalid');
         const structure = record.analysisSnapshot.structure;
         for (const key of ['swingMarkers', 'supersededPivots', 'ambiguousPivots', 'structureEvents', 'zones', 'candidateLevels', 'retestLifecycles']) {
           if (!Array.isArray(structure[key])) throw new Error('Observation structure evidence invalid: ' + key);
@@ -8081,6 +8086,7 @@
             !record.decision.reasons.every(reason => typeof reason === 'string')) {
           throw new Error('Observation candle window, note or engine versions invalid');
         }
+        if (record.decision.qualityStatus !== record.dataQuality.status) throw new Error('Observation decision/quality status mismatch');
         if (record.dataQuality.status !== 'VALID' && record.decision.value !== 'WAIT') {
           throw new Error('Non-valid data quality can only be recorded with WAIT');
         }
@@ -8805,9 +8811,9 @@
         dataQuality: {
           status: qualityStatus,
           reasonCodes: qualityReasons,
-          closedCandleCount: dataset.closedCandles.length,
-          totalCandleCount: dataset.allCandles.length,
-          hasForming: Boolean(dataset.quality && dataset.quality.hasForming),
+          closedCandleCount: closedCountAtCapture,
+          totalCandleCount: sourceCandles.length,
+          hasForming: candleWindow.some(candle => candle.finality === 'FORMING'),
           providerTimeSpreadMs: null,
           mtfStatus: 'DISABLED_NOT_CALIBRATED'
         },
