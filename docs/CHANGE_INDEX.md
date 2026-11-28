@@ -620,3 +620,13 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - Architecture/specification: `docs/specs/B10_SUPABASE_CLOUD_JOURNAL_SYNC_SPEC_2026-11-28.md`.
 - Branch: `feature/b10-supabase-journal-sync-2026-11-28`, parented to B9 candidate.
 - Verified live schema, RLS policies, authenticated grants, migrations and security advisor; database remains empty.
+
+
+#### B10-A — Supabase Auth bootstrap
+
+- Auth panel: `#cloudAuthPanel`, `#cloudAuthStatus`, `#cloudSignInBtn`, `#cloudSignOutBtn`.
+- Client initialization: `cloudAuthInitialize()`.
+- Auth UI state: `cloudAuthRender()`, `cloudAuthSetStatus()`.
+- OAuth return URL: `cloudAuthRedirectUrl()`.
+- Supabase JS CDN pinned to `2.119.2`; PKCE session persistence enabled.
+- No journal table operations or sync behavior in this checkpoint.
