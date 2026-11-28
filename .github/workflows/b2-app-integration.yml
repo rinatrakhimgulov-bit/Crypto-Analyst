@@ -6,6 +6,8 @@ on:
       - integration/b2-market-structure-ui-2026-11-27
       - feature/b4-live-data-hardening-2026-11-28
       - feature/b5-market-journal-2026-11-28
+      - feature/b5-market-journal-2026-11-28
+      - feature/b6-analytics-audit-2026-11-28
       - integration/b2-clean-preview-2026-11-27
       - feature/b3-chart-ui-redesign-2026-11-27
   pull_request:
@@ -32,6 +34,8 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
+      - name: B2 source and inline parity
+        run: node tests/b2-inline-source-parity.test.cjs
       - name: B2-A causal swing tests
         run: node tests/b2a-causal-swing-engine.test.cjs
       - name: B2-B swing sequence tests
