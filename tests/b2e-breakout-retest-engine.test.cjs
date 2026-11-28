@@ -225,19 +225,23 @@ function fixture(options = {}) {
   };
   const b2d = {
     engine_version: '2.0.0-b2d', policy_version: 'b2d-zone-engine-v1',
-    zone_policy_version: 'b2d-absolute-span-v1', status: 'VALID',
+    zone_policy_version: options.zonePolicyVersion || 'b2d-absolute-span-v1', status: 'VALID',
     admission: {
       status: 'ADMITTED', snapshot_id: SNAPSHOT_ID,
       b2c_engine_version: '2.1.0-b2c', b2c_policy_version: 'b2c-state-v2',
       b1_validator_version: '1.1.0', b1_quality_policy_version: 'b1-quality-v1'
     },
     snapshot_id: SNAPSHOT_ID, symbol: 'BTCUSDT', timeframe: '1h',
-    analysis_as_of_ms: asOf, cluster_method: 'MAX_TOTAL_SPAN_V1',
-    max_cluster_span_price: 2, min_independent_touches: 2,
+    analysis_as_of_ms: asOf,
+    cluster_method: options.zonePolicyVersion === 'b2d-relative-span-v2' ? 'MAX_TOTAL_SPAN_RELATIVE_V2' : 'MAX_TOTAL_SPAN_V1',
+    max_cluster_span_price: options.maxClusterSpanPrice ?? 2,
+    max_cluster_span_ratio: options.maxClusterSpanRatio ?? null,
+    min_independent_touches: 2,
     zones, candidate_levels: []
   };
   return {
-    policy: { ...POLICY, retest_policy: { ...POLICY.retest_policy, ...(options.retestPolicy || {}) } },
+    policy: { ...POLICY, b2d_zone_policy_version: options.zonePolicyVersion || POLICY.b2d_zone_policy_version,
+      retest_policy: { ...POLICY.retest_policy, ...(options.retestPolicy || {}) } },
     snapshot, quality_report: report, b2c_result: b2c, b2d_result: b2d,
     analysis_as_of_ms: asOf, timeframe: '1h'
   };
@@ -277,6 +281,48 @@ run('bearish breakout with a successful retest confirms support-to-resistance ro
   assert.equal(result.lifecycles[0].status, 'RETEST_SUCCESSFUL');
   assert.equal(result.lifecycles[0].original_role, 'SUPPORT');
   assert.equal(result.lifecycles[0].effective_role, 'RESISTANCE');
+});
+
+run('event-relative v2 anchors historical zone and retest thresholds to breakout price', () => {
+  const options = {
+    touchAt: 7,
+    zonePolicyVersion: 'b2d-relative-span-v2',
+    maxClusterSpanPrice: 0.01,
+    maxClusterSpanRatio: 0.02,
+    retestPolicy: {
+      version: 'retest-policy-relative-v2',
+      touch_tolerance_ratio: 0.001,
+      success_buffer_ratio: 0.001,
+      failure_buffer_ratio: 0.001
+    }
+  };
+  const first = analyze(fixture(options));
+  const second = analyze(fixture({ ...options, maxClusterSpanPrice: 9999 }));
+  assert.equal(first.status, 'VALID');
+  assert.equal(second.status, 'VALID');
+  assert.equal(first.lifecycles.length, 1);
+  assert.deepEqual(
+    [first.lifecycles[0].historical_zone.lower_bound, first.lifecycles[0].historical_zone.upper_bound],
+    [second.lifecycles[0].historical_zone.lower_bound, second.lifecycles[0].historical_zone.upper_bound]
+  );
+  assert.equal(first.lifecycles[0].touch_tolerance_price, 0.102);
+  assert.equal(first.lifecycles[0].success_buffer_price, 0.102);
+  assert.equal(first.lifecycles[0].failure_buffer_price, 0.102);
+});
+
+run('relative retest policy rejects ratios above the safe bound', () => {
+  const result = analyze(fixture({
+    zonePolicyVersion: 'b2d-relative-span-v2',
+    maxClusterSpanRatio: 0.02,
+    retestPolicy: {
+      version: 'retest-policy-relative-v2',
+      touch_tolerance_ratio: 0.10,
+      success_buffer_ratio: 0.001,
+      failure_buffer_ratio: 0.001
+    }
+  }));
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'RETEST_POLICY_INVALID');
 });
 
 run('failed bullish retest rejects role reversal and preserves resistance role', () => {
