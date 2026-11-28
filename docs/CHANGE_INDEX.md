@@ -558,3 +558,11 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - B5 exact-head checkpoint: PR #25 head `8f77ff6427e5c5d8021286d971c6a82bfc7f41b5`; B5 browser contract, B1 and B2 workflows all SUCCESS. iPhone Safari acceptance remains pending.
 
 - B6 Analytics Core Audit: B2-A..G source/inline parity gate, pinned historical archive, lookback sensitivity and audit report `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`. CI: B2 app/parity `46107248773` PASS; historical replay `46107248819` PASS.
+
+### B7 Explainable Setup Engine — 2026-11-28
+
+- Added `src/analysis/b7-explainable-setup-engine.js` and byte-identical production inline copy.
+- Added setup candidates for BREAKOUT_RETEST, FALSE_BREAKOUT_RECLAIM and TREND_CONTINUATION_AFTER_CORRECTION with causal B1/B2 binding, closed-candle confirmation, B2-C/B2-E breakout provenance, deterministic IDs and immutable evidence.
+- Added separate B7 market-setups panel; existing LONG/SHORT/WAIT decision path remains unchanged. B2-F is not a directional gate.
+- Added 18 unit tests, B7 source/inline parity and browser/mobile assertions. CI run `46114849599` SUCCESS.
+- Draft PR #27 is stacked on B6 PR #26. Remaining gates: B7 historical/prefix replay, independent review and iPhone Safari acceptance.
