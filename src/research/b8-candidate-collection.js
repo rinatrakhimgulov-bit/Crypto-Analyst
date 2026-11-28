@@ -28,7 +28,12 @@ function deduplicateCandidates(seriesEntries) {
         };
         const prior = byKey.get(key);
         if (!prior) byKey.set(key, normalized);
-        else if (canonicalCandidate(prior) !== canonicalCandidate(normalized)) {
+        else if (prior.status !== normalized.status &&
+            (prior.status === 'CONFIRMED' || normalized.status === 'CONFIRMED')) {
+          // A pending candidate may become confirmed in a later sampled window.
+          // Keep the confirmed event and its actual confirmation availability time.
+          if (normalized.status === 'CONFIRMED') byKey.set(key, normalized);
+        } else if (canonicalCandidate(prior) !== canonicalCandidate(normalized)) {
           throw new Error('B8_HISTORICAL_DUPLICATE_ID_CONFLICT:' + key);
         }
       }
