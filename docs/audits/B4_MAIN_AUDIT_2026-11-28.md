@@ -61,3 +61,8 @@ A 30-second REST refresh replaces the entire chart candle array. The existing co
 The B4 branch now keeps the latest accepted kline event with its provider event time, local receive time and connection generation. After REST renders, it replays that kline only when the active kline topic is confirmed, the same connection generation is still open, the event is fresh, and its provider event time is newer than the REST snapshot's provider server time. It then applies the latest ticker lastPrice. Older WS kline events cannot overwrite a newer REST snapshot. Symbol/timeframe reset clears the cache.
 
 The Stage A B1-D regression now also checks replay of newer WS OHLCV after an older REST replacement and refusal to replay a WS event older than REST provider time. Exact-head CI is still required; no live Bybit or iPhone acceptance is claimed.
+
+
+## Cross-topic ordering hardening
+
+Ticker and kline are separate WebSocket topics, so arrival order is not guaranteed to match provider event time. The branch now compares their provider timestamps: an older ticker cannot overwrite a newer kline state; when an older kline arrives after a newer ticker, cumulative OHLCV is still accepted but the forming candle close is restored to the newer ticker price. Confirmed candles remain immutable. Regression coverage exercises both orderings.
