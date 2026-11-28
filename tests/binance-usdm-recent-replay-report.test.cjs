@@ -37,12 +37,12 @@ for (const symbol of ['BTCUSDT', 'ETHUSDT']) {
 for (const variant of report.summary.zone_context_sensitivity) {
   assert.equal(variant.window_count, report.summary.window_count);
   assert.ok(variant.active_zone_total >= 0);
-  assert.ok(variant.support_outcomes.NO_ZONE + variant.support_outcomes.CENSORED +
-    variant.support_outcomes.NOT_TOUCHED + variant.support_outcomes.HELD +
-    variant.support_outcomes.BROKEN + variant.support_outcomes.TESTED_UNRESOLVED === report.summary.window_count);
-  assert.ok(variant.resistance_outcomes.NO_ZONE + variant.resistance_outcomes.CENSORED +
-    variant.resistance_outcomes.NOT_TOUCHED + variant.resistance_outcomes.HELD +
-    variant.resistance_outcomes.BROKEN + variant.resistance_outcomes.TESTED_UNRESOLVED === report.summary.window_count);
+  assert.ok((variant.support_outcomes.NO_ZONE || 0) + (variant.support_outcomes.CENSORED || 0) +
+    (variant.support_outcomes.NOT_TOUCHED || 0) + (variant.support_outcomes.HELD || 0) +
+    (variant.support_outcomes.BROKEN || 0) + (variant.support_outcomes.TESTED_UNRESOLVED || 0) === report.summary.window_count);
+  assert.ok((variant.resistance_outcomes.NO_ZONE || 0) + (variant.resistance_outcomes.CENSORED || 0) +
+    (variant.resistance_outcomes.NOT_TOUCHED || 0) + (variant.resistance_outcomes.HELD || 0) +
+    (variant.resistance_outcomes.BROKEN || 0) + (variant.resistance_outcomes.TESTED_UNRESOLVED || 0) === report.summary.window_count);
 }
 const baseVariant = report.summary.zone_context_sensitivity.find(x => x.variant === 'base_r10_a20_d5');
 assert.ok(baseVariant);
