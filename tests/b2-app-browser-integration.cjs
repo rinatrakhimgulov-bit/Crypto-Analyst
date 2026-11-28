@@ -50,6 +50,7 @@ async function main() {
       dataset.qualityReport = B1QualityValidator.validate(dataset.canonicalSnapshot, B1_QUALITY_POLICY, Date.now()).report;
       const analysis = hooks.runB2Analysis(dataset);
       hooks.renderB2Panel(analysis);
+      hooks.renderB7Panel(analysis.status === 'VALID' ? analysis.setups : null);
       if (analysis.status === 'VALID') {
         hooks.chart.setData(dataset.allCandles, dataset.closedCandles.length, {
           closedCandlesRef: dataset.closedCandles, ema20: [], ema50: [], ema200: [],
@@ -98,6 +99,10 @@ async function main() {
         chartProjectionAttached: hooks.chart.marketStructure?.status === 'VALID',
         zoneDraw,
         panelStatus: document.getElementById('b2Status')?.textContent,
+        setupStatus: analysis.setups?.status || null,
+        setupCount: analysis.setups?.setup_candidates?.length ?? null,
+        setupPanelStatus: document.getElementById('b7Status')?.textContent,
+        setupEngineAvailable: typeof hooks.B7ExplainableSetupEngine?.analyze === 'function',
         blockedQualityStatus: blocked.status,
         blockedStage: blocked.stage
       };
@@ -105,6 +110,9 @@ async function main() {
     if (result.qualityStatus !== 'VALID' || result.closedCount < 100 ||
         result.status !== 'VALID' || result.chartProjectionAttached !== true ||
         result.panelStatus !== 'VALID · 1H' ||
+        result.setupStatus !== 'VALID' ||
+        !String(result.setupPanelStatus || '').startsWith('VALID · ') ||
+        result.setupEngineAvailable !== true ||
         result.blockedQualityStatus !== 'BLOCKED' || result.blockedStage !== 'B1' ||
         result.mtfContext !== null ||
         (result.zones > 0 && (result.zoneDraw.count < 1 ||
@@ -114,9 +122,11 @@ async function main() {
     await page.setViewportSize({ width: 390, height: 844 });
     const layout = await page.evaluate(() => {
       const card = document.getElementById('b2StructureCard');
+      const setupCard = document.getElementById('b7SetupCard');
       const chart = document.getElementById('chartCanvas');
       return {
         cardVisible: Boolean(card && card.getBoundingClientRect().height > 0),
+        setupCardVisible: Boolean(setupCard && setupCard.getBoundingClientRect().height > 0),
         cardWidth: card?.getBoundingClientRect().width ?? 0,
         chartWidth: chart?.getBoundingClientRect().width ?? 0,
         chartHeight: chart?.getBoundingClientRect().height ?? 0,
@@ -124,7 +134,7 @@ async function main() {
         noHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth + 1
       };
     });
-    if (!layout.cardVisible || layout.cardWidth < 250 || layout.chartWidth < 250 || !layout.noHorizontalOverflow || layout.chartHeight < 440) {
+    if (!layout.cardVisible || !layout.setupCardVisible || layout.cardWidth < 250 || layout.chartWidth < 250 || !layout.noHorizontalOverflow || layout.chartHeight < 440) {
       throw new Error('B2/B3 mobile layout assertions failed: ' + JSON.stringify(layout));
     }
     const displayChecks = await page.evaluate(async () => {
