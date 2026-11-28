@@ -19,6 +19,13 @@ assert.equal(deduped.length, 2);
 assert.equal(deduped[0].setup_id, 'setup-A');
 assert.equal(deduped[0].first_seen_window_quantile, 0.2);
 assert.equal(deduped[1].setup_id, 'setup-B');
+const pending = { ...a, status: 'PENDING', available_at_ms: 250 };
+const confirmedLater = { ...a, status: 'CONFIRMED', available_at_ms: 300 };
+const lifecycle = deduplicateCandidates([{ symbol: 'BTCUSDT', timeframe: '1h',
+  windows: [{ quantile: 0.2, candidates: [pending] }, { quantile: 0.4, candidates: [confirmedLater] }] }]);
+assert.equal(lifecycle.length, 1);
+assert.equal(lifecycle[0].status, 'CONFIRMED');
+assert.equal(lifecycle[0].available_at_ms, 300);
 assert.equal(chronologicalSplit({ available_at_ms: 59 }, 0, 100), 'TRAIN');
 assert.equal(chronologicalSplit({ available_at_ms: 60 }, 0, 100), 'VALIDATION');
 assert.equal(chronologicalSplit({ available_at_ms: 80 }, 0, 100), 'TEST');
