@@ -800,3 +800,5 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - Подробности: `docs/audits/B4_MAIN_AUDIT_2026-11-28.md`.
 
 - Дополнительно закрывается REST/WS race: REST refresh раньше восстанавливал только ticker lastPrice, теряя более свежий WS kline OHLCV. Добавлен versioned/freshness-aware replay последней kline только если она новее provider time REST snapshot; добавлен детерминированный regression. См. B4 audit.
+
+- Добавлена защита от межтопикового out-of-order: provider timestamps не позволяют старому ticker перезаписать более новую kline; старая kline может обновить накопленный OHLCV, но не регрессировать close относительно более нового ticker. Regression проверяет оба порядка.
