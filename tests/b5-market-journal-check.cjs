@@ -215,6 +215,16 @@ async function main() {
       const unsupported = JSON.parse(exported);
       unsupported.formatVersion = 99;
       expectThrow(() => secondJournal.validateEnvelope(unsupported), 'Unknown format version must be rejected');
+      const oversized = journal.emptyEnvelope();
+      oversized.observations = Array.from({ length: 101 }, (_, index) => ({ ...observation, id: 'oversized-' + index }));
+      expectThrow(() => journal.validateEnvelope(oversized), 'Observation count limit must be enforced');
+      const oversizedCandles = JSON.parse(JSON.stringify(observation));
+      oversizedCandles.candleWindow = Array.from({ length: 161 }, (_, index) => ({
+        ...observation.candleWindow[0], ts: observation.candleWindow[0].ts + index * 1000,
+        closeTs: observation.candleWindow[0].closeTs + index * 1000
+      }));
+      expectThrow(() => journal.validateEnvelope({ ...journal.emptyEnvelope(), observations: [oversizedCandles] }),
+        'Per-observation candle window limit must be enforced');
 
       const invalidDirectional = makeFixture('INVALID', 'LONG');
       expectThrow(() => buildJournalObservation(invalidDirectional, capturedAt, ''),
