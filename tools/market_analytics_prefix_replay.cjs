@@ -9,7 +9,6 @@ const { analyze: analyzeZoneContext } = require('../src/analysis/b2d-zone-contex
 const { analyze: analyzeBreakoutQuality } = require('../src/analysis/b2e-breakout-quality-engine.js');
 const { analyze: analyzeImpulse } = require('../src/analysis/market-impulse-event-engine.js');
 const { analyze: analyzeDecision } = require('../src/analysis/market-decision-context-engine.js');
-const { analyze: analyzeDecision } = require('../src/analysis/market-decision-context-engine.js');
 
 const DATASET_REPOSITORY = 'mestoness/btc-eth-candles-history';
 const DATASET_COMMIT = '9ca04178df06ce649f00779a49e11094fe5b1c70';
@@ -99,19 +98,7 @@ const POLICY_DECISION = {
   b7_engine_version: '1.0.0-b7', b7_policy_version: 'b7-explainable-setups-v1'
 };
 
-const POLICY_DECISION = {
-  version: 'market-decision-context-v1',
-  b1_contract_version: '1.1.0',
-  b1_validator_version: '1.1.0',
-  b1_quality_policy_version: QUALITY,
-  b2c_engine_version: '2.1.0-b2c', b2c_policy_version: 'b2c-state-v2',
-  b2e_engine_version: '2.0.0-b2e', b2e_policy_version: 'b2e-retest-engine-v1',
-  zone_context_engine_version: '1.0.0-b2d-zone-context', zone_context_policy_version: 'b2d-zone-context-v1',
-  breakout_quality_engine_version: '1.0.0-b2e-breakout-quality', breakout_quality_policy_version: 'b2e-breakout-quality-v1',
-  regime_engine_version: '1.0.0-market-regime', regime_policy_version: 'market-regime-policy-v1-initial',
-  impulse_engine_version: '1.0.0-market-impulse-event', impulse_policy_version: 'market-impulse-event-v1',
-  b7_engine_version: '1.0.0-b7', b7_policy_version: 'b7-explainable-setups-v1'
-};
+
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -201,9 +188,6 @@ function verifyCutoff(result, asOf, label) {
   }
   assert(result.impulse.event.window_end_close_time_ms + LAG <= asOf,
     label + ' impulse window ends after cutoff');
-  for (const setup of result.decision.setup_candidates) {
-    assert(setup.available_at_ms <= asOf, label + ' selected decision setup is available after cutoff');
-  }
   for (const setup of result.decision.setup_candidates) {
     assert(setup.available_at_ms <= asOf, label + ' selected decision setup is available after cutoff');
   }
