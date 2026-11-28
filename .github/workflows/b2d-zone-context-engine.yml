@@ -21,5 +21,11 @@ jobs:
           node-version: '20'
       - name: Parse engine source
         run: node --check src/analysis/b2d-zone-context-engine.js
-      - name: Run deterministic tests
+      - name: Run zone context tests
         run: node tests/b2d-zone-context-engine.test.cjs
+      - name: Run upstream B2-D regression tests
+        run: node tests/b2d-support-resistance-engine.test.cjs
+      - name: Run downstream B2-E regression tests
+        run: node tests/b2e-breakout-retest-engine.test.cjs
+      - name: Run regime engine regression tests
+        run: node tests/market-regime-engine.test.cjs
