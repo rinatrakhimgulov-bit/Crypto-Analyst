@@ -138,3 +138,5 @@ The recovery-generation regression fixture now explicitly primes the active tick
 The recovery regression now obtains the ticker entry through the client's `_getTickerEntry` initializer before setting its readiness fixture, avoiding an assumption that a subscription ACK creates ticker cache state. Source commit `a822133fc1b58356d39c2814a462314aa70fcb17`.
 
 Invalid kline rejection callbacks now also carry `recoveryGen`, so the bridge can validate their generation and still trigger REST reconciliation for invalid events instead of silently ignoring them. Source commit `ff3fa83f59883fbe8f32864369dec7e5b697bc95`.
+
+The B1 Playwright live-UI fixture was updated to pass both `connGen` and `recoveryGen` when directly invoking the live ticker/kline bridge. Its previous synthetic events omitted the new recovery-generation field, so the stricter bridge correctly ignored them and the browser integration test reported a false failure. This changes only test fixtures, not the live-data contract. Source test commit `d5979626c38b51cd20decd5ab58cb92b510462c5`.
