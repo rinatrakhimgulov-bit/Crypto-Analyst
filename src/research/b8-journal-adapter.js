@@ -39,6 +39,7 @@ function validateEnvelope(envelope) {
         !isObject(record.market) || typeof record.market.symbol !== 'string' ||
         typeof record.market.interval !== 'string' || !DECISIONS.has(record.decision) ||
         !isObject(record.priceContext) || typeof record.priceContext.source !== 'string' ||
+        (record.priceContext.lastPrice != null && !Number.isFinite(record.priceContext.lastPrice)) ||
         !isObject(record.dataQuality) || typeof record.dataQuality.status !== 'string' ||
         !Array.isArray(record.dataQuality.reasonCodes) || !isObject(record.analysisSnapshot) ||
         !Array.isArray(record.analysisSnapshot.reasons) ||
