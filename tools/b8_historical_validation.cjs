@@ -111,6 +111,9 @@ async function main() {
             direction: candidate.direction, setup_id: candidate.setup_id,
             available_at_ms: candidate.available_at_ms,
             first_seen_window_quantile: candidate.first_seen_window_quantile,
+            first_seen_window_end_ms: candidate.first_seen_window_end_ms,
+            confirmation_observed_window_end_ms: candidate.confirmation_observed_window_end_ms,
+            invalidation_level_conflict: candidate.invalidation_level_conflict === true,
             outcome: { status: 'PURGED', reason: split }
           });
           continue;
@@ -125,6 +128,9 @@ async function main() {
           symbol, timeframe, split, setup_type: candidate.setup_type,
           direction: candidate.direction, setup_id: candidate.setup_id,
           available_at_ms: candidate.available_at_ms, first_seen_window_quantile: candidate.first_seen_window_quantile,
+          first_seen_window_end_ms: candidate.first_seen_window_end_ms,
+          confirmation_observed_window_end_ms: candidate.confirmation_observed_window_end_ms,
+          invalidation_level_conflict: candidate.invalidation_level_conflict === true,
           outcome
         });
       }
@@ -165,6 +171,7 @@ async function main() {
       finality: 'TIME_DERIVED with fixed 500ms research lag; not observed provider finality' },
     candidate_source: 'Deduplicated stable candidate IDs surfaced by causal 160-candle windows scanned every 80 bars (plus final endpoint) per symbol/timeframe. This is denser but not exhaustive; events shorter than the scan stride can still be missed.',
     candidate_count: candidates.length,
+    invalidation_level_conflict_count: candidates.filter(c => c.invalidation_level_conflict).length,
     candidate_status_counts: candidates.reduce((acc,c) => {
       acc[c.status] = (acc[c.status] || 0) + 1; return acc;
     }, {}),
