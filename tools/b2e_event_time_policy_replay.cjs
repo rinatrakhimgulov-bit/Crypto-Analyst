@@ -138,7 +138,7 @@ function computeForwardOutcomes(rows, resolutionIndex, direction, atr, horizons 
   }
   return output;
 }
-function summarize(events, groupKey) {
+function summarize(events, groupKey, outcomeKey = 'forward_outcomes') {
   const groups = new Map();
   for (const event of events) {
     const key = event[groupKey] || 'UNKNOWN';
@@ -149,7 +149,7 @@ function summarize(events, groupKey) {
   for (const [key, items] of groups) {
     result[key] = { event_count: items.length, horizons: {} };
     for (const horizon of HORIZONS) {
-      const rows = items.map(x => x.forward_outcomes[horizon]).filter(Boolean);
+      const rows = items.map(x => x[outcomeKey] && x[outcomeKey][horizon]).filter(Boolean);
       const returns = rows.map(x => x.direction_adjusted_return_atr);
       const favorable = rows.map(x => x.favorable_excursion_atr);
       const adverse = rows.map(x => x.adverse_excursion_atr);
@@ -434,7 +434,9 @@ async function main() {
     aggregate: {
       evaluated_event_count: allEvents.length,
       outcomes_by_retest_status: summarize(allEvents, 'retest_status'),
-      outcomes_by_quality: summarize(allEvents, 'quality_status')
+      reverse_outcomes_by_retest_status: summarize(allEvents, 'retest_status', 'reverse_outcomes'),
+      outcomes_by_quality: summarize(allEvents, 'quality_status'),
+      reverse_outcomes_by_quality: summarize(allEvents, 'quality_status', 'reverse_outcomes')
     }
   };
   fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2) + '\n');
