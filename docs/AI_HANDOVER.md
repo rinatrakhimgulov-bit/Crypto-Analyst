@@ -1524,3 +1524,18 @@ Next:
 6. Independent review of split boundaries, candidate timing, outcome math, dependence and leakage.
 
 B8-C exploratory pipeline passed; statistical validation remains incomplete. No B9 directional integration.
+
+
+### B8 independent review and journal-capture clarification — 2026-11-28
+
+Independent review recorded in `docs/audits/B8_INDEPENDENT_REVIEW_FINDINGS_2026-11-28.md`. Current PR head before corrective commits passed CI, but review found split-boundary outcome contamination, sparse five-window candidate sampling, missing dependence-aware uncertainty, and incomplete prospective outcome semantics.
+
+Corrective work now in branch:
+- `chronologicalSplit(candidate, startMs, endMs, outcomeEndMs)` purges TRAIN/VALIDATION candidates whose 12-bar endpoint reaches or crosses the next split boundary.
+- Deterministic tests cover both boundary purge rules and exact-boundary behavior.
+- B7 historical replay adds a denser causal scan of 160-candle windows at an 80-bar stride plus the final endpoint; B8 historical validation consumes this scan and deduplicates stable setup IDs.
+- Exact-head CI is pending; do not assume the dense scan or purging passes until the run completes.
+
+Important B5 correction: current B5 does NOT automatically save every analysis. It exposes an explicit user-triggered “Save observation” action. Follow-ups are also manually appended. The B5 specification limits the journal to 100 observations and 160 candles per observation. Do not describe B5 as automatic capture. If automatic observation capture is desired, treat it as a separate B5 scope change requiring a deduplication/throttling policy, retention/export strategy and explicit owner acceptance. B8 must not silently modify B5 production behavior.
+
+B8 remains research-only. No production HTML, LONG/SHORT/WAIT, B2-F, B4/Live Price or UX/UI changes. Do not merge PR #28 until R1/R2 are verified, dependence-aware uncertainty is addressed or explicitly gated, the prospective journal pathway is truthful, and exact-head CI plus independent review pass.
