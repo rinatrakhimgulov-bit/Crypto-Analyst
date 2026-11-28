@@ -1068,3 +1068,15 @@ The currently published GitHub Pages app is still the `main` version. Its HTML w
 - 12-bar gross positive rates: STRONG 50.10% (n=2,932), MIXED 51.43% (n=1,262), WEAK 49.74% (n=585). Mean gross directional returns +0.1219%, +0.0487%, -0.1566%. This does not establish a reliable standalone breakout edge; the sample is dominated by 1h events and daily sample is only 25.
 - Remaining boundary drift is due older pivots aging out of bounded rolling context. First-observation zone is used for causal outcomes. No fees, slippage, funding, barriers, expectancy or drawdown tested. Archive ends 2025-12-05.
 - Next: manually review representative zone/breakout examples, then integrate only after owner browser acceptance. Keep this branch Draft.
+
+
+## 2026-11-28 — B8 historical validation of B7 candidates
+
+- B8 statistical validation workflow was enabled on the current analytical branch. Exact-head run 46171104519: SUCCESS; artifact 15272604921.
+- 2,546 unique candidates from the B7 dense scan: 2,403 CONFIRMED, 143 PENDING. 2,402 confirmed outcomes evaluated; one purged at chronological split boundary; zero otherwise excluded.
+- Test split at 12 bars: BREAKOUT_RETEST LONG n=185, positive 42.2%, mean -0.105%; BREAKOUT_RETEST SHORT n=136, positive 46.3%, mean -0.029%; FALSE_BREAKOUT_RECLAIM LONG n=91, positive 52.7%, mean +0.080%; FALSE_BREAKOUT_RECLAIM SHORT n=122, positive 55.7%, mean +0.037%; TREND_CONTINUATION_AFTER_CORRECTION n=6, too small.
+- One subgroup BTCUSDT 1h FALSE_BREAKOUT_RECLAIM SHORT at 12 bars had n=66, mean +0.467%, weekly block-bootstrap 95% interval [+0.033%, +0.939%] in TEST, but not in train/validation. Treat as possible regime-specific effect, not a validated general edge.
+- BTCUSDT 4h BREAKOUT_RETEST LONG at 1 bar (n=16) was negative. Setup behavior differs by timeframe and direction.
+- B8 validates B7 candidates using existing B2-D/B2-E absolute v1 policy; event-relative v2 remains separate research.
+- The B7 dense scan is sampled, not exhaustive; B1 quality is synthetic VALID; entries are bar-close proxies; no fees, funding, slippage or actual account PnL.
+- Do not wire B7 directly into live LONG/SHORT. Next: shadow decision layer combining B7 candidate with Market Regime v2 and impulse at the same analysis cutoff, followed by a separate B8 evaluation.
