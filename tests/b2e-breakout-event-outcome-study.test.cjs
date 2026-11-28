@@ -42,6 +42,7 @@ assert.ok(report.summary.quality_outcomes.STRONG_EVIDENCE);
 assert.ok(report.summary.quality_outcomes.WEAK_EVIDENCE);
 assert.ok(Number.isInteger(report.summary.quality_status_changes));
 assert.ok(Number.isInteger(report.summary.zone_boundary_changes));
+assert.equal(report.summary.zone_boundary_changes, 0, 'event-anchored historical zones must remain stable');
 assert.ok(Array.isArray(report.limitations) && report.limitations.length >= 6);
 
 process.stdout.write('PASS six series and historical dataset integrity\n');
