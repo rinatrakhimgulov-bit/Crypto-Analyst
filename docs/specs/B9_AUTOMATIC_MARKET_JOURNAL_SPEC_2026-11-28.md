@@ -1,7 +1,7 @@
 # B9 — Automatic Market Journal Capture
 
 Date: 2026-11-28
-Status: implementation candidate; awaiting exact-head CI and owner device acceptance.
+Status: implementation candidate; four exact-head application/regression workflows passed; B8 research workflow pending; owner iPhone Safari acceptance pending.
 
 ## Scope
 
@@ -45,3 +45,8 @@ CI is necessary but not sufficient. Owner must open the B9 candidate on iPhone S
 ## Explicitly deferred
 
 Running while the application is fully closed requires a future server-side worker and is outside B9. UX redesign is also outside scope.
+
+
+### Exact-head CI checkpoint — 2026-11-28
+
+At candidate head `42d4e6b64cf1622d1937d03af67113dead19b34d`, B5 journal browser, B2 application integration, B7 setup engine, and B1 browser/data-quality workflows all passed. B1's live Bybit probe was skipped due HTTP 403 from both REST hosts in the GitHub runner. B8 statistical workflow remained in progress. iPhone Safari owner acceptance is still required.
