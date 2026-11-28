@@ -868,3 +868,11 @@ B2-A through B2-G passed static contract review, source/inline parity, unit/inte
 - Integrated the engine into the production HTML with a separate Russian-language B7 setup panel. Existing LONG/SHORT/WAIT decisions are unchanged. B2-F MTF is not a directional gate. B5 observation snapshots preserve the B7 result inside the captured B2 analysis object.
 - B7 exact source/inline parity is enforced by `tests/b2-inline-source-parity.test.cjs`. B7 unit suite: 22 deterministic tests. CI run `46115303655` SUCCESS: B2-A..G + B7 parity, B7 unit tests, B2 regression suite, pinned historical B7 replay, browser integration and mobile layout. Browser fixture reported B7 VALID with zero candidates and pageErrors 0.
 - Historical B7 replay passed on the pinned BTC/ETH USDT-M archive (`9ca04178df06ce649f00779a49e11094fe5b1c70`): 30 production-equivalent 160-bar windows and 18 prefix cutoffs across BTCUSDT/ETHUSDT on 1H/4H/1D. Every emitted candidate/confirmation was available by its cutoff and repeated prefix runs were deterministic. Remaining: independent review and owner iPhone Safari acceptance. B7 candidates are research evidence, not trade signals or proof of profitability. B8 statistical validation remains required before B9 directional integration.
+
+
+### B7 historical replay checkpoint — 2026-11-28
+
+- B7 pinned historical replay now passes in CI run `46115303655`: BTCUSDT/ETHUSDT on 1h/4h/1d, five 160-candle windows per series (30 total) plus 18 historical prefix-cutoff runs. All B7 candidates and confirmation evidence in each prefix run are causal to its cutoff and deterministic on repeat.
+- Rolling-window replay detected 40 research candidates: 36 confirmed and 4 pending. Scenario counts: 20 BREAKOUT_RETEST and 20 FALSE_BREAKOUT_RECLAIM. No TREND_CONTINUATION_AFTER_CORRECTION occurred in these 30 windows; synthetic positive/negative unit tests cover its logic, but historical occurrence is not demonstrated in this sample.
+- Full details and limitations: `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`. This is not a strategy backtest and provides no evidence of profitability.
+- CI also passed 22 B7 unit tests, B2-A..G regressions, source/inline parity and browser/mobile integration. Remaining: owner iPhone Safari acceptance and a second-person review. B7 still does not affect LONG/SHORT/WAIT.
