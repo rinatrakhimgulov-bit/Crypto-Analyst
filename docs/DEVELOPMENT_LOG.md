@@ -1116,3 +1116,18 @@ Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
 - Exact current integration head: `6284b355b89094816fc198bc9bd1eaed0bf0e47a`. GitHub Actions run 46166985164: SUCCESS.
 - Integration assertions: 4/4 PASS; B2-D existing 21/21; B2-D zone context 15/15; B2-E retest 24/24; B2-E breakout quality 16/16; Market Impulse 16/16. Market Regime test workflow step also passed. Total explicitly logged PASS assertions: 96.
 - Candidate remains Draft and is not deployed to GitHub Pages/main. Historical BTC/ETH prefix replay, threshold sensitivity, iPhone/PC browser acceptance and owner approval remain required before merge or any decision-path integration.
+
+
+## 2026-11-28 — analytical context historical replay findings
+
+- PR #38: `feature/analytical-engine-historical-replay-2026-11-28`, Draft; no production decision-path changes.
+- Exact-head analytical context replay run 46167783208: SUCCESS. Dataset commit `9ca04178df06ce649f00779a49e11094fe5b1c70`; six BTCUSDT/ETHUSDT series, 1h/4h/1d; archive ends 2025-12-05.
+- 780 snapshots were evaluated at approximately 14-calendar-day intervals, each with 260 closed candles. All six source series passed OHLCV integrity checks; report coverage and cutoff assertions passed.
+- Regime labels: TRANSITION 488, UPTREND 137, DOWNTREND 112, IMPULSE 43, RANGE 0.
+- Current range feature thresholds passed only 10/780 snapshots (1.28%); B2-C structure UNESTABLISHED was present in 0/780. The current RANGE branch is effectively unreachable on this sample.
+- Sampled feature medians: range width 4.30 ATR, absolute EMA50 slope 0.56 ATR, absolute EMA50/200 spread 2.82 ATR. Current range thresholds are restrictive relative to observed values.
+- Nearest support present in 277/780 snapshots; nearest resistance in 276/780. These are snapshot availability rates, not zone prediction accuracy.
+- Breakout quality counts are repeated observations across overlapping snapshots, not unique event counts.
+- Impulse labels describe only the final 3-bar window at each 14-day sample. They are not a selloff-frequency census.
+- B1 quality is a synthetic VALID wrapper; finality uses a fixed 500ms lag. The archive does not cover 2026. No entries, exits, fees, funding, slippage, PnL, expectancy or drawdown were tested.
+- Next: build a separate regime-v2 research candidate to distinguish local consolidation from macro swing structure; use the same frozen sample for sensitivity, then manually inspect representative charts. Do not tune on an out-of-sample test cohort and do not wire these labels into LONG/SHORT/WAIT yet.
