@@ -163,7 +163,9 @@ async function replaySeries(symbol, timeframe, file) {
     const asOf = end.close_time_ms + LAG;
     const id = ['b2e-event-study', symbol, timeframe, end.open_time_ms].join(':');
     const structure = runStructure(slice, symbol, timeframe, asOf, id);
-    const zones = runZones(structure, symbol, timeframe);
+    const zones = runZones(structure, symbol, timeframe, 0.001, 0.0005, {
+      zoneSpanMode: 'EVENT_RELATIVE_V2', retestMode: 'EVENT_RELATIVE_V2'
+    });
     const context = runAnalyticalContext(structure, zones, BREAKOUT_LOOKBACK_BARS);
     assert(context.breakoutQuality.status === 'VALID',
       'BREAKOUT_QUALITY_BLOCKED:' + symbol + ':' + timeframe + ':' + end.open_time_ms);
