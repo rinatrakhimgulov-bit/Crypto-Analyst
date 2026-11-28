@@ -238,6 +238,7 @@
     const atrValues = atr(candles, policy.atr_period);
     const last = candles.length - 1;
     const atrNow = atrValues[last];
+    if (!Number.isFinite(atrNow) || atrNow <= 0) return blocked('INSUFFICIENT', 'ATR_ZERO_OR_UNAVAILABLE', meta);
     const slopeIndex = last - policy.slope_lookback;
     const ema50SlopeAtr = (emaMid[last] - emaMid[slopeIndex]) / atrNow;
     const ema200SlopeAtr = (emaSlow[last] - emaSlow[slopeIndex]) / atrNow;
