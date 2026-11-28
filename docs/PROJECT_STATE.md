@@ -805,3 +805,12 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 
 - Последняя проверка B4 PR #24, head 42f0511679167714e2a35c873ae0fc970502923c: B1 browser/live-data CI SUCCESS (run 46102775403), B2 app integration SUCCESS (run 46102775296), pageErrors отсутствуют. Live Bybit probe пропущен из-за HTTP 403 с GitHub runner. PR не слит; нужны дальнейший аудит и iPhone/Safari acceptance.
 - Дополнительно защищён порядок WS-событий: более старый event time для той же свечи не откатывает OHLCV; более свежий ticker восстанавливает close после kline; старый ticker не перезаписывает более свежую kline. Сравнение same-candle event time ограничено тем же connGen.
+
+
+## B4 exact-head CI checkpoint — 2026-11-28
+
+- Tested app source blob: `c9711ffdd65c9667bfa7447b92ec05d73e60135f`, commit `01068b47736e9e1d9a206ae919accd8a6cea7255`, PR #24.
+- B1 run 46103008965 SUCCESS: Stage A 50/50, B1 contract 32/32, quality 72/72, MTF 20/20, zero browser page errors.
+- B2 run 46103008967 SUCCESS: B2-A…B2-G and browser/mobile integration passed.
+- Live Bybit runner probe skipped because both REST hosts returned HTTP 403 from GitHub Actions. Not a live-provider pass.
+- PR #24 remains open/unmerged. iPhone/Safari real-provider acceptance and exact-source review are still required.
