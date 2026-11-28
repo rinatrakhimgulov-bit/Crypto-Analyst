@@ -235,6 +235,7 @@ function runSetups(structure, zones) {
 }
 function compactSetups(result) {
   return result.setup_candidates.map(item => ({
+    setup_id: item.setup_id,
     setup_type: item.setup_type, direction: item.direction, status: item.status,
     available_at_ms: item.available_at_ms, invalidation_level: item.invalidation_level,
     breakout_event_id: item.evidence.breakout_event_id || null,
