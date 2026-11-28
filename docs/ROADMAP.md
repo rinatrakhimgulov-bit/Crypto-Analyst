@@ -547,3 +547,12 @@ Sequence:
 Baseline entry uses the first fully closed candle whose finality availability is strictly later than the candidate's available-at timestamp. Report forward returns, MFE/MAE and invalidation/target outcomes separately. Do not call forward-positive observations winning trades. Barrier simulation is secondary and conservative. Fees/slippage are applied only from explicit assumptions; unknown funding is never silently zeroed.
 
 No change to the current LONG/SHORT/WAIT path, no production dashboard, no B2-F directional gate, and no profitability claim at this stage. See `docs/specs/B8_STATISTICAL_VALIDATION_SPEC_2026-11-28.md` and `docs/audits/B8_OPENING_SCHEMA_AUDIT_2026-11-28.md`.
+
+
+### B8-C exploratory historical checkpoint — 2026-11-28
+
+The first pinned B8 historical outcome pipeline passed CI run `46117156657`. It deduplicated stable candidate IDs surfaced by the five existing B7 quantile windows and evaluated 36 confirmed candidates (4 pending) with causal bar-close entries and 1/3/6/12-bar forward outcomes. Chronological counts: TRAIN 22 / VALIDATION 8 / TEST 6.
+
+This is explicitly exploratory, not statistical validation: five-window sample is not exhaustive; TEST N=6 is too small; confidence intervals are naive independence; no fees/funding/slippage are observed. See `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`.
+
+Next B8 work: denser/exhaustive causal candidate scan, dependence-aware inference, adequate OOS samples by setup/direction, explicit cost sensitivity, prospective B5 cohort, independent audit. Do not connect results to LONG/SHORT/WAIT.
