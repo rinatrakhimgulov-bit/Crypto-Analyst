@@ -102,6 +102,18 @@ async function main() {
     if (!analysisRestored) throw new Error('Analysis tab did not restore the analysis panel');
     await page.locator('#journalTabBtn').click();
 
+    const autoCaptureCheck = await page.evaluate(() => {
+      const journal = window.__CryptoAnalystTestHooks.journal;
+      const first = journal.autoCapture();
+      const duplicate = journal.autoCapture();
+      const records = journal.state.envelope.observations;
+      return { first, duplicate, count: records.length, mode: records[0] && records[0].captureMode,
+        hasCaptureKey: Boolean(records[0] && records[0].captureKey) };
+    });
+    if (!autoCaptureCheck.first || !autoCaptureCheck.duplicate || autoCaptureCheck.count !== 1 ||
+        autoCaptureCheck.mode !== 'AUTO' || !autoCaptureCheck.hasCaptureKey) {
+      throw new Error('B9 automatic capture/idempotency failed: ' + JSON.stringify(autoCaptureCheck));
+    }
     await page.locator('#journalSaveBtn').click();
     const afterButtonCapture = await page.evaluate(() => window.__CryptoAnalystTestHooks.journal.state.envelope.observations.length);
     if (afterButtonCapture !== 1) throw new Error('Save observation button did not persist an observation');
@@ -156,14 +168,15 @@ async function main() {
 
       cached.analysis.decision = 'WAIT';
       cached.analysis.reasons = ['Нет подтверждённого сценария'];
-      journal.capture();
+      const waitAutoFirst = journal.autoCapture();
+      const waitAutoDuplicate = journal.autoCapture();
       cached.dataset.qualityReport = {
         status: 'INVALID', validator_version: '1.1.0',
         reasons: [{ code: 'VOLUME_NEGATIVE', severity: 'error', detail: 'fixture invalid' }]
       };
       cached.analysis.decision = 'LONG';
       cached.analysis.qualityGate = { blocked: true, status: 'INVALID', reasons: ['VOLUME_NEGATIVE'] };
-      journal.capture();
+      const invalidAuto = journal.autoCapture();
       const decisions = journal.state.envelope.observations.map(r => r.decision);
       const invalidStatus = journal.state.envelope.observations[2].dataQuality.status;
       cached.dataset.qualityReport.status = 'STALE';
@@ -220,6 +233,7 @@ async function main() {
 
       return {
         frozen, immutable, hasFuture, forming, decisions, invalidStatus, staleBlocked, followupTradeChecks,
+        waitAutoFirst, waitAutoDuplicate, invalidAuto, autoModes: journal.state.envelope.observations.map(r => r.captureMode),
         collisionRejected, collisionPreserved, invalidRejected, invalidPreserved,
         missingFieldsRejected, missingFieldsPreserved, invalidFollowupRejected, invalidTradeRejected, invalidLinkedRecordsPreserved,
         storageFailureRejected, storagePreserved, emptyBeforeImport, importedCount, duplicateIdempotent,
@@ -230,6 +244,8 @@ async function main() {
 
     const expected = checks.frozen && checks.immutable && !checks.hasFuture && checks.forming === 'forming' &&
       checks.decisions.join('|') === 'LONG|WAIT|WAIT' && checks.invalidStatus === 'INVALID' &&
+      checks.waitAutoFirst && checks.waitAutoDuplicate && checks.invalidAuto &&
+      checks.autoModes.every(mode => mode === 'AUTO') &&
       checks.staleBlocked && checks.followupTradeChecks && checks.collisionRejected && checks.collisionPreserved &&
       checks.invalidRejected && checks.invalidPreserved && checks.missingFieldsRejected &&
       checks.missingFieldsPreserved && checks.invalidFollowupRejected &&
@@ -283,7 +299,7 @@ async function main() {
       throw new Error('B5 corrupt-storage recovery assertions failed: ' + JSON.stringify(corruption));
     }
     if (pageErrors.length) throw new Error('Browser page errors: ' + pageErrors.join(' | '));
-    console.log(JSON.stringify({ b5: checks, exportFilename: download.suggestedFilename(), corruption, pageErrors }, null, 2));
+    console.log(JSON.stringify({ b5: checks, b9: autoCaptureCheck, exportFilename: download.suggestedFilename(), corruption, pageErrors }, null, 2));
   } finally {
     await browser.close();
     await new Promise(resolve => server.close(resolve));
