@@ -5,6 +5,10 @@ on:
     branches:
       - feature/b2g-chart-projection-contract-2026-11-27
       - integration/b2-clean-preview-2026-11-27
+      - feature/b6-analytics-audit-2026-11-28
+  pull_request:
+    branches:
+      - feature/b5-market-journal-2026-11-28
   workflow_dispatch:
 
 permissions:
