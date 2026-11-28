@@ -114,3 +114,7 @@ A deterministic Stage A regression (`16d`) now exercises the actual registered `
 ## Provider event-time fail-closed guard — 2026-11-28
 
 A further audit confirmed that `_handleKlineMessage` previously parsed `msg.ts` but did not require it to be valid before emitting a `valid:true` candle event. `handleLiveKline` could therefore apply an OHLCV update that lacked a provider timestamp, even though that event could not be ordered against REST snapshots or cross-topic ticker events and could not be safely replayed after REST refresh. The parser now rejects missing/invalid `msg.ts` before constructing a valid event. Stage A regression `B1-D. Kline without provider event timestamp is rejected fail-closed` verifies rejection and invalid-message accounting. This is a deterministic parser/contract check; confirm exact-head CI and actual Bybit stream behavior before treating the gate as complete.
+
+## Ticker provider event-time fail-closed guard — 2026-11-28
+
+The same ordering requirement also applies to ticker events. `_handleTickerMessage` previously updated its cached ticker state and emitted a live-price event even if `msg.ts` was absent or invalid; in that case cross-topic ordering against kline events could not be established. The handler now validates provider event time before mutating ticker state and rejects unorderable messages. A Stage A regression verifies that a ticker without `msg.ts` neither changes ticker readiness/state nor reaches the live bridge. Kline and ticker now share the same fail-closed timestamp contract.
