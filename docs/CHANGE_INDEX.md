@@ -538,3 +538,5 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - Not accepted/merged. Await exact-head CI, further B4 audit, independent review and iPhone/Safari live verification.
 
 - Дополнительная защита REST/WS race: newer WS kline OHLCV replay после REST refresh, только при активной подтверждённой подписке, совпадающем connGen, свежем receive time и более новом provider event time.
+
+- Cross-topic provider-time ordering: предотвращает откат forming close из-за позднего ticker/kline сообщения с более ранним provider timestamp.
