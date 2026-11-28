@@ -564,5 +564,5 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - Added `src/analysis/b7-explainable-setup-engine.js` and byte-identical production inline copy.
 - Added setup candidates for BREAKOUT_RETEST, FALSE_BREAKOUT_RECLAIM and TREND_CONTINUATION_AFTER_CORRECTION with causal B1/B2 binding, closed-candle confirmation, B2-C/B2-E breakout provenance, deterministic IDs and immutable evidence.
 - Added separate B7 market-setups panel; existing LONG/SHORT/WAIT decision path remains unchanged. B2-F is not a directional gate.
-- Added 22 unit tests, B7 source/inline parity and browser/mobile assertions. CI run `46114849599` SUCCESS.
-- Draft PR #27 is stacked on B6 PR #26. Remaining gates: B7 historical/prefix replay, independent review and iPhone Safari acceptance.
+- Added 22 unit tests, B7 source/inline parity and browser/mobile assertions. CI run `46115303655` SUCCESS, including 22 B7 tests, exact source/inline parity, B2 regression, pinned historical replay and browser/mobile integration.
+- Draft PR #27 is stacked on B6 PR #26. Historical replay passed on pinned archive commit `9ca04178df06ce649f00779a49e11094fe5b1c70`: 30 production-equivalent 160-bar windows and 18 prefix cutoffs across BTC/ETH 1H/4H/1D. Remaining gates: independent review and iPhone Safari acceptance.
