@@ -8,6 +8,13 @@ const LAG = 500;
 const AS_OF = 40 * STEP + STEP + LAG;
 const POLICY = Object.freeze({
   version: 'b2d-zone-context-v1',
+  b2d_engine_version: '2.0.0-b2d',
+  b2d_policy_version: 'b2d-zone-engine-v1',
+  b2d_zone_policy_version: 'b2d-absolute-span-v1',
+  b1_contract_version: '1.1.0',
+  b1_validator_version: '1.1.0',
+  b1_quality_policy_version: 'b1-quality-v1',
+  finality_safety_lag_ms: LAG,
   atr_period: 14,
   freshness_recent_bars: 10,
   freshness_aging_bars: 20,
