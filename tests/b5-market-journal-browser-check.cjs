@@ -185,7 +185,9 @@ async function main() {
       cached.analysis.qualityGate = { blocked: true, status: 'INVALID', reasons: ['VOLUME_NEGATIVE'] };
       const invalidAuto = journal.autoCapture();
       const decisions = journal.state.envelope.observations.map(r => r.decision);
-      const invalidStatus = journal.state.envelope.observations[3].dataQuality.status;
+      const invalidRecord = journal.state.envelope.observations.find(record =>
+        record.decision === 'WAIT' && record.dataQuality.status === 'INVALID');
+      const invalidStatus = invalidRecord ? invalidRecord.dataQuality.status : null;
       cached.dataset.qualityReport.status = 'STALE';
       const staleBlocked = journal.canCapture() === false;
       cached.dataset.qualityReport.status = 'VALID';
