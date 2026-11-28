@@ -605,3 +605,11 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - B7 replay now includes stable setup IDs in compact window output: `tools/b2_historical_replay.cjs`
 - Candidate collection tests: `tests/b8-candidate-collection.test.cjs`
 - Historical exploration report: `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`
+
+
+### B9 Automatic Market Journal
+
+- Capture contract: `docs/specs/B9_AUTOMATIC_MARKET_JOURNAL_SPEC_2026-11-28.md`.
+- Runtime auto-capture hook: `journalAutoCaptureObservation()` after successful current analysis render in `CryptoAnalyst_StageA_S6_updated.html`.
+- Idempotency: `journalCaptureKey()` and persisted `captureKey` / `captureMode` fields.
+- Browser regression: `tests/b5-market-journal-browser-check.cjs` now includes B9 automatic capture and deduplication assertions.
