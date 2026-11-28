@@ -900,3 +900,5 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Recovery regression setup now explicitly initializes its ticker entry through `_getTickerEntry` before setting snapshot readiness. Source commit `a822133fc1b58356d39c2814a462314aa70fcb17`; exact-head CI pending.
 
 - Added `recoveryGen` to invalid-kline callbacks as well as valid events, preserving the generation guard while allowing invalid events to trigger REST reconciliation. Source commit `ff3fa83f59883fbe8f32864369dec7e5b697bc95`; exact-head CI pending.
+
+- Updated B1 Playwright live-UI synthetic ticker/kline events to include both current `connGen` and `recoveryGen`, matching the production event contract. The prior browser test failure was a fixture mismatch, not a runtime regression. Test commit `d5979626c38b51cd20decd5ab58cb92b510462c5`; exact-head CI pending.
