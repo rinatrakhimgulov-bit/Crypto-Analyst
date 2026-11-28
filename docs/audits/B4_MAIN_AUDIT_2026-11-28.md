@@ -78,3 +78,12 @@ The next review found that ticker and kline topics can be observed at different 
 - Regression coverage exercises both delivery orders and same-candle event-time rollback.
 
 The B1 and B2 workflow push filters now include `feature/b4-live-data-hardening-2026-11-28`, so subsequent commits to this branch run both verification workflows rather than depending only on pull-request event delivery. Exact-head workflow results must be checked before merge.
+
+
+## Verification checkpoint — PR head 42f0511679167714e2a35c873ae0fc970502923c
+
+- B1 browser/live-data workflow run 46102775403: SUCCESS; browser/self-test completed with no page errors.
+- B2 application integration workflow run 46102775296: SUCCESS; B2-A…B2-G suites and mobile browser integration passed; no horizontal overflow; no page errors.
+- Live Bybit REST check: SKIPPED_PROVIDER_BLOCKED because both public REST hosts returned HTTP 403 to the GitHub Actions runner. This is not a live Bybit pass and not evidence that the user's iPhone cannot connect.
+- The tested PR merge ref includes exact branch head 42f0511679167714e2a35c873ae0fc970502923c.
+- PR #24 remains open and unmerged. B4 still requires remaining reconnect/fallback/lifecycle audit, independent review and real iPhone/Safari acceptance.
