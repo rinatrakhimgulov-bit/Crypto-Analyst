@@ -862,3 +862,15 @@ Recovery-generation regression fixture now primes ticker readiness explicitly so
 - B1 run 46109176498 SUCCESS: Stage A 59/59, B1 contract 32/32, quality 72/72, MTF 20/20; browser pageErrors 0.
 - B2 run 46109176611 SUCCESS: B2-A…B2-G and browser/mobile integration passed; pageErrors 0.
 - Live Bybit remains unverified by Actions because both REST hosts returned HTTP 403. iPhone/Safari acceptance remains required.
+
+## B5 active implementation — 2026-11-28
+
+B5 PR #25 is a draft stacked on B4 PR #24. Current feature slice includes immutable LONG/SHORT/WAIT observations, local browser persistence, explicit JSON import/export, append-only follow-ups, and separate completed actual trades. Snapshot records preserve quality reasons, B2 context, engine versions and a bounded candle window with finality; no future candle is included. Storage/import validation fails closed and does not overwrite prior valid records on errors. Dedicated browser contract suite and B1/B2 regressions are green on the latest code candidate; iPhone Safari acceptance remains required. Spec: `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`.
+
+## B5 exact-head checkpoint — 2026-11-28
+
+- B5 PR #25 head: `8f77ff6427e5c5d8021286d971c6a82bfc7f41b5`, base `feature/b4-live-data-hardening-2026-11-28` (B4 PR #24 candidate).
+- B5 browser contract run `46106500180`: SUCCESS. Immutable snapshots, all decision states, no-look-ahead candle window, follow-ups, completed actual trades, JSON export/import, collision handling, storage failure and corrupt-storage recovery passed. Browser pageErrors: 0.
+- B1 run `46106500094`: SUCCESS. Stage A 58/58; B1 contract 32/32; quality 72/72; MTF 20/20. Live Bybit probe remains skipped due runner HTTP 403.
+- B2 run `46106500087`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
+- B5 implementation is functionally ready for independent review. iPhone Safari acceptance remains outstanding; open-position tracking is deferred.

@@ -916,3 +916,19 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 
 
 - Extended B4 cache invalidation from malformed kline events to structural continuity failures (gap/conflict/closed candle/unconfirmed predecessor/no base/invalid). Older out-of-order events preserve the latest accepted cache. Source commit 86bf04418a9f270755a86c6e400565f0b6398978; B1 59/59 and B2 integration passed on exact head.
+
+## B5 Market Journal — 2026-11-28
+
+- Added B5 spec and local-first journal UI on branch `feature/b5-market-journal-2026-11-28`.
+- Observation capture preserves LONG/SHORT/WAIT, data-quality reasons, B2 snapshot and up to 160 candles with explicit closed/forming status; future candles are excluded.
+- Added append-only follow-up records and separate manually entered completed actual trades with entry/exit timestamps, prices, quantity, fees, funding and optional net PnL.
+- Added localStorage persistence, schema validation, JSON export/import, merge-by-ID, idempotent duplicates, collision rejection, corrupt-storage read-only handling and write-failure preservation.
+- Dedicated B5 browser contract run `46106254098` SUCCESS; B1 `46106254092` SUCCESS; B2 `46106254088` SUCCESS on code head `6eca8e06e1c0d9f0e8b1059113998a9b4d8092da`. Latest head adds explicit corrupt-storage recovery coverage and must retain green exact-head CI. iPhone Safari acceptance remains pending.
+
+### B5 exact-head verification — 2026-11-28
+
+- B5 PR #25 head `8f77ff6427e5c5d8021286d971c6a82bfc7f41b5` is stacked on B4 PR #24 candidate branch.
+- B5 browser contract run `46106500180` SUCCESS: immutable observation snapshot, LONG/WAIT/quality-blocked WAIT, no future candle inclusion, follow-up and completed trade linkage, PnL arithmetic, import validation/collision/idempotency, storage write failure, JSON export/file import and corrupt-storage recovery all passed; pageErrors 0.
+- B1 run `46106500094` SUCCESS: Stage A 58/58, contract 32/32, quality 72/72, MTF 20/20; GitHub runner Bybit probe blocked by HTTP 403 on both public REST hosts.
+- B2 run `46106500087` SUCCESS: B2-A…B2-G and browser/mobile integration passed.
+- Remaining: iPhone Safari acceptance and independent review. B5 is still draft; open-position tracking deferred.
