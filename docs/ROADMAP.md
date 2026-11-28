@@ -507,3 +507,5 @@ Valid ticker integration fixtures now carry provider event timestamps; the negat
 Stale-stream fallback now has a deterministic regression: stale WS ticker/kline data is rejected, REST price fallback is displayed, and stale WS status is explicit. Actual Safari behavior remains a separate acceptance gate.
 
 Subscription-switch coverage now verifies that in-flight messages from the previous symbol/timeframe cannot mutate the active chart after a same-socket subscription update, while the new subscription becomes usable after ACK.
+
+Live data freshness now requires both connection and recovery-cycle generation equality. This is specifically tested against automatic reconnects where the previous socket's connection generation may otherwise be retained. Keep this guard in B4 acceptance.
