@@ -272,3 +272,10 @@ These limitations must remain visible in every B8 report until independently res
 ## 12. Implementation checkpoint — 2026-11-28
 
 Initial B8-A/B8-B implementation is in draft PR #28. The causal evaluator, descriptive statistics and B5 journal adapter are implemented with deterministic tests. CI runs `46116869096` and `46116871532` passed. B8-C historical candidate generation/deduplication and chronological out-of-sample validation, B8-D prospective journal outcomes and B8-E independent audit remain open. This checkpoint does not support a profitability conclusion.
+
+
+## 13. Historical exploration checkpoint — 2026-11-28
+
+The initial B8-C pipeline passed in CI run `46117156657`. It collected and deduplicated the 40 candidate IDs surfaced by five existing quantile windows per series: 36 confirmed, 4 pending. All 36 confirmed candidates had a causal entry proxy. Chronological split counts were TRAIN 22, VALIDATION 8, TEST 6.
+
+This sample is insufficient for statistical validation. The TEST cohort contains only six candidates, the five-window scan is not exhaustive, observations are correlated, and costs/funding are unavailable. The exploratory results and caveats are documented in `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`. B8-C remains IN PROGRESS; the next implementation must increase event coverage and add dependence-aware inference before any performance conclusion.
