@@ -516,4 +516,4 @@ if (require.main === module) {
   main().catch(error => { console.error(error && error.stack ? error.stack : error); process.exitCode = 1; });
 }
 
-module.exports = { loadRows, runStructure, runZones, FILES, STEP, LAG, QUALITY };
+module.exports = { loadRows, runStructure, runZones, runSetups, FILES, STEP, LAG, QUALITY };
