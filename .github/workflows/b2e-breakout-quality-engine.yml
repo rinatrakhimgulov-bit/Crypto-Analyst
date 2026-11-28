@@ -1,0 +1,29 @@
+name: B2-E Breakout Quality Engine
+
+on:
+  pull_request:
+    paths:
+      - 'src/analysis/b2e-breakout-quality-engine.js'
+      - 'tests/b2e-breakout-quality-engine.test.cjs'
+      - 'docs/specs/B2E_BREAKOUT_QUALITY_ENGINE_SPEC_2026-11-28.md'
+      - '.github/workflows/b2e-breakout-quality-engine.yml'
+  push:
+    branches:
+      - 'feature/b2e-breakout-quality-engine-2026-11-28'
+
+jobs:
+  deterministic-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Parse engine source
+        run: node --check src/analysis/b2e-breakout-quality-engine.js
+      - name: Run breakout quality tests
+        run: node tests/b2e-breakout-quality-engine.test.cjs
+      - name: Run B2-D zone context regression tests
+        run: node tests/b2d-zone-context-engine.test.cjs
+      - name: Run B2-E retest regression tests
+        run: node tests/b2e-breakout-retest-engine.test.cjs
