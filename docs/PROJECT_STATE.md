@@ -909,3 +909,10 @@ Historical candidate generation/deduplication, chronological out-of-sample valid
 
 
 B8 checkpoint: B8-A schema/methodology audit and B8-B deterministic evaluator + B5 import adapter are implemented in draft PR #28. Exact CI runs `46116869096` (evaluator/statistics) and `46116871532` (journal adapter) passed. This is not completion of B8: historical candidate census, deduplication, chronological out-of-sample validation, dependence-aware inference and prospective journal evaluation remain open.
+
+
+### B8-C exploratory historical checkpoint — 2026-11-28
+
+The pinned exploratory B8 historical pipeline ran successfully in CI run `46117156657` on code head `cf16dd38e9b8cc7fb7f923d7999add2c4a46b0e5`. It generated a report from 40 unique sampled candidate IDs: 36 confirmed and 4 pending; all 36 confirmed candidates had a causal entry proxy. Chronological split counts were TRAIN 22 / VALIDATION 8 / TEST 6. The test sample is far too small for statistical validation; the descriptive test returns were negative, but neither a positive nor negative performance conclusion is justified. Full details: `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`.
+
+B8-C exploratory pipeline — PASS. B8-C statistical validation remains INCOMPLETE. The five-window sample is not an exhaustive event census, confidence intervals are not cluster-aware, costs/funding are not observed, and no prospective B5 export has been evaluated.
