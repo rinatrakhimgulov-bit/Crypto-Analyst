@@ -1,0 +1,31 @@
+name: B2-D Zone Context Engine
+
+on:
+  pull_request:
+    paths:
+      - 'src/analysis/b2d-zone-context-engine.js'
+      - 'tests/b2d-zone-context-engine.test.cjs'
+      - 'docs/specs/B2D_ZONE_CONTEXT_ENGINE_SPEC_2026-11-28.md'
+      - '.github/workflows/b2d-zone-context-engine.yml'
+  push:
+    branches:
+      - 'feature/b2d-zone-context-engine-2026-11-28'
+
+jobs:
+  deterministic-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Parse engine source
+        run: node --check src/analysis/b2d-zone-context-engine.js
+      - name: Run zone context tests
+        run: node tests/b2d-zone-context-engine.test.cjs
+      - name: Run upstream B2-D regression tests
+        run: node tests/b2d-support-resistance-engine.test.cjs
+      - name: Run downstream B2-E regression tests
+        run: node tests/b2e-breakout-retest-engine.test.cjs
+      - name: Run regime engine regression tests
+        run: node tests/market-regime-engine.test.cjs
