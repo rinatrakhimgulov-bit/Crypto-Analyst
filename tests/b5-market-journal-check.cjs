@@ -112,6 +112,16 @@ async function main() {
 
       const fixture = makeFixture();
       const capturedAt = 1700000005000;
+      const savedChartCandles = hooks.chart.candles;
+      const savedChartClosedCount = hooks.chart.closedCount;
+      const savedChartIdentity = {
+        symbol: state.chartDataSymbol, interval: state.chartDataInterval, snapshotId: state.chartDataSnapshotId
+      };
+      hooks.chart.candles = fixture.dataset.allCandles.map(candle => ({ ...candle }));
+      hooks.chart.closedCount = 2;
+      state.chartDataSymbol = 'BTCUSDT';
+      state.chartDataInterval = '240';
+      state.chartDataSnapshotId = fixture.dataset.canonicalSnapshot.snapshot_id;
       const observation = buildJournalObservation({
         ...fixture,
         decisionReasons: ['WAIT: сценарий не подтверждён']
@@ -134,11 +144,6 @@ async function main() {
         'Captured observation and nested candles must be immutable');
 
       const chartFixture = makeFixture();
-      const savedChartCandles = hooks.chart.candles;
-      const savedChartClosedCount = hooks.chart.closedCount;
-      const savedChartIdentity = {
-        symbol: state.chartDataSymbol, interval: state.chartDataInterval, snapshotId: state.chartDataSnapshotId
-      };
       const displayedCandles = chartFixture.dataset.allCandles.map(candle => ({ ...candle }));
       displayedCandles[2].close = 65100;
       displayedCandles[2].high = 65300;
@@ -153,18 +158,17 @@ async function main() {
         displayedSnapshot.candleWindow[2].volume === 6 &&
         displayedSnapshot.candleWindow[2].finality === 'FORMING',
         'Journal must capture the current forming candle as displayed by the chart, not the older REST copy');
-      hooks.chart.candles = savedChartCandles;
-      hooks.chart.closedCount = savedChartClosedCount;
-      state.chartDataSymbol = savedChartIdentity.symbol;
-      state.chartDataInterval = savedChartIdentity.interval;
-      state.chartDataSnapshotId = savedChartIdentity.snapshotId;
-
       const originalClose = observation.candleWindow[0].close;
       fixture.dataset.allCandles[0].close = 1;
       fixture.analysis.metrics.lastEma20 = 1;
       assert(observation.candleWindow[0].close === originalClose &&
         observation.analysisSnapshot.basic.lastEma20 === 64800,
         'Later source mutations must not change the stored snapshot');
+      hooks.chart.candles = savedChartCandles;
+      hooks.chart.closedCount = savedChartClosedCount;
+      state.chartDataSymbol = savedChartIdentity.symbol;
+      state.chartDataInterval = savedChartIdentity.interval;
+      state.chartDataSnapshotId = savedChartIdentity.snapshotId;
 
       const localMap = new Map();
       const storage = makeStorage(localMap);
