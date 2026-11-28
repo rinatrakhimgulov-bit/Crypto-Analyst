@@ -12,10 +12,10 @@ Replay the new Market Regime, B2-D zone-context, B2-E breakout-quality and Marke
 - Every evaluation uses a 240-candle input prefix.
 - Samples are taken every 250 candles, with the final archive candle always included.
 - B2-A through B2-E are recomputed on each prefix using the same existing replay helper and policy family.
-- Each prefix then runs B2-D Zone Context, B2-E Breakout Quality, Market Regime and Market Impulse Event Engine.
+- Each prefix then runs B2-D Zone Context, B2-E Breakout Quality, Market Regime, Market Impulse Event Engine, B7 and the research-only Market Decision Context Engine.
 - Every prefix is replayed twice; compact outputs must be byte-identical.
 - All breakout and retest availability timestamps and impulse-window end times must be at or before the prefix cutoff.
-- The replay reports regime labels, impulse labels, breakout evidence classes, bearish retest context and zone counts by series.
+- The replay reports regime labels, impulse labels, research-only LONG/SHORT/WAIT decision candidates, breakout evidence classes, bearish retest context and zone counts by series.
 - One-factor impulse sensitivity varies displacement, selloff displacement, range expansion, volume expansion and directional-pressure thresholds while holding all other baseline parameters fixed. These are descriptive classification-frequency checks only; they do not select a new policy.
 
 ## Explicit limitations

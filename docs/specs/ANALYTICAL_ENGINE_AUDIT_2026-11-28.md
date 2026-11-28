@@ -81,3 +81,13 @@ The current HTML's `runB2Analysis` executes B2-A → B2-B → B2-C → B2-D → 
 - Corrected research baseline across the 474 sampled prefixes: 17 STRONG_SELL_OFF, 15 BEARISH_IMPULSE, 34 BULLISH_IMPULSE, 51 DIRECTIONAL_MOVE_UNCONFIRMED, 357 NO_IMPULSE.
 - This is classification frequency, not a trade backtest. Prefixes overlap, events are not independent, B1 is a synthetic VALID wrapper, finality is time-derived with 500ms lag, and thresholds are uncalibrated.
 - Keep PRs #34, #35 and #36 Draft and unmerged. Do not integrate these outputs into production LONG/SHORT/WAIT until independent review and stronger out-of-sample evaluation.
+
+
+## 2026-11-28 — decision context fusion checkpoint
+
+- Draft PR #39 adds `Market Decision Context Engine` as a research-only fusion layer over B2-C/B2-D/B2-E/Market Regime/Market Impulse/B7.
+- Exact-head CI run 46168403263 passed 165 deterministic assertions across the decision engine and upstream suites.
+- Exact-head pinned prefix replay run 46168403273 passed across 474 BTC/ETH 1h/4h/1d prefixes; 23 LONG, 11 SHORT and 440 WAIT candidate outputs.
+- These outputs are not trade outcomes and overlapping prefixes are not independent. No profitability, expectancy or predictive edge has been established.
+- The production HTML remains unchanged; its BasicAnalyticsEngine still uses EMA20 position/slope, EMA20-vs-EMA50 and volume ratio for LONG/SHORT/WAIT. Candidate modules are not yet integrated.
+- Next gate: independent code review and chronological out-of-sample outcome evaluation before UI or live-decision integration.

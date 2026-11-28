@@ -100,3 +100,24 @@ These are **lifecycle appearances across overlapping prefixes**, not unique brea
 The candidate engines pass deterministic and causal prefix checks on the pinned archive. This supports continued research and source review only. It does not establish a trading edge or authorize live decision-path integration.
 
 Next gates: independent code review, denser event census, chronological out-of-sample evaluation with adequate sample size, and prospective observation tracking. Keep PR #36 Draft and unmerged.
+
+
+## 8. Research-only decision context replay
+
+The Market Decision Context Engine was added to the same exact 474-prefix replay. Exact-head replay run 46168403273 passed; exact-head engine/regression run 46168403263 passed.
+
+| Series | Prefixes | LONG | SHORT | WAIT |
+|---|---:|---:|---:|---:|
+| BTC 1h | 200 | 10 | 3 | 187 |
+| BTC 4h | 50 | 1 | 2 | 47 |
+| BTC 1d | 9 | 1 | 0 | 8 |
+| ETH 1h | 166 | 7 | 3 | 156 |
+| ETH 4h | 42 | 4 | 3 | 35 |
+| ETH 1d | 7 | 0 | 0 | 7 |
+| **Total** | **474** | **23** | **11** | **440** |
+
+The conservative decision gate emitted a directional research candidate in 34 of 474 sampled prefixes (7.17%); 440 returned WAIT. This is signal-frequency distribution only. Prefixes overlap, so the same setup can appear at multiple cutoffs. These are not 34 unique trades or independent observations.
+
+The decision candidate requires regime/structure alignment, a causal confirmed B7 setup, exact B2-E lifecycle confirmation and strong breakout-quality evidence for breakout-retest setups, plus no conflicting impulse context. It does not calculate entries, SL/TP, position size or expected return.
+
+The production HTML remains unchanged: its BasicAnalyticsEngine still makes the live LONG/SHORT/WAIT decision using EMA20 position/slope, EMA20-vs-EMA50 and volume ratio. The new context engine is isolated and not wired into that decision path.
