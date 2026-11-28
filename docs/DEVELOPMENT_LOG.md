@@ -1131,3 +1131,15 @@ Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
 - Impulse labels describe only the final 3-bar window at each 14-day sample. They are not a selloff-frequency census.
 - B1 quality is a synthetic VALID wrapper; finality uses a fixed 500ms lag. The archive does not cover 2026. No entries, exits, fees, funding, slippage, PnL, expectancy or drawdown were tested.
 - Next: build a separate regime-v2 research candidate to distinguish local consolidation from macro swing structure; use the same frozen sample for sensitivity, then manually inspect representative charts. Do not tune on an out-of-sample test cohort and do not wire these labels into LONG/SHORT/WAIT yet.
+
+
+## 2026-11-28 — Market Regime v2 local consolidation candidate
+
+- PR #40: `feature/market-regime-v2-local-consolidation-2026-11-28`, Draft; base is the historical replay candidate PR #38 branch.
+- V1 remains the default. V2 is opt-in via `range_detection_mode: LOCAL_CONSOLIDATION_V2`; it uses local 20-bar width, EMA50 slope and EMA20/EMA50 spread. B2-C UP/DOWN remains macro context rather than blocking a local RANGE label; evidence alignment is PARTIAL.
+- Synthetic tests added for local consolidation within both UP and DOWN macro structure, plus explicit v2 policy validation.
+- Exact-head historical context replay run 46168371082: SUCCESS; six series, 780 snapshots.
+- Side-by-side: v1 RANGE 0 / TRANSITION 488 / UPTREND 137 / DOWNTREND 112 / IMPULSE 43. V2 RANGE 169 / TRANSITION 319 / UPTREND 137 / DOWNTREND 112 / IMPULSE 43.
+- V2 RANGE counts: BTC 1h 40/149, BTC 4h 31/147, BTC 1d 23/132, ETH 1h 28/124, ETH 4h 26/122, ETH 1d 21/106.
+- This demonstrates the v2 branch is reachable and stable on the frozen sample, not that each RANGE label is correct. Manual chart inspection and the full B2/B7 historical replay remain required.
+- No production HTML, LONG/SHORT/WAIT logic or auto-trading was changed. Historical B1 remains synthetic VALID; finality is time-derived with fixed 500ms lag; archive ends 2025-12-05; no profitability metrics were evaluated.
