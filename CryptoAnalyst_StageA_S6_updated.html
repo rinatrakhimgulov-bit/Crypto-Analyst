@@ -8882,6 +8882,14 @@
       return node;
     }
 
+    function journalObservationCountLabel(count) {
+      const mod100 = count % 100;
+      const mod10 = count % 10;
+      const word = mod100 >= 11 && mod100 <= 14 ? 'наблюдений' :
+        (mod10 === 1 ? 'наблюдение' : (mod10 >= 2 && mod10 <= 4 ? 'наблюдения' : 'наблюдений'));
+      return count + ' ' + word;
+    }
+
     function renderJournalPanel() {
       const count = document.getElementById('journalCount');
       const list = document.getElementById('journalList');
@@ -8889,7 +8897,7 @@
       if (!count || !list || !detail) return;
       const envelope = state.journalEnvelope;
       const observations = envelope && Array.isArray(envelope.observations) ? envelope.observations : [];
-      count.textContent = observations.length + ' наблюдений';
+      count.textContent = journalObservationCountLabel(observations.length);
       list.replaceChildren();
       if (state.journalError) {
         setJournalStatus('Локальный журнал не прочитан: ' + state.journalError, 'status-err');
@@ -9086,7 +9094,7 @@
         document.body.appendChild(link);
         link.click();
         link.remove();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         state.journalNotice = 'JSON-резервная копия подготовлена.';
         renderJournalPanel();
       } catch (error) {
