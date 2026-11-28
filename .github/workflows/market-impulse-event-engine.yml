@@ -1,0 +1,29 @@
+name: Market Impulse Selloff Engine
+
+on:
+  pull_request:
+    paths:
+      - 'src/analysis/market-impulse-event-engine.js'
+      - 'tests/market-impulse-event-engine.test.cjs'
+      - 'docs/specs/MARKET_IMPULSE_SELL_OFF_ENGINE_SPEC_2026-11-28.md'
+      - '.github/workflows/market-impulse-event-engine.yml'
+  push:
+    branches:
+      - 'feature/bearish-impulse-selloff-engine-2026-11-28'
+
+jobs:
+  deterministic-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Parse engine source
+        run: node --check src/analysis/market-impulse-event-engine.js
+      - name: Run impulse/selloff tests
+        run: node tests/market-impulse-event-engine.test.cjs
+      - name: Run B2-D zone context regression tests
+        run: node tests/b2d-zone-context-engine.test.cjs
+      - name: Run B2-E breakout quality regression tests
+        run: node tests/b2e-breakout-quality-engine.test.cjs

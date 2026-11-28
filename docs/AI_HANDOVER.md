@@ -1601,3 +1601,25 @@ Important deployment fact: GitHub Pages still serves `main`. The current `main` 
 - B2-E already handles close-confirmed structural breaks, historical-zone boundary clearance, retest lifecycle, failed retest and role reversal. Its buffers are also percentage-of-median-price-derived absolute values; volume/range expansion quality is not part of its break admission.
 - Added docs/specs/ANALYTICAL_ENGINE_AUDIT_2026-11-28.md as the source-of-truth audit and next implementation order.
 - Next code work: B2-D zone quality/freshness/ATR normalization, then B2-E breakout-quality/buffer improvements, then a dedicated bearish impulse/selloff classifier. No UI or LONG/SHORT/WAIT integration until historical replay and sensitivity validation.
+
+
+## 2026-11-28 — B2-D/B2-E evidence layers and Market Impulse Event Engine
+
+- B2-D zone-context candidate: PR #34, branch `feature/b2d-zone-context-engine-2026-11-28`; exact-head GitHub Actions run 46165819188 succeeded. Deterministic suites: zone context 15/15, existing B2-D 21/21, existing B2-E 24/24. Candidate remains Draft and unmerged.
+- B2-E breakout-quality candidate: PR #35, branch `feature/b2e-breakout-quality-engine-2026-11-28`; exact-head GitHub Actions run 46166190540 succeeded. Deterministic suites: breakout quality 16/16, B2-D zone context 15/15, B2-E retest 24/24. Candidate remains Draft and unmerged.
+- Market Impulse Event Engine: PR #36, branch `feature/bearish-impulse-selloff-engine-2026-11-28`; exact-head GitHub Actions run 46166752868 succeeded. Deterministic suites: impulse/selloff 16/16, B2-D zone context 15/15, B2-E breakout quality 16/16 (47 assertions total). Candidate remains Draft and unmerged.
+- Impulse engine separates strong selloff, partial-evidence selloff, bearish/bullish impulse, unconfirmed directional move and no impulse. B2-E retest outcomes are reported separately: successful bearish retest means broken support held as resistance; failed retest means support was reclaimed and the breakdown invalidated.
+- Initial thresholds are engineering defaults only. No historical calibration, predictive edge, production HTML integration or LONG/SHORT/WAIT change has been established.
+- An accidental duplicate B3 impulse implementation was removed from this branch. Keep `market-impulse-event-engine.js` as the single impulse/selloff candidate.
+- Next work: audit the current production decision path and historical replay contracts; build a reproducible prefix-only BTC/ETH replay harness for the regime, zone, breakout and impulse candidates. Do not integrate uncalibrated labels into live trade decisions.
+
+
+## 2026-11-28 — pinned analytical prefix replay and threshold sensitivity
+
+- Market Analytics Prefix Replay exact-head run 46167377937 passed on `5a2d0161c9f62636f8bb39f1ea2c7786abc1e3b3`; uploaded artifact `market-analytics-prefix-replay-report`.
+- Replayed 474 regular-stride 240-candle prefixes across BTCUSDT/ETHUSDT × 1h/4h/1d using pinned dataset commit `9ca04178df06ce649f00779a49e11094fe5b1c70`. Every prefix passed deterministic repeat and cutoff assertions. This is exploratory sampling, not an exhaustive event census.
+- The sensitivity scan exposed a policy inconsistency: `directional_pressure_min: 0.67` is greater than exact 2/3. On a 3-candle window it effectively required 3/3 aligned candles, despite the specification saying 2/3. Updated the research/test policy to exact `2 / 3`; engine code itself was not changed.
+- With the corrected 2/3 threshold, the 474 prefixes classified as: 17 STRONG_SELL_OFF, 15 BEARISH_IMPULSE, 34 BULLISH_IMPULSE, 51 DIRECTIONAL_MOVE_UNCONFIRMED and 357 NO_IMPULSE.
+- One-factor sensitivity shows strong dependence on directional-pressure threshold: 0.8 returns to the stricter baseline frequency, while exact 2/3 admits 17 selloff labels. This is a classification-frequency result only, not a reason to optimize thresholds on this same sample.
+- Sensitivity counts and overlapping windows are correlated; they are not independent events or trade outcomes. B1 remains a synthetic VALID wrapper, finality is time-derived with 500ms lag, and thresholds remain uncalibrated.
+- No production HTML, UI or LONG/SHORT/WAIT path was changed. No merge is authorized.
