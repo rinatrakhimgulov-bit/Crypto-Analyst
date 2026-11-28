@@ -118,7 +118,7 @@ run('classifies a bearish breakout with direction-aware close quality', () => {
 });
 run('weak volume, small body and poor close location produce weak evidence', () => {
   const result = analyze(fixture({
-    breakCandle: { open: 113, high: 116, low: 104, close: 113.2, volume: 50 }
+    breakCandle: { open: 113, high: 119, low: 104, close: 113.2, volume: 50 }
   }));
   assert.equal(result.breakouts[0].evidence_flags.volume_expansion, false);
   assert.equal(result.breakouts[0].evidence_flags.directional_body, false);
@@ -127,7 +127,7 @@ run('weak volume, small body and poor close location produce weak evidence', () 
 });
 run('two positive evidence flags are reported as mixed, not strong', () => {
   const result = analyze(fixture({
-    breakCandle: { open: 105, high: 116, low: 104, close: 110, volume: 100 }
+    breakCandle: { open: 105, high: 116, low: 104, close: 112, volume: 100 }
   }));
   assert.equal(result.breakouts[0].quality_status, 'MIXED_EVIDENCE');
 });
