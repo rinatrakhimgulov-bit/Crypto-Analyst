@@ -844,3 +844,7 @@ Recovery-generation regression fixture now primes ticker readiness explicitly so
 - B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+## B5 active implementation — 2026-11-28
+
+B5 PR #25 is a draft stacked on B4 PR #24. Current feature slice includes immutable LONG/SHORT/WAIT observations, local browser persistence, explicit JSON import/export, append-only follow-ups, and separate completed actual trades. Snapshot records preserve quality reasons, B2 context, engine versions and a bounded candle window with finality; no future candle is included. Storage/import validation fails closed and does not overwrite prior valid records on errors. Dedicated browser contract suite and B1/B2 regressions are green on the latest code candidate; iPhone Safari acceptance remains required. Spec: `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`.

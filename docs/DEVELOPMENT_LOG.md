@@ -911,3 +911,11 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+## B5 Market Journal — 2026-11-28
+
+- Added B5 spec and local-first journal UI on branch `feature/b5-market-journal-2026-11-28`.
+- Observation capture preserves LONG/SHORT/WAIT, data-quality reasons, B2 snapshot and up to 160 candles with explicit closed/forming status; future candles are excluded.
+- Added append-only follow-up records and separate manually entered completed actual trades with entry/exit timestamps, prices, quantity, fees, funding and optional net PnL.
+- Added localStorage persistence, schema validation, JSON export/import, merge-by-ID, idempotent duplicates, collision rejection, corrupt-storage read-only handling and write-failure preservation.
+- Dedicated B5 browser contract run `46106254098` SUCCESS; B1 `46106254092` SUCCESS; B2 `46106254088` SUCCESS on code head `6eca8e06e1c0d9f0e8b1059113998a9b4d8092da`. Latest head adds explicit corrupt-storage recovery coverage and must retain green exact-head CI. iPhone Safari acceptance remains pending.

@@ -551,3 +551,6 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - B1 run 46103008965 SUCCESS: 50/50 Stage A, 32/32 B1 contract, 72/72 B1 quality, 20/20 MTF; zero browser page errors.
 - B2 run 46103008967 SUCCESS: B2-A…B2-G and mobile/browser integration.
 - Live Bybit remains unverified due runner HTTP 403. iPhone/Safari acceptance pending.
+
+
+- B5 Market Journal: immutable observations, local persistence, follow-up events, completed actual trades and validated JSON backup/restore. Spec: `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`.

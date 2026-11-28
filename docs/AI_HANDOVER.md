@@ -1398,3 +1398,7 @@ B1 Playwright test fixture update commit `d5979626c38b51cd20decd5ab58cb92b510462
 - B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+## B5 Market Journal continuation — 2026-11-28
+
+B5 is developed on `feature/b5-market-journal-2026-11-28`, stacked on the current B4 candidate head. Read `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`. Current implementation includes immutable LONG/SHORT/WAIT observation capture, localStorage, explicit JSON export/import, append-only follow-ups, and separate completed actual trades with entry/exit times and optional net PnL. Dedicated browser contract test: `tests/b5-market-journal-browser-check.cjs`. Keep journal isolated from B1/B2. Open-position tracking is deferred. Recheck exact-head B1/B2/B5 CI after each source change; iPhone Safari acceptance remains required.

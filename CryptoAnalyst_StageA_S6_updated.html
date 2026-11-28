@@ -491,6 +491,40 @@
       text-align: center;
       padding: 4px 8px 12px;
     }
+    .journal-card { min-width: 0; }
+    .journal-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+    .journal-status { min-height: 18px; color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
+    .journal-status.error { color: #f87171; }
+    .journal-status.success { color: #4ade80; }
+    .journal-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
+    .journal-empty { color: var(--muted); font-size: 13px; padding: 12px 4px; }
+    .journal-item { min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); }
+    .journal-item-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .journal-item-title { font-size: 13px; font-weight: 700; }
+    .journal-item-meta { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+    .journal-item-reason { margin-top: 7px; font-size: 12px; line-height: 1.45; color: var(--text); }
+    .journal-item details { margin-top: 8px; color: var(--muted); font-size: 11px; }
+    .journal-item pre { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 10px; color: var(--muted); }
+    .journal-decision { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 8px; font-size: 10px; font-weight: 700; background: var(--panel); border: 1px solid var(--border); }
+    .journal-decision.LONG { color: #4ade80; }
+    .journal-decision.SHORT { color: #f87171; }
+    .journal-decision.WAIT { color: #fbbf24; }
+    .journal-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+    .journal-form input, .journal-form select, .journal-form textarea {
+      min-width: 0; width: 100%; box-sizing: border-box; padding: 9px 10px;
+      border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2);
+      color: var(--text); font: inherit; font-size: 12px;
+    }
+    .journal-form textarea { grid-column: 1 / -1; min-height: 54px; resize: vertical; }
+    .journal-subtitle { margin: 12px 0 4px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .journal-trade-details { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .journal-trade-details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+    .journal-form .btn { min-height: 36px; }
+    .journal-hidden-input { display: none; }
+    @media (max-width: 600px) {
+      .journal-toolbar .btn { flex: 1 1 calc(50% - 8px); }
+      .journal-list { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -632,6 +666,57 @@
         </section>
       </div>
     </div>
+
+    <section class="card journal-card" id="journalCard">
+      <div class="card-header">
+        <span class="card-title">Журнал наблюдений</span>
+        <span class="meta" id="journalCount">0 наблюдений</span>
+      </div>
+      <div class="journal-toolbar">
+        <button type="button" class="btn" id="journalSaveBtn" disabled>Сохранить наблюдение</button>
+        <button type="button" class="btn" id="journalExportBtn" disabled>Экспорт JSON</button>
+        <button type="button" class="btn" id="journalImportBtn">Импорт JSON</button>
+        <input type="file" id="journalImportInput" class="journal-hidden-input" accept="application/json,.json">
+      </div>
+      <div class="journal-status" id="journalStatus">Журнал хранится только в этом браузере. Экспортируйте резервную копию самостоятельно.</div>
+      <div class="journal-subtitle">Отметка по наблюдению</div>
+      <div class="journal-form">
+        <select id="journalFollowupObservation" aria-label="Наблюдение для отметки"></select>
+        <select id="journalFollowupStatus" aria-label="Статус наблюдения">
+          <option value="still_waiting">Всё ещё ожидаем</option>
+          <option value="setup_formed">Сценарий сформировался</option>
+          <option value="triggered">Условие активации выполнено</option>
+          <option value="invalidated">Сценарий отменён</option>
+          <option value="expired">Сценарий истёк</option>
+          <option value="missed">Сценарий пропущен</option>
+          <option value="manual_note">Заметка</option>
+        </select>
+        <input id="journalFollowupPrice" type="number" min="0" step="any" placeholder="Цена (необязательно)">
+        <input id="journalFollowupNote" type="text" maxlength="500" placeholder="Краткий комментарий">
+        <button type="button" class="btn" id="journalAddFollowup" disabled>Добавить отметку</button>
+      </div>
+      <details class="journal-trade-details">
+        <summary>Зафиксировать завершённую фактическую сделку</summary>
+        <div class="journal-form">
+          <select id="journalTradeObservation" aria-label="Наблюдение для сделки"></select>
+          <select id="journalTradeSide" aria-label="Сторона сделки">
+            <option value="LONG">LONG</option>
+            <option value="SHORT">SHORT</option>
+          </select>
+          <input id="journalTradeEntry" type="number" min="0" step="any" placeholder="Цена входа" required>
+          <input id="journalTradeExit" type="number" min="0" step="any" placeholder="Цена выхода" required>
+          <input id="journalTradeEntryAt" type="datetime-local" aria-label="Время входа (локальное)">
+          <input id="journalTradeExitAt" type="datetime-local" aria-label="Время выхода (локальное)">
+          <input id="journalTradeQuantity" type="number" min="0" step="any" placeholder="Количество (необязательно)">
+          <input id="journalTradeFees" type="number" min="0" step="any" placeholder="Комиссии USDT">
+          <input id="journalTradeFunding" type="number" step="any" placeholder="Funding USDT (+оплата / −получение)">
+          <button type="button" class="btn" id="journalAddTrade" disabled>Сохранить сделку</button>
+        </div>
+        <div class="meta">Записывается только завершённая сделка. Наблюдение LONG/SHORT само по себе фактом сделки не считается.</div>
+      </details>
+      <div class="journal-subtitle">Последние наблюдения</div>
+      <div class="journal-list" id="journalList"><div class="journal-empty">Пока нет сохранённых наблюдений.</div></div>
+    </section>
 
     <!-- Честный список реализованного и нереализованного -->
     <section class="card">
@@ -8136,9 +8221,462 @@
     });
     syncChartDisplayControls();
 
+    const JOURNAL_STORAGE_KEY = 'cryptoAnalyst.marketJournal.v1';
+    const JOURNAL_FORMAT = 'crypto-analyst-journal';
+    const JOURNAL_FORMAT_VERSION = 1;
+    const JOURNAL_RECORD_SCHEMA_VERSION = 1;
+    const JOURNAL_MAX_OBSERVATIONS = 100;
+    const JOURNAL_MAX_FOLLOWUPS = 500;
+    const JOURNAL_MAX_TRADES = 100;
+    const JOURNAL_MAX_CANDLES = 160;
+    const journalState = {
+      envelope: { format: JOURNAL_FORMAT, formatVersion: JOURNAL_FORMAT_VERSION, exportedAt: null,
+        observations: [], followups: [], actualTrades: [] },
+      readOnly: false,
+      error: null
+    };
+    function journalDeepFreeze(value) {
+      if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+      Object.keys(value).forEach((key) => journalDeepFreeze(value[key]));
+      return Object.freeze(value);
+    }
+    function journalClone(value) { return JSON.parse(JSON.stringify(value)); }
+    function journalId() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+      const bytes = new Uint8Array(16);
+      if (window.crypto && typeof window.crypto.getRandomValues === 'function') window.crypto.getRandomValues(bytes);
+      else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    }
+    function journalEmptyEnvelope() {
+      return { format: JOURNAL_FORMAT, formatVersion: JOURNAL_FORMAT_VERSION, exportedAt: null,
+        observations: [], followups: [], actualTrades: [] };
+    }
+    function journalCanonical(value) {
+      if (Array.isArray(value)) return value.map(journalCanonical);
+      if (value && typeof value === 'object') {
+        const out = {};
+        Object.keys(value).sort().forEach((key) => { out[key] = journalCanonical(value[key]); });
+        return out;
+      }
+      return value;
+    }
+    function journalSameRecord(a, b) {
+      return JSON.stringify(journalCanonical(a)) === JSON.stringify(journalCanonical(b));
+    }
+    function journalValidateEnvelope(envelope) {
+      if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope) ||
+          envelope.format !== JOURNAL_FORMAT || envelope.formatVersion !== JOURNAL_FORMAT_VERSION ||
+          !Array.isArray(envelope.observations) || !Array.isArray(envelope.followups) ||
+          !Array.isArray(envelope.actualTrades)) throw new Error('Неверный формат или версия файла журнала.');
+      if (envelope.observations.length > JOURNAL_MAX_OBSERVATIONS ||
+          envelope.followups.length > JOURNAL_MAX_FOLLOWUPS ||
+          envelope.actualTrades.length > JOURNAL_MAX_TRADES) throw new Error('Файл превышает допустимые лимиты записей.');
+      const ids = new Map();
+      const observationIds = new Set();
+      const checkId = (record, type) => {
+        if (!record || typeof record !== 'object' || Array.isArray(record) ||
+            record.recordType !== type || record.schemaVersion !== JOURNAL_RECORD_SCHEMA_VERSION ||
+            typeof record.id !== 'string' || record.id.length < 8 || ids.has(record.id)) {
+          throw new Error('В журнале обнаружена запись с неверной схемой или повторяющимся ID.');
+        }
+        ids.set(record.id, type);
+      };
+      envelope.observations.forEach((record) => {
+        checkId(record, 'observation');
+        if (!Number.isSafeInteger(record.capturedAtMs) || typeof record.capturedAt !== 'string' ||
+            !Number.isFinite(Date.parse(record.capturedAt)) ||
+            Math.abs(Date.parse(record.capturedAt) - record.capturedAtMs) > 1000 ||
+            !record.market || typeof record.market.symbol !== 'string' ||
+            typeof record.market.interval !== 'string' ||
+            !['LONG', 'SHORT', 'WAIT'].includes(record.decision) ||
+            !record.priceContext || (record.priceContext.lastPrice != null && !Number.isFinite(record.priceContext.lastPrice)) ||
+            typeof record.priceContext.source !== 'string' ||
+            !record.dataQuality || typeof record.dataQuality.status !== 'string' ||
+            !Array.isArray(record.dataQuality.reasonCodes) ||
+            !record.analysisSnapshot || !Array.isArray(record.analysisSnapshot.reasons) ||
+            !Array.isArray(record.candleWindow) || record.candleWindow.length === 0 ||
+            record.candleWindow.length > JOURNAL_MAX_CANDLES) {
+          throw new Error('Наблюдение содержит неполные или некорректные обязательные поля.');
+        }
+        for (let i = 1; i < record.candleWindow.length; i++) {
+          if (record.candleWindow[i].ts <= record.candleWindow[i - 1].ts) {
+            throw new Error('Свечи в снимке должны идти строго по времени без повторов.');
+          }
+        }
+        record.candleWindow.forEach((candle) => {
+          if (!candle || !Number.isSafeInteger(candle.ts) || candle.ts > record.capturedAtMs ||
+              !Number.isSafeInteger(candle.closeTs) || !['closed', 'forming'].includes(candle.finality) ||
+              !['open', 'high', 'low', 'close', 'volume', 'turnover'].every((key) => Number.isFinite(candle[key])) ||
+              candle.open <= 0 || candle.high <= 0 || candle.low <= 0 || candle.close <= 0 ||
+              candle.volume < 0 || candle.turnover < 0 ||
+              candle.high < Math.max(candle.open, candle.close, candle.low) ||
+              candle.low > Math.min(candle.open, candle.close, candle.high)) {
+            throw new Error('В окне свечей обнаружена некорректная свеча или временная метка.');
+          }
+        });
+        observationIds.add(record.id);
+      });
+      const followupStatuses = ['setup_formed', 'triggered', 'invalidated', 'expired', 'missed', 'still_waiting', 'manual_note'];
+      envelope.followups.forEach((record) => {
+        checkId(record, 'followup');
+        if (!observationIds.has(record.observationId) || !Number.isSafeInteger(record.recordedAtMs) ||
+            typeof record.recordedAt !== 'string' || !Number.isFinite(Date.parse(record.recordedAt)) ||
+            Math.abs(Date.parse(record.recordedAt) - record.recordedAtMs) > 1000 ||
+            !followupStatuses.includes(record.status) ||
+            (record.observedPrice != null && (!Number.isFinite(record.observedPrice) || record.observedPrice <= 0)) ||
+            (record.note != null && (typeof record.note !== 'string' || record.note.length > 500))) {
+          throw new Error('Некорректная отметка журнала или ссылка на наблюдение.');
+        }
+      });
+      envelope.actualTrades.forEach((record) => {
+        checkId(record, 'actual_trade');
+        if (!observationIds.has(record.observationId) || !Number.isSafeInteger(record.recordedAtMs) ||
+            typeof record.recordedAt !== 'string' || !Number.isFinite(Date.parse(record.recordedAt)) ||
+            Math.abs(Date.parse(record.recordedAt) - record.recordedAtMs) > 1000 ||
+            !['LONG', 'SHORT'].includes(record.side) ||
+            !['open', 'closed', 'void'].includes(record.status) ||
+            !Number.isFinite(record.entryPrice) || record.entryPrice <= 0) {
+          throw new Error('Некорректная запись фактической сделки или ссылка на наблюдение.');
+        }
+        if (record.status === 'closed' && (!Number.isFinite(record.exitPrice) || record.exitPrice <= 0)) {
+          throw new Error('Закрытая сделка должна содержать цену выхода.');
+        }
+        if (record.status === 'closed' && (!Number.isSafeInteger(record.entryAtMs) || !Number.isSafeInteger(record.exitAtMs) ||
+            record.entryAtMs > record.exitAtMs || record.exitAtMs > record.recordedAtMs ||
+            typeof record.entryAt !== 'string' || typeof record.exitAt !== 'string' ||
+            !Number.isFinite(Date.parse(record.entryAt)) || !Number.isFinite(Date.parse(record.exitAt)) ||
+            Math.abs(Date.parse(record.entryAt) - record.entryAtMs) > 1000 ||
+            Math.abs(Date.parse(record.exitAt) - record.exitAtMs) > 1000)) {
+          throw new Error('Время входа и выхода фактической сделки некорректно.');
+        }
+        if (record.quantity != null && (!Number.isFinite(record.quantity) || record.quantity <= 0)) throw new Error('Количество сделки некорректно.');
+        if (record.fees != null && (!Number.isFinite(record.fees) || record.fees < 0)) throw new Error('Комиссии сделки некорректны.');
+        if (record.funding != null && !Number.isFinite(record.funding)) throw new Error('Funding сделки некорректен.');
+        if (record.netPnl != null && !Number.isFinite(record.netPnl)) throw new Error('Результат сделки некорректен.');
+      });
+      return true;
+    }
+    function journalFreezeEnvelope(envelope) {
+      const copy = journalClone(envelope);
+      copy.observations = copy.observations.map(journalDeepFreeze);
+      copy.followups = copy.followups.map(journalDeepFreeze);
+      copy.actualTrades = copy.actualTrades.map(journalDeepFreeze);
+      return journalDeepFreeze(copy);
+    }
+    function journalWriteEnvelope(envelope) {
+      if (journalState.readOnly) throw new Error('Журнал открыт только для чтения: источник повреждён. Существующие данные не перезаписаны.');
+      journalValidateEnvelope(envelope);
+      const serialized = JSON.stringify(envelope);
+      if (serialized.length > 3800000) throw new Error('Журнал близок к лимиту браузерного хранилища. Сначала экспортируйте резервную копию.');
+      try {
+        window.localStorage.setItem(JOURNAL_STORAGE_KEY, serialized);
+        if (window.localStorage.getItem(JOURNAL_STORAGE_KEY) !== serialized) throw new Error('Проверка сохранения не пройдена.');
+      } catch (error) {
+        throw new Error('Не удалось сохранить журнал в браузере: ' + (error && error.message ? error.message : error));
+      }
+      journalState.envelope = journalFreezeEnvelope(envelope);
+      journalState.error = null;
+      journalRender();
+    }
+    function journalInitialize() {
+      journalState.readOnly = false;
+      journalState.error = null;
+      try {
+        const raw = window.localStorage.getItem(JOURNAL_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          journalValidateEnvelope(parsed);
+          journalState.envelope = journalFreezeEnvelope(parsed);
+        } else journalState.envelope = journalFreezeEnvelope(journalEmptyEnvelope());
+      } catch (error) {
+        journalState.readOnly = true;
+        journalState.error = error && error.message ? error.message : String(error);
+      }
+      journalRender();
+      journalUpdateCaptureAvailability();
+    }
+    function journalSetStatus(message, kind = '') {
+      const el = document.getElementById('journalStatus');
+      if (!el) return;
+      el.textContent = message;
+      el.className = 'journal-status' + (kind ? ' ' + kind : '');
+    }
+    function journalRender() {
+      const count = journalState.envelope.observations.length;
+      const countEl = document.getElementById('journalCount');
+      const list = document.getElementById('journalList');
+      const exportBtn = document.getElementById('journalExportBtn');
+      if (countEl) countEl.textContent = count + ' наблюдений';
+      if (exportBtn) exportBtn.disabled = journalState.readOnly || count === 0;
+      if (journalState.error) journalSetStatus('Ошибка журнала: ' + journalState.error, 'error');
+      else if (!journalState.readOnly) journalSetStatus('Локальное хранение · ' + journalState.envelope.followups.length +
+        ' отметок · ' + journalState.envelope.actualTrades.length + ' фактических сделок');
+      if (!list) return;
+      journalRenderSelectors();
+      list.replaceChildren();
+      if (!count) {
+        const empty = document.createElement('div');
+        empty.className = 'journal-empty';
+        empty.textContent = journalState.readOnly ? 'Данные не изменены. Исправьте источник или восстановите журнал из резервной копии.' : 'Пока нет сохранённых наблюдений.';
+        list.appendChild(empty);
+        return;
+      }
+      journalState.envelope.observations.slice().sort((a, b) => b.capturedAtMs - a.capturedAtMs).slice(0, 10).forEach((record) => {
+        const item = document.createElement('article');
+        item.className = 'journal-item';
+        const head = document.createElement('div');
+        head.className = 'journal-item-head';
+        const title = document.createElement('span');
+        title.className = 'journal-item-title';
+        title.textContent = record.market.symbol + ' · ' + (record.market.interval === '60' ? '1H' : record.market.interval === '240' ? '4H' : record.market.interval === 'D' ? '1D' : record.market.interval);
+        const decision = document.createElement('span');
+        decision.className = 'journal-decision ' + record.decision;
+        decision.textContent = record.decision;
+        head.append(title, decision);
+        const meta = document.createElement('div');
+        meta.className = 'journal-item-meta';
+        const followupCount = journalState.envelope.followups.filter((entry) => entry.observationId === record.id).length;
+        const tradeCount = journalState.envelope.actualTrades.filter((entry) => entry.observationId === record.id).length;
+        meta.textContent = new Date(record.capturedAtMs).toLocaleString('ru-RU') + ' · ' +
+          (Number.isFinite(record.priceContext.lastPrice) ? fmtPrice(record.priceContext.lastPrice) : 'цена —') +
+          ' · качество: ' + record.dataQuality.status + ' · свечей: ' + record.candleWindow.length +
+          ' · отметок: ' + followupCount + ' · сделок: ' + tradeCount;
+        const reason = document.createElement('div');
+        reason.className = 'journal-item-reason';
+        const reasons = Array.isArray(record.analysisSnapshot.reasons) ? record.analysisSnapshot.reasons : [];
+        reason.textContent = reasons.slice(0, 2).join(' · ') || (record.dataQuality.reasonCodes || []).slice(0, 2).join(', ') || 'Причины не указаны';
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = 'Снимок наблюдения';
+        const pre = document.createElement('pre');
+        pre.textContent = JSON.stringify({
+          observation: record,
+          followups: journalState.envelope.followups.filter((entry) => entry.observationId === record.id),
+          actualTrades: journalState.envelope.actualTrades.filter((entry) => entry.observationId === record.id)
+        }, null, 2);
+        details.append(summary, pre);
+        item.append(head, meta, reason, details);
+        list.appendChild(item);
+      });
+      if (count > 10) {
+        const more = document.createElement('div');
+        more.className = 'journal-empty';
+        more.textContent = 'Показаны последние 10 из ' + count + '. Полная история доступна в JSON-экспорте.';
+        list.appendChild(more);
+      }
+    }
+    function journalCanCapture() {
+      const cached = state.snapshotsByKey.get(makeKey(state.symbol, state.interval));
+      const dataset = cached && cached.dataset;
+      const report = dataset && dataset.qualityReport;
+      return Boolean(!journalState.readOnly && journalState.envelope.observations.length < JOURNAL_MAX_OBSERVATIONS &&
+        dataset && cached.analysis && report && report.status && report.status !== 'UNASSESSED' && report.status !== 'STALE' &&
+        Array.isArray(dataset.allCandles) && dataset.allCandles.length > 0 && Number.isSafeInteger(dataset.fetchedAtLocalMs));
+    }
+    function journalUpdateCaptureAvailability() {
+      const button = document.getElementById('journalSaveBtn');
+      if (button) button.disabled = !journalCanCapture();
+    }
+    function journalCaptureObservation() {
+      if (!journalCanCapture()) throw new Error('Нет согласованного снимка с оценённым качеством данных. Обновите рынок и дождитесь результата.');
+      const cached = state.snapshotsByKey.get(makeKey(state.symbol, state.interval));
+      const dataset = cached.dataset;
+      const analysis = cached.analysis;
+      const capturedAtMs = Date.now();
+      const report = dataset.qualityReport;
+      const live = freshLiveTicker(dataset.symbol);
+      let b2;
+      try { b2 = runB2Analysis(dataset); }
+      catch (error) { b2 = { status: 'BLOCKED', stage: 'B2-runtime', reasons: [error && error.message ? error.message : 'B2_RUNTIME_ERROR'] }; }
+      const startIndex = Math.max(0, dataset.allCandles.length - JOURNAL_MAX_CANDLES);
+      const candleWindow = dataset.allCandles.slice(startIndex).map((candle, index) => ({
+        ts: candle.ts,
+        closeTs: Number.isSafeInteger(candle.closeTs) ? candle.closeTs : candle.ts,
+        open: candle.open, high: candle.high, low: candle.low, close: candle.close,
+        volume: candle.volume, turnover: candle.turnover,
+        finality: startIndex + index < dataset.closedCandles.length ? 'closed' : 'forming'
+      })).filter((candle) => Number.isSafeInteger(candle.ts) && candle.ts <= capturedAtMs);
+      if (!candleWindow.length) throw new Error('Нет свечей с корректными временными метками для снимка.');
+      const qualityReasons = Array.isArray(report.reasons) ? report.reasons.map((reason) => ({
+        code: reason && reason.code ? String(reason.code) : 'UNSPECIFIED',
+        detail: reason && reason.detail ? String(reason.detail) : ''
+      })) : [];
+      const qualityBlocked = report.status !== 'VALID' || Boolean(analysis.qualityGate && analysis.qualityGate.blocked);
+      const decision = qualityBlocked ? 'WAIT' : (['LONG', 'SHORT', 'WAIT'].includes(analysis.decision) ? analysis.decision : 'WAIT');
+      const record = {
+        id: journalId(), recordType: 'observation', schemaVersion: JOURNAL_RECORD_SCHEMA_VERSION,
+        capturedAt: new Date(capturedAtMs).toISOString(), capturedAtMs,
+        market: { source: dataset.source || 'unknown', marketType: dataset.marketType || 'unknown',
+          symbol: dataset.symbol, interval: dataset.interval, hostUsed: dataset.hostUsed || null },
+        priceContext: {
+          lastPrice: live ? live.lastPrice : (dataset.prices && Number.isFinite(dataset.prices.currentMarketPrice) ? dataset.prices.currentMarketPrice : null),
+          source: live ? 'Bybit WS lastPrice' : (dataset.prices && dataset.prices.currentPriceSource ? dataset.prices.currentPriceSource : 'REST/unknown'),
+          providerEventTimeMs: live && Number.isSafeInteger(live.providerEventTimeMs) ? live.providerEventTimeMs : null,
+          receivedAtMs: live && Number.isSafeInteger(live.receivedAtMs) ? live.receivedAtMs : null,
+          freshness: live ? 'LIVE' : 'REST_FALLBACK'
+        },
+        dataQuality: { status: report.status, validatorVersion: report.validator_version || null,
+          reasonCodes: qualityReasons.map((reason) => reason.code), reasons: qualityReasons,
+          qualityMetrics: journalClone(dataset.quality || {}), analyticsBlocked: qualityBlocked },
+        decision,
+        analysisSnapshot: { reasons: Array.isArray(analysis.reasons) ? analysis.reasons.map(String) : [],
+          metrics: journalClone(analysis.metrics || {}), levels: journalClone(analysis.levels || {}),
+          qualityGate: journalClone(analysis.qualityGate || {}), b2: journalClone(b2 || { status: 'UNAVAILABLE' }) },
+        candleWindow,
+        appVersion: 'Crypto Analyst · B5',
+        engineVersions: { b1: report.validator_version || null,
+          b2: b2 && (b2.engineVersion || b2.version) ? (b2.engineVersion || b2.version) : 'B2-A..G' }
+      };
+      const next = { format: JOURNAL_FORMAT, formatVersion: JOURNAL_FORMAT_VERSION,
+        exportedAt: journalState.envelope.exportedAt,
+        observations: journalState.envelope.observations.concat([record]),
+        followups: journalState.envelope.followups.slice(), actualTrades: journalState.envelope.actualTrades.slice() };
+      journalWriteEnvelope(next);
+      journalSetStatus('Наблюдение сохранено. Исходный снимок больше не изменяется.', 'success');
+      journalUpdateCaptureAvailability();
+      return record;
+    }
+    function journalExport() {
+      if (journalState.readOnly) throw new Error('Экспорт недоступен: журнал не удалось безопасно прочитать.');
+      const envelope = { format: JOURNAL_FORMAT, formatVersion: JOURNAL_FORMAT_VERSION,
+        exportedAt: new Date().toISOString(), observations: journalState.envelope.observations,
+        followups: journalState.envelope.followups, actualTrades: journalState.envelope.actualTrades };
+      journalValidateEnvelope(envelope);
+      const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'crypto-analyst-journal-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      journalSetStatus('JSON-резервная копия подготовлена.', 'success');
+    }
+    function journalImportEnvelope(incoming) {
+      journalValidateEnvelope(incoming);
+      if (journalState.readOnly) throw new Error('Импорт запрещён: сначала устраните ошибку чтения текущего журнала.');
+      const merged = journalClone(journalState.envelope);
+      const beforeCount = merged.observations.length;
+      const byId = new Map();
+      [...merged.observations, ...merged.followups, ...merged.actualTrades].forEach((record) => byId.set(record.id, record));
+      const add = (target, records) => records.forEach((record) => {
+        if (byId.has(record.id)) {
+          if (!journalSameRecord(byId.get(record.id), record)) throw new Error('Конфликт ID ' + record.id + ': импорт отменён, существующие данные не изменены.');
+          return;
+        }
+        target.push(journalClone(record));
+        byId.set(record.id, record);
+      });
+      add(merged.observations, incoming.observations);
+      add(merged.followups, incoming.followups);
+      add(merged.actualTrades, incoming.actualTrades);
+      journalValidateEnvelope(merged);
+      journalWriteEnvelope(merged);
+      journalSetStatus('Импорт завершён. Добавлено новых наблюдений: ' + (merged.observations.length - beforeCount) + '.', 'success');
+    }
+    async function journalImportFile(file) {
+      if (!file) return;
+      journalImportEnvelope(JSON.parse(await file.text()));
+    }
+    function journalRenderSelectors() {
+      const observations = journalState.envelope.observations.slice().sort((a, b) => b.capturedAtMs - a.capturedAtMs);
+      ['journalFollowupObservation', 'journalTradeObservation'].forEach((id) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const previous = select.value;
+        select.replaceChildren();
+        observations.forEach((record) => {
+          const option = document.createElement('option');
+          option.value = record.id;
+          option.textContent = record.market.symbol + ' · ' +
+            (record.market.interval === '60' ? '1H' : record.market.interval === '240' ? '4H' : record.market.interval === 'D' ? '1D' : record.market.interval) +
+            ' · ' + record.decision + ' · ' + new Date(record.capturedAtMs).toLocaleString('ru-RU');
+          select.appendChild(option);
+        });
+        if (observations.some((record) => record.id === previous)) select.value = previous;
+        select.disabled = observations.length === 0;
+      });
+      const hasObservations = observations.length > 0;
+      const followupButton = document.getElementById('journalAddFollowup');
+      const tradeButton = document.getElementById('journalAddTrade');
+      if (followupButton) followupButton.disabled = !hasObservations || journalState.readOnly;
+      if (tradeButton) tradeButton.disabled = !hasObservations || journalState.readOnly;
+    }
+    function journalAddFollowup(input) {
+      if (!input || typeof input.observationId !== 'string' ||
+          !journalState.envelope.observations.some((record) => record.id === input.observationId)) {
+        throw new Error('Выберите существующее наблюдение.');
+      }
+      const statuses = ['setup_formed', 'triggered', 'invalidated', 'expired', 'missed', 'still_waiting', 'manual_note'];
+      if (!statuses.includes(input.status)) throw new Error('Неизвестный статус отметки.');
+      const price = input.observedPrice == null || input.observedPrice === '' ? null : Number(input.observedPrice);
+      if (price !== null && (!Number.isFinite(price) || price <= 0)) throw new Error('Цена отметки должна быть положительным числом.');
+      const note = String(input.note || '').trim();
+      if (note.length > 500) throw new Error('Комментарий не должен превышать 500 символов.');
+      const recordedAtMs = Number.isSafeInteger(input.recordedAtMs) ? input.recordedAtMs : Date.now();
+      const record = {
+        id: journalId(), recordType: 'followup', schemaVersion: JOURNAL_RECORD_SCHEMA_VERSION,
+        observationId: input.observationId, recordedAt: new Date(recordedAtMs).toISOString(),
+        recordedAtMs, status: input.status, observedPrice: price, note
+      };
+      const next = journalClone(journalState.envelope);
+      next.followups.push(record);
+      journalWriteEnvelope(next);
+      journalSetStatus('Отметка добавлена. Исходное наблюдение не изменено.', 'success');
+      return record;
+    }
+    function journalAddActualTrade(input) {
+      if (!input || typeof input.observationId !== 'string' ||
+          !journalState.envelope.observations.some((record) => record.id === input.observationId)) {
+        throw new Error('Выберите наблюдение, к которому относится сделка.');
+      }
+      if (!['LONG', 'SHORT'].includes(input.side)) throw new Error('Сторона сделки должна быть LONG или SHORT.');
+      const entryPrice = Number(input.entryPrice);
+      const exitPrice = Number(input.exitPrice);
+      const quantity = input.quantity == null || input.quantity === '' ? null : Number(input.quantity);
+      const fees = input.fees == null || input.fees === '' ? 0 : Number(input.fees);
+      const funding = input.funding == null || input.funding === '' ? 0 : Number(input.funding);
+      if (!Number.isFinite(entryPrice) || entryPrice <= 0 || !Number.isFinite(exitPrice) || exitPrice <= 0) {
+        throw new Error('Для завершённой сделки нужны положительные цены входа и выхода.');
+      }
+      if (quantity !== null && (!Number.isFinite(quantity) || quantity <= 0)) throw new Error('Количество должно быть положительным.');
+      if (!Number.isFinite(fees) || fees < 0 || !Number.isFinite(funding)) throw new Error('Проверьте комиссии и funding.');
+      const recordedAtMs = Number.isSafeInteger(input.recordedAtMs) ? input.recordedAtMs : Date.now();
+      if (!input.entryAt || !input.exitAt) throw new Error('Укажите фактические дату и время входа и выхода.');
+      const entryAtMs = new Date(input.entryAt).getTime();
+      const exitAtMs = new Date(input.exitAt).getTime();
+      if (!Number.isSafeInteger(entryAtMs) || !Number.isSafeInteger(exitAtMs) ||
+          entryAtMs > exitAtMs || exitAtMs > recordedAtMs) {
+        throw new Error('Проверьте время входа и выхода: вход не позже выхода, выход не позже момента записи.');
+      }
+      const grossPnl = quantity === null ? null : (input.side === 'LONG' ? exitPrice - entryPrice : entryPrice - exitPrice) * quantity;
+      const netPnl = grossPnl === null ? null : grossPnl - fees - funding;
+      const record = {
+        id: journalId(), recordType: 'actual_trade', schemaVersion: JOURNAL_RECORD_SCHEMA_VERSION,
+        observationId: input.observationId, recordedAt: new Date(recordedAtMs).toISOString(),
+        recordedAtMs, side: input.side, status: 'closed',
+        entryAt: new Date(entryAtMs).toISOString(), entryAtMs,
+        exitAt: new Date(exitAtMs).toISOString(), exitAtMs,
+        entryPrice, exitPrice, quantity, fees, funding, grossPnl, netPnl,
+        pnlCurrency: 'USDT'
+      };
+      const next = journalClone(journalState.envelope);
+      next.actualTrades.push(record);
+      journalWriteEnvelope(next);
+      journalSetStatus('Фактическая сделка добавлена отдельно от аналитического наблюдения.', 'success');
+      return record;
+    }
     if (new URLSearchParams(window.location.search).get('test') === '1') {
       window.__CryptoAnalystTestHooks = Object.freeze({
-        chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient, runB2Analysis, renderB2Panel
+        chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient, runB2Analysis, renderB2Panel,
+        journal: Object.freeze({ state: journalState, initialize: journalInitialize, render: journalRender,
+          canCapture: journalCanCapture, capture: journalCaptureObservation, export: journalExport,
+          importEnvelope: journalImportEnvelope, validateEnvelope: journalValidateEnvelope,
+          addFollowup: journalAddFollowup, addActualTrade: journalAddActualTrade })
       });
     }
 
@@ -8175,6 +8713,7 @@
           : `Загрузка данных для ${symbol} (${tfText})...`
       ]);
       chart.setData([], 0, null, null);
+      journalUpdateCaptureAvailability();
     }
 
     function resetB2Panel(message = 'Ожидание данных') {
@@ -8341,6 +8880,7 @@
       }
       renderLivePrice(false);
       renderLiveDiagnostics();
+      journalUpdateCaptureAvailability();
     }
 
     function renderError(symbol, interval, errorMsg) {
@@ -8380,6 +8920,7 @@
         ]);
         chart.setData([], 0, null, null);
       }
+      journalUpdateCaptureAvailability();
     }
 
     async function loadAndAnalyze(isInstrumentSwitch = false, syncMeta = null) {
@@ -10016,6 +10557,53 @@
         loadAndAnalyze(true);
       });
     });
+
+    document.getElementById('journalSaveBtn').addEventListener('click', () => {
+      try { journalCaptureObservation(); }
+      catch (error) { journalSetStatus(error && error.message ? error.message : String(error), 'error'); }
+    });
+    document.getElementById('journalExportBtn').addEventListener('click', () => {
+      try { journalExport(); }
+      catch (error) { journalSetStatus(error && error.message ? error.message : String(error), 'error'); }
+    });
+    document.getElementById('journalImportBtn').addEventListener('click', () => document.getElementById('journalImportInput').click());
+    document.getElementById('journalImportInput').addEventListener('change', async (event) => {
+      const file = event.target.files && event.target.files[0];
+      try { await journalImportFile(file); }
+      catch (error) { journalSetStatus('Импорт отменён: ' + (error && error.message ? error.message : error), 'error'); }
+      finally { event.target.value = ''; }
+    });
+    document.getElementById('journalAddFollowup').addEventListener('click', () => {
+      try {
+        journalAddFollowup({
+          observationId: document.getElementById('journalFollowupObservation').value,
+          status: document.getElementById('journalFollowupStatus').value,
+          observedPrice: document.getElementById('journalFollowupPrice').value,
+          note: document.getElementById('journalFollowupNote').value
+        });
+        document.getElementById('journalFollowupPrice').value = '';
+        document.getElementById('journalFollowupNote').value = '';
+      } catch (error) { journalSetStatus(error && error.message ? error.message : String(error), 'error'); }
+    });
+    document.getElementById('journalAddTrade').addEventListener('click', () => {
+      try {
+        journalAddActualTrade({
+          observationId: document.getElementById('journalTradeObservation').value,
+          side: document.getElementById('journalTradeSide').value,
+          entryPrice: document.getElementById('journalTradeEntry').value,
+          exitPrice: document.getElementById('journalTradeExit').value,
+          entryAt: document.getElementById('journalTradeEntryAt').value,
+          exitAt: document.getElementById('journalTradeExitAt').value,
+          quantity: document.getElementById('journalTradeQuantity').value,
+          fees: document.getElementById('journalTradeFees').value,
+          funding: document.getElementById('journalTradeFunding').value
+        });
+        ['journalTradeEntry', 'journalTradeExit', 'journalTradeEntryAt', 'journalTradeExitAt',
+          'journalTradeQuantity', 'journalTradeFees', 'journalTradeFunding']
+          .forEach((id) => { document.getElementById(id).value = ''; });
+      } catch (error) { journalSetStatus(error && error.message ? error.message : String(error), 'error'); }
+    });
+    journalInitialize();
 
     document.getElementById('refreshBtn').addEventListener('click', () => loadAndAnalyze(false));
     document.getElementById('resetViewBtn').addEventListener('click', () => chart.resetView());

@@ -5,11 +5,13 @@ on:
     branches:
       - integration/b2-market-structure-ui-2026-11-27
       - feature/b4-live-data-hardening-2026-11-28
+      - feature/b5-market-journal-2026-11-28
       - integration/b2-clean-preview-2026-11-27
       - feature/b3-chart-ui-redesign-2026-11-27
   pull_request:
     branches:
       - main
+      - feature/b4-live-data-hardening-2026-11-28
   workflow_dispatch:
 
 permissions:

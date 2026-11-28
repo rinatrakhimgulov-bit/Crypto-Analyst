@@ -520,3 +520,7 @@ Recovery-generation regression explicitly distinguishes subscription ACK from ti
 - B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+## B5 Market Journal — implementation in progress
+
+B5 spec: `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`. Implemented first vertical slice: immutable LONG/SHORT/WAIT observations, localStorage persistence, explicit versioned JSON export/import, append-only follow-ups, and separate completed actual trades. Dedicated browser tests cover immutable snapshots, quality-blocked WAIT, no-look-ahead candle window, record linkage, PnL arithmetic, import collision/idempotency, storage failure and corrupt-storage recovery. Keep B5 stacked on B4 candidate PR #24, not merged to main independently. Remaining gates: exact-head CI, independent source review, and iPhone Safari acceptance. Open-position tracking is deferred.
