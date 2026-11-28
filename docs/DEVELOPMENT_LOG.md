@@ -935,3 +935,12 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Added 160/400/800/1600 candle lookback sensitivity. At the archive final cutoff, all 24 symbol/timeframe/lookback combinations matched the full-history B2-C state. Longer windows accumulate substantially more zones, so keep production 160-bar limit until zone freshness/relevance exists.
 - Audit report: `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`.
 - B2 app/parity run `46107248773` SUCCESS; historical replay run `46107248819` SUCCESS. Historical archive ends 2025-12-05 and does not prove current live-market accuracy or trading edge.
+
+## B7 Explainable Setup Engine — 2026-11-28
+
+- Implemented `src/analysis/b7-explainable-setup-engine.js` and synchronized the exact implementation into `CryptoAnalyst_StageA_S6_updated.html`.
+- Added three deterministic setup families: breakout + retest; false breakout + reclaim (direction opposite the failed breakout); trend continuation after correction (structure + protected level + zone interaction + closed-candle rejection).
+- Added strict B1/B2 version and snapshot binding, closed-candle/finality checks, B2-C event-to-B2-E lifecycle provenance checks, causal confirmation timestamps, deterministic IDs, duplicate suppression, immutable evidence output, and explicit unavailable candle/volume features.
+- Added separate B7 panel. B7 does not modify BasicAnalyticsEngine LONG/SHORT/WAIT, does not use B2-F as a hard gate, and does not produce probabilities, leverage, entry/SL/TP or orders.
+- Added 18 deterministic B7 tests and expanded source/inline parity. Browser integration checks B7 admission/panel and mobile layout. CI run `46114849599` SUCCESS, including B2 regression suite and browser pageErrors 0. Synthetic browser fixture returned B7 VALID / 0 candidates, which is an expected neutral result, not a setup-generation positive test.
+- Remaining: independent review, pinned historical/prefix replay for B7, and iPhone Safari owner acceptance. B7 is not a validated trading strategy.
