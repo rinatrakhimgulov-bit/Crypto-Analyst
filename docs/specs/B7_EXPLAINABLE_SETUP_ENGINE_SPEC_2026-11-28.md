@@ -147,3 +147,8 @@ B7 implementation acceptance is met when all three setup types are explainable, 
 ## 10. Implementation checkpoint — 2026-11-28
 
 Implementation is in draft PR #27 (`feature/b7-setup-engine-2026-11-28`). The engine is integrated into the production HTML with a separate B7 panel; exact source/inline parity, 22 unit tests, B2 regressions, pinned historical replay and browser/mobile integration passed in CI run `46115303655`. The browser synthetic fixture returned `VALID` with zero candidates and no page errors. Historical replay used pinned archive commit `9ca04178df06ce649f00779a49e11094fe5b1c70`, covering 30 production-equivalent 160-bar windows and 18 prefix cutoffs across BTC/ETH 1H/4H/1D; candidate and confirmation availability never exceeded the cutoff, and repeated prefix runs were deterministic. Remaining acceptance gates are independent review and owner iPhone Safari validation. This implementation does not alter LONG/SHORT/WAIT and is not evidence of profitability.
+
+
+## 11. Historical replay checkpoint — 2026-11-28
+
+Pinned replay passed in CI `46115303655`. B7 was evaluated on 30 rolling 160-candle windows (BTCUSDT/ETHUSDT × 1h/4h/1d × five cutoffs) and 18 prefix cutoffs. The 30 windows produced 40 candidates: 36 confirmed and 4 pending, split evenly between BREAKOUT_RETEST and FALSE_BREAKOUT_RECLAIM. No TREND_CONTINUATION_AFTER_CORRECTION candidate occurred in this sample; unit fixtures cover its logic. Prefix outputs were deterministic and candidate/confirmation timestamps were checked against each prefix cutoff. See `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md` for details and limitations. This is not a trading backtest or profitability validation.
