@@ -13,6 +13,7 @@ const CONFIRMATION_WINDOW_BARS = 3;
 const ZONE_SPAN_ATR = 0.15;
 const RETEST_BUFFER_ATR = 0.05;
 const HORIZONS = [5, 10, 20];
+const FINAL_RETEST_STATES = new Set(['RETEST_SUCCESSFUL', 'RETEST_FAILED', 'RETEST_EXPIRED', 'RETEST_UNRESOLVED']);
 const BREAK_EVENT_TYPES = new Set([
   'INITIAL_BULLISH_BREAK', 'BULLISH_BOS', 'BULLISH_CHOCH',
   'INITIAL_BEARISH_BREAK', 'BEARISH_BOS', 'BEARISH_CHOCH'
@@ -191,7 +192,6 @@ function runEventTimeLifecycle(rows, symbol, timeframe, candidate) {
     ...structure,
     c: { ...structure.c, events: [event] }
   };
-  const timeframePriceScale = median(extendedRows.map(c => c.close));
   const zonePolicy = {
     version: eventPolicy.version,
     instrument_symbol: symbol,
@@ -341,7 +341,8 @@ async function replaySeries(symbol, timeframe, file) {
     const resolutionAvailableAt = resolutionCandle.close_time_ms + LAG;
     assert(resolutionAvailableAt <= result.snapshot_as_of_ms,
       'RETEST_STATE_AVAILABLE_AFTER_EVENT_TIME_SNAPSHOT');
-    assert(lifecycle.breakout_available_at_ms === candidate.breaking_candle_open_time_ms + (timeframe === '1h' ? 3600000 : timeframe === '4h' ? 14400000 : 86400000) + LAG,
+    const breakoutCandle = rows[breakoutIndex];
+    assert(lifecycle.breakout_available_at_ms === breakoutCandle.close_time_ms + LAG,
       'BREAKOUT_AVAILABILITY_TIMESTAMP_MISMATCH');
     const resolutionSlice = rows.slice(Math.max(0, resolutionIndex - 260 + 1), resolutionIndex + 1);
     const resolutionAtr = calculateWilderAtr(resolutionSlice);
