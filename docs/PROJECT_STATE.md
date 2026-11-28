@@ -934,3 +934,8 @@ B8 checkpoint: B8-A schema/methodology audit and B8-B deterministic evaluator + 
 The pinned exploratory B8 historical pipeline ran successfully in CI run `46117156657` on code head `cf16dd38e9b8cc7fb7f923d7999add2c4a46b0e5`. It generated a report from 40 unique sampled candidate IDs: 36 confirmed and 4 pending; all 36 confirmed candidates had a causal entry proxy. Chronological split counts were TRAIN 22 / VALIDATION 8 / TEST 6. The test sample is far too small for statistical validation; the descriptive test returns were negative, but neither a positive nor negative performance conclusion is justified. Full details: `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`.
 
 B8-C exploratory pipeline — PASS. B8-C statistical validation remains INCOMPLETE. The five-window sample is not an exhaustive event census, confidence intervals are not cluster-aware, costs/funding are not observed, and no prospective B5 export has been evaluated.
+
+
+## B9 — Automatic Market Journal Capture (2026-11-28)
+
+**Status: implementation candidate; CI and iPhone Safari acceptance pending.** Work is isolated in `feature/b9-automatic-market-journal-2026-11-28`, based on B8. The application now attempts to append an observation after a current successful analysis cycle. Capture includes LONG/SHORT/WAIT and B2/B7 context, including zero-candidate outcomes. Deterministic capture keys suppress repeated identical snapshots across both automatic and manual capture. Stale/error/aborted request paths are excluded. Existing localStorage and JSON export/import remain; no backend or closed-app execution is included. See `docs/specs/B9_AUTOMATIC_MARKET_JOURNAL_SPEC_2026-11-28.md`. Do not merge until exact-head CI and owner iPhone Safari checks pass.
