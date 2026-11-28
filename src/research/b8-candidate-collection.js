@@ -44,13 +44,18 @@ function deduplicateCandidates(seriesEntries) {
     a.available_at_ms - b.available_at_ms || a.setup_id.localeCompare(b.setup_id));
 }
 
-function chronologicalSplit(candidate, startMs, endMs) {
+function chronologicalSplit(candidate, startMs, endMs, outcomeEndMs = null) {
   if (!Number.isSafeInteger(startMs) || !Number.isSafeInteger(endMs) || endMs <= startMs ||
       !Number.isSafeInteger(candidate.available_at_ms)) throw new Error('B8_SPLIT_BOUNDARY_INVALID');
   const trainEnd = startMs + (endMs - startMs) * 0.6;
   const validationEnd = startMs + (endMs - startMs) * 0.8;
-  if (candidate.available_at_ms < trainEnd) return 'TRAIN';
-  if (candidate.available_at_ms < validationEnd) return 'VALIDATION';
+  if (outcomeEndMs != null && !Number.isSafeInteger(outcomeEndMs)) throw new Error('B8_SPLIT_OUTCOME_END_INVALID');
+  if (candidate.available_at_ms < trainEnd) {
+    return outcomeEndMs != null && outcomeEndMs >= trainEnd ? 'PURGED_TRAIN_BOUNDARY' : 'TRAIN';
+  }
+  if (candidate.available_at_ms < validationEnd) {
+    return outcomeEndMs != null && outcomeEndMs >= validationEnd ? 'PURGED_VALIDATION_BOUNDARY' : 'VALIDATION';
+  }
   return 'TEST';
 }
 
