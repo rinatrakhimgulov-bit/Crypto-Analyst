@@ -30,6 +30,14 @@ const POLICY = Object.freeze({
   impulse_min_range_expansion: 1.25
 });
 
+const LOCAL_RANGE_POLICY = Object.freeze({
+  ...POLICY,
+  version: 'market-regime-policy-v2-local-consolidation',
+  range_detection_mode: 'LOCAL_CONSOLIDATION_V2',
+  range_max_ema50_slope_atr: 0.30,
+  range_max_fast_mid_spread_atr: 0.50
+});
+
 function buildCandles(mode, count = 240) {
   const candles = [];
   let previous = 100;
@@ -116,6 +124,23 @@ test('identifies compressed range when trend and structure are unestablished', (
   assert.equal(result.directional_bias, 'NEUTRAL');
 });
 
+test('local consolidation can be identified inside an established macro structure', () => {
+  const result = run(fixture('range', 'UP'), LOCAL_RANGE_POLICY);
+  assert.equal(result.status, 'VALID');
+  assert.equal(result.regime, 'RANGE');
+  assert.equal(result.directional_bias, 'NEUTRAL');
+  assert.equal(result.evidence_alignment, 'PARTIAL');
+  assert.ok(result.reasons.includes('LOCAL_EMA20_50_SPREAD_COMPRESSED'));
+  assert.ok(result.reasons.includes('MACRO_STRUCTURE_UP_CONTEXT'));
+});
+
+test('local consolidation preserves bearish macro structure as context, not direction', () => {
+  const result = run(fixture('range', 'DOWN'), LOCAL_RANGE_POLICY);
+  assert.equal(result.regime, 'RANGE');
+  assert.equal(result.directional_bias, 'NEUTRAL');
+  assert.ok(result.reasons.includes('MACRO_STRUCTURE_DOWN_CONTEXT'));
+});
+
 test('identifies directional impulse as a separate regime', () => {
   const result = run(fixture('impulse', 'UP'));
   assert.equal(result.regime, 'IMPULSE');
@@ -183,6 +208,14 @@ test('rejects a forming candle incorrectly inserted into the closed series', () 
   const data = fixture('up', 'UP');
   data.candles.at(-1).closed_state = 'FORMING';
   const result = run(data);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.regime, 'UNKNOWN');
+});
+
+test('local range mode requires its explicit EMA20/50 compression threshold', () => {
+  const invalid = { ...LOCAL_RANGE_POLICY };
+  delete invalid.range_max_fast_mid_spread_atr;
+  const result = run(fixture('range', 'UP'), invalid);
   assert.equal(result.status, 'INVALID');
   assert.equal(result.regime, 'UNKNOWN');
 });

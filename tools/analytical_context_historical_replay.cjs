@@ -36,6 +36,7 @@ function addCount(target, key) {
 function compactWindow(result, endRow, symbol, timeframe, index) {
   const summary = summarizeAnalyticalContext(result);
   const regime = summary.regime || {};
+  const regimeV2 = summary.regime_v2 || {};
   const impulse = summary.impulse || {};
   const zones = summary.zones || {};
   const breakout = summary.breakout_quality || {};
@@ -49,6 +50,8 @@ function compactWindow(result, endRow, symbol, timeframe, index) {
     cutoff_time: new Date(endRow.close_time_ms).toISOString(),
     cutoff_ms: endRow.close_time_ms + LAG,
     regime: regime.label || 'UNKNOWN',
+    regime_v2: regimeV2.label || 'UNKNOWN',
+    regime_v2_evidence_alignment: regimeV2.evidence_alignment || 'UNKNOWN',
     directional_bias: regime.directional_bias || 'UNKNOWN',
     evidence_alignment: regime.evidence_alignment || 'UNKNOWN',
     structure_state: regime.structure_state || 'UNKNOWN',
@@ -80,7 +83,7 @@ async function replaySeries(symbol, timeframe, file) {
   const rows = loaded.rows;
   const indices = sampleEndIndices(rows.length, timeframe);
   const distribution = {
-    regimes: {}, directional_biases: {}, impulse_classifications: {},
+    regimes: {}, regimes_v2: {}, directional_biases: {}, impulse_classifications: {},
     breakout_quality: {}, support_windows: 0, resistance_windows: 0,
     range_thresholds_pass_windows: 0, range_structure_eligible_windows: 0,
     windows_with_breakouts: 0, total_breakout_events: 0
@@ -114,6 +117,7 @@ async function replaySeries(symbol, timeframe, file) {
     const item = compactWindow(context, end, symbol, timeframe, n);
     windows.push(item);
     addCount(distribution.regimes, item.regime);
+    addCount(distribution.regimes_v2, item.regime_v2);
     addCount(distribution.directional_biases, item.directional_bias);
     addCount(distribution.impulse_classifications, item.impulse_classification);
     if (item.range_thresholds_pass) distribution.range_thresholds_pass_windows++;
@@ -211,6 +215,7 @@ async function main() {
       timeframe: series.timeframe,
       sampled_windows: series.method.sampled_windows,
       regimes: series.distribution.regimes,
+      regimes_v2: series.distribution.regimes_v2,
       impulse_classifications: series.distribution.impulse_classifications,
       breakout_quality: series.distribution.breakout_quality,
       support_windows: series.distribution.support_windows,
@@ -223,6 +228,7 @@ async function main() {
     series_count: all.length,
     total_sampled_windows: all.reduce((sum, series) => sum + series.method.sampled_windows, 0),
     regime_distribution: {},
+    regime_v2_distribution: {},
     impulse_distribution: {},
     breakout_quality_distribution: {},
     support_available_windows: all.reduce((sum, series) => sum + series.distribution.support_windows, 0),
@@ -235,6 +241,9 @@ async function main() {
   for (const series of all) {
     for (const [key, value] of Object.entries(series.distribution.regimes)) {
       output.summary.regime_distribution[key] = (output.summary.regime_distribution[key] || 0) + value;
+    }
+    for (const [key, value] of Object.entries(series.distribution.regimes_v2)) {
+      output.summary.regime_v2_distribution[key] = (output.summary.regime_v2_distribution[key] || 0) + value;
     }
     for (const [key, value] of Object.entries(series.distribution.impulse_classifications)) {
       output.summary.impulse_distribution[key] = (output.summary.impulse_distribution[key] || 0) + value;
