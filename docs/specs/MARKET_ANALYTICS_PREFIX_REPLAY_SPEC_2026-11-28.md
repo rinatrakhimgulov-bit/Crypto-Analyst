@@ -33,3 +33,16 @@ Replay the new Market Regime, B2-D zone-context, B2-E breakout-quality and Marke
 - Deterministic repeat check passes for every prefix.
 - No breakout, retest or impulse output is available after its prefix cutoff.
 - Workflow uploads the JSON report as an artifact.
+
+## 2026-11-28 replay result
+
+Exact-head GitHub Actions run 46167377937 passed on `5a2d0161c9f62636f8bb39f1ea2c7786abc1e3b3`. It evaluated 474 prefixes: BTCUSDT 1h/4h/1d (200/50/9) and ETHUSDT 1h/4h/1d (166/42/7). Deterministic repeat and cutoff checks passed for all 474.
+
+After correcting the research policy's directional-pressure threshold from 0.67 to exact 2/3, the baseline classification counts were:
+- STRONG_SELL_OFF: 17
+- BEARISH_IMPULSE: 15
+- BULLISH_IMPULSE: 34
+- DIRECTIONAL_MOVE_UNCONFIRMED: 51
+- NO_IMPULSE: 357
+
+The one-factor sensitivity scan shows strong sensitivity to the directional-pressure threshold. These are overlapping, correlated prefix observations, not unique independent events and not trading outcomes. The report is a causal/engineering diagnostic only.
