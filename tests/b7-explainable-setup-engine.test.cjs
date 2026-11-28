@@ -103,10 +103,30 @@ function lifecycle(status = 'RETEST_SUCCESSFUL', direction = 'BULLISH') {
       outcome: status === 'RETEST_FAILED' ? 'FAILURE' : 'SUCCESS',
       candle_open_time_ms: 12 * STEP,
       candle_close_time_ms: 13 * STEP,
-      candle_close: status === 'RETEST_FAILED' ? 98 : 101,
+      candle_close: status === 'RETEST_FAILED'
+        ? (direction === 'BULLISH' ? 98 : 101)
+        : (direction === 'BULLISH' ? 101 : 98),
       available_at_ms: 13 * STEP + LAG
     }
   };
+}
+function attachLifecycles(input, items) {
+  input.b2e_result.lifecycles = items;
+  input.b2c_result.events = items.map(item => ({
+    event_id: item.breakout_event_id,
+    event_type: item.breakout_event_type,
+    direction: item.direction,
+    available_at_ms: item.breakout_available_at_ms
+  }));
+  for (const item of items) {
+    if (!item.confirmation) continue;
+    const candle = input.snapshot.candles_by_timeframe['1h'].find(row =>
+      row.close_time_ms === item.confirmation.candle_close_time_ms);
+    if (!candle) continue;
+    candle.close = item.confirmation.candle_close;
+    candle.high = Math.max(candle.high, candle.open, candle.close);
+    candle.low = Math.min(candle.low, candle.open, candle.close);
+  }
 }
 function run(name, fn) {
   try { fn(); process.stdout.write('PASS ' + name + '\n'); }
@@ -124,7 +144,7 @@ run('valid inputs with no setup return NO_SETUP and immutable evidence', () => {
 
 run('successful bullish breakout retest emits confirmed LONG candidate', () => {
   const input = fixture();
-  input.b2e_result.lifecycles = [lifecycle()];
+  attachLifecycles(input, [lifecycle()]);
   const result = analyze(input);
   assert.equal(result.status, 'VALID');
   assert.equal(result.setup_candidates.length, 1);
@@ -136,7 +156,7 @@ run('successful bullish breakout retest emits confirmed LONG candidate', () => {
 
 run('successful bearish breakout retest emits confirmed SHORT candidate', () => {
   const input = fixture();
-  input.b2e_result.lifecycles = [lifecycle('RETEST_SUCCESSFUL', 'BEARISH')];
+  attachLifecycles(input, [lifecycle('RETEST_SUCCESSFUL', 'BEARISH')]);
   const result = analyze(input);
   assert.equal(result.setup_candidates[0].direction, 'SHORT');
   assert.equal(result.setup_candidates[0].invalidation_level, 100.5);
@@ -144,7 +164,7 @@ run('successful bearish breakout retest emits confirmed SHORT candidate', () => 
 
 run('failed bullish breakout is direction-inverted to SHORT', () => {
   const input = fixture();
-  input.b2e_result.lifecycles = [lifecycle('RETEST_FAILED')];
+  attachLifecycles(input, [lifecycle('RETEST_FAILED')]);
   const result = analyze(input);
   assert.equal(result.setup_candidates[0].setup_type, 'FALSE_BREAKOUT_RECLAIM');
   assert.equal(result.setup_candidates[0].direction, 'SHORT');
@@ -153,14 +173,14 @@ run('failed bullish breakout is direction-inverted to SHORT', () => {
 
 run('failed bearish breakout is direction-inverted to LONG', () => {
   const input = fixture();
-  input.b2e_result.lifecycles = [lifecycle('RETEST_FAILED', 'BEARISH')];
+  attachLifecycles(input, [lifecycle('RETEST_FAILED', 'BEARISH')]);
   const result = analyze(input);
   assert.equal(result.setup_candidates[0].direction, 'LONG');
 });
 
 run('waiting retest is pending and never confirmed', () => {
   const input = fixture();
-  input.b2e_result.lifecycles = [lifecycle('WAITING_RETEST')];
+  attachLifecycles(input, [lifecycle('WAITING_RETEST')]);
   const result = analyze(input);
   assert.equal(result.setup_candidates[0].status, 'PENDING');
   assert.equal(result.diagnostics.confirmed_count, 0);
@@ -171,7 +191,7 @@ run('confirmation after analysis cutoff is excluded', () => {
   const input = fixture();
   const item = lifecycle();
   item.confirmation.available_at_ms = AS_OF + 1;
-  input.b2e_result.lifecycles = [item];
+  attachLifecycles(input, [item]);
   assert.equal(analyze(input).setup_candidates.length, 0);
 });
 
@@ -210,7 +230,7 @@ run('unsupported MTF input is not required or used as a directional gate', () =>
 
 run('duplicate lifecycle identifiers produce only one deterministic candidate', () => {
   const input = fixture();
-  input.b2e_result.lifecycles = [lifecycle(), lifecycle()];
+  attachLifecycles(input, [lifecycle(), lifecycle()]);
   const result = analyze(input);
   assert.equal(result.setup_candidates.length, 1);
   assert.equal(result.setup_candidates[0].setup_id, 'B7:BREAKOUT_RETEST:B2E:event-1:zone-1');
@@ -239,7 +259,7 @@ run('same input produces byte-stable deterministic output', () => {
 run('trend continuation requires structure, correction, zone intersection and rejection candle', () => {
   const input = fixture();
   const candles = input.snapshot.candles_by_timeframe['1h'];
-  candles[22].open = 102; candles[22].close = 101;
+  candles[22].open = 102; candles[22].high = 102.5; candles[22].close = 101;
   candles[24] = { ...candles[24], open: 101, high: 102.2, low: 98.5, close: 102, volume_base: 15 };
   input.b2c_result.structure_state = 'UP';
   input.b2c_result.protected_level = { price: 97, available_at_ms: 20 * STEP };
