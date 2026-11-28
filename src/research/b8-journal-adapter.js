@@ -115,7 +115,9 @@ function normalizeObservation(record) {
     canonical_symbol: record.market.symbol, market_type: marketType,
     timeframe, closed_state: 'OBSERVED_CLOSED'
   }));
-  const candidates = setups && setups.status === 'VALID' && Array.isArray(setups.setup_candidates)
+  const versionCompatible = Boolean(setups && setups.engine_version === '1.0.0-b7' &&
+    setups.policy_version === 'b7-explainable-setups-v1');
+  const candidates = setups && versionCompatible && setups.status === 'VALID' && Array.isArray(setups.setup_candidates)
     ? setups.setup_candidates.filter(c => c && c.status === 'CONFIRMED' &&
         (c.direction === 'LONG' || c.direction === 'SHORT') &&
         Number.isSafeInteger(c.available_at_ms) &&
@@ -124,7 +126,9 @@ function normalizeObservation(record) {
         setups.analysis_as_of_ms <= record.capturedAtMs &&
         c.available_at_ms <= setups.analysis_as_of_ms)
     : [];
-  const setupStatus = setups && typeof setups.status === 'string' ? setups.status : 'UNAVAILABLE';
+  const setupStatus = setups && typeof setups.status === 'string'
+    ? (setups.status === 'VALID' && !versionCompatible ? 'UNSUPPORTED_VERSION' : setups.status)
+    : 'UNAVAILABLE';
   return {
     observation_id: record.id,
     captured_at_ms: record.capturedAtMs,
