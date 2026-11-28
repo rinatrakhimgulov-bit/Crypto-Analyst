@@ -180,6 +180,18 @@ run('regime and B2-C structure mismatch is blocked', () => {
   const r = analyze(input);
   assert.equal(r.status, 'BLOCKED');
 });
+run('invalid impulse direction fails closed', () => {
+  const input = fixture();
+  input.impulse_result.event.direction = 'SIDEWAYS';
+  const r = analyze(input);
+  assert.equal(r.status, 'BLOCKED');
+});
+run('missing active-zone selection fails closed', () => {
+  const input = fixture();
+  delete input.zone_context_result.active_zone_selection;
+  const r = analyze(input);
+  assert.equal(r.status, 'BLOCKED');
+});
 run('upstream snapshot mismatch fails closed', () => {
   const input = fixture();
   input.impulse_result.snapshot_id = 'other';
