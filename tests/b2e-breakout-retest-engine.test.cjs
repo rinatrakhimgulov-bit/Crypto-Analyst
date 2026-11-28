@@ -298,8 +298,8 @@ run('event-relative v2 anchors historical zone and retest thresholds to breakout
   };
   const first = analyze(fixture(options));
   const second = analyze(fixture({ ...options, maxClusterSpanPrice: 9999 }));
-  assert.equal(first.status, 'VALID');
-  assert.equal(second.status, 'VALID');
+  assert.equal(first.status, 'VALID', JSON.stringify(first.admission.reasons));
+  assert.equal(second.status, 'VALID', JSON.stringify(second.admission.reasons));
   assert.equal(first.lifecycles.length, 1);
   assert.deepEqual(
     [first.lifecycles[0].historical_zone.lower_bound, first.lifecycles[0].historical_zone.upper_bound],
