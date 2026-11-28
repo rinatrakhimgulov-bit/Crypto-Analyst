@@ -1175,3 +1175,15 @@ Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
 - 247 duplicate-status conflicts were observed across overlapping windows. The current snapshot-ATR policy changes historical zone/retest buffers as volatility changes. Per-breakout ATR and zone-boundary policy must be stored and fixed at event time before lifecycle labels can be trusted.
 - No app decision path changes. No profitability claims.
 - Exact-head workflow passed on code commit \`384399ff3859e0f2721fe2e9c961631bdf784567\`.
+
+
+## 2026-11-28 — B2-E event-time ATR policy replay
+
+- PR #50 / branch \`feature/b2e-event-time-policy-replay-2026-11-28\` adds an event-time ATR research adapter. Each breakout's B2-D zone span (0.15 ATR) and B2-E touch/success/failure buffers (0.05 ATR) are fixed from ATR strictly before the breakout candle.
+- 8,091 unique B2-C break events were discovered; 2,855 matched B2-D/B2-E lifecycles were evaluated.
+- Lifecycle counts: RETEST_SUCCESSFUL 1,401; RETEST_FAILED 1,051; RETEST_EXPIRED 401; RETEST_UNRESOLVED 2.
+- Median returns in the original breakout direction remained weak: successful -0.160 / -0.106 / -0.141 ATR; failed -0.079 / -0.111 / -0.081 ATR; expired -0.012 / +0.049 / +0.001 ATR at 5/10/20 bars.
+- Failed-retest reverse-direction median returns were +0.079 / +0.111 / +0.081 ATR, with positive-close rates around 51–53%. This is not a validated trading edge.
+- Event-time policy removes snapshot-volatility drift from the research replay, but does not demonstrate strong predictive power. Keep lifecycle states descriptive.
+- Exact-head replay and unit tests passed on code commit \`24a82e459d48d67e2b39acdfad57e4f7d074e487\`.
+- No production engine, app HTML, or LONG/SHORT/WAIT behavior changed. Historical archive ends 2025-12-05.
