@@ -1,7 +1,7 @@
 # B10 — Supabase Cloud Journal Sync
 
 Date: 2026-11-28  
-Status: architecture and repository branch opened; implementation not started.  
+Status: B10-A browser auth bootstrap added on the B10 branch; static syntax checks passed; live OAuth acceptance is pending. Database sync is not implemented.  
 Branch: `feature/b10-supabase-journal-sync-2026-11-28`  
 Parent: B9 candidate head `28b7101bdd0ba999ff7396c49d07215ccb4fd911`.
 
@@ -129,3 +129,14 @@ B10-D: legacy local journal migration and full-cloud export.
 B10-E: cross-device, offline, quota, and RLS verification.
 
 Do not merge B10 or change production `main` until exact-head CI and owner iPhone/desktop acceptance pass.
+
+
+## B10-A implementation checkpoint — 2026-11-28
+
+The B10 candidate HTML now includes a minimal GitHub sign-in/sign-out panel in the journal and initializes Supabase Auth using the pinned UMD CDN build `@supabase/supabase-js@2.119.2`. It uses the project's modern `sb_publishable_` key only; no service-role or secret key is embedded. The client is configured for persisted sessions, token refresh, URL session detection and PKCE. The OAuth return target is the current HTTPS application URL with transient query/hash removed.
+
+This is auth bootstrap only. It does not read or write `journal_records`, register devices, push/pull records, or alter the B9 local journal. The UI explicitly reports that journal sync is not yet connected. Sign-in is disabled on non-HTTPS origins. Signing out does not clear local journal data.
+
+Static verification on commit `683529dc10a2495bf2b310d2fe464f3cc7e3a4bd`: all 3 inline script blocks parsed successfully; expected auth UI and OAuth call are present; no service-role/secret key markers and no journal database write calls were found. No GitHub Actions workflow run was returned for this commit. Real iPhone OAuth, callback persistence, Supabase provider configuration and session restoration remain unverified.
+
+The currently published GitHub Pages file still comes from `main` and was verified to contain neither the B9 journal implementation nor Supabase Auth. The B10 branch is not yet the published application. Do not treat the currently open Pages build as a B10 test.
