@@ -186,6 +186,9 @@ function verifyCutoff(result, asOf, label) {
   }
   assert(result.impulse.event.window_end_close_time_ms + LAG <= asOf,
     label + ' impulse window ends after cutoff');
+  for (const setup of result.decision.setup_candidates) {
+    assert(setup.available_at_ms <= asOf, label + ' selected decision setup is available after cutoff');
+  }
 }
 function compact(result) {
   return {
@@ -229,7 +232,7 @@ async function main() {
       finality: 'Historical TIME_DERIVED candles with fixed 500ms lag.',
       thresholds: 'All Market Regime, B2-D zone context, B2-E breakout quality and Market Impulse thresholds are uncalibrated engineering defaults.',
       outcomes: 'No trade simulation, returns, fees, funding, slippage, expectancy or profitability measured.',
-      scope: 'Each sample is recomputed from a 240-candle prefix. No later candles are included in the input snapshot.'
+      scope: 'Each sample is recomputed from a 240-candle prefix. No later candles are included in the input snapshot. The decision engine is research-only and does not alter the production HTML signal.'
     },
     totals: {
       series_count: 0, windows_evaluated: 0,
