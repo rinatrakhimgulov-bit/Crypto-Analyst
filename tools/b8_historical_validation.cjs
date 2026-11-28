@@ -56,14 +56,18 @@ function collectSeriesEntries(replay) {
   for (const symbol of Object.keys(replay.symbols || {})) {
     const history = replay.symbols[symbol].history || {};
     for (const timeframe of Object.keys(history)) {
-      const windows = history[timeframe]['160_candle_windows'] || [];
-      entries.push({
-        symbol, timeframe,
-        windows: windows.map(window => ({
-          quantile: window.quantile,
-          candidates: window.b7 && Array.isArray(window.b7.candidates) ? window.b7.candidates : []
-        }))
-      });
+      const dense = history[timeframe].b7_dense_scan;
+      const windows = dense && Array.isArray(dense.windows) && dense.windows.length
+        ? dense.windows.map(window => ({
+            quantile: null, end_time_ms: window.end_time_ms,
+            candidates: Array.isArray(window.candidates) ? window.candidates : []
+          }))
+        : (history[timeframe]['160_candle_windows'] || []).map(window => ({
+            quantile: window.quantile,
+            end_time_ms: Date.parse(window.end),
+            candidates: window.b7 && Array.isArray(window.b7.candidates) ? window.b7.candidates : []
+          }));
+      entries.push({ symbol, timeframe, windows });
     }
   }
   return entries;
@@ -157,7 +161,7 @@ async function main() {
     generated_at: new Date().toISOString(),
     dataset: { repository: REPOSITORY, commit: DATASET_COMMIT,
       finality: 'TIME_DERIVED with fixed 500ms research lag; not observed provider finality' },
-    candidate_source: 'Deduplicated stable candidate IDs surfaced by the five existing 160-candle windows per symbol/timeframe. This is a sparse exploratory sample, not an exhaustive historical event census.',
+    candidate_source: 'Deduplicated stable candidate IDs surfaced by causal 160-candle windows scanned every 80 bars (plus final endpoint) per symbol/timeframe. This is denser but not exhaustive; events shorter than the scan stride can still be missed.',
     candidate_count: candidates.length,
     candidate_status_counts: candidates.reduce((acc,c) => {
       acc[c.status] = (acc[c.status] || 0) + 1; return acc;
@@ -166,7 +170,7 @@ async function main() {
     metrics,
     caveats: [
       'B2 replay uses a synthetic B1-VALID wrapper; the real B1 validator is not executed on this archive.',
-      'The B7 candidate population is sampled from five quantile windows per series and is not exhaustive.',
+      'The B7 candidate population is sampled from causal 160-candle windows every 80 bars; this is denser but not exhaustive, and shorter-lived events can still be missed.',
       'TRAIN and VALIDATION candidates whose 12-bar outcome endpoint crosses the next split boundary are purged; purged candidates are not reassigned.',
       'Overlapping candidates and common market moves are correlated; Wilson intervals are naive-independence descriptors, not cluster-aware inference.',
       'Entry is a bar-close proxy after candidate availability, not an executable exchange fill.',
