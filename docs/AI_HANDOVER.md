@@ -1425,3 +1425,12 @@ B7 implementation is available on draft PR #27, branch `feature/b7-setup-engine-
 - UI: separate `Рыночные сценарии B7` panel. B7 is not connected to BasicAnalyticsEngine LONG/SHORT/WAIT. B2-F is not used as a hard directional gate. No probability or profitability claims.
 - Validation: 22 B7 unit tests; B2-A..G + B7 exact source/inline parity; all B2 unit regressions; browser/mobile integration. CI run `46115303655` SUCCESS, pageErrors 0. Synthetic browser fixture returned VALID / zero setups. Pinned B7 historical replay also passed: 30 production-equivalent 160-bar windows and 18 prefix cutoffs across BTC/ETH 1H/4H/1D; repeated outputs were deterministic and all candidate/confirmation availability timestamps were at or before each cutoff.
 - Remaining: independent source review and owner iPhone Safari acceptance. Do not merge PR #27 directly to `main` before B4/B5/B6 dependency order is resolved. B8 statistical validation remains required before any B9 directional integration.
+
+
+## B7 historical replay update — 2026-11-28
+
+B7 historical replay is implemented and passed in CI run `46115303655`. The pinned archive `mestoness/btc-eth-candles-history` at commit `9ca04178df06ce649f00779a49e11094fe5b1c70` was evaluated on BTCUSDT/ETHUSDT 1h/4h/1d: five 160-candle windows per series (30 windows) and three prefix cutoffs per series (18 runs). All prefix outputs were deterministic and all candidate/confirmation timestamps were causal to their cutoff.
+
+Results: 40 candidates (36 confirmed, 4 pending), split evenly between BREAKOUT_RETEST (20) and FALSE_BREAKOUT_RECLAIM (20). No TREND_CONTINUATION_AFTER_CORRECTION candidate appeared in these 30 windows; its behavior is covered by synthetic tests only. See `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`.
+
+CI also passed 22 B7 tests, B2-A..G regression suite, exact source/inline parity and browser/mobile integration. Browser fixture reported B7 VALID / 0 candidates, no page errors, panel visible and no horizontal overflow at 390px. This is not profitability validation: actual B1 validator is not executed in historical replay, finality uses fixed 500ms time-derived lag, archive ends 2025-12-05, and no trade outcomes/costs are measured. Remaining: owner iPhone Safari acceptance and second-person review. Do not merge PR #27 to main before B4/B5/B6 dependencies.
