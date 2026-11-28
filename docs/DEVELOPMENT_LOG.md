@@ -852,3 +852,13 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Принят архитектурный принцип постепенного разделения data, quality, analytics, journal и UI для возможной будущей миграции без потери проверенной логики.
 
 Детальная спецификация планирования: docs/ROADMAP.md, актуализация от 2026-11-27.
+
+
+## 2026-11-28 — B4 audit and first finality hardening
+
+- Audited actual `main` HTML blob `6b5521195454bc3d3be3e18cc7f4fb10682ee48b`, 511,597 bytes / 9,514 lines.
+- Confirmed current main already integrates Bybit ticker+kline WebSocket callbacks into live price and forming-candle UI, alongside REST bootstrap, 30-second polling, reconciliation and reconnect/recovery. Historical LOG-ONLY / unmerged statements in older handover sections are stale and must not be used as current state.
+- Found a closed-candle immutability defect: between WS `confirm:true` and REST reconciliation, ticker and same-timestamp kline updates could still mutate the confirmed candle; chart styling also continued to call it forming.
+- Opened draft PR #24, branch `feature/b4-live-data-hardening-2026-11-28`.
+- Patched confirmed-candle immutability in ticker and kline upsert paths, exact duplicate handling, closed candle/volume styling, and extended Stage A B1-D regression coverage.
+- B4 remains in progress pending exact-head deterministic/browser CI, further source audit, independent review and live iPhone/Safari acceptance. GitHub runner HTTP 403 does not count as a live-provider test.
