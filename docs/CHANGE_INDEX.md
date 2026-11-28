@@ -613,3 +613,10 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - Runtime auto-capture hook: `journalAutoCaptureObservation()` after successful current analysis render in `CryptoAnalyst_StageA_S6_updated.html`.
 - Idempotency: `journalCaptureKey()` and persisted `captureKey` / `captureMode` fields.
 - Browser regression: `tests/b5-market-journal-browser-check.cjs` now includes B9 automatic capture and deduplication assertions.
+
+
+### B10 Supabase Cloud Journal Sync
+
+- Architecture/specification: `docs/specs/B10_SUPABASE_CLOUD_JOURNAL_SYNC_SPEC_2026-11-28.md`.
+- Branch: `feature/b10-supabase-journal-sync-2026-11-28`, parented to B9 candidate.
+- Verified live schema, RLS policies, authenticated grants, migrations and security advisor; database remains empty.
