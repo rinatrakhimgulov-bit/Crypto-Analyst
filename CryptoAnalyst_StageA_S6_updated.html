@@ -3393,6 +3393,12 @@
           this._log('warn', `Ticker ${sym}: сообщение отклонено — ${check.reason}`);
           return;
         }
+        const providerEventTimeMs = BybitAdapter.parseProviderTime(msg.ts);
+        if (!Number.isSafeInteger(providerEventTimeMs)) {
+          this.state.invalidStreamMessages += 1;
+          this._log('warn', `Ticker ${sym}: сообщение отклонено — отсутствует или некорректна provider event timestamp (msg.ts)`);
+          return;
+        }
         const data = msg.data;
         const entry = this._getTickerEntry(sym);
         const hasCs = typeof msg.cs === 'number';
@@ -3449,7 +3455,7 @@
           const event = Object.freeze({
             symbol: sym,
             lastPrice,
-            providerEventTimeMs: BybitAdapter.parseProviderTime(msg.ts),
+            providerEventTimeMs,
             receivedAtMs: recvAt,
             cs: hasCs ? msg.cs : null,
             type: msg.type,
@@ -8734,6 +8740,22 @@
             assert(events.length === 2, 'Ожидались snapshot и delta с новым lastPrice');
             assert(events[0].lastPrice === 60000 && events[1].lastPrice === 60001, 'В callback должен попадать lastPrice');
             assert(events[1].symbol === 'BTCUSDT' && events[1].connGen === S().connGen, 'Должны сохраняться symbol и generation');
+          });
+
+          await record('B1-D. Ticker without provider event timestamp is rejected before state mutation', () => {
+            const events = [];
+            BybitWsClient.hooks.onTicker = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 1,
+              data: { symbol: 'BTCUSDT', lastPrice: '60001' }
+            });
+            const entry = BybitWsClient._getTickerEntry('BTCUSDT');
+            assert(events.length === 0 && entry.state === null && entry.ready === false,
+              'Ticker without provider msg.ts must not reach the live bridge or mutate ticker state');
+            assert(S().invalidStreamMessages === 1,
+              'Missing ticker provider event time must be counted as an invalid stream message');
           });
 
           await record('B1-D. Ticker delta before snapshot is not emitted', () => {
