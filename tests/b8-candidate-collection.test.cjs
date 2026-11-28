@@ -29,6 +29,15 @@ assert.equal(lifecycle[0].status, 'CONFIRMED');
 assert.equal(lifecycle[0].available_at_ms, 300);
 assert.equal(lifecycle[0].first_seen_window_end_ms, null);
 assert.equal(lifecycle[0].confirmation_observed_window_end_ms, null);
+assert.equal(lifecycle[0].availability_time_conflict, false, 'pending-to-confirmed availability is an expected lifecycle transition');
+const availabilityDrift = deduplicateCandidates([{ symbol: 'BTCUSDT', timeframe: '1h', windows: [
+  { end_time_ms: 400, candidates: [{ ...a, available_at_ms: 300 }] },
+  { end_time_ms: 500, candidates: [{ ...a, available_at_ms: 350 }] }
+] }]);
+assert.equal(availabilityDrift[0].available_at_ms, 350, 'use latest sampled availability conservatively');
+assert.equal(availabilityDrift[0].availability_time_conflict, true);
+assert.equal(availabilityDrift[0].availability_time_variant_count, 2);
+
 assert.throws(() => deduplicateCandidates([{ symbol: 'BTCUSDT', timeframe: '1h', windows: [
   { candidates: [{ ...pending, direction: 'LONG' }] },
   { candidates: [{ ...confirmedLater, direction: 'SHORT' }] }
