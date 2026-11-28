@@ -121,6 +121,7 @@ function normalizeObservation(record) {
         Number.isSafeInteger(c.available_at_ms) &&
         c.available_at_ms <= record.capturedAtMs &&
         Number.isSafeInteger(setups.analysis_as_of_ms) &&
+        setups.analysis_as_of_ms <= record.capturedAtMs &&
         c.available_at_ms <= setups.analysis_as_of_ms)
     : [];
   const setupStatus = setups && typeof setups.status === 'string' ? setups.status : 'UNAVAILABLE';
