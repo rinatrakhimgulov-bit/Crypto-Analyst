@@ -43,10 +43,18 @@
         !Number.isSafeInteger(policy.finality_safety_lag_ms) || policy.finality_safety_lag_ms < 0 ||
         policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
         policy.b2b_same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1') return 'B2D_UPSTREAM_POLICY_BINDING_INVALID';
+    const absoluteSpanPolicy = isObject(zonePolicy) &&
+      zonePolicy.version === 'b2d-absolute-span-v1' &&
+      zonePolicy.cluster_method === 'MAX_TOTAL_SPAN_V1' &&
+      Number.isFinite(zonePolicy.max_cluster_span_price) && zonePolicy.max_cluster_span_price > 0;
+    const relativeSpanPolicy = isObject(zonePolicy) &&
+      zonePolicy.version === 'b2d-relative-span-v2' &&
+      zonePolicy.cluster_method === 'MAX_TOTAL_SPAN_RELATIVE_V2' &&
+      Number.isFinite(zonePolicy.max_cluster_span_ratio) &&
+      zonePolicy.max_cluster_span_ratio > 0 && zonePolicy.max_cluster_span_ratio <= 0.05;
     if (!isObject(zonePolicy) || typeof zonePolicy.version !== 'string' || !zonePolicy.version.trim() ||
         zonePolicy.instrument_symbol !== symbol || zonePolicy.timeframe !== timeframe ||
-        zonePolicy.cluster_method !== 'MAX_TOTAL_SPAN_V1' ||
-        !Number.isFinite(zonePolicy.max_cluster_span_price) || zonePolicy.max_cluster_span_price <= 0 ||
+        !(absoluteSpanPolicy || relativeSpanPolicy) ||
         !Number.isSafeInteger(zonePolicy.min_independent_touches) ||
         zonePolicy.min_independent_touches < 2 || zonePolicy.min_independent_touches > 20) {
       return 'ZONE_POLICY_INVALID_OR_UNSCOPED';
@@ -264,10 +272,14 @@
       }
     }
 
+    const zoneSpanBasisPrice = candles[candles.length - 1].close;
+    const maxClusterSpanPrice = zonePolicy.cluster_method === 'MAX_TOTAL_SPAN_RELATIVE_V2'
+      ? zoneSpanBasisPrice * zonePolicy.max_cluster_span_ratio
+      : zonePolicy.max_cluster_span_price;
     const support = buildClusters(eligible.filter(p => p.type === 'SWING_LOW'), 'SUPPORT',
-      zonePolicy.max_cluster_span_price, zonePolicy.min_independent_touches, asOf);
+      maxClusterSpanPrice, zonePolicy.min_independent_touches, asOf);
     const resistance = buildClusters(eligible.filter(p => p.type === 'SWING_HIGH'), 'RESISTANCE',
-      zonePolicy.max_cluster_span_price, zonePolicy.min_independent_touches, asOf);
+      maxClusterSpanPrice, zonePolicy.min_independent_touches, asOf);
     const zones = [...support.zones, ...resistance.zones].sort((a, b) =>
       a.role.localeCompare(b.role) || a.lower_bound - b.lower_bound || a.zone_id.localeCompare(b.zone_id));
     const candidates = [...support.candidates, ...resistance.candidates].sort((a, b) =>
@@ -291,7 +303,9 @@
       timeframe,
       analysis_as_of_ms: asOf,
       cluster_method: zonePolicy.cluster_method,
-      max_cluster_span_price: zonePolicy.max_cluster_span_price,
+      max_cluster_span_price: maxClusterSpanPrice,
+      max_cluster_span_ratio: zonePolicy.cluster_method === 'MAX_TOTAL_SPAN_RELATIVE_V2' ? zonePolicy.max_cluster_span_ratio : null,
+      zone_span_basis_price: zoneSpanBasisPrice,
       min_independent_touches: zonePolicy.min_independent_touches,
       zone_identity_scope: 'MEMBERSHIP_DERIVED_V1',
       freshness_policy: 'NOT_CLASSIFIED_V1',

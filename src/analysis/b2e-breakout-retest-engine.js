@@ -53,11 +53,16 @@
         policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
         policy.b2b_same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1') return 'B2E_UPSTREAM_POLICY_BINDING_INVALID';
     const rp = policy.retest_policy;
-    if (!isObject(rp) || typeof rp.version !== 'string' || !rp.version.trim() ||
-        rp.touch_method !== 'RANGE_INTERSECTION_V1' ||
-        !Number.isFinite(rp.touch_tolerance_price) || rp.touch_tolerance_price < 0 ||
-        !Number.isFinite(rp.success_buffer_price) || rp.success_buffer_price < 0 ||
-        !Number.isFinite(rp.failure_buffer_price) || rp.failure_buffer_price < 0 ||
+    const absoluteRetestPolicy = isObject(rp) && rp.version === 'retest-policy-v1' &&
+      Number.isFinite(rp.touch_tolerance_price) && rp.touch_tolerance_price >= 0 &&
+      Number.isFinite(rp.success_buffer_price) && rp.success_buffer_price >= 0 &&
+      Number.isFinite(rp.failure_buffer_price) && rp.failure_buffer_price >= 0;
+    const relativeRetestPolicy = isObject(rp) && rp.version === 'retest-policy-relative-v2' &&
+      Number.isFinite(rp.touch_tolerance_ratio) && rp.touch_tolerance_ratio >= 0 && rp.touch_tolerance_ratio <= 0.05 &&
+      Number.isFinite(rp.success_buffer_ratio) && rp.success_buffer_ratio >= 0 && rp.success_buffer_ratio <= 0.05 &&
+      Number.isFinite(rp.failure_buffer_ratio) && rp.failure_buffer_ratio >= 0 && rp.failure_buffer_ratio <= 0.05;
+    if (!isObject(rp) || typeof rp.version !== 'string' || !rp.version.trim() || rp.touch_method !== 'RANGE_INTERSECTION_V1' ||
+        !(absoluteRetestPolicy || relativeRetestPolicy) ||
         !Number.isSafeInteger(rp.retest_window_bars) || rp.retest_window_bars < 1 || rp.retest_window_bars > 500 ||
         !Number.isSafeInteger(rp.confirmation_window_bars) || rp.confirmation_window_bars < 1 || rp.confirmation_window_bars > 100) {
       return 'RETEST_POLICY_INVALID';
@@ -134,8 +139,16 @@
         };
       });
   }
-  function outcome(direction, candle, zone, policy) {
-    const rp = policy.retest_policy;
+  function resolveRetestPolicy(policy, eventPrice) {
+    if (policy.version !== 'retest-policy-relative-v2') return policy;
+    return {
+      ...policy,
+      touch_tolerance_price: eventPrice * policy.touch_tolerance_ratio,
+      success_buffer_price: eventPrice * policy.success_buffer_ratio,
+      failure_buffer_price: eventPrice * policy.failure_buffer_ratio
+    };
+  }
+  function outcome(direction, candle, zone, rp) {
     if (direction === 'BULLISH') {
       if (candle.close > zone.upper_bound + rp.success_buffer_price) return 'SUCCESS';
       if (candle.close < zone.lower_bound - rp.failure_buffer_price) return 'FAILURE';
@@ -145,24 +158,23 @@
     }
     return null;
   }
-  function isTouch(candle, zone, policy) {
-    const tolerance = policy.retest_policy.touch_tolerance_price;
-    return candle.low <= zone.upper_bound + tolerance &&
-      candle.high >= zone.lower_bound - tolerance;
+  function isTouch(candle, zone, rp) {
+    return candle.low <= zone.upper_bound + rp.touch_tolerance_price &&
+      candle.high >= zone.lower_bound - rp.touch_tolerance_price;
   }
   function makeLifecycle(event, zone, candles, breakIndex, policy) {
-    const rp = policy.retest_policy;
+    const rp = resolveRetestPolicy(policy.retest_policy, event.breaking_candle_close);
     let touchIndex = -1;
     let preTouchFailureIndex = -1;
     const retestEnd = Math.min(candles.length - 1, breakIndex + rp.retest_window_bars);
     for (let i = breakIndex + 1; i <= retestEnd; i++) {
-      if (isTouch(candles[i], zone, policy)) {
+      if (isTouch(candles[i], zone, rp)) {
         touchIndex = i;
         break;
       }
       // A gap can close beyond the failure boundary without intersecting the zone.
       // That is still a failed breakout and must not be ignored in favor of a later retest.
-      if (outcome(event.direction, candles[i], zone, policy) === 'FAILURE') {
+      if (outcome(event.direction, candles[i], zone, rp) === 'FAILURE') {
         preTouchFailureIndex = i;
         break;
       }
@@ -220,13 +232,13 @@
     }
 
     const touchCandle = candles[touchIndex];
-    const immediateOutcome = outcome(event.direction, touchCandle, zone, policy);
+    const immediateOutcome = outcome(event.direction, touchCandle, zone, rp);
     let result = immediateOutcome;
     let confirmationIndex = immediateOutcome ? touchIndex : -1;
     const confirmationEnd = Math.min(candles.length - 1, touchIndex + rp.confirmation_window_bars);
     if (!result) {
       for (let i = touchIndex + 1; i <= confirmationEnd; i++) {
-        const candidate = outcome(event.direction, candles[i], zone, policy);
+        const candidate = outcome(event.direction, candles[i], zone, rp);
         if (candidate) {
           result = candidate;
           confirmationIndex = i;
@@ -339,10 +351,17 @@
         b2d.admission.b2c_policy_version !== policy.b2c_policy_version ||
         b2d.admission.b1_validator_version !== policy.b1_validator_version ||
         b2d.admission.b1_quality_policy_version !== policy.b1_quality_policy_version ||
-        b2d.cluster_method !== 'MAX_TOTAL_SPAN_V1' ||
-        !Number.isFinite(b2d.max_cluster_span_price) || b2d.max_cluster_span_price <= 0 ||
         !Number.isSafeInteger(b2d.min_independent_touches) || b2d.min_independent_touches < 2 ||
         !Array.isArray(b2d.zones)) return blocked('INVALID', 'B2D_ADMISSION_IDENTITY_MISMATCH', meta);
+    const relativeZoneSpan = b2d.zone_policy_version === 'b2d-relative-span-v2';
+    if (relativeZoneSpan) {
+      if (b2d.cluster_method !== 'MAX_TOTAL_SPAN_RELATIVE_V2' ||
+          !Number.isFinite(b2d.max_cluster_span_ratio) || b2d.max_cluster_span_ratio <= 0 ||
+          b2d.max_cluster_span_ratio > 0.05) return blocked('INVALID', 'B2D_RELATIVE_ZONE_SPAN_INVALID', meta);
+    } else if (b2d.cluster_method !== 'MAX_TOTAL_SPAN_V1' ||
+        !Number.isFinite(b2d.max_cluster_span_price) || b2d.max_cluster_span_price <= 0) {
+      return blocked('INVALID', 'B2D_ABSOLUTE_ZONE_SPAN_INVALID', meta);
+    }
 
     const closedMap = snapshot.candles_by_timeframe;
     const formingMap = snapshot.forming_candle_by_timeframe;
@@ -490,8 +509,11 @@
       }
 
       const role = direction === 'BULLISH' ? 'RESISTANCE' : 'SUPPORT';
+      const historicalMaxSpan = relativeZoneSpan
+        ? breakingCandle.close * b2d.max_cluster_span_ratio
+        : b2d.max_cluster_span_price;
       const historicalZones = buildHistoricalZones(
-        b2c.raw_pivots, role, b2d.max_cluster_span_price,
+        b2c.raw_pivots, role, historicalMaxSpan,
         b2d.min_independent_touches, breakingCandle.close_time_ms
       );
       const zone = historicalZones.find(z => z.pivot_ids.includes(event.source_pivot_id));
@@ -547,9 +569,12 @@
       retest_policy: {
         version: policy.retest_policy.version,
         touch_method: policy.retest_policy.touch_method,
-        touch_tolerance_price: policy.retest_policy.touch_tolerance_price,
-        success_buffer_price: policy.retest_policy.success_buffer_price,
-        failure_buffer_price: policy.retest_policy.failure_buffer_price,
+        touch_tolerance_price: policy.retest_policy.touch_tolerance_price ?? null,
+        success_buffer_price: policy.retest_policy.success_buffer_price ?? null,
+        failure_buffer_price: policy.retest_policy.failure_buffer_price ?? null,
+        touch_tolerance_ratio: policy.retest_policy.touch_tolerance_ratio ?? null,
+        success_buffer_ratio: policy.retest_policy.success_buffer_ratio ?? null,
+        failure_buffer_ratio: policy.retest_policy.failure_buffer_ratio ?? null,
         retest_window_bars: policy.retest_policy.retest_window_bars,
         confirmation_window_bars: policy.retest_policy.confirmation_window_bars
       },

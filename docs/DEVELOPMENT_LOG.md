@@ -1168,3 +1168,19 @@ Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
 - First-observation delay median: 40 bars on 1h, 10 bars on 4h, 1 bar on 1d. This is delayed sampled detection, not immediate real-time breakout execution.
 - Findings do not establish predictive edge. B2-E evidence labels are not approved standalone LONG/SHORT signals.
 - Next research task: make historical B2-E zone reconstruction use a price/volatility scale available at the breakout's own time, then rerun the event study. No fees, slippage, funding or strategy PnL tested; archive ends 2025-12-05.
+
+
+## 2026-11-28 — event-anchored B2-D/B2-E zone policy v2
+
+- PR #46: `feature/b2d-event-anchored-zone-policy-2026-11-28`, Draft, based on breakout event study PR #43. No app HTML or LONG/SHORT/WAIT changes.
+- Adds opt-in B2-D `b2d-relative-span-v2`: current zones use latest closed price × ratio; B2-E historical zones use breakout candle close × ratio.
+- Adds opt-in B2-E `retest-policy-relative-v2`: touch/success/failure buffers use breakout candle close × ratio. V1 absolute-price behavior remains backward compatible.
+- Event study uses longer context: 2000 bars for 1h/4h and 700 bars for 1d, with 160-bar breakout-quality lookback. It uses first sampled observation as candidate availability and evaluates only later closed candles.
+- Exact tested source head `65270c2d7d362c87abc65497da71f45297ff54aa`.
+- Regression counts: B2-D 23/23; B2-D zone context 15/15; B2-E retest 26/26; B2-E quality 16/16; impulse 16/16; event-study assertions 4/4. Total 100 explicit PASS assertions.
+- Integration and full historical replay workflows also succeeded on the tested head.
+- Event study: 3,248 sampled windows, 14,809 repeated observations, 4,788 unique events. Boundary drift: 93 later observations affecting 73/4,788 events (1.52%); quality status changes: 0. The event-level drift guardrail is <2%.
+- Latest observed retests: successful 2,362; failed 1,754; expired 648; unresolved 22; waiting 2.
+- 12-bar gross positive rates: STRONG 50.10% (n=2,932), MIXED 51.43% (n=1,262), WEAK 49.74% (n=585). Mean gross directional returns +0.1219%, +0.0487%, -0.1566%. This does not establish a reliable standalone breakout edge; the sample is dominated by 1h events and daily sample is only 25.
+- Remaining boundary drift is due older pivots aging out of bounded rolling context. First-observation zone is used for causal outcomes. No fees, slippage, funding, barriers, expectancy or drawdown tested. Archive ends 2025-12-05.
+- Next: manually review representative zone/breakout examples, then integrate only after owner browser acceptance. Keep this branch Draft.
