@@ -13,7 +13,8 @@ const { analyze: analyzeDecision } = require('../src/analysis/market-decision-co
 const DATASET_REPOSITORY = 'mestoness/btc-eth-candles-history';
 const DATASET_COMMIT = '9ca04178df06ce649f00779a49e11094fe5b1c70';
 const WINDOW_CANDLES = 240;
-const SAMPLE_STRIDE = 250;
+const SAMPLE_STRIDE = 80;
+const SENSITIVITY_SAMPLE_EVERY = 3;
 
 const POLICY_REGIME = {
   version: 'market-regime-policy-v1-initial',
@@ -188,6 +189,8 @@ function verifyCutoff(result, asOf, label) {
   }
   assert(result.impulse.event.window_end_close_time_ms + LAG <= asOf,
     label + ' impulse window ends after cutoff');
+  assert(result.decision.decision_available_at_ms === asOf,
+    label + ' decision availability does not match fused analysis cutoff');
   for (const setup of result.decision.setup_candidates) {
     assert(setup.available_at_ms <= asOf, label + ' selected decision setup is available after cutoff');
   }
@@ -197,10 +200,15 @@ function compact(result) {
     cutoff: new Date(result.asOf).toISOString(),
     decision: result.decision.decision,
     decision_reason: result.decision.reasons[0] && result.decision.reasons[0].code,
+    decision_available_at_ms: result.decision.decision_available_at_ms,
     selected_setup_ids: result.decision.selected_setup_ids,
-    decision: result.decision.decision,
-    decision_reason: result.decision.reasons[0] && result.decision.reasons[0].code,
-    selected_setup_ids: result.decision.selected_setup_ids,
+    decision_candidates: result.decision.setup_candidates.map(c => ({
+      setup_id: c.setup_id, setup_type: c.setup_type, direction: c.direction,
+      status: 'CONFIRMED', available_at_ms: result.decision.decision_available_at_ms,
+      setup_available_at_ms: c.setup_available_at_ms,
+      setup_invalidation_level: c.setup_invalidation_level,
+      invalidation_level: null
+    })),
     regime: result.regime.regime,
     directional_bias: result.regime.directional_bias,
     structure_state: result.structure.c.structure_state,
@@ -232,6 +240,7 @@ async function main() {
     methodology: {
       window_candles: WINDOW_CANDLES,
       sample_stride_candles: SAMPLE_STRIDE,
+      sensitivity_sample_every: SENSITIVITY_SAMPLE_EVERY,
       sample_note: 'Exploratory regular-stride prefix sample; not an exhaustive event census.',
       b1_quality: 'Synthetic B1 VALID wrapper after structural CSV integrity checks; actual B1 validator is not run.',
       finality: 'Historical TIME_DERIVED candles with fixed 500ms lag.',
@@ -242,7 +251,7 @@ async function main() {
     totals: {
       series_count: 0, windows_evaluated: 0,
       regime_counts: {}, impulse_counts: {}, decision_counts: {}, breakout_quality_counts: {},
-      bearish_retest_status_counts: {}, sensitivity_counts: {}, zone_context_windows: 0,
+      bearish_retest_status_counts: {}, sensitivity_counts: {}, sensitivity_sample_windows: 0, zone_context_windows: 0,
       deterministic_repeat_checks: 0, cutoff_checks: 0
     },
     series: {}
@@ -257,7 +266,7 @@ async function main() {
         dataset_integrity: loaded.integrity,
         windows_evaluated: 0,
         regime_counts: {}, impulse_counts: {}, decision_counts: {}, breakout_quality_counts: {},
-        bearish_retest_status_counts: {}, sensitivity_counts: {}, zone_counts: [],
+        bearish_retest_status_counts: {}, sensitivity_counts: {}, sensitivity_sample_windows: 0, zone_counts: [],
         sample_windows: []
       };
       for (const endIndex of indices) {
@@ -270,16 +279,22 @@ async function main() {
         increment(summary.regime_counts, result.regime.regime);
         increment(summary.impulse_counts, result.impulse.event.classification);
         increment(summary.decision_counts, result.decision.decision);
-        for (const variant of SENSITIVITY_VARIANTS) {
-          const varied = analyzeImpulse({
-            policy: { ...POLICY_IMPULSE, ...variant.overrides, version: 'market-impulse-sensitivity-' + variant.name },
-            snapshot: result.structure.snapshot, quality_report: result.structure.quality,
-            b2e_result: result.zones.e, zone_context_result: result.zoneContext,
-            analysis_as_of_ms: result.asOf, timeframe
-          });
-          assert(varied.status === 'VALID', symbol + ' ' + timeframe + ' sensitivity ' + variant.name + ' blocked');
-          if (!summary.sensitivity_counts[variant.name]) summary.sensitivity_counts[variant.name] = {};
-          increment(summary.sensitivity_counts[variant.name], varied.event.classification);
+        if (summary.windows_evaluated % SENSITIVITY_SAMPLE_EVERY === 0) {
+          summary.sensitivity_sample_windows++;
+          report.totals.sensitivity_sample_windows++;
+          for (const variant of SENSITIVITY_VARIANTS) {
+            const varied = analyzeImpulse({
+              policy: { ...POLICY_IMPULSE, ...variant.overrides, version: 'market-impulse-sensitivity-' + variant.name },
+              snapshot: result.structure.snapshot, quality_report: result.structure.quality,
+              b2e_result: result.zones.e, zone_context_result: result.zoneContext,
+              analysis_as_of_ms: result.asOf, timeframe
+            });
+            assert(varied.status === 'VALID', symbol + ' ' + timeframe + ' sensitivity ' + variant.name + ' blocked');
+            if (!summary.sensitivity_counts[variant.name]) summary.sensitivity_counts[variant.name] = {};
+            if (!report.totals.sensitivity_counts[variant.name]) report.totals.sensitivity_counts[variant.name] = {};
+            increment(summary.sensitivity_counts[variant.name], varied.event.classification);
+            increment(report.totals.sensitivity_counts[variant.name], varied.event.classification);
+          }
         }
         for (const breakout of result.breakoutQuality.breakouts) increment(summary.breakout_quality_counts, breakout.quality_status);
         for (const context of result.impulse.event.bearish_breakout_context) increment(summary.bearish_retest_status_counts, context.retest_status);
@@ -291,16 +306,6 @@ async function main() {
         increment(report.totals.regime_counts, result.regime.regime);
         increment(report.totals.impulse_counts, result.impulse.event.classification);
         increment(report.totals.decision_counts, result.decision.decision);
-        for (const variant of SENSITIVITY_VARIANTS) {
-          const varied = analyzeImpulse({
-            policy: { ...POLICY_IMPULSE, ...variant.overrides, version: 'market-impulse-sensitivity-' + variant.name },
-            snapshot: result.structure.snapshot, quality_report: result.structure.quality,
-            b2e_result: result.zones.e, zone_context_result: result.zoneContext,
-            analysis_as_of_ms: result.asOf, timeframe
-          });
-          if (!report.totals.sensitivity_counts[variant.name]) report.totals.sensitivity_counts[variant.name] = {};
-          increment(report.totals.sensitivity_counts[variant.name], varied.event.classification);
-        }
         for (const breakout of result.breakoutQuality.breakouts) increment(report.totals.breakout_quality_counts, breakout.quality_status);
         for (const context of result.impulse.event.bearish_breakout_context) increment(report.totals.bearish_retest_status_counts, context.retest_status);
         report.totals.zone_context_windows++;
