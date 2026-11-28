@@ -231,6 +231,37 @@ run('exact maximum total span is included in one cluster', () => {
   assert.equal(result.zones[0].cluster_span_price, 2);
 });
 
+run('relative zone span v2 anchors the current zone width to the latest closed candle', () => {
+  const input = fixture(basePivots, {
+    zonePolicy: {
+      version: 'b2d-relative-span-v2',
+      cluster_method: 'MAX_TOTAL_SPAN_RELATIVE_V2',
+      max_cluster_span_price: 9999,
+      max_cluster_span_ratio: 0.02
+    }
+  });
+  const result = analyze(input);
+  assert.equal(result.status, 'VALID');
+  const latestClose = input.snapshot.candles_by_timeframe['1h'].at(-1).close;
+  assert.equal(result.max_cluster_span_ratio, 0.02);
+  assert.equal(result.zone_span_basis_price, latestClose);
+  assert.equal(result.max_cluster_span_price, latestClose * 0.02);
+  assert.equal(result.zones.length, 2);
+});
+
+run('relative zone span v2 rejects an excessive ratio', () => {
+  const input = fixture(basePivots, {
+    zonePolicy: {
+      version: 'b2d-relative-span-v2',
+      cluster_method: 'MAX_TOTAL_SPAN_RELATIVE_V2',
+      max_cluster_span_ratio: 0.10
+    }
+  });
+  const result = analyze(input);
+  assert.equal(result.status, 'INVALID');
+  assert.equal(result.admission.reasons[0].code, 'ZONE_POLICY_INVALID_OR_UNSCOPED');
+});
+
 run('cluster method prevents transitive chaining beyond the total span', () => {
   const pivots = [
     pivot('s100', 'SWING_LOW', 100, 0, 1),
