@@ -495,3 +495,7 @@ The current B4 application source blob `c9711ffdd65c9667bfa7447b92ec05d73e60135f
 ### B4 additional verification — lifecycle
 
 Added deterministic `pagehide`/`pageshow` regression `16d` to verify old socket invalidation and a fresh recovery/subscription generation after page restoration. Keep real iPhone/Safari background/foreground testing as a separate required acceptance gate; automated browser coverage is not a substitute.
+
+### B4 additional data-quality gate — provider event time
+
+Kline events without a valid provider event timestamp (`msg.ts`) are rejected before chart mutation. Keep this fail-closed contract covered by regression tests and verify that actual Bybit messages on iPhone/Safari supply the expected timestamp.
