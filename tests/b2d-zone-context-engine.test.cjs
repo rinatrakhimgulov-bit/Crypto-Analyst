@@ -63,6 +63,7 @@ function fixture(options = {}) {
   const asOf = candles[candles.length - 1].close_time_ms + LAG;
   const snapshot = {
     snapshot_id: 'fixture:b2d-zone-context:btc:1h',
+    contract_version: '1.1.0',
     canonical_symbol: 'BTCUSDT',
     market_type: 'LINEAR_PERPETUAL',
     analysis_as_of_ms: asOf,
