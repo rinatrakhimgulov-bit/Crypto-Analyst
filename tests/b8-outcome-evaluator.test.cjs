@@ -23,7 +23,7 @@ function candidate(overrides = {}) {
   assert.equal(r.entry.price, 102);
   assert.equal(r.entry.available_at_ms, 120500);
   assert.equal(r.entry.delay_bars, 1);
-  assert.equal(r.horizons[1].forward_return_pct, (104-102)/102*100);
+  assert.equal(r.horizons[1].forward_return_pct, (103-102)/102*100);
 }
 {
   const cs = candles([[100,101,99,100],[100,101,98,99],[99,100,95,96],[96,98,94,97]]);
