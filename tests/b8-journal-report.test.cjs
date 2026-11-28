@@ -63,5 +63,16 @@ assert.equal(envelope.observations[0].candleWindow.length, 2, 'source envelope m
   assert.equal(repeated.unique_candidate_count, 1,
     'same setup ID in same symbol/timeframe counts once as a unique candidate');
   assert.equal(repeated.duplicate_candidate_appearance_count, 1);
+  const conflicting = JSON.parse(JSON.stringify(second));
+  conflicting.id = 'observation-0003';
+  conflicting.analysisSnapshot.b2.setups.setup_candidates[0].direction = 'SHORT';
+  const conflictReport = buildJournalReport({
+    ...envelope,
+    observations: [observation, conflicting],
+    followups: []
+  });
+  assert.equal(conflictReport.candidate_identity_conflict_count, 1);
+  assert.equal(conflictReport.unique_candidate_count, 0,
+    'conflicting directions for one stable setup ID must not be silently counted');
 }
 console.log('B8 journal report: deterministic assertions PASS');
