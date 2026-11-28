@@ -128,3 +128,7 @@ Added Stage A regression `B1-D. Stale WS ticker and kline are ignored; REST pric
 ## Subscription-switch in-flight message regression — 2026-11-28
 
 Added Stage A regression `B1-D. In-flight messages from the previous symbol/timeframe are dropped`. It exercises real `onmessage` routing through same-socket timeframe and symbol changes, verifies old kline/ticker topics are dropped, and confirms the new ETHUSDT/60 ticker and kline streams are accepted after fresh ACKs. This covers the transition boundary, not just stale REST response tokens.
+
+## Recovery-generation cache isolation — 2026-11-28
+
+Audit found that a normal WebSocket `onclose` advances `recoveryGen` but can retain the same `connGen` during the scheduled automatic reconnect. The previous live-kline cache was tagged only with `connGen`; after the new socket ACKed its topics, a still-fresh cache from the prior recovery cycle could pass `freshLiveKline` and be replayed. The same stale cache could also participate in ticker/kline ordering. Live ticker and kline events now carry both `connGen` and `recoveryGen`; the UI bridge rejects callbacks from a mismatched generation; ticker/kline freshness and same-candle ordering require both generations to match. Cross-topic ticker ordering ignores a kline cache from an earlier recovery cycle. Added Stage A regression `B1-D. Live caches from the previous recovery cycle are invalidated after reconnect`, which deliberately exercises automatic reconnect where `connGen` is retained. Exact-head CI pending.
