@@ -74,6 +74,14 @@ assert.deepEqual(excursion(100, 99, 98, 'LONG'), { mfe: 0, mae: 0.02 });
 assert.deepEqual(excursion(100, 102, 101, 'LONG'), { mfe: 0.02, mae: 0 });
 assert.deepEqual(excursion(100, 102, 101, 'SHORT'), { mfe: 0, mae: 0.02 });
 assert.deepEqual(excursion(100, 99, 98, 'SHORT'), { mfe: 0.02, mae: 0 });
+{
+  const overlapping = [
+    { open_time_ms: 0, close_time_ms: 60000, open: 100, high: 101, low: 99, close: 100 },
+    { open_time_ms: 30000, close_time_ms: 90000, open: 100, high: 101, low: 99, close: 100 }
+  ];
+  assert.throws(() => evaluateCandidate({ candidate: candidate(), candles: overlapping, horizons: [1] }),
+    /B8_CANDLE_TIME_INVALID/);
+}
 assert.deepEqual(wilsonInterval(0, 0), null);
 assert.equal(wilsonInterval(8, 10).lower < 0.8, true);
 assert.equal(wilsonInterval(8, 10).upper > 0.8, true);
