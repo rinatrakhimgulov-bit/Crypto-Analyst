@@ -51,6 +51,7 @@ function validateEnvelope(envelope) {
           candle.ts <= previousTs || candle.ts > record.capturedAtMs ||
           !Number.isSafeInteger(candle.closeTs) || candle.closeTs <= candle.ts ||
           !['closed', 'forming'].includes(candle.finality) ||
+          (candle.finality === 'closed' && candle.closeTs > record.capturedAtMs) ||
           !['open', 'high', 'low', 'close', 'volume', 'turnover'].every(k => Number.isFinite(candle[k])) ||
           candle.open <= 0 || candle.high <= 0 || candle.low <= 0 || candle.close <= 0 ||
           candle.volume < 0 || candle.turnover < 0 ||
@@ -62,9 +63,12 @@ function validateEnvelope(envelope) {
     }
     observationIds.add(record.id);
   }
+  const observationsById = new Map(envelope.observations.map(record => [record.id, record]));
   for (const record of envelope.followups) {
     checkId(record, 'followup');
-    if (!observationIds.has(record.observationId) || !safeDatePair(record.recordedAt, record.recordedAtMs) ||
+    const linkedObservation = observationsById.get(record.observationId);
+    if (!linkedObservation || !safeDatePair(record.recordedAt, record.recordedAtMs) ||
+        record.recordedAtMs < linkedObservation.capturedAtMs ||
         !FOLLOWUP_STATUSES.has(record.status) ||
         (record.observedPrice != null && (!Number.isFinite(record.observedPrice) || record.observedPrice <= 0)) ||
         (record.note != null && (typeof record.note !== 'string' || record.note.length > 500))) {
@@ -73,13 +77,14 @@ function validateEnvelope(envelope) {
   }
   for (const record of envelope.actualTrades) {
     checkId(record, 'actual_trade');
-    if (!observationIds.has(record.observationId) || !safeDatePair(record.recordedAt, record.recordedAtMs) ||
+    const linkedObservation = observationsById.get(record.observationId);
+    if (!linkedObservation || !safeDatePair(record.recordedAt, record.recordedAtMs) ||
         !['LONG', 'SHORT'].includes(record.side) || !['open', 'closed', 'void'].includes(record.status) ||
         !Number.isFinite(record.entryPrice) || record.entryPrice <= 0) fail('B8_JOURNAL_TRADE_INVALID');
     if (record.status === 'closed' &&
         (!Number.isFinite(record.exitPrice) || record.exitPrice <= 0 ||
          !Number.isSafeInteger(record.entryAtMs) || !Number.isSafeInteger(record.exitAtMs) ||
-         record.entryAtMs > record.exitAtMs || record.exitAtMs > record.recordedAtMs ||
+         record.entryAtMs < linkedObservation.capturedAtMs || record.entryAtMs > record.exitAtMs || record.exitAtMs > record.recordedAtMs ||
          !safeDatePair(record.entryAt, record.entryAtMs) || !safeDatePair(record.exitAt, record.exitAtMs))) {
       fail('B8_JOURNAL_TRADE_CLOSE_INVALID');
     }
