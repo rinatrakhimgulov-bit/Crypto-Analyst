@@ -276,17 +276,24 @@ const IMPULSE_POLICY = {
   close_location_max: 0.35, context_lookback_bars: 10
 };
 
-function runAnalyticalContext(structure, zones, breakoutWindowBars = 160) {
-  const { snapshot, quality, c } = structure;
+function runZoneContextWithPolicy(structure, zones, policyOverrides = {}) {
+  const { snapshot, quality } = structure;
   const timeframe = Object.keys(snapshot.candles_by_timeframe)[0];
-  const asOf = snapshot.analysis_as_of_ms;
+  const policy = { ...ZONE_CONTEXT_POLICY, ...policyOverrides };
   const zoneContext = analyzeZoneContext({
-    policy: ZONE_CONTEXT_POLICY, snapshot, quality_report: quality,
-    b2d_result: zones.d, analysis_as_of_ms: asOf, timeframe,
+    policy, snapshot, quality_report: quality,
+    b2d_result: zones.d, analysis_as_of_ms: snapshot.analysis_as_of_ms, timeframe,
     finality_safety_lag_ms: LAG
   });
   assert(zoneContext.status === 'VALID',
     'B2-D zone context blocked: ' + JSON.stringify(zoneContext.admission.reasons));
+  return zoneContext;
+}
+function runAnalyticalContext(structure, zones, breakoutWindowBars = 160) {
+  const { snapshot, quality, c } = structure;
+  const timeframe = Object.keys(snapshot.candles_by_timeframe)[0];
+  const asOf = snapshot.analysis_as_of_ms;
+  const zoneContext = runZoneContextWithPolicy(structure, zones);
   const stepMs = STEP[timeframe];
   const earliestBreak = asOf - breakoutWindowBars * stepMs;
   const recentB2E = {

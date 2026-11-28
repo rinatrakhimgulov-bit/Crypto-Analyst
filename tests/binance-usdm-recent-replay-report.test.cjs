@@ -11,6 +11,8 @@ assert.equal(report.provider, 'Binance USD-M Futures public archive');
 assert.equal(report.market_type, 'linear_perpetual');
 assert.ok(Date.parse(report.coverage_end) >= Date.parse('2026-11-26T00:00:00.000Z'));
 assert.ok(report.summary.window_count >= 30);
+assert.equal(report.zone_outcome_policy.horizon_bars, 20);
+assert.equal(report.summary.zone_context_sensitivity.length, 11);
 
 const allowedRegimes = ['UPTREND', 'DOWNTREND', 'RANGE', 'IMPULSE', 'TRANSITION', 'UNKNOWN'];
 const allowedScopes = ['MARKET_TREND', 'MARKET_RANGE', 'LOCAL_CONSOLIDATION',
@@ -32,7 +34,23 @@ for (const symbol of ['BTCUSDT', 'ETHUSDT']) {
     }
   }
 }
+for (const variant of report.summary.zone_context_sensitivity) {
+  assert.equal(variant.window_count, report.summary.window_count);
+  assert.ok(variant.active_zone_total >= 0);
+  assert.ok(variant.support_outcomes.NO_ZONE + variant.support_outcomes.CENSORED +
+    variant.support_outcomes.NOT_TOUCHED + variant.support_outcomes.HELD +
+    variant.support_outcomes.BROKEN + variant.support_outcomes.TESTED_UNRESOLVED === report.summary.window_count);
+  assert.ok(variant.resistance_outcomes.NO_ZONE + variant.resistance_outcomes.CENSORED +
+    variant.resistance_outcomes.NOT_TOUCHED + variant.resistance_outcomes.HELD +
+    variant.resistance_outcomes.BROKEN + variant.resistance_outcomes.TESTED_UNRESOLVED === report.summary.window_count);
+}
+const baseVariant = report.summary.zone_context_sensitivity.find(x => x.variant === 'base_r10_a20_d5');
+assert.ok(baseVariant);
+assert.ok(baseVariant.support_available_rate >= 0 && baseVariant.support_available_rate <= 1);
+assert.ok(baseVariant.resistance_available_rate >= 0 && baseVariant.resistance_available_rate <= 1);
+
 const regimeTotal = Object.values(report.summary.regime_v2_distribution).reduce((a, b) => a + b, 0);
 assert.equal(regimeTotal, report.summary.window_count);
 process.stdout.write('PASS Binance recent replay covers all six futures series through 2026\n');
-process.stdout.write('PASS all sampled windows have valid v1/v2 regime and causal evidence\n');
+process.stdout.write('PASS all sampled windows have valid v1/v2 regime and causal evidence
+PASS 11 zone freshness/distance policies are compared with forward hold/break outcomes\n');
