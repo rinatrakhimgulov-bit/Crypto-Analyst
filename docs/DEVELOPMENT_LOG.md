@@ -1006,3 +1006,15 @@ Current limitations: historical candidate census/deduplication and chronological
 - Detailed audit: `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`.
 
 B8-C exploratory pipeline passed; B8-C statistical validation is still incomplete. B8-D prospective journal outcomes and B8-E independent audit remain open.
+
+
+## B9 Automatic Market Journal Capture — 2026-11-28
+
+- Opened isolated candidate branch `feature/b9-automatic-market-journal-2026-11-28` on top of B8. No merge to main.
+- Added deterministic observation capture keys and duplicate suppression shared by automatic and manual capture.
+- Added automatic capture after a current, non-superseded REST analysis cycle completes and renders successfully. Stale-cache/error/aborted paths are excluded.
+- Captures LONG/SHORT/WAIT and retains B1 quality state plus B2/B7 result, including zero-candidate/no-setup outcomes. Invalid quality is retained as WAIT with reasons.
+- Preserved local-only storage, manual trade/follow-up workflows, and JSON envelope version. Background operation while the page is closed remains explicitly deferred.
+- Extended the Playwright journal contract to test AUTO capture, repeated-snapshot idempotency, WAIT/no-setup, and invalid-quality capture. CI status is pending at this documentation checkpoint; do not claim tests passed until exact-head runs are read.
+- iPhone Safari acceptance remains required before merge.
+- Specification: `docs/specs/B9_AUTOMATIC_MARKET_JOURNAL_SPEC_2026-11-28.md`.
