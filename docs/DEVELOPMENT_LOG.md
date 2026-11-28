@@ -869,3 +869,13 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 
 - Event ordering: отброшен out-of-order same-candle kline event по provider event time в рамках того же connection generation. Если kline приходит после более свежего ticker, OHLCV кумулятивно обновляется, затем более свежий ticker close применяется поверх. Если ticker приходит после более свежей kline, старый ticker отбрасывается.
 - PR head 42f0511679167714e2a35c873ae0fc970502923c: B1 workflow 46102775403 SUCCESS, B2 workflow 46102775296 SUCCESS, browser pageErrors отсутствуют. Live Bybit check skipped due HTTP 403 on GitHub runner. PR #24 remains unmerged pending remaining audit and iPhone/Safari acceptance.
+
+
+## Exact-head verification checkpoint — 2026-11-28
+
+- Current tested application source blob: `c9711ffdd65c9667bfa7447b92ec05d73e60135f` in commit `01068b47736e9e1d9a206ae919accd8a6cea7255` (PR #24).
+- B1 browser/live-data workflow run `46103008965`: SUCCESS. Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; browser page errors 0.
+- B2 application integration workflow run `46103008967`: SUCCESS. B2-A through B2-G and browser/mobile integration all completed successfully.
+- Live Bybit REST verification was `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass and does not prove that the user's iPhone is blocked.
+- Current remaining acceptance: real Bybit WebSocket + REST behavior on iPhone/Safari, including live lastPrice, forming-candle OHLCV, closed-candle immutability, REST reconciliation, disconnect/reconnect, stale fallback, BTC/ETH and 1H/4H/1D switching, background/foreground recovery.
+- PR #24 remains open and unmerged. Do not merge before owner iPhone/Safari acceptance and exact-source review.
