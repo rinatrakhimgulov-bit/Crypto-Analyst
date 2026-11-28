@@ -524,3 +524,7 @@ Recovery-generation regression explicitly distinguishes subscription ACK from ti
 ## B5 Market Journal — implementation in progress
 
 B5 spec: `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`. Implemented first vertical slice: immutable LONG/SHORT/WAIT observations, localStorage persistence, explicit versioned JSON export/import, append-only follow-ups, and separate completed actual trades. Dedicated browser tests cover immutable snapshots, quality-blocked WAIT, no-look-ahead candle window, record linkage, PnL arithmetic, import collision/idempotency, storage failure and corrupt-storage recovery. Keep B5 stacked on B4 candidate PR #24, not merged to main independently. Remaining gates: exact-head CI, independent source review, and iPhone Safari acceptance. Open-position tracking is deferred.
+
+### B5 verification checkpoint — 2026-11-28
+
+B5 PR #25 head `8f77ff6427e5c5d8021286d971c6a82bfc7f41b5` has passed its dedicated browser contract run `46106500180`, B1 run `46106500094`, and B2 run `46106500087`. Contract coverage includes immutable observation capture, LONG/SHORT/WAIT, quality-blocked WAIT, causal candle window, follow-ups, completed actual trades, JSON backup/restore, import conflicts, storage failure and corruption recovery. Remaining acceptance: iPhone Safari persistence/export/import and independent source review. B5 remains stacked on B4 PR #24 and must not merge to main first.

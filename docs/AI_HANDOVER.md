@@ -1402,3 +1402,11 @@ B1 Playwright test fixture update commit `d5979626c38b51cd20decd5ab58cb92b510462
 ## B5 Market Journal continuation — 2026-11-28
 
 B5 is developed on `feature/b5-market-journal-2026-11-28`, stacked on the current B4 candidate head. Read `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`. Current implementation includes immutable LONG/SHORT/WAIT observation capture, localStorage, explicit JSON export/import, append-only follow-ups, and separate completed actual trades with entry/exit times and optional net PnL. Dedicated browser contract test: `tests/b5-market-journal-browser-check.cjs`. Keep journal isolated from B1/B2. Open-position tracking is deferred. Recheck exact-head B1/B2/B5 CI after each source change; iPhone Safari acceptance remains required.
+
+## B5 exact-head verification — 2026-11-28
+
+- B5 PR #25 head `8f77ff6427e5c5d8021286d971c6a82bfc7f41b5`, stacked on B4 candidate PR #24 branch `feature/b4-live-data-hardening-2026-11-28`.
+- B5 browser contract run `46106500180`: SUCCESS. Observation immutability, LONG/WAIT/quality-blocked WAIT, forming-candle finality, no future candles, follow-up/trade linkage, PnL arithmetic, invalid import/collision handling, storage failure preservation, JSON download/file import, and corrupt-storage recovery all passed; pageErrors 0.
+- B1 run `46106500094`: SUCCESS. Stage A 58/58, B1 contract 32/32, quality 72/72, MTF 20/20; live Bybit probe skipped because GitHub runner receives HTTP 403 from both public REST hosts.
+- B2 run `46106500087`: SUCCESS. B2-A…B2-G and browser/mobile integration passed; no browser page errors or horizontal overflow.
+- B5 remains a draft. Next gates are independent source review and iPhone Safari acceptance of persistence, export and import. Do not merge B5 directly to main before B4 is integrated.
