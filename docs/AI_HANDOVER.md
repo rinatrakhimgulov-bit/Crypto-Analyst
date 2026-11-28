@@ -1651,3 +1651,14 @@ Important deployment fact: GitHub Pages still serves `main`. The current `main` 
 - V2 RANGE counts: BTC 1h 40/149, BTC 4h 31/147, BTC 1d 23/132, ETH 1h 28/124, ETH 4h 26/122, ETH 1d 21/106.
 - This demonstrates the v2 branch is reachable and stable on the frozen sample, not that each RANGE label is correct. Manual chart inspection and the full B2/B7 historical replay remain required.
 - No production HTML, LONG/SHORT/WAIT logic or auto-trading was changed. Historical B1 remains synthetic VALID; finality is time-derived with fixed 500ms lag; archive ends 2025-12-05; no profitability metrics were evaluated.
+
+
+## 2026-11-28 — regime v2 exact-head verification complete
+
+- Candidate head `0ae5e3f5afe609b7d975162bc3bb443e6bb1d5bf`.
+- Market Regime Engine deterministic tests: 22/22 PASS.
+- Integration workflow: SUCCESS; 96 explicitly logged PASS assertions in the non-regime integration suites; regime tests separately 22/22.
+- Analytical context historical replay run 46168468220: SUCCESS, 780 snapshots, v1/v2 side-by-side.
+- Full B2/B7 historical replay run 46168468254: SUCCESS; regime v1/v2 included in full-history, prefix and rolling-window research summaries.
+- V2 produced 169 RANGE labels vs 0 in v1; trend and impulse label counts were unchanged. This proves the revised local-range path is reachable on the frozen sample, not that all labels are correct.
+- V2 remains unaccepted pending manual chart inspection and a newer 2026 data cohort. No HTML, LONG/SHORT/WAIT or autotrading integration.
