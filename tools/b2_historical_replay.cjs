@@ -756,4 +756,4 @@ if (require.main === module) {
   main().catch(error => { console.error(error && error.stack ? error.stack : error); process.exitCode = 1; });
 }
 
-module.exports = { loadRows, runStructure, runZones, runRegimeV2, runAnalyticalContext, summarizeAnalyticalContext, FILES, STEP, LAG, QUALITY, REGIME_POLICY_V2 };
+module.exports = { loadRows, runStructure, runZones, runRegimeV2, runZoneContextWithPolicy, runAnalyticalContext, summarizeAnalyticalContext, FILES, STEP, LAG, QUALITY, REGIME_POLICY_V2, ZONE_CONTEXT_POLICY };
