@@ -289,9 +289,20 @@ async function main() {
         collisionAtomic: true,
         quotaAtomic: true,
         corruptRestore: true,
-        uiSave: true
+        uiSave: true,
+        backupJson: exported
       };
     });
+
+    await page.locator('#journalImportFile').setInputFiles({
+      name: 'crypto-analyst-journal-backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(result.backupJson, 'utf8')
+    });
+    await page.waitForFunction(() => window.__CryptoAnalystTestHooks.MarketJournal.load().observations.length === 2,
+      { timeout: 5000 });
+    const importedCount = await page.locator('#journalCount').textContent();
+    if (importedCount !== '2 наблюдения') throw new Error('Journal UI import did not merge the backup');
 
     const [download] = await Promise.all([
       page.waitForEvent('download'),
