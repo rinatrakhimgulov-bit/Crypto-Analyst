@@ -1387,3 +1387,5 @@ Source commit `40a36c90233c5bcd5186f1d0322620f99bd78939` corrects the recovery-g
 Source commit `a822133fc1b58356d39c2814a462314aa70fcb17` initializes the recovery regression's ticker entry through `_getTickerEntry` before priming snapshot readiness. Check exact-head CI after this update.
 
 Source commit `ff3fa83f59883fbe8f32864369dec7e5b697bc95` adds `recoveryGen` to invalid-kline callbacks too. This is required because `handleLiveKline` now checks event generations before processing either valid or invalid events; without it, invalid kline events would not request REST reconciliation. Recheck exact-head CI.
+
+B1 Playwright test fixture update commit `d5979626c38b51cd20decd5ab58cb92b510462c5`: direct synthetic calls to `handleLiveTicker` and `handleLiveKline` now pass both current `connGen` and `recoveryGen`. The previous CI failure was caused by the harness omitting the newly required recovery generation; rerun B1/B2 on the exact latest head.
