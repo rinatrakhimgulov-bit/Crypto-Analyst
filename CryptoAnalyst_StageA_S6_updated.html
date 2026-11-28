@@ -7980,8 +7980,15 @@
           !item.candle || !Number.isSafeInteger(item.providerEventTimeMs) ||
           !Number.isSafeInteger(item.receivedAtMs) ||
           Date.now() - item.receivedAtMs > LIVE_KLINE_STALE_MS) return null;
-      if (dataset && Number.isSafeInteger(dataset.providerServerTimeMs) &&
-          item.providerEventTimeMs <= dataset.providerServerTimeMs) return null;
+      if (dataset) {
+        // Without provider time there is no safe ordering between the REST
+        // snapshot and this WS event, so do not replay it over the REST data.
+        if (!Number.isSafeInteger(dataset.providerServerTimeMs)) return null;
+        if (item.providerEventTimeMs <= dataset.providerServerTimeMs) {
+          state.liveKline = null;
+          return null;
+        }
+      }
       return item;
     }
     function reapplyLiveKlineAfterRest(dataset) {
@@ -8839,8 +8846,13 @@
               'A newer WS kline must restore its OHLCV after an older REST snapshot replaces chart data');
             chart.setData(base, 1, null, 10);
             const notReplayed = reapplyLiveKlineAfterRest({ symbol: 'BTCUSDT', interval: '240', providerServerTimeMs: 6000 });
-            assert(notReplayed === null && chart.candles[1].volume === 1,
-              'A WS kline older than the REST provider time must not overwrite the REST candle');
+            assert(notReplayed === null && chart.candles[1].volume === 1 && state.liveKline === null,
+              'A WS kline older than the REST provider time must not overwrite the REST candle and must be discarded');
+            state.liveKline = replayEvent;
+            const noProviderTime = reapplyLiveKlineAfterRest({ symbol: 'BTCUSDT', interval: '240' });
+            assert(noProviderTime === null && chart.candles[1].volume === 1,
+              'A WS kline must not be replayed when the REST snapshot has no provider time for ordering');
+            state.liveKline = null;
             // Ticker and kline topics can be delivered out of order. Provider
             // timestamps keep an older event from regressing the forming close.
             wsState.tickerBySymbol = new Map();
