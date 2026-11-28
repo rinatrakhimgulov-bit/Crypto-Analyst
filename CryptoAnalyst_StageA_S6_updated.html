@@ -8761,7 +8761,8 @@
               state.liveKline = savedLiveKline;
               wsState.status = savedWsStatus;
               wsState.connGen = savedWsConnGen;
-              wsState.confirmedTopics = new Set(savedConfirmedTopics);
+              wsState.confirmedTopics.clear();
+              for (const topic of savedConfirmedTopics) wsState.confirmedTopics.add(topic);
             });
             const base = [
               { ts: 1000, closeTs: 2000, open: 10, high: 11, low: 9, close: 10, volume: 1, turnover: 10 },
