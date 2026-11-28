@@ -186,6 +186,7 @@ async function main() {
         id: journal.createId(), recordType: 'actual_trade', schemaVersion: 1,
         observationId: observation.id, recordedAtMs: tradeTime,
         side: 'LONG', status: 'closed',
+        quoteCurrency: 'USDT', quantityUnit: 'base_asset',
         entry: { price: 65000, atMs: tradeTime - 1000 },
         exit: { price: 65200, atMs: tradeTime },
         quantity: 0.1, feesQuote: 1, fundingQuote: 0.2,
