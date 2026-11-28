@@ -853,3 +853,12 @@ Recovery-generation regression fixture now primes ticker readiness explicitly so
 - B2 run 46109011273 SUCCESS: B2-A…B2-G and browser/mobile integration passed.
 - Live Bybit REST remains unverified because the Actions runner received HTTP 403 from both public REST hosts. Do not interpret this as an iPhone connectivity result.
 - PR #24 remains open/unmerged. Remaining gates: exact-source review and owner iPhone/Safari acceptance of real REST+WS behavior, reconnect, forming/final candles, stale fallback and instrument/timeframe switching.
+
+
+### B4 latest code checkpoint — 2026-11-28
+
+- Source commit: 86bf04418a9f270755a86c6e400565f0b6398978; HTML blob e29b50bb76c7b5dc2114bb002e5afb4ff50d2ba8.
+- Kline cache is cleared before REST reconciliation when a new event is invalid or cannot be applied due to candle continuity/finality conflict; older out-of-order events do not erase a newer valid cache.
+- B1 run 46109176498 SUCCESS: Stage A 59/59, B1 contract 32/32, quality 72/72, MTF 20/20; browser pageErrors 0.
+- B2 run 46109176611 SUCCESS: B2-A…B2-G and browser/mobile integration passed; pageErrors 0.
+- Live Bybit remains unverified by Actions because both REST hosts returned HTTP 403. iPhone/Safari acceptance remains required.

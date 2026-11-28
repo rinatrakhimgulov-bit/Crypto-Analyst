@@ -1402,3 +1402,8 @@ B1 Playwright test fixture update commit `d5979626c38b51cd20decd5ab58cb92b510462
 ## B4 latest handover checkpoint — 2026-11-28
 
 Latest PR #24 head is fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60, application blob 3faed8d77a85df864ecf5eecc1bf2b55c53b85f9. Second-pass audit found and fixed a cache invalidation gap: an invalid kline event now clears the prior WS kline cache before scheduling REST reconciliation. Regression added. Exact-head B1 run 46109011261 passed Stage A 59/59, B1 contract 32/32, quality 72/72, MTF 20/20, browser page errors 0. B2 run 46109011273 passed B2-A…B2-G and browser/mobile integration. Live Bybit remains unverified because Actions REST requests got HTTP 403. Do not merge before real iPhone/Safari acceptance and final exact-source review.
+
+
+## B4 latest handover — 2026-11-28
+
+Latest source commit 86bf04418a9f270755a86c6e400565f0b6398978; app blob e29b50bb76c7b5dc2114bb002e5afb4ff50d2ba8. Kline cache invalidation now covers invalid payloads and chart continuity/finality rejection statuses; an explicitly older event preserves the latest accepted cache. Regression checks cover malformed events and gaps. Exact-head B1 run 46109176498 passed Stage A 59/59, B1 contract 32/32, quality 72/72, MTF 20/20 with zero browser page errors. B2 run 46109176611 passed B2-A…B2-G and browser/mobile integration with zero page errors. Actions live Bybit REST remains blocked by HTTP 403; owner iPhone/Safari live acceptance and final review remain mandatory. Do not merge yet.

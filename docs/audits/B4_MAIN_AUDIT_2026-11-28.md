@@ -163,3 +163,14 @@ An invalid kline callback previously scheduled REST reconciliation but left the 
 - B2 workflow run 46109011273: SUCCESS; B2-A through B2-G and browser/mobile integration passed.
 - Live Bybit REST probe remains SKIPPED_PROVIDER_BLOCKED: GitHub Actions received HTTP 403 from both public REST hosts. This is not live-provider verification.
 - PR #24 remains open and unmerged. iPhone/Safari live acceptance is still required.
+
+
+## B4 continuity-failure cache invalidation — 2026-11-28
+
+The second-pass audit was extended from malformed WS messages to valid-but-unapplyable kline updates. A kline event rejected by chart continuity rules (closed-candle mutation, unconfirmed predecessor, conflict, gap, invalid payload, or missing base) now invalidates the previous WS kline cache before REST reconciliation. An explicitly older out-of-order event is the exception: it is dropped without discarding the latest accepted cache. Regression coverage now checks malformed-event invalidation and gap invalidation.
+
+- Latest source commit: 86bf04418a9f270755a86c6e400565f0b6398978.
+- Application HTML blob: e29b50bb76c7b5dc2114bb002e5afb4ff50d2ba8.
+- Exact-head B1 run 46109176498: SUCCESS; Stage A 59/59, B1 contract 32/32, quality 72/72, MTF 20/20; browser pageErrors empty.
+- Exact-head B2 run 46109176611: SUCCESS; B2-A…B2-G and browser/mobile integration passed; browser pageErrors empty.
+- Live Bybit REST probe: SKIPPED_PROVIDER_BLOCKED (HTTP 403 on both Actions runner REST hosts); iPhone/Safari provider acceptance remains open.
