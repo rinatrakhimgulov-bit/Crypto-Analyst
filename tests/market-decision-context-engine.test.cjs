@@ -37,10 +37,10 @@ function upstream(engine_version, policy_version, extra = {}) {
     ...extra
   };
 }
-function lifecycle(id, status='RETEST_SUCCESSFUL') {
+function lifecycle(id, status='RETEST_SUCCESSFUL', direction='BULLISH') {
   return {
     lifecycle_id: id, breakout_event_id: 'break:' + id,
-    direction: 'BULLISH', status,
+    direction, status,
     confirmation: {
       outcome: status === 'RETEST_FAILED' ? 'FAILURE' : 'SUCCESS',
       available_at_ms: AS_OF - 100
@@ -67,11 +67,12 @@ function fixture(options={}) {
     options.direction || (b2cState === 'UP' ? 'LONG' : 'SHORT'),
     options.setupStatus || 'CONFIRMED');
   const b2e = upstream('2.0.0-b2e', POLICY.b2e_policy_version, {
-    lifecycles: [lifecycle('life-1', lifeStatus)]
+    lifecycles: [lifecycle('life-1', lifeStatus, lifecycleDirection)]
   });
   const breakoutQuality = upstream('1.0.0-b2e-breakout-quality', POLICY.breakout_quality_policy_version, {
     breakouts: [{
       lifecycle_id: 'life-1', breakout_event_id: 'break:life-1',
+      direction: lifecycleDirection,
       quality_status: options.breakoutQuality || 'STRONG_EVIDENCE'
     }]
   });
@@ -131,13 +132,13 @@ run('breakout retest without strong breakout evidence remains WAIT', () => {
   assert.equal(r.decision, 'WAIT');
   assert.ok(r.reasons.some(x => x.code === 'BREAKOUT_QUALITY_NOT_STRONG'));
 });
-run('failed bearish breakout can produce LONG only as a matching reclaim candidate', () => {
-  const item = candidate('FALSE_BREAKOUT_RECLAIM', 'LONG');
+run('failed bullish breakout can produce SHORT only as a matching reclaim candidate', () => {
+  const item = candidate('FALSE_BREAKOUT_RECLAIM', 'SHORT');
   const r = analyze(fixture({
-    lifecycleStatus: 'RETEST_FAILED', setupType: 'FALSE_BREAKOUT_RECLAIM',
-    direction: 'LONG', candidates: [item]
+    structure: 'DOWN', lifecycleStatus: 'RETEST_FAILED', setupType: 'FALSE_BREAKOUT_RECLAIM',
+    direction: 'SHORT', candidates: [item]
   }));
-  assert.equal(r.decision, 'LONG');
+  assert.equal(r.decision, 'SHORT');
 });
 run('confirmed opposing bearish impulse blocks LONG', () => {
   const r = analyze(fixture({ impulseClass: 'STRONG_SELL_OFF', impulseDirection: 'BEARISH' }));
@@ -157,6 +158,12 @@ run('opposite confirmed setup directions are a conflict', () => {
   const r = analyze(fixture({ candidates: [a, b] }));
   assert.equal(r.decision, 'WAIT');
   assert.equal(r.reasons[0].code, 'CONFLICTING_CONFIRMED_SETUPS');
+});
+run('breakout candidate with direction opposite to its lifecycle is rejected', () => {
+  const item = candidate('BREAKOUT_RETEST', 'SHORT');
+  const r = analyze(fixture({ candidates: [item] }));
+  assert.equal(r.decision, 'WAIT');
+  assert.ok(r.reasons.some(x => x.code === 'B2E_BREAKOUT_RETEST_NOT_CONFIRMED'));
 });
 run('trend continuation can qualify without a breakout lifecycle', () => {
   const item = candidate('TREND_CONTINUATION_AFTER_CORRECTION', 'LONG');
