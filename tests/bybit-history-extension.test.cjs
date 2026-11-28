@@ -8,7 +8,7 @@ const parsed = parseKline([
   String(Math.floor(1700000000000 / STEP) * STEP), '100', '105', '99', '103', '12.5', '1287.5'
 ], '1h');
 assert.equal(parsed.open_time_ms, Math.floor(1700000000000 / STEP) * STEP);
-assert.equal(parsed.close_time_ms, 1700000000000 + STEP);
+assert.equal(parsed.close_time_ms, parsed.open_time_ms + STEP);
 assert.equal(parsed.volume_base, 12.5);
 assert.equal(parsed.volume_quote, 1287.5);
 
