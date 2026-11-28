@@ -87,3 +87,21 @@ The B1 and B2 workflow push filters now include `feature/b4-live-data-hardening-
 - Live Bybit REST check: SKIPPED_PROVIDER_BLOCKED because both public REST hosts returned HTTP 403 to the GitHub Actions runner. This is not a live Bybit pass and not evidence that the user's iPhone cannot connect.
 - The tested PR merge ref includes exact branch head 42f0511679167714e2a35c873ae0fc970502923c.
 - PR #24 remains open and unmerged. B4 still requires remaining reconnect/fallback/lifecycle audit, independent review and real iPhone/Safari acceptance.
+
+
+## Final B4 hardening details
+
+- REST replay is fail-closed when the REST snapshot has no provider server time; without comparable provider timestamps, a cached WS kline is not replayed over REST.
+- When a REST provider timestamp catches up to or passes the cached WS kline event time, the cache is discarded rather than retained for a future replay.
+- A ticker older than the latest current-generation kline event is not considered fresh for the price label or forming candle. If the ticker timestamp is missing while a newer kline timestamp exists, it is rejected for the same reason.
+- Same-candle kline event-time ordering is scoped to the same WebSocket connection generation, so a reconnect does not compare a new session's provider event time against a stale prior-session cache.
+
+
+## Exact-head verification checkpoint — 2026-11-28
+
+- Current tested application source blob: `c9711ffdd65c9667bfa7447b92ec05d73e60135f` in commit `01068b47736e9e1d9a206ae919accd8a6cea7255` (PR #24).
+- B1 browser/live-data workflow run `46103008965`: SUCCESS. Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; browser page errors 0.
+- B2 application integration workflow run `46103008967`: SUCCESS. B2-A through B2-G and browser/mobile integration all completed successfully.
+- Live Bybit REST verification was `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass and does not prove that the user's iPhone is blocked.
+- Current remaining acceptance: real Bybit WebSocket + REST behavior on iPhone/Safari, including live lastPrice, forming-candle OHLCV, closed-candle immutability, REST reconciliation, disconnect/reconnect, stale fallback, BTC/ETH and 1H/4H/1D switching, background/foreground recovery.
+- PR #24 remains open and unmerged. Do not merge before owner iPhone/Safari acceptance and exact-source review.
