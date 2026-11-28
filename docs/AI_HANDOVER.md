@@ -1367,3 +1367,7 @@ Current tested application source blob: `c9711ffdd65c9667bfa7447b92ec05d73e60135
 ### B4 continuation checkpoint — page lifecycle test
 
 Latest code change: commit `1783a8e0b8294973366a61d32e75bb40458e338a` on `feature/b4-live-data-hardening-2026-11-28`, adding Stage A regression `16d` for the real `pagehide`/`pageshow` listeners. It asserts that pagehide invalidates the old connection generation and clears active subscription state, while pageshow opens a new socket/recovery generation and waits for fresh ACKs. Exact-head B1/B2 CI must be checked after this commit. This does not prove real iPhone/Safari lifecycle behavior. Continue audit of stale fallback and symbol/timeframe transitions; keep PR #24 unmerged until all gates pass.
+
+### B4 continuation checkpoint — provider event-time validation
+
+Latest code commit `730917fb52a33064b204f425dfd57bd9ab2f0490` requires a valid Bybit kline `msg.ts` provider event timestamp before emitting a valid live-candle event. Previously, a candle with missing provider time could mutate the chart despite being unorderable against REST/ticker state. Added regression `B1-D. Kline without provider event timestamp is rejected fail-closed`. Check B1/B2 CI on the final branch head. Verify actual Bybit payload compatibility on iPhone/Safari; do not claim live acceptance from mocked tests.
