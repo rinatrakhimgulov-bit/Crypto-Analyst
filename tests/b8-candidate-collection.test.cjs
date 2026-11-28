@@ -10,14 +10,15 @@ const b = { setup_id: 'setup-B', setup_type: 'FALSE_BREAKOUT_RECLAIM', direction
   status: 'CONFIRMED', available_at_ms: 850, invalidation_level: 110 };
 const entries = [
   { symbol: 'BTCUSDT', timeframe: '1h', windows: [
-    { quantile: 0.2, candidates: [a] },
-    { quantile: 0.4, candidates: [duplicate, b] }
+    { quantile: 0.2, end_time_ms: 200, candidates: [a] },
+    { quantile: 0.4, end_time_ms: 400, candidates: [duplicate, b] }
   ] }
 ];
 const deduped = deduplicateCandidates(entries);
 assert.equal(deduped.length, 2);
 assert.equal(deduped[0].setup_id, 'setup-A');
 assert.equal(deduped[0].first_seen_window_quantile, 0.2);
+assert.equal(deduped[0].first_seen_window_end_ms, 200);
 assert.equal(deduped[1].setup_id, 'setup-B');
 const pending = { ...a, status: 'PENDING', available_at_ms: 250 };
 const confirmedLater = { ...a, status: 'CONFIRMED', available_at_ms: 300 };
@@ -26,6 +27,17 @@ const lifecycle = deduplicateCandidates([{ symbol: 'BTCUSDT', timeframe: '1h',
 assert.equal(lifecycle.length, 1);
 assert.equal(lifecycle[0].status, 'CONFIRMED');
 assert.equal(lifecycle[0].available_at_ms, 300);
+assert.equal(lifecycle[0].first_seen_window_end_ms, null);
+assert.equal(lifecycle[0].confirmation_observed_window_end_ms, null);
+const drift = deduplicateCandidates([{ symbol: 'BTCUSDT', timeframe: '1h', windows: [
+  { end_time_ms: 400, candidates: [{ ...a, invalidation_level: 90 }] },
+  { end_time_ms: 500, candidates: [{ ...a, invalidation_level: 91 }] }
+] }]);
+assert.equal(drift.length, 1);
+assert.equal(drift[0].invalidation_level, null, 'drifting stop proxy must not be selected');
+assert.equal(drift[0].invalidation_level_conflict, true);
+assert.equal(drift[0].invalidation_level_variant_count, 2);
+
 assert.equal(chronologicalSplit({ available_at_ms: 59 }, 0, 100), 'TRAIN');
 assert.equal(chronologicalSplit({ available_at_ms: 60 }, 0, 100), 'VALIDATION');
 assert.equal(chronologicalSplit({ available_at_ms: 80 }, 0, 100), 'TEST');
