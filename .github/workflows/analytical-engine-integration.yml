@@ -1,0 +1,36 @@
+name: Analytical Engine Integration Candidate
+
+on:
+  pull_request:
+    paths:
+      - 'CryptoAnalyst_StageA_S6_updated.html'
+      - 'tests/analytical-engine-integration.test.cjs'
+      - '.github/workflows/analytical-engine-integration.yml'
+      - 'src/analysis/**'
+      - 'tests/**'
+  push:
+    branches:
+      - 'feature/analytical-engine-integration-2026-11-28'
+
+jobs:
+  analytical-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify HTML integration and parse inline scripts
+        run: node tests/analytical-engine-integration.test.cjs
+      - name: Market regime tests
+        run: node tests/market-regime-engine.test.cjs
+      - name: B2-D support/resistance tests
+        run: node tests/b2d-support-resistance-engine.test.cjs
+      - name: B2-D zone context tests
+        run: node tests/b2d-zone-context-engine.test.cjs
+      - name: B2-E breakout/retest tests
+        run: node tests/b2e-breakout-retest-engine.test.cjs
+      - name: B2-E breakout quality tests
+        run: node tests/b2e-breakout-quality-engine.test.cjs
+      - name: Market impulse and selloff tests
+        run: node tests/market-impulse-event-engine.test.cjs
