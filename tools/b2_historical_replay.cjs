@@ -158,11 +158,18 @@ function runStructure(rows, symbol, timeframe, asOf, id, strength = 2) {
   assert(c.status === 'VALID', 'B2-C blocked: ' + JSON.stringify(c.admission.reasons));
   return { snapshot, quality, a, b, c };
 }
-function runZones(structure, symbol, timeframe, spanRatio = 0.001, retestRatio = 0.0005) {
+function runZones(structure, symbol, timeframe, spanRatio = 0.001, retestRatio = 0.0005, fixedEventPolicy = null) {
   const priceScale = median(structure.snapshot.candles_by_timeframe[timeframe].map(c => c.close));
+  const zoneSpanPrice = fixedEventPolicy && fixedEventPolicy.zone_span_price;
+  const retestBufferPrice = fixedEventPolicy && fixedEventPolicy.retest_buffer_price;
+  const maxClusterSpanPrice = Number.isFinite(zoneSpanPrice) && zoneSpanPrice > 0
+    ? zoneSpanPrice : priceScale * spanRatio;
+  const fixedRetestBufferPrice = Number.isFinite(retestBufferPrice) && retestBufferPrice >= 0
+    ? retestBufferPrice : priceScale * retestRatio;
   const zonePolicy = {
-    version: 'b2d-absolute-span-v1', instrument_symbol: symbol, timeframe,
-    cluster_method: 'MAX_TOTAL_SPAN_V1', max_cluster_span_price: priceScale * spanRatio,
+    version: fixedEventPolicy ? 'b2d-event-time-span-v1' : 'b2d-absolute-span-v1',
+    instrument_symbol: symbol, timeframe,
+    cluster_method: 'MAX_TOTAL_SPAN_V1', max_cluster_span_price: maxClusterSpanPrice,
     min_independent_touches: 2
   };
   const policyD = {
@@ -182,9 +189,9 @@ function runZones(structure, symbol, timeframe, spanRatio = 0.001, retestRatio =
   assert(d.status === 'VALID', 'B2-D blocked: ' + JSON.stringify(d.admission.reasons));
   const retestPolicy = {
     version: 'retest-policy-v1', touch_method: 'RANGE_INTERSECTION_V1',
-    touch_tolerance_price: priceScale * retestRatio,
-    success_buffer_price: priceScale * retestRatio,
-    failure_buffer_price: priceScale * retestRatio,
+    touch_tolerance_price: fixedRetestBufferPrice,
+    success_buffer_price: fixedRetestBufferPrice,
+    failure_buffer_price: fixedRetestBufferPrice,
     retest_window_bars: 20, confirmation_window_bars: 3
   };
   const policyE = {
