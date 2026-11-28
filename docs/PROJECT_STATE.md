@@ -845,6 +845,24 @@ Recovery-generation regression fixture now primes ticker readiness explicitly so
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
 
+### B4 latest verified checkpoint — 2026-11-28
+
+- PR #24 head: fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60; app HTML blob 3faed8d77a85df864ecf5eecc1bf2b55c53b85f9.
+- Invalid kline events now invalidate the previous WS kline cache before REST reconciliation; dedicated Stage A regression added.
+- B1 run 46109011261 SUCCESS: Stage A 59/59, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; browser page errors 0.
+- B2 run 46109011273 SUCCESS: B2-A…B2-G and browser/mobile integration passed.
+- Live Bybit REST remains unverified because the Actions runner received HTTP 403 from both public REST hosts. Do not interpret this as an iPhone connectivity result.
+- PR #24 remains open/unmerged. Remaining gates: exact-source review and owner iPhone/Safari acceptance of real REST+WS behavior, reconnect, forming/final candles, stale fallback and instrument/timeframe switching.
+
+
+### B4 latest code checkpoint — 2026-11-28
+
+- Source commit: 86bf04418a9f270755a86c6e400565f0b6398978; HTML blob e29b50bb76c7b5dc2114bb002e5afb4ff50d2ba8.
+- Kline cache is cleared before REST reconciliation when a new event is invalid or cannot be applied due to candle continuity/finality conflict; older out-of-order events do not erase a newer valid cache.
+- B1 run 46109176498 SUCCESS: Stage A 59/59, B1 contract 32/32, quality 72/72, MTF 20/20; browser pageErrors 0.
+- B2 run 46109176611 SUCCESS: B2-A…B2-G and browser/mobile integration passed; pageErrors 0.
+- Live Bybit remains unverified by Actions because both REST hosts returned HTTP 403. iPhone/Safari acceptance remains required.
+
 ## B5 active implementation — 2026-11-28
 
 B5 PR #25 is a draft stacked on B4 PR #24. Current feature slice includes immutable LONG/SHORT/WAIT observations, local browser persistence, explicit JSON import/export, append-only follow-ups, and separate completed actual trades. Snapshot records preserve quality reasons, B2 context, engine versions and a bounded candle window with finality; no future candle is included. Storage/import validation fails closed and does not overwrite prior valid records on errors. Dedicated browser contract suite and B1/B2 regressions are green on the latest code candidate; iPhone Safari acceptance remains required. Spec: `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`.
