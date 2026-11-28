@@ -1389,3 +1389,12 @@ Source commit `a822133fc1b58356d39c2814a462314aa70fcb17` initializes the recover
 Source commit `ff3fa83f59883fbe8f32864369dec7e5b697bc95` adds `recoveryGen` to invalid-kline callbacks too. This is required because `handleLiveKline` now checks event generations before processing either valid or invalid events; without it, invalid kline events would not request REST reconciliation. Recheck exact-head CI.
 
 B1 Playwright test fixture update commit `d5979626c38b51cd20decd5ab58cb92b510462c5`: direct synthetic calls to `handleLiveTicker` and `handleLiveKline` now pass both current `connGen` and `recoveryGen`. The previous CI failure was caused by the harness omitting the newly required recovery generation; rerun B1/B2 on the exact latest head.
+
+## B4 exact-head verification checkpoint — 2026-11-28
+
+- PR #24 head: `94513b348a36ed3a91385d56ef52f4df4569326d`.
+- Application HTML blob: `fffaa8c6c7448350c6db81bbdf6bee4d3a34504d`.
+- B1 browser/live-data CI run `46105030207`: SUCCESS. Stage A 58/58, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; browser page errors 0.
+- B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
+- Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
+- PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
