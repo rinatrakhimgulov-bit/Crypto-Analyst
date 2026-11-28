@@ -894,3 +894,5 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B4 subscription transition coverage: added deterministic integration regression for in-flight ticker/kline messages arriving from the previous timeframe or symbol after same-socket subscription changes. Old topics must be dropped; new ETHUSDT/60 topics must work after ACK. Source commit: `67dfd2f36d46c58e66b5fcb2f233cca61626da69`. Exact-head CI pending.
 
 - B4 recovery-cycle isolation: live ticker/kline events and caches now carry both connection and recovery generations. Freshness, bridge acceptance and same-candle/cross-topic ordering reject caches from a prior recovery cycle, including normal automatic reconnects that retain `connGen`. Added deterministic regression for this case. Code commits: `6e06eb472d9fb750fc9c8a9bacc2575b7768a5bb`, `d916e9a05b38ccb12758225e28f0a03fb82da3fe`. Exact-head CI pending.
+
+- Recovery-generation test fixture corrected to establish a valid ticker snapshot/readiness before testing prior-cycle cache invalidation. Source commit `40a36c90233c5bcd5186f1d0322620f99bd78939`; exact-head CI pending.
