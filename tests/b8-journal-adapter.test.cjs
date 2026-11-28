@@ -114,4 +114,12 @@ function envelope(observations) {
   });
   assert.throws(() => validateEnvelope(source), /B8_JOURNAL_TRADE_CLOSE_INVALID/);
 }
+{
+  const source = envelope([makeObservation('observation-missing-setup-id', 'LONG')]);
+  delete source.observations[0].analysisSnapshot.b2.setups.setup_candidates[0].setup_id;
+  const result = importJournalEnvelope(source);
+  assert.equal(result.observations[0].setup_candidates.length, 0,
+    'confirmed candidate without stable setup_id must be excluded');
+  assert.equal(result.observations[0].excluded_candidate_count, 1);
+}
 console.log('B8 journal adapter: deterministic assertions PASS');
