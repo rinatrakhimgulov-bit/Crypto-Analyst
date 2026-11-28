@@ -6,7 +6,7 @@
 
 ## Problem
 
-The historical event study observed that the same B2-E breakout event could be reconstructed with different historical zone boundaries in later snapshots. The replay harness supplied `max_cluster_span_price = median(close over the full 260-candle snapshot) × ratio`. When the snapshot moved forward, the median changed, so the same past event could receive a different historical cluster width. The retest buffers were also absolute prices derived from that moving snapshot median.
+The historical event study observed that the same B2-E breakout event could be reconstructed with different historical zone boundaries in later snapshots. The replay harness supplied `max_cluster_span_price = median(close over the full 1000-candle snapshot) × ratio`. When the snapshot moved forward, the median changed, so the same past event could receive a different historical cluster width. The retest buffers were also absolute prices derived from that moving snapshot median.
 
 This is undesirable for event-level historical research: the zone and retest tolerances for a past breakout should be anchored to information available at that breakout, not to the price scale of a later snapshot.
 
@@ -50,3 +50,8 @@ This is undesirable for event-level historical research: the zone and retest tol
 ## Boundaries
 
 This policy does not assert that the selected ratio is optimal. It does not alter the app's live policy, LONG/SHORT/WAIT decision, or trading behavior. Historical B1 quality remains synthetic VALID and finality remains fixed at 500ms. No profitability claim is made.
+
+
+## Rolling context retention correction
+
+The first v2 event-study replay still showed 361 zone-boundary changes. The remaining source was not price-scale drift: the 260-candle rolling snapshot was dropping older raw pivots needed to reconstruct the same historical zone. The event study now uses a 1000-candle context while retaining the 160-candle breakout-quality lookback. This provides up to 840 prior candles before the event for causal zone reconstruction. The next replay must re-measure boundary changes; zero is the target, not an assumed result.
