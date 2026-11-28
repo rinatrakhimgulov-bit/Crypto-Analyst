@@ -882,3 +882,5 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 
 
 - B4 lifecycle coverage: added Stage A test `16d` for actual `pagehide`/`pageshow` listeners. It verifies old-socket invalidation, clean close state, fresh connection/recovery generations, and that new topics are not marked confirmed until ACK. Code commit: `1783a8e0b8294973366a61d32e75bb40458e338a`. CI for this exact code commit is pending; no real iPhone/Safari acceptance is claimed.
+
+- B4 fail-closed metadata fix: kline messages without a valid provider `msg.ts` are now rejected before entering the chart bridge, because they cannot be ordered against REST or ticker events. Added Stage A regression for missing `msg.ts`. Code commit: `730917fb52a33064b204f425dfd57bd9ab2f0490`. Exact-head CI pending; real Bybit/iPhone acceptance remains outstanding.
