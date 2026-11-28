@@ -1377,3 +1377,5 @@ Latest B4 code commit `c5be074817dcee28cb7a7df3e095939150579de7` extends fail-cl
 Latest source commit `109048c38bcaaabf18663e3897e87ecfdbe313d4` also updates valid ticker integration fixtures to include provider `ts`, while preserving the intentional missing-timestamp negative test. Check exact-head B1/B2 CI after this commit.
 
 Latest B4 code commit `4f5e369b52b4262dbad88d9ba54a3fc6d7378301` adds regression coverage for stale WS ticker/kline handling and REST price fallback. It asserts stale cache rejection and the explicit `WS устарел` label. Check exact-head B1/B2 CI after this commit; actual iPhone/Safari fallback remains unverified.
+
+Latest B4 code commit `67dfd2f36d46c58e66b5fcb2f233cca61626da69` adds same-socket in-flight subscription-switch coverage: old timeframe/symbol messages are dropped and the new ETHUSDT/60 ticker+kline streams are accepted after ACK. Recheck exact-head B1/B2 CI; actual iPhone/Safari switching remains a required acceptance gate.
