@@ -198,7 +198,7 @@ run('confirmation after analysis cutoff is excluded', () => {
 run('B1 quality failure blocks all setup candidates', () => {
   const input = fixture();
   input.quality_report.status = 'STALE';
-  input.b2e_result.lifecycles = [lifecycle()];
+  attachLifecycles(input, [lifecycle()]);
   const result = analyze(input);
   assert.equal(result.status, 'BLOCKED');
   assert.equal(result.setup_candidates.length, 0);
@@ -222,7 +222,7 @@ run('snapshot mismatch in B2 output blocks analysis', () => {
 
 run('unsupported MTF input is not required or used as a directional gate', () => {
   const input = fixture();
-  input.b2e_result.lifecycles = [lifecycle()];
+  attachLifecycles(input, [lifecycle()]);
   input.b2f_result = { status: 'INVALID', structure_state: 'CONFLICT' };
   const result = analyze(input);
   assert.equal(result.setup_candidates[0].direction, 'LONG');
