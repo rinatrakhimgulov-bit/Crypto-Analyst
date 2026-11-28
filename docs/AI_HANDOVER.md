@@ -1414,3 +1414,14 @@ B5 is developed on `feature/b5-market-journal-2026-11-28`, stacked on the curren
 ## B6 Analytics Core Audit — 2026-11-28
 
 Read `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`. B2-A..G audit result: PASS WITH CONDITIONS. Added `tests/b2-inline-source-parity.test.cjs` and CI step to ensure all seven tested `src/analysis` modules exactly match the inline production engines. Pinned historical replay archive to commit `9ca04178df06ce649f00779a49e11094fe5b1c70`; added 160/400/800/1600 lookback sensitivity. B2 app/parity run `46107248773` SUCCESS; historical replay run `46107248819` SUCCESS. At the archive's final cutoff, 160-bar structure state matched full history for all six BTC/ETH timeframe series. Zone count grows sharply with longer lookback; keep current 160-bar input until zone freshness/relevance is designed. B2-F remains out of directional decisions pending live provider-time calibration. Next: B7 setup definitions, then B8 validation using B5 journal; no trading-edge claim.
+
+## B7 Explainable Setup Engine — 2026-11-28
+
+B7 implementation is available on draft PR #27, branch `feature/b7-setup-engine-2026-11-28`, stacked on B6 PR #26. Read `docs/specs/B7_EXPLAINABLE_SETUP_ENGINE_SPEC_2026-11-28.md`.
+
+- Engine: `src/analysis/b7-explainable-setup-engine.js`; exact production inline copy is embedded in `CryptoAnalyst_StageA_S6_updated.html`.
+- Inputs: B1-VALID snapshot and quality report plus same-snapshot/symbol/timeframe/cutoff B2-A/B/C/D/E outputs. B2-C breakout event provenance is checked against B2-E lifecycle. Only closed candles can confirm.
+- Scenarios: BREAKOUT_RETEST; FALSE_BREAKOUT_RECLAIM; TREND_CONTINUATION_AFTER_CORRECTION. Pending retests remain PENDING. Candle and volume features are evidence, not standalone signals.
+- UI: separate `Рыночные сценарии B7` panel. B7 is not connected to BasicAnalyticsEngine LONG/SHORT/WAIT. B2-F is not used as a hard directional gate. No probability or profitability claims.
+- Validation: 18 B7 unit tests; B2-A..G + B7 exact source/inline parity; all B2 unit regressions; browser/mobile integration. CI run `46114849599` SUCCESS, pageErrors 0. Synthetic browser fixture returned VALID / zero setups.
+- Remaining: independent source review, B7 pinned historical/prefix replay, owner iPhone Safari acceptance. Do not merge PR #27 directly to `main` before B4/B5/B6 dependency order is resolved. B8 statistical validation remains required before any B9 directional integration.
