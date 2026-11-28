@@ -12,6 +12,11 @@ const { analyze: analyzeF } = require('../src/analysis/b2f-mtf-structure-conflue
 const { analyze: analyzeG } = require('../src/analysis/b2g-chart-projection-engine.js');
 const { analyze: analyzeB7 } = require('../src/analysis/b7-explainable-setup-engine.js');
 
+const { analyze: analyzeRegime } = require('../src/analysis/market-regime-engine.js');
+const { analyze: analyzeZoneContext } = require('../src/analysis/b2d-zone-context-engine.js');
+const { analyze: analyzeBreakoutQuality } = require('../src/analysis/b2e-breakout-quality-engine.js');
+const { analyze: analyzeImpulse } = require('../src/analysis/market-impulse-event-engine.js');
+
 const LAG = 500;
 const QUALITY = 'b1-quality-policy-2026-11-27-v1';
 const DATASET_REPOSITORY = 'mestoness/btc-eth-candles-history';
@@ -198,6 +203,145 @@ function runZones(structure, symbol, timeframe, spanRatio = 0.001, retestRatio =
   assert(e.status === 'VALID', 'B2-E blocked: ' + JSON.stringify(e.admission.reasons));
   return { d, e, zonePolicy, retestPolicy };
 }
+
+const REGIME_POLICY = {
+  version: 'market-regime-policy-v1',
+  ema_fast_period: 20, ema_mid_period: 50, ema_slow_period: 200,
+  atr_period: 14, slope_lookback: 10, range_lookback: 20, impulse_lookback: 5,
+  b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
+  b1_quality_policy_version: QUALITY,
+  structure_engine_version: '2.1.0-b2c', structure_policy_version: 'b2c-state-v2',
+  finality_safety_lag_ms: LAG,
+  trend_min_ema50_slope_atr: 0.20, trend_min_ema200_slope_atr: 0.08,
+  trend_min_fast_mid_spread_atr: 0.05, trend_min_mid_slow_spread_atr: 0.10,
+  range_max_width_atr: 5.0, range_max_ema50_slope_atr: 0.12,
+  range_max_mid_slow_spread_atr: 0.60,
+  impulse_min_move_atr: 2.5, impulse_min_range_expansion: 1.25
+};
+const ZONE_CONTEXT_POLICY = {
+  version: 'b2d-zone-context-v1',
+  b2d_engine_version: '2.0.0-b2d',
+  b2d_policy_version: 'b2d-zone-engine-v1',
+  b2d_zone_policy_version: 'b2d-absolute-span-v1',
+  b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
+  b1_quality_policy_version: QUALITY, finality_safety_lag_ms: LAG,
+  atr_period: 14, freshness_recent_bars: 10, freshness_aging_bars: 20,
+  max_active_distance_atr: 5
+};
+const BREAKOUT_QUALITY_POLICY = {
+  version: 'b2e-breakout-quality-v1',
+  b2e_engine_version: '2.0.0-b2e', b2e_policy_version: 'b2e-retest-engine-v1',
+  b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
+  b1_quality_policy_version: QUALITY, finality_safety_lag_ms: LAG,
+  atr_period: 14, volume_lookback: 20, volume_field: 'volume_base',
+  volume_expansion_min_ratio: 1.5, range_expansion_min_atr: 1.2,
+  directional_body_min_ratio: 0.5, close_location_min: 0.7
+};
+const IMPULSE_POLICY = {
+  version: 'market-impulse-event-v1',
+  b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
+  b1_quality_policy_version: QUALITY,
+  b2e_policy_version: 'b2e-retest-engine-v1',
+  zone_context_policy_version: 'b2d-zone-context-v1',
+  finality_safety_lag_ms: LAG,
+  atr_period: 14, window_bars: 3, volume_lookback: 20,
+  volume_field: 'volume_base', impulse_displacement_atr: 1.2,
+  selloff_displacement_atr: 2.0, range_expansion_min_atr: 1.2,
+  volume_expansion_min_ratio: 1.5, directional_pressure_min: 0.67,
+  close_location_max: 0.35, context_lookback_bars: 10
+};
+
+function runAnalyticalContext(structure, zones, breakoutWindowBars = 160) {
+  const { snapshot, quality, c } = structure;
+  const timeframe = Object.keys(snapshot.candles_by_timeframe)[0];
+  const asOf = snapshot.analysis_as_of_ms;
+  const zoneContext = analyzeZoneContext({
+    policy: ZONE_CONTEXT_POLICY, snapshot, quality_report: quality,
+    b2d_result: zones.d, analysis_as_of_ms: asOf, timeframe,
+    finality_safety_lag_ms: LAG
+  });
+  assert(zoneContext.status === 'VALID',
+    'B2-D zone context blocked: ' + JSON.stringify(zoneContext.admission.reasons));
+  const stepMs = STEP[timeframe];
+  const earliestBreak = asOf - breakoutWindowBars * stepMs;
+  const recentB2E = {
+    ...zones.e,
+    lifecycles: zones.e.lifecycles.filter(l =>
+      Number.isSafeInteger(l.breakout_candle_open_time_ms) &&
+      l.breakout_candle_open_time_ms >= earliestBreak)
+  };
+  const breakoutQuality = analyzeBreakoutQuality({
+    policy: BREAKOUT_QUALITY_POLICY, snapshot, quality_report: quality,
+    b2e_result: recentB2E, analysis_as_of_ms: asOf, timeframe
+  });
+  assert(breakoutQuality.status === 'VALID',
+    'B2-E breakout quality blocked: ' + JSON.stringify(breakoutQuality.admission.reasons));
+  const regime = analyzeRegime({
+    policy: REGIME_POLICY, snapshot, quality_report: quality,
+    structure_result: c, analysis_as_of_ms: asOf, timeframe
+  });
+  assert(regime.status === 'VALID',
+    'Market regime blocked: ' + JSON.stringify(regime.admission.reasons));
+  const impulse = analyzeImpulse({
+    policy: IMPULSE_POLICY, snapshot, quality_report: quality,
+    b2e_result: zones.e, zone_context_result: zoneContext,
+    analysis_as_of_ms: asOf, timeframe
+  });
+  assert(impulse.status === 'VALID',
+    'Market impulse blocked: ' + JSON.stringify(impulse.admission.reasons));
+  return { regime, zoneContext, breakoutQuality, impulse };
+}
+function summarizeAnalyticalContext(result) {
+  const selection = result.zoneContext.active_zone_selection;
+  const zoneBrief = zone => zone ? {
+    zone_id: zone.zone_id, lower_bound: zone.lower_bound, upper_bound: zone.upper_bound,
+    distance_atr: zone.distance_atr, freshness_status: zone.freshness_status,
+    touch_count: zone.evidence.touch_count, recent_touch_count: zone.evidence.recent_touch_count
+  } : null;
+  const breakoutItems = result.breakoutQuality.breakouts;
+  const latestBreakout = breakoutItems.slice().sort((a, b) =>
+    b.breakout_candle_close_time_ms - a.breakout_candle_close_time_ms)[0] || null;
+  return {
+    regime: {
+      status: result.regime.status, label: result.regime.regime,
+      directional_bias: result.regime.directional_bias,
+      evidence_alignment: result.regime.evidence_alignment,
+      structure_state: result.regime.structure_state,
+      reasons: result.regime.reasons
+    },
+    zones: {
+      total: result.zoneContext.zones.length,
+      active: result.zoneContext.diagnostics.active_zone_count,
+      stale: result.zoneContext.diagnostics.stale_zone_count,
+      nearest_support: zoneBrief(selection.nearest_support),
+      nearest_resistance: zoneBrief(selection.nearest_resistance),
+      intersecting_zone_ids: selection.intersecting_zone_ids
+    },
+    breakout_quality: {
+      evaluated_count: breakoutItems.length,
+      quality_counts: countBy(breakoutItems, 'quality_status'),
+      latest: latestBreakout ? {
+        breakout_event_id: latestBreakout.breakout_event_id,
+        direction: latestBreakout.direction,
+        quality_status: latestBreakout.quality_status,
+        retest_status: latestBreakout.retest_status,
+        range_atr: latestBreakout.metrics.range_atr,
+        volume_ratio: latestBreakout.metrics.volume_ratio,
+        break_distance_atr: latestBreakout.metrics.break_distance_atr
+      } : null
+    },
+    impulse: {
+      classification: result.impulse.event.classification,
+      direction: result.impulse.event.direction,
+      displacement_atr: result.impulse.event.metrics.displacement_atr,
+      range_expansion_atr: result.impulse.event.metrics.range_expansion_atr,
+      directional_pressure: result.impulse.event.metrics.directional_pressure,
+      volume_ratio: result.impulse.event.metrics.volume_ratio,
+      bearish_breakout_context: result.impulse.event.bearish_breakout_context
+    }
+  };
+}
+
 const POLICY_B7 = {
   version: 'b7-explainable-setups-v1',
   b1_contract_version: '1.1.0',
@@ -283,7 +427,7 @@ async function main() {
   const output = {
     dataset_source: DATASET_REPOSITORY + ' (Bybit USDT-M perpetual archive)',
     dataset_commit: DATASET_COMMIT,
-    replay_mode: 'synthetic B1-valid wrapper; full B2 engines; no live provider or trading-edge claim',
+    replay_mode: 'synthetic B1-valid wrapper; full B2/B7 plus regime, zone-context, breakout-quality and impulse research engines; no live provider or trading-edge claim',
     replay_assumptions: {
       b1_quality: 'synthetic VALID wrapper after structural CSV integrity checks; actual B1 validator is not run',
       candle_finality: 'TIME_DERIVED with fixed 500ms research lag; historical provider finality is not independently observed',
@@ -305,6 +449,9 @@ async function main() {
       const last = rows[rows.length - 1];
       const asOf = last.close_time_ms + LAG;
       const full = runStructure(rows, symbol, tf, asOf, 'historical:' + symbol + ':' + tf + ':full', 2);
+      const fullZones = runZones(full, symbol, tf);
+      const fullAnalyticalContext = runAnalyticalContext(full, fullZones);
+      const fullAnalyticalSummary = summarizeAnalyticalContext(fullAnalyticalContext);
       const strengthSensitivity = [];
       for (const strength of [3, 5]) {
         const result = runStructure(rows, symbol, tf, asOf,
@@ -325,6 +472,7 @@ async function main() {
         const structure = runStructure(slice, symbol, tf, asOf,
           'historical:' + symbol + ':' + tf + ':lookback:' + count);
         const zones = runZones(structure, symbol, tf);
+        const analyticalContext = count >= 260 ? summarizeAnalyticalContext(runAnalyticalContext(structure, zones)) : null;
         const recentEvents = structure.c.events.filter(event => event.available_at_ms >= recentStart);
         const recentPivots = structure.a.pivots.filter(pivot => pivot.available_at_ms >= recentStart);
         lookbackSensitivity.push({
@@ -336,7 +484,8 @@ async function main() {
           structure_events_in_recent_160: recentEvents.length,
           recent_event_types: countBy(recentEvents, 'event_type'),
           zones: zones.d.zones.length,
-          retest_statuses: countBy(zones.e.lifecycles, 'status')
+          retest_statuses: countBy(zones.e.lifecycles, 'status'),
+          analytical_context: analyticalContext
         });
       }
       const prefixChecks = [];
@@ -347,6 +496,16 @@ async function main() {
         const prefix = runStructure(prefixRows, symbol, tf, cutoff, 'historical:' + symbol + ':' + tf + ':prefix:' + q);
         comparePrefix(full, prefix, cutoff, symbol + ' ' + tf + ' q=' + q);
         const prefixZones = runZones(prefix, symbol, tf);
+        const prefixAnalytical = runAnalyticalContext(prefix, prefixZones);
+        const repeatedPrefixAnalytical = runAnalyticalContext(prefix, prefixZones);
+        assert(JSON.stringify(prefixAnalytical) === JSON.stringify(repeatedPrefixAnalytical),
+          symbol + ' ' + tf + ' analytical context deterministic prefix replay failed at q=' + q);
+        assert(prefixAnalytical.zoneContext.zones.every(z => z.available_at_ms <= cutoff),
+          symbol + ' ' + tf + ' zone context leaks beyond prefix cutoff at q=' + q);
+        assert(prefixAnalytical.breakoutQuality.breakouts.every(b => b.breakout_candle_close_time_ms <= cutoff - LAG),
+          symbol + ' ' + tf + ' breakout quality leaks beyond prefix cutoff at q=' + q);
+        assert(prefixAnalytical.impulse.event.window_end_close_time_ms <= cutoff - LAG,
+          symbol + ' ' + tf + ' impulse window leaks beyond prefix cutoff at q=' + q);
         const prefixSetups = runSetups(prefix, prefixZones);
         const repeatedPrefixSetups = runSetups(prefix, prefixZones);
         assert(JSON.stringify(prefixSetups) === JSON.stringify(repeatedPrefixSetups),
@@ -369,6 +528,7 @@ async function main() {
           b7_prefix_replay: 'PASS', candidate_count: prefixSetups.diagnostics.candidate_count,
           confirmed_count: prefixSetups.diagnostics.confirmed_count,
           pending_count: prefixSetups.diagnostics.pending_count,
+          analytical_context: summarizeAnalyticalContext(prefixAnalytical),
           all_evidence_causal_at_cutoff: true, deterministic_repeat: true });
       }
       const windowResults = [];
@@ -381,6 +541,11 @@ async function main() {
           'historical:' + symbol + ':' + tf + ':window:' + q);
         const zones = runZones(structure, symbol, tf, 0.001, 0.0005);
         const setups = runSetups(structure, zones);
+        const contextSlice = windowAt(rows, index, 260);
+        const contextStructure = runStructure(contextSlice, symbol, tf, windowAsOf,
+          'historical:' + symbol + ':' + tf + ':analytical-window:' + q);
+        const contextZones = runZones(contextStructure, symbol, tf, 0.001, 0.0005);
+        const analyticalContext = summarizeAnalyticalContext(runAnalyticalContext(contextStructure, contextZones));
         const parameterGrid = [];
         for (const spanRatio of [0.0005, 0.001, 0.0025, 0.005]) {
           for (const retestRatio of [0.00025, 0.0005, 0.001]) {
@@ -406,6 +571,7 @@ async function main() {
             directions: countBy(setups.setup_candidates, 'direction'),
             candidates: compactSetups(setups)
           },
+          analytical_context: analyticalContext,
           parameter_grid: parameterGrid });
       }
       const denseScanStrideBars = 80;
@@ -441,6 +607,7 @@ async function main() {
           event_types: countBy(full.c.events, 'event_type'),
           structure_state: full.c.structure_state,
           sequence_history: full.b.sequence_history.length,
+          analytical_context: fullAnalyticalSummary,
           prefix_invariance_checks: prefixChecks.length,
           strength_sensitivity: strengthSensitivity,
           lookback_sensitivity: lookbackSensitivity },
@@ -460,6 +627,7 @@ async function main() {
       const eligible = datasets[symbol][tf].rows.filter(r => r.open_time_ms <= end && r.close_time_ms + LAG <= cutoff);
       const slice = eligible.slice(-160);
       assert(slice.length === 160, symbol + ' ' + tf + ' MTF window does not contain 160 candles');
+      const analyticalSlice = eligible.slice(-260);
       const structure = runStructure(slice, symbol, tf, cutoff, 'mtf:' + symbol + ':' + tf + ':' + cutoff);
       const zones = runZones(structure, symbol, tf);
       const candles = structure.snapshot.candles_by_timeframe[tf];
@@ -471,6 +639,13 @@ async function main() {
       };
       b2cByTf[tf] = structure.c;
       recent[tf] = { structure, zones };
+      if (analyticalSlice.length >= 260) {
+        const analyticalStructure = runStructure(analyticalSlice, symbol, tf, cutoff,
+          'mtf-analytical:' + symbol + ':' + tf + ':' + cutoff);
+        const analyticalZones = runZones(analyticalStructure, symbol, tf);
+        recent[tf].analyticalContext = summarizeAnalyticalContext(
+          runAnalyticalContext(analyticalStructure, analyticalZones));
+      }
     }
     const mtf = {
       contract_version: '1.0.0', status: 'VALID', directional_allowed: true,
@@ -498,7 +673,8 @@ async function main() {
           structure_state: recent[tf].structure.c.structure_state,
           events: recent[tf].structure.c.events.length,
           zones: recent[tf].zones.d.zones.length,
-          retest_lifecycles: recent[tf].zones.e.lifecycles.length
+          retest_lifecycles: recent[tf].zones.e.lifecycles.length,
+          analytical_context: recent[tf].analyticalContext || null
         }])),
         b2f: { structure_pattern: b2f.structure_pattern, alignment_status: b2f.alignment_status,
           alignment_context: b2f.alignment_context },
@@ -516,4 +692,4 @@ if (require.main === module) {
   main().catch(error => { console.error(error && error.stack ? error.stack : error); process.exitCode = 1; });
 }
 
-module.exports = { loadRows, runStructure, runZones, FILES, STEP, LAG, QUALITY };
+module.exports = { loadRows, runStructure, runZones, runAnalyticalContext, summarizeAnalyticalContext, FILES, STEP, LAG, QUALITY };
