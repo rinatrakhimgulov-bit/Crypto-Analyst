@@ -1443,3 +1443,40 @@ The owner tested the B7 application branch on the target device and confirmed th
 Usability, wording refinement, menu structure, navigation model and visual redesign are explicitly deferred. They will be handled together in a dedicated UX/UI design stage, when the menu and overall interaction model can be redesigned coherently. Do not spend current analytics-engineering time polishing or restructuring the existing menu/panel UI, and do not treat the current layout as the final product design.
 
 Current development priority remains analytical functionality, correctness, validation and evidence quality. Keep the interface changes minimal where needed to expose and test analytical capabilities. Revisit UX/UI as a consolidated later stage.
+
+
+## B8 continuation checkpoint — 2026-11-28
+
+Current branch: `feature/b8-statistical-validation-2026-11-28`. It is based on B7 branch head `46820a743fc1c08eb34b6c1851315d8b57ef8e1d`. Do not merge to main or bypass the stacked B4/B5/B6/B7 dependency order.
+
+Read first:
+1. `docs/specs/B8_STATISTICAL_VALIDATION_SPEC_2026-11-28.md`
+2. `docs/audits/B8_OPENING_SCHEMA_AUDIT_2026-11-28.md`
+3. `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`
+4. `docs/specs/B7_EXPLAINABLE_SETUP_ENGINE_SPEC_2026-11-28.md`
+5. `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`
+
+Important exact schema facts:
+- B5 capture calls `runB2Analysis(dataset)`.
+- That function returns `setups` from `B7ExplainableSetupEngine.analyze()`.
+- Journal path: `observation.analysisSnapshot.b2.setups.setup_candidates`.
+- Journal candle rows: `ts`, `closeTs`, `open`, `high`, `low`, `close`, `volume`, `turnover`, `finality`.
+- Never treat a `forming` candle as closed.
+- The journal is localStorage only. Do not claim access to the owner's journal. Request an explicit export only when prospective validation is ready.
+
+Initial B8 modules:
+- `src/research/b8-outcome-evaluator.js`
+- `src/research/b8-statistics.js`
+- `tests/b8-outcome-evaluator.test.cjs`
+- workflow `.github/workflows/b8-statistical-validation.yml`
+
+Next required work:
+- Verify exact-head CI and inspect logs; do not assume pass.
+- Independently hand-check entry timing, directional return, MFE/MAE, stop/target, gap and cost arithmetic.
+- Add a historical candidate generator that evaluates B7 at declared cutoffs, deduplicates stable candidate IDs across overlapping windows and preserves pinned dataset provenance.
+- Establish chronological train/validation/test or walk-forward boundaries before inspecting test outcomes.
+- Add coverage/exclusion accounting and dependence-aware intervals; naive Wilson intervals must remain labelled as such.
+- Add strict B5 export validation/normalization and keep actual trades separate.
+- Keep B8 research-only. Do not change LONG/SHORT/WAIT, B2-F gating, Live Price/B4 or UX/UI.
+
+Known constraints: existing B7 replay has 40 appearances across 30 windows, not 40 independent events; synthetic B1-VALID wrapper; fixed 500ms time-derived finality; archive ends 2025-12-05; no tick fills, fees, funding, slippage or outcomes. Trend-continuation has no appearance in the existing 30 windows. No profitability claim.
