@@ -8,6 +8,7 @@ on:
       - feature/b1-d-live-market-data-2026-11-27
       - integration/b2-clean-preview-2026-11-27
       - integration/b2-market-structure-ui-2026-11-27
+      - feature/b4-live-data-hardening-2026-11-28
   pull_request:
     branches:
       - main
