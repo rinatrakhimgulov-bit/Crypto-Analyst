@@ -1398,3 +1398,7 @@ B1 Playwright test fixture update commit `d5979626c38b51cd20decd5ab58cb92b510462
 - B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+## B4 latest handover checkpoint — 2026-11-28
+
+Latest PR #24 head is fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60, application blob 3faed8d77a85df864ecf5eecc1bf2b55c53b85f9. Second-pass audit found and fixed a cache invalidation gap: an invalid kline event now clears the prior WS kline cache before scheduling REST reconciliation. Regression added. Exact-head B1 run 46109011261 passed Stage A 59/59, B1 contract 32/32, quality 72/72, MTF 20/20, browser page errors 0. B2 run 46109011273 passed B2-A…B2-G and browser/mobile integration. Live Bybit remains unverified because Actions REST requests got HTTP 403. Do not merge before real iPhone/Safari acceptance and final exact-source review.

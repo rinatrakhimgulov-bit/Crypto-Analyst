@@ -520,3 +520,5 @@ Recovery-generation regression explicitly distinguishes subscription ACK from ti
 - B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+B4 second-pass hardening: invalid WS kline events now clear the previously accepted WS candle cache before REST reconciliation. Exact-head B1/B2 CI passed at commit fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60. This does not replace real iPhone/Safari provider acceptance; Actions REST probe remains blocked by HTTP 403.

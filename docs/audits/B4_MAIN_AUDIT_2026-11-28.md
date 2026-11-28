@@ -149,3 +149,17 @@ The B1 Playwright live-UI fixture was updated to pass both `connGen` and `recove
 - B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+## Second-pass source audit and latest exact-head verification — 2026-11-28
+
+A second pass reviewed the live bridge and client paths for connection/recovery generation checks, topic ACK readiness, ticker↔kline provider-time ordering, REST replay eligibility, confirmed-candle immutability, invalid-stream recovery, and pagehide/pageshow/visibility lifecycle behavior.
+
+### Additional defect found and fixed
+An invalid kline callback previously scheduled REST reconciliation but left the last accepted WS kline cache intact. That cache could remain eligible for later REST replay until age/provider-time checks discarded it. The bridge now clears state.liveKline immediately on an invalid kline event before scheduling reconciliation. A dedicated Stage A B1-D regression verifies both cache invalidation and reconciliation scheduling.
+
+- Source commit: fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60.
+- Application HTML blob: 3faed8d77a85df864ecf5eecc1bf2b55c53b85f9.
+- B1 workflow run 46109011261: SUCCESS; Stage A 59/59, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; browser pageErrors empty.
+- B2 workflow run 46109011273: SUCCESS; B2-A through B2-G and browser/mobile integration passed.
+- Live Bybit REST probe remains SKIPPED_PROVIDER_BLOCKED: GitHub Actions received HTTP 403 from both public REST hosts. This is not live-provider verification.
+- PR #24 remains open and unmerged. iPhone/Safari live acceptance is still required.

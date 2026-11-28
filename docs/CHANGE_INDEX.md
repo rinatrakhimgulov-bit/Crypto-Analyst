@@ -551,3 +551,9 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - B1 run 46103008965 SUCCESS: 50/50 Stage A, 32/32 B1 contract, 72/72 B1 quality, 20/20 MTF; zero browser page errors.
 - B2 run 46103008967 SUCCESS: B2-A…B2-G and mobile/browser integration.
 - Live Bybit remains unverified due runner HTTP 403. iPhone/Safari acceptance pending.
+
+
+- B4 latest source commit: fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60.
+- Invalid kline now clears the prior WS kline cache before REST reconciliation.
+- Exact-head B1/B2 workflows SUCCESS: Stage A 59/59; B1 contract 32/32; quality 72/72; MTF 20/20; B2-A…B2-G + mobile browser integration passed.
+- Live provider verification still requires iPhone/Safari; GitHub Actions REST probe was blocked with HTTP 403.

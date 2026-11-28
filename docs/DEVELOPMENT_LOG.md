@@ -911,3 +911,5 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+- B4 second-pass audit found that invalid kline events did not invalidate the previous WS candle cache. Fixed in fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60; added Stage A regression. Exact-head B1/B2 workflows passed (runs 46109011261 and 46109011273). Live Bybit probe remains provider-blocked by Actions HTTP 403; iPhone/Safari acceptance is pending.
