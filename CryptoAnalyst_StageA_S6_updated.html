@@ -7988,7 +7988,10 @@
       journalEnvelope: null,
       journalError: null,
       journalNotice: null,
-      journalSelectedObservationId: null
+      journalSelectedObservationId: null,
+      chartDataSymbol: null,
+      chartDataInterval: null,
+      chartDataSnapshotId: null
     };
 
 
@@ -8075,6 +8078,11 @@
           if (!isObject(candle) || !Number.isSafeInteger(candle.ts) || candle.ts <= previousTs ||
               !Number.isSafeInteger(candle.closeTs) || candle.closeTs <= candle.ts ||
               !['CLOSED', 'FORMING'].includes(candle.finality) ||
+              (candle.source !== undefined && !['REST_CONFIRMED', 'REST_FORMING', 'WS_KLINE', 'WS_TICKER_OVER_REST'].includes(candle.source)) ||
+              (candle.providerEventTimeMs !== null && candle.providerEventTimeMs !== undefined &&
+                (!Number.isSafeInteger(candle.providerEventTimeMs) || candle.providerEventTimeMs <= 0)) ||
+              (candle.localReceivedAtMs !== null && candle.localReceivedAtMs !== undefined &&
+                (!Number.isSafeInteger(candle.localReceivedAtMs) || candle.localReceivedAtMs <= 0)) ||
               !['open', 'high', 'low', 'close', 'volume'].every(key => Number.isFinite(candle[key])) ||
               candle.open <= 0 || candle.high < Math.max(candle.open, candle.close) ||
               candle.low > Math.min(candle.open, candle.close) || candle.low <= 0 || candle.volume < 0) {
@@ -8257,6 +8265,9 @@
       state.liveTicker = null;
       state.liveKline = null;
       state.latestJournalContext = null;
+      state.chartDataSymbol = null;
+      state.chartDataInterval = null;
+      state.chartDataSnapshotId = null;
       syncJournalSaveButton();
       state.lastConfirmedCandleKey = null;
       state.lastCandleUpdate = { status: 'not-tested', atMs: null };
@@ -8642,17 +8653,26 @@
         throw new Error('Нет достоверной текущей цены для снимка');
       }
 
-      const eligibleCandles = dataset.allCandles.filter(candle =>
-        candle && Number.isSafeInteger(candle.ts) && candle.ts <= asOf
-      );
+      const chartMatchesSnapshot = state.chartDataSymbol === dataset.symbol &&
+        state.chartDataInterval === dataset.interval && state.chartDataSnapshotId === snapshot.snapshot_id &&
+        Array.isArray(chart.candles) && chart.candles.length > 0 &&
+        Number.isSafeInteger(chart.closedCount);
+      const sourceCandles = chartMatchesSnapshot ? chart.candles : dataset.allCandles;
+      const closedCountAtCapture = chartMatchesSnapshot ? chart.closedCount : dataset.closedCandles.length;
+      const liveKlineAtCapture = freshLiveKline();
+      const eligibleCandles = sourceCandles
+        .map((candle, index) => ({ candle, index }))
+        .filter(item => item.candle && Number.isSafeInteger(item.candle.ts) && item.candle.ts <= asOf);
       const candleWindowRaw = eligibleCandles.slice(-MarketJournal.LIMITS.candlesPerObservation);
       if (!candleWindowRaw.length) throw new Error('Нет свечей на момент analysis-as-of');
-      const closedTimes = new Set(dataset.closedCandles.map(candle => candle.ts));
-      const candleWindow = candleWindowRaw.map(candle => {
+      const candleWindow = candleWindowRaw.map(({ candle, index }) => {
         if (!Number.isSafeInteger(candle.closeTs) || candle.closeTs <= candle.ts ||
             ![candle.open, candle.high, candle.low, candle.close, candle.volume].every(Number.isFinite)) {
           throw new Error('Свечной снимок содержит некорректные OHLCV или timestamp');
         }
+        const finality = index < closedCountAtCapture ? 'CLOSED' : 'FORMING';
+        const isLiveKline = finality === 'FORMING' && liveKlineAtCapture &&
+          liveKlineAtCapture.candle && liveKlineAtCapture.candle.ts === candle.ts;
         return {
           ts: candle.ts,
           closeTs: candle.closeTs,
@@ -8662,7 +8682,13 @@
           close: candle.close,
           volume: candle.volume,
           turnover: journalFiniteOrNull(candle.turnover),
-          finality: closedTimes.has(candle.ts) ? 'CLOSED' : 'FORMING'
+          finality,
+          source: finality === 'CLOSED' ? 'REST_CONFIRMED' :
+            (isLiveKline ? 'WS_KLINE' : (live ? 'WS_TICKER_OVER_REST' : 'REST_FORMING')),
+          providerEventTimeMs: isLiveKline && Number.isSafeInteger(liveKlineAtCapture.providerEventTimeMs)
+            ? liveKlineAtCapture.providerEventTimeMs : null,
+          localReceivedAtMs: isLiveKline && Number.isSafeInteger(liveKlineAtCapture.receivedAtMs)
+            ? liveKlineAtCapture.receivedAtMs : null
         };
       });
 
@@ -9158,6 +9184,9 @@
       state.latestJournalContext = { dataset, analysis, b2Result, decisionReasons: reasonsToShow.slice() };
       syncJournalSaveButton();
       renderB2Panel(b2Result);
+      state.chartDataSymbol = dataset.symbol;
+      state.chartDataInterval = dataset.interval;
+      state.chartDataSnapshotId = dataset.canonicalSnapshot && dataset.canonicalSnapshot.snapshot_id || null;
       chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis,
         live ? live.lastPrice : pInfo.currentMarketPrice);
       chart.setMarketStructure(b2Result && b2Result.status === 'VALID' ? b2Result.projection : null);
