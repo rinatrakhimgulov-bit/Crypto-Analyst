@@ -584,3 +584,12 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - Tests: `tests/b8-outcome-evaluator.test.cjs`
 - CI workflow: `.github/workflows/b8-statistical-validation.yml`
 - Journal candidate source: `analysisSnapshot.b2.setups.setup_candidates`
+
+
+### B8 historical exploration
+
+- Candidate deduplication and chronological split: `src/research/b8-candidate-collection.js`
+- Historical outcome runner: `tools/b8_historical_validation.cjs`
+- B7 replay now includes stable setup IDs in compact window output: `tools/b2_historical_replay.cjs`
+- Candidate collection tests: `tests/b8-candidate-collection.test.cjs`
+- Historical exploration report: `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`
