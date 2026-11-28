@@ -879,3 +879,6 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Live Bybit REST verification was `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass and does not prove that the user's iPhone is blocked.
 - Current remaining acceptance: real Bybit WebSocket + REST behavior on iPhone/Safari, including live lastPrice, forming-candle OHLCV, closed-candle immutability, REST reconciliation, disconnect/reconnect, stale fallback, BTC/ETH and 1H/4H/1D switching, background/foreground recovery.
 - PR #24 remains open and unmerged. Do not merge before owner iPhone/Safari acceptance and exact-source review.
+
+
+- B4 lifecycle coverage: added Stage A test `16d` for actual `pagehide`/`pageshow` listeners. It verifies old-socket invalidation, clean close state, fresh connection/recovery generations, and that new topics are not marked confirmed until ACK. Code commit: `1783a8e0b8294973366a61d32e75bb40458e338a`. CI for this exact code commit is pending; no real iPhone/Safari acceptance is claimed.
