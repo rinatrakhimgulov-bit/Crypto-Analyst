@@ -1480,3 +1480,28 @@ Next required work:
 - Keep B8 research-only. Do not change LONG/SHORT/WAIT, B2-F gating, Live Price/B4 or UX/UI.
 
 Known constraints: existing B7 replay has 40 appearances across 30 windows, not 40 independent events; synthetic B1-VALID wrapper; fixed 500ms time-derived finality; archive ends 2025-12-05; no tick fills, fees, funding, slippage or outcomes. Trend-continuation has no appearance in the existing 30 windows. No profitability claim.
+
+
+### B8 implementation checkpoint — 2026-11-28
+
+PR #28: `https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/28`, draft, base `feature/b7-setup-engine-2026-11-28`.
+
+B8-A and initial B8-B are implemented. Exact CI passed:
+- run `46116869096`: evaluator/statistics.
+- run `46116871532`: B5 journal adapter and evaluator.
+
+Important implementation review notes:
+- Outcome entry proxy is the first candle close with `close_time_ms + finalitySafetyLagMs > candidate.available_at_ms`. This intentionally does not use a next-bar open that predates candidate availability.
+- Forward returns, MFE and MAE are descriptive path statistics, not trade win/loss.
+- Barrier model is research-only; same-bar ambiguity is stop-first, stop gaps use the adverse open, target gaps are capped at target.
+- Fee/slippage bps are applied to respective entry and exit notionals. Net values stay null unless all four inputs exist. Funding is marked not applied.
+- Journal adapter reads B7 only from `analysisSnapshot.b2.setups`, filters candidate availability against capturedAt and B7 analysis cutoff, excludes forming candles, preserves WAIT and separate actual trades, and does not mutate the source JSON.
+
+Next:
+1. Independently review B8 arithmetic and the journal adapter.
+2. Build historical candidate census with stable-ID deduplication and pinned dataset provenance.
+3. Add chronological train/validation/test or walk-forward analysis with explicit boundaries.
+4. Add cluster/block-aware uncertainty or clearly limit claims to descriptive statistics.
+5. Produce historical outcome report and only then consider explicit B5 export prospective analysis.
+
+Do not merge PR #28 yet. B8-C through B8-E remain open. No changes to production HTML or LONG/SHORT/WAIT.
