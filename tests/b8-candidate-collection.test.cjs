@@ -29,6 +29,11 @@ assert.equal(lifecycle[0].status, 'CONFIRMED');
 assert.equal(lifecycle[0].available_at_ms, 300);
 assert.equal(lifecycle[0].first_seen_window_end_ms, null);
 assert.equal(lifecycle[0].confirmation_observed_window_end_ms, null);
+assert.throws(() => deduplicateCandidates([{ symbol: 'BTCUSDT', timeframe: '1h', windows: [
+  { candidates: [{ ...pending, direction: 'LONG' }] },
+  { candidates: [{ ...confirmedLater, direction: 'SHORT' }] }
+] }]), /B8_HISTORICAL_DUPLICATE_ID_CONFLICT/);
+
 const drift = deduplicateCandidates([{ symbol: 'BTCUSDT', timeframe: '1h', windows: [
   { end_time_ms: 400, candidates: [{ ...a, invalidation_level: 90 }] },
   { end_time_ms: 500, candidates: [{ ...a, invalidation_level: 91 }] }
