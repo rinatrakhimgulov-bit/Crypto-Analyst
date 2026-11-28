@@ -11,6 +11,17 @@ const STRIDE_BARS = { '1h': 336, '4h': 84, '1d': 14 };
 const HORIZONS = [5, 10, 20];
 const ZONE_SPAN_ATR = 0.15;
 const RETEST_BUFFER_ATR = 0.05;
+
+function deriveEventTimePolicy(atrAtBreakout) {
+  if (!Number.isFinite(atrAtBreakout) || atrAtBreakout <= 0) return null;
+  return Object.freeze({
+    zone_span_price: atrAtBreakout * ZONE_SPAN_ATR,
+    retest_buffer_price: atrAtBreakout * RETEST_BUFFER_ATR,
+    atr_at_breakout: atrAtBreakout,
+    zone_span_atr: ZONE_SPAN_ATR,
+    retest_buffer_atr: RETEST_BUFFER_ATR
+  });
+}
 const FINAL_RETEST_STATES = new Set([
   'RETEST_SUCCESSFUL', 'RETEST_FAILED', 'RETEST_EXPIRED', 'RETEST_UNRESOLVED'
 ]);
@@ -147,6 +158,8 @@ async function replaySeries(symbol, timeframe, file) {
     invalid_resolution_time: 0,
     duplicate_events: 0,
     duplicate_status_conflicts: 0,
+    event_policy_replays: 0,
+    event_policy_replay_missing: 0,
     causal_checks: 0,
     evaluated_events: 0
   };
@@ -168,8 +181,30 @@ async function replaySeries(symbol, timeframe, file) {
 
     const qualityByEvent = new Map(context.breakoutQuality.breakouts.map(item =>
       [item.breakout_event_id, item]));
-    for (const lifecycle of zones.e.lifecycles) {
+    for (const discoveredLifecycle of zones.e.lifecycles) {
       diagnostics.lifecycles_seen++;
+      const breakoutIndex = timeToIndex.get(discoveredLifecycle.breakout_candle_open_time_ms);
+      if (!Number.isInteger(breakoutIndex) || breakoutIndex < 1) {
+        diagnostics.invalid_resolution_time++;
+        continue;
+      }
+      // Freeze volatility-derived thresholds at the breakout candle close.
+      // Later snapshot ATR must never rewrite an earlier event's zone/retest rules.
+      const atrStart = Math.max(0, breakoutIndex - 260 + 1);
+      const atrAtBreakout = calculateWilderAtr(rows.slice(atrStart, breakoutIndex + 1));
+      const eventPolicy = deriveEventTimePolicy(atrAtBreakout);
+      if (!eventPolicy) {
+        diagnostics.invalid_resolution_time++;
+        continue;
+      }
+      const eventZones = runZones(structure, symbol, timeframe, undefined, undefined, eventPolicy);
+      const lifecycle = eventZones.e.lifecycles.find(item =>
+        item.breakout_event_id === discoveredLifecycle.breakout_event_id);
+      if (!lifecycle) {
+        diagnostics.event_policy_replay_missing++;
+        continue;
+      }
+      diagnostics.event_policy_replays++;
       if (!FINAL_RETEST_STATES.has(lifecycle.status)) {
         diagnostics.pending_states_skipped++;
         continue;
@@ -183,8 +218,7 @@ async function replaySeries(symbol, timeframe, file) {
       const resolutionCandle = rows[resolutionIndex];
       const resolutionAvailableAt = resolutionCandle.close_time_ms + LAG;
       assert(resolutionAvailableAt <= asOf, 'RETEST_STATE_AVAILABLE_AFTER_SNAPSHOT_CUTOFF');
-      const breakoutIndex = timeToIndex.get(lifecycle.breakout_candle_open_time_ms);
-      if (!Number.isInteger(breakoutIndex) || resolutionIndex <= breakoutIndex) {
+      if (resolutionIndex <= breakoutIndex) {
         diagnostics.invalid_resolution_time++;
         continue;
       }
@@ -207,6 +241,10 @@ async function replaySeries(symbol, timeframe, file) {
         resolution_available_at_ms: resolutionAvailableAt,
         bars_from_break_to_resolution: resolutionIndex - breakoutIndex,
         quality_status: quality ? quality.quality_status : 'UNAVAILABLE',
+        atr_at_breakout: eventPolicy.atr_at_breakout,
+        zone_span_price_at_breakout: eventPolicy.zone_span_price,
+        retest_buffer_price_at_breakout: eventPolicy.retest_buffer_price,
+        event_policy_version: 'b2e-event-time-policy-v1',
         atr_at_resolution: resolutionAtr,
         resolution_close: resolutionCandle.close
       };
@@ -237,8 +275,9 @@ async function replaySeries(symbol, timeframe, file) {
     method: {
       lookback_bars: WINDOW_BARS,
       stride_bars: STRIDE_BARS[timeframe],
-      zone_span_atr_at_snapshot: ZONE_SPAN_ATR,
-      retest_buffer_atr_at_snapshot: RETEST_BUFFER_ATR,
+      event_time_policy_version: 'b2e-event-time-policy-v1',
+      zone_span_atr_at_breakout: ZONE_SPAN_ATR,
+      retest_buffer_atr_at_breakout: RETEST_BUFFER_ATR,
       resolution_at: 'exact B2-E confirmation candle, retest-window expiry candle, or unresolved confirmation-window completion candle',
       forward_horizons_bars: HORIZONS,
       forward_outcomes_begin_after_resolution_candle: true
@@ -274,7 +313,7 @@ async function main() {
     limitations: [
       'Archive ends 2025-12-05 and excludes 2026 data.',
       'Discovery uses approximately 14-day-spaced snapshots; events between samples can be missed.',
-      'The zone span and retest buffers are derived from ATR at each sampled snapshot cutoff, not per-breakout ATR. The exact retest confirmation timestamp is used for post-resolution evaluation.',
+      'Zone span and retest touch/success/failure buffers are frozen from ATR at each breakout candle close and replayed as fixed absolute prices for that event. The exact terminal-state resolution candle is used for post-resolution evaluation.',
       'Forward horizons overlap and observations are not statistically independent.',
       'No entries/exits, fees, funding, slippage, realized PnL, expectancy, drawdown or risk-adjusted return are evaluated.',
       'RETEST_SUCCESSFUL/FAILED/EXPIRED/UNRESOLVED are lifecycle states, not probabilities.'
@@ -301,4 +340,4 @@ if (require.main === module) main().catch(error => {
   console.error(error && error.stack ? error.stack : error);
   process.exitCode = 1;
 });
-module.exports = { calculateWilderAtr, sampleIndices, computeForwardOutcomes, resolveLifecycleIndex, summarizeOutcomes, HORIZONS };
+module.exports = { calculateWilderAtr, sampleIndices, computeForwardOutcomes, resolveLifecycleIndex, summarizeOutcomes, deriveEventTimePolicy, HORIZONS };
