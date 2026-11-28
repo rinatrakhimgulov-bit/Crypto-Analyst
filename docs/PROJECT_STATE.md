@@ -876,3 +876,12 @@ B2-A through B2-G passed static contract review, source/inline parity, unit/inte
 - Rolling-window replay detected 40 research candidates: 36 confirmed and 4 pending. Scenario counts: 20 BREAKOUT_RETEST and 20 FALSE_BREAKOUT_RECLAIM. No TREND_CONTINUATION_AFTER_CORRECTION occurred in these 30 windows; synthetic positive/negative unit tests cover its logic, but historical occurrence is not demonstrated in this sample.
 - Full details and limitations: `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`. This is not a strategy backtest and provides no evidence of profitability.
 - CI also passed 22 B7 unit tests, B2-A..G regressions, source/inline parity and browser/mobile integration. Remaining: owner iPhone Safari acceptance and a second-person review. B7 still does not affect LONG/SHORT/WAIT.
+
+
+## Owner acceptance and UI scope decision — 2026-11-28
+
+The owner tested the B7 application branch on the target device and confirmed that the application works and the new B7 panel provides detailed explanations. This is functional owner acceptance of the current B7 presentation, not a final UX/UI sign-off.
+
+Usability, wording refinement, menu structure, navigation model and visual redesign are explicitly deferred. They will be handled together in a dedicated UX/UI design stage, when the menu and overall interaction model can be redesigned coherently. Do not spend current analytics-engineering time polishing or restructuring the existing menu/panel UI, and do not treat the current layout as the final product design.
+
+Current development priority remains analytical functionality, correctness, validation and evidence quality. Keep the interface changes minimal where needed to expose and test analytical capabilities. Revisit UX/UI as a consolidated later stage.
