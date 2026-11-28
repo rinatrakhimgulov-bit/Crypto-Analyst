@@ -105,3 +105,8 @@ The B1 and B2 workflow push filters now include `feature/b4-live-data-hardening-
 - Live Bybit REST verification was `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass and does not prove that the user's iPhone is blocked.
 - Current remaining acceptance: real Bybit WebSocket + REST behavior on iPhone/Safari, including live lastPrice, forming-candle OHLCV, closed-candle immutability, REST reconciliation, disconnect/reconnect, stale fallback, BTC/ETH and 1H/4H/1D switching, background/foreground recovery.
 - PR #24 remains open and unmerged. Do not merge before owner iPhone/Safari acceptance and exact-source review.
+
+
+## Lifecycle regression added — 2026-11-28
+
+A deterministic Stage A regression (`16d`) now exercises the actual registered `pagehide` and `pageshow` listeners: `pagehide` invalidates the old connection generation, clears confirmed topics and closes the active socket; `pageshow` creates a fresh WebSocket generation, begins recovery, and requires fresh topic ACKs before subscriptions are considered confirmed. This closes a test-coverage gap in the previously implemented lifecycle handlers. It does not replace real Safari/iPhone background-resume acceptance.
