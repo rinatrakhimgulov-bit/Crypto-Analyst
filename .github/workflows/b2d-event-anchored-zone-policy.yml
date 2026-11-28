@@ -1,0 +1,55 @@
+name: B2D B2E event-anchored zone policy
+
+on:
+  push:
+    branches:
+      - feature/b2d-event-anchored-zone-policy-2026-11-28
+  pull_request:
+    branches:
+      - feature/b2e-breakout-event-outcomes-2026-11-28
+    paths:
+      - 'src/analysis/b2d-support-resistance-engine.js'
+      - 'src/analysis/b2e-breakout-retest-engine.js'
+      - 'src/analysis/b2d-zone-context-engine.js'
+      - 'src/analysis/b2e-breakout-quality-engine.js'
+      - 'tools/b2_historical_replay.cjs'
+      - 'tools/b2e_breakout_event_outcome_study.cjs'
+      - 'tests/b2d-support-resistance-engine.test.cjs'
+      - 'tests/b2e-breakout-retest-engine.test.cjs'
+      - 'tests/b2e-breakout-event-outcome-study.test.cjs'
+      - '.github/workflows/b2d-event-anchored-zone-policy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zone-policy-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: B2-D support/resistance regression
+        run: node tests/b2d-support-resistance-engine.test.cjs
+      - name: B2-D zone context regression
+        run: node tests/b2d-zone-context-engine.test.cjs
+      - name: B2-E breakout/retest regression
+        run: node tests/b2e-breakout-retest-engine.test.cjs
+      - name: B2-E breakout quality regression
+        run: node tests/b2e-breakout-quality-engine.test.cjs
+      - name: Market impulse regression
+        run: node tests/market-impulse-event-engine.test.cjs
+      - name: Event study using event-anchored zone policy
+        run: node tools/b2e_breakout_event_outcome_study.cjs
+      - name: Verify stable historical zone boundaries and causal outcomes
+        run: node tests/b2e-breakout-event-outcome-study.test.cjs
+      - name: Upload event-anchored breakout study report
+        uses: actions/upload-artifact@v4
+        with:
+          name: b2e-event-anchored-outcome-report
+          path: b2e_breakout_event_outcome_report.json
+          if-no-files-found: error
+          retention-days: 30
