@@ -28,12 +28,19 @@ function buildJournalReport(envelope) {
     })));
   const candidateKey = candidate => [candidate.symbol, candidate.timeframe || 'UNKNOWN', candidate.setup_id].join('|');
   const uniqueCandidateMap = new Map();
+  const candidateIdentityConflicts = new Set();
   for (const candidate of candidates) {
     if (typeof candidate.setup_id !== 'string' || !candidate.setup_id) continue;
     const key = candidateKey(candidate);
-    if (!uniqueCandidateMap.has(key)) uniqueCandidateMap.set(key, candidate);
+    const prior = uniqueCandidateMap.get(key);
+    if (!prior) uniqueCandidateMap.set(key, candidate);
+    else if (prior.setup_type !== candidate.setup_type || prior.direction !== candidate.direction) {
+      candidateIdentityConflicts.add(key);
+    }
   }
-  const uniqueCandidates = Array.from(uniqueCandidateMap.values());
+  const uniqueCandidates = Array.from(uniqueCandidateMap.entries())
+    .filter(([key]) => !candidateIdentityConflicts.has(key))
+    .map(([, candidate]) => candidate);
   const followups = envelope.followups.map(row => {
     const observation = observationById.get(row.observationId);
     return { id: row.id, observation_id: row.observationId, status: row.status,
@@ -53,7 +60,8 @@ function buildJournalReport(envelope) {
     candidate_count: uniqueCandidates.length,
     unique_candidate_count: uniqueCandidates.length,
     candidate_appearance_count: candidates.length,
-    duplicate_candidate_appearance_count: candidates.length - uniqueCandidates.length,
+    duplicate_candidate_appearance_count: candidates.length - uniqueCandidateMap.size,
+    candidate_identity_conflict_count: candidateIdentityConflicts.size,
     candidate_counts_by_setup: countBy(uniqueCandidates, c => c.setup_type),
     candidate_counts_by_direction: countBy(uniqueCandidates, c => c.direction),
     candidate_appearance_counts_by_setup: countBy(candidates, c => c.setup_type),
@@ -71,6 +79,7 @@ function buildJournalReport(envelope) {
     actual_trade_net_pnl_note: 'Only manually recorded netPnl values are summarized. Missing PnL, fees or funding are not inferred.',
     limitations: [
       'B5 observations are user-triggered snapshots, not automatic capture of every analysis cycle.',
+      'Repeated B7 setup IDs are deduplicated by symbol/timeframe; identity conflicts in setup type or direction are excluded from unique counts.',
       'Follow-ups are manually appended and link to an observation, not to a specific B7 setup candidate.',
       'The observation candle window is historical context at capture time; it does not contain future OHLCV.',
       'No MFE/MAE, fill, win-rate or simulated profitability result is inferred from sparse follow-up marks.',
