@@ -118,3 +118,5 @@ A further audit confirmed that `_handleKlineMessage` previously parsed `msg.ts` 
 ## Ticker provider event-time fail-closed guard — 2026-11-28
 
 The same ordering requirement also applies to ticker events. `_handleTickerMessage` previously updated its cached ticker state and emitted a live-price event even if `msg.ts` was absent or invalid; in that case cross-topic ordering against kline events could not be established. The handler now validates provider event time before mutating ticker state and rejects unorderable messages. A Stage A regression verifies that a ticker without `msg.ts` neither changes ticker readiness/state nor reaches the live bridge. Kline and ticker now share the same fail-closed timestamp contract.
+
+Ticker timestamp regression fixtures were aligned with the stricter contract: all valid ticker snapshots/deltas in integration tests now include provider `ts`; the dedicated missing-timestamp test intentionally omits it. Source commit `109048c38bcaaabf18663e3897e87ecfdbe313d4`.
