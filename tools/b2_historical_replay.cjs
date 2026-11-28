@@ -157,9 +157,16 @@ function runStructure(rows, symbol, timeframe, asOf, id, strength = 2) {
   assert(c.status === 'VALID', 'B2-C blocked: ' + JSON.stringify(c.admission.reasons));
   return { snapshot, quality, a, b, c };
 }
-function runZones(structure, symbol, timeframe, spanRatio = 0.001, retestRatio = 0.0005) {
+function runZones(structure, symbol, timeframe, spanRatio = 0.001, retestRatio = 0.0005, options = {}) {
   const priceScale = median(structure.snapshot.candles_by_timeframe[timeframe].map(c => c.close));
-  const zonePolicy = {
+  const relativeZoneSpan = options.zoneSpanMode === 'EVENT_RELATIVE_V2';
+  const zonePolicy = relativeZoneSpan ? {
+    version: 'b2d-relative-span-v2', instrument_symbol: symbol, timeframe,
+    cluster_method: 'MAX_TOTAL_SPAN_RELATIVE_V2',
+    max_cluster_span_price: priceScale * spanRatio,
+    max_cluster_span_ratio: spanRatio,
+    min_independent_touches: 2
+  } : {
     version: 'b2d-absolute-span-v1', instrument_symbol: symbol, timeframe,
     cluster_method: 'MAX_TOTAL_SPAN_V1', max_cluster_span_price: priceScale * spanRatio,
     min_independent_touches: 2
@@ -179,7 +186,13 @@ function runZones(structure, symbol, timeframe, spanRatio = 0.001, retestRatio =
     b2c_result: structure.c, analysis_as_of_ms: structure.snapshot.analysis_as_of_ms,
     timeframe });
   assert(d.status === 'VALID', 'B2-D blocked: ' + JSON.stringify(d.admission.reasons));
-  const retestPolicy = {
+  const retestPolicy = options.retestMode === 'EVENT_RELATIVE_V2' ? {
+    version: 'retest-policy-relative-v2', touch_method: 'RANGE_INTERSECTION_V1',
+    touch_tolerance_ratio: retestRatio,
+    success_buffer_ratio: retestRatio,
+    failure_buffer_ratio: retestRatio,
+    retest_window_bars: 20, confirmation_window_bars: 3
+  } : {
     version: 'retest-policy-v1', touch_method: 'RANGE_INTERSECTION_V1',
     touch_tolerance_price: priceScale * retestRatio,
     success_buffer_price: priceScale * retestRatio,
@@ -262,8 +275,12 @@ function runAnalyticalContext(structure, zones, breakoutWindowBars = 160) {
   const { snapshot, quality, c } = structure;
   const timeframe = Object.keys(snapshot.candles_by_timeframe)[0];
   const asOf = snapshot.analysis_as_of_ms;
+  const zoneContextPolicy = zones.zonePolicy.version === 'b2d-relative-span-v2'
+    ? { ...ZONE_CONTEXT_POLICY, version: 'b2d-zone-context-relative-v2',
+        b2d_zone_policy_version: 'b2d-relative-span-v2' }
+    : ZONE_CONTEXT_POLICY;
   const zoneContext = analyzeZoneContext({
-    policy: ZONE_CONTEXT_POLICY, snapshot, quality_report: quality,
+    policy: zoneContextPolicy, snapshot, quality_report: quality,
     b2d_result: zones.d, analysis_as_of_ms: asOf, timeframe,
     finality_safety_lag_ms: LAG
   });
@@ -296,7 +313,7 @@ function runAnalyticalContext(structure, zones, breakoutWindowBars = 160) {
   assert(regimeV2.status === 'VALID',
     'Market regime v2 blocked: ' + JSON.stringify(regimeV2.admission.reasons));
   const impulse = analyzeImpulse({
-    policy: IMPULSE_POLICY, snapshot, quality_report: quality,
+    policy: { ...IMPULSE_POLICY, zone_context_policy_version: zoneContextPolicy.version }, snapshot, quality_report: quality,
     b2e_result: zones.e, zone_context_result: zoneContext,
     analysis_as_of_ms: asOf, timeframe
   });
