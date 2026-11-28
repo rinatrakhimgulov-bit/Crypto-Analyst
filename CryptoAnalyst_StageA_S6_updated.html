@@ -491,6 +491,9 @@
       text-align: center;
       padding: 4px 8px 12px;
     }
+    .app-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+    .app-tabs .btn[aria-selected="true"] { border-color: var(--accent); background: var(--panel-2); }
+    [hidden] { display: none !important; }
     .journal-card { min-width: 0; }
     .journal-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
     .journal-status { min-height: 18px; color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
@@ -560,10 +563,14 @@
     </header>
 
     <!-- Предупреждение об устаревших данных при ошибке обновления -->
+    <nav class="app-tabs" role="tablist" aria-label="Разделы приложения">
+      <button type="button" class="btn" id="analysisTabBtn" role="tab" aria-selected="true" aria-controls="analysisTabContent">Анализ</button>
+      <button type="button" class="btn" id="journalTabBtn" role="tab" aria-selected="false" aria-controls="journalCard">Журнал</button>
+    </nav>
     <div class="stale-banner" id="staleBanner"></div>
 
     <!-- Основной блок: график + решение + контроль данных -->
-    <div class="grid-main">
+    <div class="grid-main" id="analysisTabContent" role="tabpanel" aria-labelledby="analysisTabBtn">
       <section class="card chart-card">
         <div class="card-header">
           <span class="card-title" id="chartTitle">График — BTCUSDT (4H)</span>
@@ -667,7 +674,7 @@
       </div>
     </div>
 
-    <section class="card journal-card" id="journalCard">
+    <section class="card journal-card" id="journalCard" role="tabpanel" aria-labelledby="journalTabBtn" hidden>
       <div class="card-header">
         <span class="card-title">Журнал наблюдений</span>
         <span class="meta" id="journalCount">0 наблюдений</span>
@@ -719,7 +726,7 @@
     </section>
 
     <!-- Честный список реализованного и нереализованного -->
-    <section class="card">
+    <section class="card" id="analysisRoadmap">
       <div class="card-header">
         <span class="card-title">Статус возможностей прототипа</span>
         <span class="meta">Без подмены заглушками</span>
@@ -746,9 +753,36 @@
       </div>
     </section>
 
-    <div class="disclaimer">
+    <div class="disclaimer" id="analysisDisclaimer">
       Учебный/аналитический прототип. Не является индивидуальной инвестиционной рекомендацией или торговым сигналом.
     </div>
+    <script>
+      (function initAppTabs() {
+        const buttons = {
+          analysis: document.getElementById('analysisTabBtn'),
+          journal: document.getElementById('journalTabBtn')
+        };
+        const panels = {
+          analysis: [
+            document.getElementById('analysisTabContent'),
+            document.getElementById('analysisRoadmap'),
+            document.getElementById('analysisDisclaimer')
+          ],
+          journal: [document.getElementById('journalCard')]
+        };
+        function activateTab(name) {
+          const active = name === 'journal' ? 'journal' : 'analysis';
+          Object.keys(panels).forEach((key) => {
+            panels[key].forEach((panel) => { if (panel) panel.hidden = key !== active; });
+            if (buttons[key]) buttons[key].setAttribute('aria-selected', String(key === active));
+          });
+          if (active === 'analysis') window.dispatchEvent(new Event('resize'));
+        }
+        buttons.analysis.addEventListener('click', () => activateTab('analysis'));
+        buttons.journal.addEventListener('click', () => activateTab('journal'));
+        activateTab('analysis');
+      })();
+    </script>
   </div>
 
   <script>
