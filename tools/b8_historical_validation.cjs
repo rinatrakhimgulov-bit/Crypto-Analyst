@@ -2,7 +2,7 @@
 
 const fs = require('node:fs');
 const { evaluateCandidate } = require('../src/research/b8-outcome-evaluator.js');
-const { summarizeOutcomes } = require('../src/research/b8-statistics.js');
+const { summarizeOutcomes, summarizeClusteredOutcomes } = require('../src/research/b8-statistics.js');
 const { deduplicateCandidates, chronologicalSplit } = require('../src/research/b8-candidate-collection.js');
 
 const REPOSITORY = 'mestoness/btc-eth-candles-history';
@@ -147,14 +147,16 @@ async function main() {
       const key = [row.symbol, row.timeframe, row.split, row.setup_type, row.direction, horizon].join('|');
       if (!groups.has(key)) groups.set(key, { symbol: row.symbol, timeframe: row.timeframe,
         split: row.split, setup_type: row.setup_type, direction: row.direction, horizon, results: [] });
-      groups.get(key).results.push(row.outcome);
+      groups.get(key).results.push(row);
     }
   }
   const metrics = Array.from(groups.values()).sort((a,b) =>
     a.symbol.localeCompare(b.symbol) || a.timeframe.localeCompare(b.timeframe) ||
     a.split.localeCompare(b.split) || a.setup_type.localeCompare(b.setup_type) ||
     a.direction.localeCompare(b.direction) || a.horizon - b.horizon
-  ).map(group => ({ ...group, ...summarizeOutcomes(group.results, group.horizon), results: undefined }));
+  ).map(group => ({ ...group,
+    ...summarizeOutcomes(group.results.map(row => row.outcome), group.horizon),
+    ...summarizeClusteredOutcomes(group.results, group.horizon), results: undefined }));
 
   const report = {
     report_version: 'b8-historical-validation-v1',
@@ -172,7 +174,7 @@ async function main() {
       'B2 replay uses a synthetic B1-VALID wrapper; the real B1 validator is not executed on this archive.',
       'The B7 candidate population is sampled from causal 160-candle windows every 80 bars; this is denser but not exhaustive, and shorter-lived events can still be missed.',
       'TRAIN and VALIDATION candidates whose 12-bar outcome endpoint crosses the next split boundary are purged; purged candidates are not reassigned.',
-      'Overlapping candidates and common market moves are correlated; Wilson intervals are naive-independence descriptors, not cluster-aware inference.',
+      'Overlapping candidates and common market moves are correlated; Wilson intervals are naive-independence descriptors. Weekly block bootstrap is reported within each symbol/timeframe subgroup; cross-series dependence is not captured.',
       'Entry is a bar-close proxy after candidate availability, not an executable exchange fill.',
       'No tick data, spread, fees, funding, slippage observations or actual trade outcomes are available.',
       'Positive forward close returns are not trade wins. Barrier outcomes are research simulations only.',
