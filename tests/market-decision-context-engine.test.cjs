@@ -116,6 +116,9 @@ run('aligned bullish regime, structure, strong retest and B7 setup produce LONG'
   assert.equal(r.decision, 'LONG');
   assert.equal(r.decision_type, 'RESEARCH_CANDIDATE_ONLY');
   assert.deepEqual(r.selected_setup_ids, ['setup-1']);
+  assert.equal(r.decision_available_at_ms, AS_OF);
+  assert.equal(r.setup_candidates[0].available_at_ms, AS_OF);
+  assert.equal(r.setup_candidates[0].setup_available_at_ms, AS_OF - 100);
 });
 run('aligned bearish regime, structure, strong retest and B7 setup produce SHORT', () => {
   const r = analyze(fixture({ structure: 'DOWN', direction: 'SHORT' }));
