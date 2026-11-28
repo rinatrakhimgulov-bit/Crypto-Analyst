@@ -227,7 +227,7 @@
       .topbar { padding: 9px 10px; gap: 8px; }
       .price-box { gap: 6px 9px; }
       .price { font-size: 19px; }
-      #liveDiagnostics { display: none; }
+      #liveDiagnostics { display: block; flex: 1 0 100%; width: 100%; min-width: 0; font-size: 10px; line-height: 1.35; white-space: normal; }
       .chart-card .card-header { margin-bottom: 7px; }
       .chart-legend { gap: 7px 10px; font-size: 10.5px; }
     }
@@ -7904,14 +7904,23 @@
       const ws = state.liveTicker && state.liveTicker.symbol === symbol ? state.liveTicker : null;
       const wsPrice = ws && Number.isFinite(ws.lastPrice) ? ws.lastPrice : null;
       const wsAge = ws && Number.isFinite(ws.receivedAtMs) ? Math.max(0, Date.now() - ws.receivedAtMs) : null;
+      const tickerEntry = BybitWsClient.state && BybitWsClient.state.tickerBySymbol instanceof Map
+        ? BybitWsClient.state.tickerBySymbol.get(symbol) : null;
+      const tickerState = tickerEntry && tickerEntry.ready && tickerEntry.state ? tickerEntry.state : null;
+      const tickerPrice = (key) => {
+        const value = Number(tickerState && tickerState[key]);
+        return Number.isFinite(value) && value > 0 ? fmtPrice(value) : 'нет';
+      };
       const candle = chart && chart.candles.length ? chart.candles[chart.candles.length - 1] : null;
       const eligible = Boolean(candle && chart.candles.length - 1 >= chart.closedCount);
       const delta = wsPrice !== null && restPrice !== null ? wsPrice - restPrice : null;
       const parts = [
         'REST ticker ' + (restPrice === null ? 'нет' : fmtPrice(restPrice)),
-        'WS last ' + (wsPrice === null ? 'нет' : fmtPrice(wsPrice)),
-        'Δ ' + (delta === null ? '—' : (delta > 0 ? '+' : '') + fmtPrice(delta)),
-        'WS age ' + (wsAge === null ? '—' : (wsAge / 1000).toFixed(1) + 'с'),
+        'WS Last ' + (wsPrice === null ? 'нет' : fmtPrice(wsPrice)),
+        'Mark ' + tickerPrice('markPrice'),
+        'Index ' + tickerPrice('indexPrice'),
+        'Δ WS−REST ' + (delta === null ? '—' : (delta > 0 ? '+' : '') + fmtPrice(delta)),
+        'WS event age ' + (wsAge === null ? '—' : (wsAge / 1000).toFixed(1) + 'с'),
         'свеча ' + (eligible ? 'FORMING' : candle ? 'CLOSED/NO-FORMING' : 'NONE'),
         'OHLC ' + (candle ? [candle.open,candle.high,candle.low,candle.close].map(fmtPrice).join('/') : '—'),
         'ticker→свеча ' + (state.lastCandleUpdate ? state.lastCandleUpdate.status : '—')
@@ -7952,7 +7961,7 @@
       if (live) {
         displayPrice = live.lastPrice;
         const ageMs = Math.max(0, Date.now() - live.receivedAtMs);
-        sourceText = `Источник цены: Bybit WS lastPrice · ${ageMs < 1000 ? ageMs + ' мс' : (ageMs / 1000).toFixed(1) + ' с'}`;
+        sourceText = `Источник цены: Bybit WS Last (lastPrice) · ${ageMs < 1000 ? ageMs + ' мс' : (ageMs / 1000).toFixed(1) + ' с'}`;
         sourceClass = 'meta status-ok';
       } else if (restPrices && Number.isFinite(restPrices.currentMarketPrice)) {
         displayPrice = restPrices.currentMarketPrice;
