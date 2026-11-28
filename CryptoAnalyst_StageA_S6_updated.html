@@ -8994,11 +8994,26 @@
       const button = document.getElementById('journalSaveBtn');
       if (button) button.disabled = !journalCanCapture();
     }
-    function journalCaptureObservation() {
+    function journalCaptureKey(dataset, analysis, report) {
+      const tail = dataset.allCandles.slice(-2).map((candle) => [
+        candle.ts, Number.isSafeInteger(candle.closeTs) ? candle.closeTs : candle.ts,
+        candle.open, candle.high, candle.low, candle.close, candle.volume, candle.turnover
+      ]);
+      return JSON.stringify([dataset.symbol, dataset.interval, report.status,
+        analysis.decision, Boolean(analysis.qualityGate && analysis.qualityGate.blocked), tail]);
+    }
+    function journalCaptureObservation(captureMode = 'MANUAL') {
       if (!journalCanCapture()) throw new Error('Нет согласованного снимка с оценённым качеством данных. Обновите рынок и дождитесь результата.');
       const cached = state.snapshotsByKey.get(makeKey(state.symbol, state.interval));
       const dataset = cached.dataset;
       const analysis = cached.analysis;
+      const report = dataset.qualityReport;
+      const captureKey = journalCaptureKey(dataset, analysis, report);
+      const existing = journalState.envelope.observations.find((entry) => entry.captureKey === captureKey);
+      if (existing) {
+        journalSetStatus('Этот аналитический снимок уже записан. Дубликат не создан.');
+        return existing;
+      }
       const capturedAtMs = Date.now();
       const report = dataset.qualityReport;
       const live = freshLiveTicker(dataset.symbol);
@@ -9022,6 +9037,7 @@
       const decision = qualityBlocked ? 'WAIT' : (['LONG', 'SHORT', 'WAIT'].includes(analysis.decision) ? analysis.decision : 'WAIT');
       const record = {
         id: journalId(), recordType: 'observation', schemaVersion: JOURNAL_RECORD_SCHEMA_VERSION,
+        captureMode: captureMode === 'AUTO' ? 'AUTO' : 'MANUAL', captureKey,
         capturedAt: new Date(capturedAtMs).toISOString(), capturedAtMs,
         market: { source: dataset.source || 'unknown', marketType: dataset.marketType || 'unknown',
           symbol: dataset.symbol, interval: dataset.interval, hostUsed: dataset.hostUsed || null },
@@ -9052,6 +9068,21 @@
       journalSetStatus('Наблюдение сохранено. Исходный снимок больше не изменяется.', 'success');
       journalUpdateCaptureAvailability();
       return record;
+    }
+    function journalAutoCaptureObservation() {
+      if (!journalCanCapture()) return false;
+      try {
+        const record = journalCaptureObservation('AUTO');
+        if (record && record.captureMode === 'AUTO') {
+          const setups = record.analysisSnapshot.b2 && record.analysisSnapshot.b2.setups;
+          const count = setups && Array.isArray(setups.setup_candidates) ? setups.setup_candidates.length : 0;
+          journalSetStatus('Автозапись выполнена · ' + record.decision + ' · ' + count + ' сценариев B7');
+        }
+        return true;
+      } catch (error) {
+        journalSetStatus('Автозапись не выполнена: ' + (error && error.message ? error.message : String(error)), 'error');
+        return false;
+      }
     }
     function journalExport() {
       if (journalState.readOnly) throw new Error('Экспорт недоступен: журнал не удалось безопасно прочитать.');
@@ -9189,7 +9220,7 @@
         chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient, runB2Analysis, renderB2Panel,
         B7ExplainableSetupEngine, renderB7Panel,
         journal: Object.freeze({ state: journalState, initialize: journalInitialize, render: journalRender,
-          canCapture: journalCanCapture, capture: journalCaptureObservation, export: journalExport,
+          canCapture: journalCanCapture, capture: journalCaptureObservation, autoCapture: journalAutoCaptureObservation, export: journalExport,
           importEnvelope: journalImportEnvelope, validateEnvelope: journalValidateEnvelope,
           addFollowup: journalAddFollowup, addActualTrade: journalAddActualTrade })
       });
@@ -9557,6 +9588,8 @@
           analysis
         });
         renderSuccess(dataset, analysis);
+        // Capture only a completed, current REST analysis cycle; stale/error paths never auto-record.
+        journalAutoCaptureObservation();
 
         const syncToken = state.pendingSyncToken;
         if (syncToken && syncToken.reqId === reqId) {
