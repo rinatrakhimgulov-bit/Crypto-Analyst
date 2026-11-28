@@ -8007,6 +8007,17 @@
         scheduleLiveRestReconciliation(0, event.reason || 'invalid WebSocket kline');
         return;
       }
+      const previousKline = state.liveKline;
+      if (previousKline && previousKline.symbol === event.symbol &&
+          previousKline.interval === event.interval && previousKline.candle &&
+          previousKline.candle.ts === event.candle.ts &&
+          Number.isSafeInteger(previousKline.providerEventTimeMs) &&
+          Number.isSafeInteger(event.providerEventTimeMs) &&
+          event.providerEventTimeMs < previousKline.providerEventTimeMs) {
+        // Do not let an out-of-order event-time update roll back the latest
+        // forming OHLCV state for the same candle.
+        return;
+      }
       const stepMs = BybitAdapter.intervalToMs(event.interval);
       const result = chart.upsertLiveCandle(event.candle, stepMs);
       if (['invalid', 'no-base', 'older', 'closed-candle', 'unconfirmed-predecessor', 'conflict', 'gap'].includes(result.status)) {
@@ -8816,6 +8827,13 @@
             });
             state.liveKline = replayEvent;
             chart.setData(base, 1, null, 10);
+            handleLiveKline({
+              valid: true, symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 10.5, volume: 2, turnover: 21, confirmed: false }),
+              providerEventTimeMs: 4500, receivedAtMs: Date.now(), connGen: wsState.connGen
+            });
+            assert(chart.candles[1].close === 10 && state.liveKline.providerEventTimeMs === 5000,
+              'An older same-candle WS event time must not roll back the accepted OHLCV state');
             const replayed = reapplyLiveKlineAfterRest({ symbol: 'BTCUSDT', interval: '240', providerServerTimeMs: 4000 });
             assert(replayed && replayed.status === 'updated' && chart.candles[1].volume === 2 && chart.candles[1].high === 12,
               'A newer WS kline must restore its OHLCV after an older REST snapshot replaces chart data');
