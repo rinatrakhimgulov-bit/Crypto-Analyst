@@ -1434,3 +1434,12 @@ B7 historical replay is implemented and passed in CI run `46115303655`. The pinn
 Results: 40 candidates (36 confirmed, 4 pending), split evenly between BREAKOUT_RETEST (20) and FALSE_BREAKOUT_RECLAIM (20). No TREND_CONTINUATION_AFTER_CORRECTION candidate appeared in these 30 windows; its behavior is covered by synthetic tests only. See `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`.
 
 CI also passed 22 B7 tests, B2-A..G regression suite, exact source/inline parity and browser/mobile integration. Browser fixture reported B7 VALID / 0 candidates, no page errors, panel visible and no horizontal overflow at 390px. This is not profitability validation: actual B1 validator is not executed in historical replay, finality uses fixed 500ms time-derived lag, archive ends 2025-12-05, and no trade outcomes/costs are measured. Remaining: owner iPhone Safari acceptance and second-person review. Do not merge PR #27 to main before B4/B5/B6 dependencies.
+
+
+## Owner acceptance and UI scope decision — 2026-11-28
+
+The owner tested the B7 application branch on the target device and confirmed that the application works and the new B7 panel provides detailed explanations. This is functional owner acceptance of the current B7 presentation, not a final UX/UI sign-off.
+
+Usability, wording refinement, menu structure, navigation model and visual redesign are explicitly deferred. They will be handled together in a dedicated UX/UI design stage, when the menu and overall interaction model can be redesigned coherently. Do not spend current analytics-engineering time polishing or restructuring the existing menu/panel UI, and do not treat the current layout as the final product design.
+
+Current development priority remains analytical functionality, correctness, validation and evidence quality. Keep the interface changes minimal where needed to expose and test analytical capabilities. Revisit UX/UI as a consolidated later stage.
