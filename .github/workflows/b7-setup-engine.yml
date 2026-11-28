@@ -15,7 +15,7 @@ permissions:
 jobs:
   b7-unit-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 25
     steps:
       - name: Checkout candidate
         uses: actions/checkout@v4
@@ -40,5 +40,7 @@ jobs:
           node tests/b2e-breakout-retest-engine.test.cjs
           node tests/b2f-mtf-structure-confluence-engine.test.cjs
           node tests/b2g-chart-projection-engine.test.cjs
+      - name: Pinned historical B7 replay and prefix invariance
+        run: node tools/b2_historical_replay.cjs
       - name: Browser integration and mobile layout checks
         run: node tests/b2-app-browser-integration.cjs
