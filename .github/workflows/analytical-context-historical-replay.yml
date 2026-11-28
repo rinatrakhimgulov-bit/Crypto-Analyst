@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feature/analytical-engine-historical-replay-2026-11-28
+      - feature/market-regime-engine-v2-2026-11-28
   pull_request:
     branches:
       - feature/analytical-engine-integration-2026-11-28
+      - feature/analytical-engine-historical-replay-2026-11-28
     paths:
       - 'tools/analytical_context_historical_replay.cjs'
       - 'tools/b2_historical_replay.cjs'
@@ -27,6 +29,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Market Regime Engine v2 unit tests
+        run: node tests/market-regime-engine-v2.test.cjs
+      - name: Synthetic end-to-end analytical replay tests
+        run: node tests/analytical-engine-replay.test.cjs
       - name: Replay six historical BTC/ETH series
         run: node tools/analytical_context_historical_replay.cjs
       - name: Verify report coverage and causal assertions
