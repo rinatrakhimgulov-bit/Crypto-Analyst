@@ -54,6 +54,19 @@ const POLICY_BREAKOUT_QUALITY = {
   volume_expansion_min_ratio: 1.5, range_expansion_min_atr: 1.2,
   directional_body_min_ratio: 0.5, close_location_min: 0.7
 };
+const SENSITIVITY_VARIANTS = [
+  { name: 'baseline', overrides: {} },
+  { name: 'impulse_displacement_1_0', overrides: { impulse_displacement_atr: 1.0 } },
+  { name: 'impulse_displacement_1_5', overrides: { impulse_displacement_atr: 1.5 } },
+  { name: 'selloff_displacement_1_5', overrides: { selloff_displacement_atr: 1.5 } },
+  { name: 'selloff_displacement_2_5', overrides: { selloff_displacement_atr: 2.5 } },
+  { name: 'range_expansion_1_0', overrides: { range_expansion_min_atr: 1.0 } },
+  { name: 'range_expansion_1_5', overrides: { range_expansion_min_atr: 1.5 } },
+  { name: 'volume_expansion_1_2', overrides: { volume_expansion_min_ratio: 1.2 } },
+  { name: 'volume_expansion_2_0', overrides: { volume_expansion_min_ratio: 2.0 } },
+  { name: 'directional_pressure_0_5', overrides: { directional_pressure_min: 0.5 } },
+  { name: 'directional_pressure_0_8', overrides: { directional_pressure_min: 0.8 } }
+];
 const POLICY_IMPULSE = {
   version: 'market-impulse-event-v1',
   b1_contract_version: '1.1.0',
@@ -191,7 +204,7 @@ async function main() {
     totals: {
       series_count: 0, windows_evaluated: 0,
       regime_counts: {}, impulse_counts: {}, breakout_quality_counts: {},
-      bearish_retest_status_counts: {}, zone_context_windows: 0,
+      bearish_retest_status_counts: {}, sensitivity_counts: {}, zone_context_windows: 0,
       deterministic_repeat_checks: 0, cutoff_checks: 0
     },
     series: {}
@@ -206,7 +219,7 @@ async function main() {
         dataset_integrity: loaded.integrity,
         windows_evaluated: 0,
         regime_counts: {}, impulse_counts: {}, breakout_quality_counts: {},
-        bearish_retest_status_counts: {}, zone_counts: [],
+        bearish_retest_status_counts: {}, sensitivity_counts: {}, zone_counts: [],
         sample_windows: []
       };
       for (const endIndex of indices) {
@@ -218,6 +231,17 @@ async function main() {
 
         increment(summary.regime_counts, result.regime.regime);
         increment(summary.impulse_counts, result.impulse.event.classification);
+        for (const variant of SENSITIVITY_VARIANTS) {
+          const varied = analyzeImpulse({
+            policy: { ...POLICY_IMPULSE, ...variant.overrides, version: 'market-impulse-sensitivity-' + variant.name },
+            snapshot: result.structure.snapshot, quality_report: result.structure.quality,
+            b2e_result: result.zones.e, zone_context_result: result.zoneContext,
+            analysis_as_of_ms: result.asOf, timeframe
+          });
+          assert(varied.status === 'VALID', symbol + ' ' + timeframe + ' sensitivity ' + variant.name + ' blocked');
+          if (!summary.sensitivity_counts[variant.name]) summary.sensitivity_counts[variant.name] = {};
+          increment(summary.sensitivity_counts[variant.name], varied.event.classification);
+        }
         for (const breakout of result.breakoutQuality.breakouts) increment(summary.breakout_quality_counts, breakout.quality_status);
         for (const context of result.impulse.event.bearish_breakout_context) increment(summary.bearish_retest_status_counts, context.retest_status);
         summary.zone_counts.push(result.zoneContext.zones.length);
@@ -227,6 +251,16 @@ async function main() {
         report.totals.windows_evaluated++;
         increment(report.totals.regime_counts, result.regime.regime);
         increment(report.totals.impulse_counts, result.impulse.event.classification);
+        for (const variant of SENSITIVITY_VARIANTS) {
+          const varied = analyzeImpulse({
+            policy: { ...POLICY_IMPULSE, ...variant.overrides, version: 'market-impulse-sensitivity-' + variant.name },
+            snapshot: result.structure.snapshot, quality_report: result.structure.quality,
+            b2e_result: result.zones.e, zone_context_result: result.zoneContext,
+            analysis_as_of_ms: result.asOf, timeframe
+          });
+          if (!report.totals.sensitivity_counts[variant.name]) report.totals.sensitivity_counts[variant.name] = {};
+          increment(report.totals.sensitivity_counts[variant.name], varied.event.classification);
+        }
         for (const breakout of result.breakoutQuality.breakouts) increment(report.totals.breakout_quality_counts, breakout.quality_status);
         for (const context of result.impulse.event.bearish_breakout_context) increment(report.totals.bearish_retest_status_counts, context.retest_status);
         report.totals.zone_context_windows++;
