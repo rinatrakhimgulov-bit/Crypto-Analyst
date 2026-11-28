@@ -1,0 +1,40 @@
+name: Market Analytics Prefix Replay
+
+on:
+  pull_request:
+    paths:
+      - 'tools/market_analytics_prefix_replay.cjs'
+      - 'tools/b2_historical_replay.cjs'
+      - 'src/analysis/market-regime-engine.js'
+      - 'src/analysis/b2d-zone-context-engine.js'
+      - 'src/analysis/b2e-breakout-quality-engine.js'
+      - 'src/analysis/market-impulse-event-engine.js'
+      - 'docs/specs/MARKET_ANALYTICS_PREFIX_REPLAY_SPEC_2026-11-28.md'
+      - '.github/workflows/market-analytics-prefix-replay.yml'
+  push:
+    branches:
+      - 'feature/bearish-impulse-selloff-engine-2026-11-28'
+permissions:
+  contents: read
+jobs:
+  historical-prefix-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check tools/b2_historical_replay.cjs
+          node --check tools/market_analytics_prefix_replay.cjs
+      - name: Run pinned BTC/ETH prefix replay
+        run: node tools/market_analytics_prefix_replay.cjs
+      - name: Upload prefix replay report
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-analytics-prefix-replay-report
+          path: market_analytics_prefix_replay_report.json
+          if-no-files-found: error
+          retention-days: 30
