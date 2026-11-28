@@ -7873,8 +7873,264 @@
       liveTickerTimer: null,
       liveReconcileTimer: null,
       lastConfirmedCandleKey: null,
-      lastCandleUpdate: { status: 'not-tested', atMs: null }
+      lastCandleUpdate: { status: 'not-tested', atMs: null },
+      latestJournalContext: null,
+      journalEnvelope: null,
+      journalError: null,
+      journalSelectedObservationId: null
     };
+
+
+    const APP_VERSION = 'CryptoAnalyst-StageA-S6-B5.1';
+
+    // Local-first journal. One versioned JSON envelope is written atomically to one
+    // localStorage key; import validates and merges before replacing that key.
+    function createMarketJournal(storageProvider) {
+      const STORAGE_KEY = 'cryptoAnalyst.marketJournal.v1';
+      const FORMAT = 'crypto-analyst-market-journal';
+      const FORMAT_VERSION = 1;
+      const SCHEMA_VERSION = 1;
+      const LIMITS = Object.freeze({ observations: 100, followups: 5000, actualTrades: 1000, candlesPerObservation: 160 });
+      const FOLLOWUP_STATUSES = new Set(['still_waiting', 'triggered', 'invalidated', 'expired', 'missed', 'manual_note']);
+      const TRADE_STATUSES = new Set(['open', 'closed', 'void']);
+      let idCounter = 0;
+
+      function isObject(value) {
+        return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+      }
+      function clone(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+      function stableStringify(value) {
+        if (Array.isArray(value)) return '[' + value.map(stableStringify).join(',') + ']';
+        if (isObject(value)) return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + stableStringify(value[key])).join(',') + '}';
+        return JSON.stringify(value);
+      }
+      function createId() {
+        try {
+          if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+          if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+            const bytes = new Uint8Array(16);
+            window.crypto.getRandomValues(bytes);
+            return Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+          }
+        } catch (_) {}
+        idCounter += 1;
+        return 'local-' + Date.now().toString(36) + '-' + idCounter.toString(36);
+      }
+      function emptyEnvelope() {
+        return {
+          format: FORMAT,
+          formatVersion: FORMAT_VERSION,
+          schemaVersion: SCHEMA_VERSION,
+          observations: [],
+          followups: [],
+          actualTrades: []
+        };
+      }
+      function requireSafeTime(value, label) {
+        if (!Number.isSafeInteger(value) || value <= 0) throw new Error(label + ': invalid timestamp');
+      }
+      function validateObservation(record) {
+        if (!isObject(record) || record.recordType !== 'observation' || record.schemaVersion !== SCHEMA_VERSION ||
+            typeof record.id !== 'string' || !record.id.trim()) throw new Error('Invalid observation record');
+        if (!isObject(record.capturedAt)) throw new Error('Observation capturedAt missing');
+        requireSafeTime(record.capturedAt.epochMs, 'Observation capturedAt');
+        if (typeof record.capturedAt.iso !== 'string' || Date.parse(record.capturedAt.iso) !== record.capturedAt.epochMs) {
+          throw new Error('Observation capturedAt ISO/epoch mismatch');
+        }
+        if (!isObject(record.market) || typeof record.market.symbol !== 'string' || !record.market.symbol ||
+            !['60', '240', 'D'].includes(record.market.interval) ||
+            typeof record.market.source !== 'string' || typeof record.market.marketType !== 'string') {
+          throw new Error('Observation market identity invalid');
+        }
+        if (!isObject(record.priceContext) || !Number.isFinite(record.priceContext.lastPrice) ||
+            record.priceContext.lastPrice <= 0 || typeof record.priceContext.source !== 'string') {
+          throw new Error('Observation price context invalid');
+        }
+        if (!isObject(record.dataQuality) || !['VALID', 'INVALID', 'STALE', 'UNASSESSED'].includes(record.dataQuality.status) ||
+            !Array.isArray(record.dataQuality.reasonCodes)) throw new Error('Observation data quality invalid');
+        if (!isObject(record.decision) || !['LONG', 'SHORT', 'WAIT'].includes(record.decision.value) ||
+            !Array.isArray(record.decision.reasons)) throw new Error('Observation decision invalid');
+        if (!isObject(record.analysisSnapshot) || !Number.isSafeInteger(record.analysisSnapshot.analysisAsOfMs) ||
+            record.analysisSnapshot.analysisAsOfMs <= 0 || !isObject(record.analysisSnapshot.basic) ||
+            !isObject(record.analysisSnapshot.structure)) throw new Error('Observation analysis snapshot invalid');
+        if (!isObject(record.engineVersions) || !Array.isArray(record.candleWindow) ||
+            record.candleWindow.length < 1 || record.candleWindow.length > LIMITS.candlesPerObservation) {
+          throw new Error('Observation candle window or engine versions invalid');
+        }
+        let previousTs = -1;
+        for (const candle of record.candleWindow) {
+          if (!isObject(candle) || !Number.isSafeInteger(candle.ts) || candle.ts <= previousTs ||
+              !Number.isSafeInteger(candle.closeTs) || candle.closeTs <= candle.ts ||
+              !['CLOSED', 'FORMING'].includes(candle.finality) ||
+              !['open', 'high', 'low', 'close', 'volume'].every(key => Number.isFinite(candle[key])) ||
+              candle.open <= 0 || candle.high < Math.max(candle.open, candle.close) ||
+              candle.low > Math.min(candle.open, candle.close) || candle.low <= 0 || candle.volume < 0) {
+            throw new Error('Observation candle window contains invalid or unordered candles');
+          }
+          previousTs = candle.ts;
+        }
+      }
+      function validateFollowup(record, observationIds) {
+        if (!isObject(record) || record.recordType !== 'followup' || record.schemaVersion !== SCHEMA_VERSION ||
+            typeof record.id !== 'string' || !record.id.trim() ||
+            !observationIds.has(record.observationId) || !FOLLOWUP_STATUSES.has(record.status) ||
+            !isObject(record.recordedAt)) throw new Error('Invalid follow-up record');
+        requireSafeTime(record.recordedAt.epochMs, 'Follow-up recordedAt');
+        if (typeof record.recordedAt.iso !== 'string' || Date.parse(record.recordedAt.iso) !== record.recordedAt.epochMs ||
+            (record.note !== undefined && (typeof record.note !== 'string' || record.note.length > 2000)) ||
+            (record.observedPrice !== null && record.observedPrice !== undefined &&
+              (!Number.isFinite(record.observedPrice) || record.observedPrice <= 0))) {
+          throw new Error('Follow-up fields invalid');
+        }
+      }
+      function validateActualTrade(record, observationIds) {
+        if (!isObject(record) || record.recordType !== 'actual_trade' || record.schemaVersion !== SCHEMA_VERSION ||
+            typeof record.id !== 'string' || !record.id.trim() ||
+            !observationIds.has(record.observationId) || !['LONG', 'SHORT'].includes(record.side) ||
+            !TRADE_STATUSES.has(record.status) || !isObject(record.entry) ||
+            !Number.isFinite(record.entry.price) || record.entry.price <= 0) {
+          throw new Error('Invalid actual-trade record');
+        }
+        requireSafeTime(record.recordedAtMs, 'Actual trade recordedAt');
+        requireSafeTime(record.entry.atMs, 'Actual trade entry time');
+        if (!Number.isFinite(record.quantity) || record.quantity <= 0) throw new Error('Actual trade quantity invalid');
+        if (record.status === 'closed' && (!isObject(record.exit) || !Number.isFinite(record.exit.price) ||
+            record.exit.price <= 0 || !Number.isSafeInteger(record.exit.atMs) || record.exit.atMs <= 0)) {
+          throw new Error('Closed trade exit invalid');
+        }
+        if (record.status !== 'closed' && record.exit !== null) throw new Error('Open/void trade cannot contain exit');
+        for (const key of ['feesQuote', 'fundingQuote', 'grossPnlQuote', 'realizedPnlQuote']) {
+          if (record[key] !== null && record[key] !== undefined && !Number.isFinite(record[key])) {
+            throw new Error('Actual trade ' + key + ' invalid');
+          }
+        }
+        if (record.feesQuote !== null && record.feesQuote !== undefined && record.feesQuote < 0) {
+          throw new Error('Actual trade fees cannot be negative');
+        }
+      }
+      function validateEnvelope(envelope) {
+        if (!isObject(envelope) || envelope.format !== FORMAT ||
+            envelope.formatVersion !== FORMAT_VERSION || envelope.schemaVersion !== SCHEMA_VERSION ||
+            !Array.isArray(envelope.observations) || !Array.isArray(envelope.followups) ||
+            !Array.isArray(envelope.actualTrades)) throw new Error('Unsupported journal format/schema');
+        if (envelope.observations.length > LIMITS.observations ||
+            envelope.followups.length > LIMITS.followups || envelope.actualTrades.length > LIMITS.actualTrades) {
+          throw new Error('Journal record limit exceeded');
+        }
+        const allIds = new Set();
+        const observationIds = new Set();
+        for (const record of envelope.observations) {
+          validateObservation(record);
+          if (allIds.has(record.id)) throw new Error('Duplicate journal record ID');
+          allIds.add(record.id);
+          observationIds.add(record.id);
+        }
+        for (const record of envelope.followups) {
+          validateFollowup(record, observationIds);
+          if (allIds.has(record.id)) throw new Error('Duplicate journal record ID');
+          allIds.add(record.id);
+        }
+        for (const record of envelope.actualTrades) {
+          validateActualTrade(record, observationIds);
+          if (allIds.has(record.id)) throw new Error('Duplicate journal record ID');
+          allIds.add(record.id);
+        }
+        return true;
+      }
+      function getStorage() {
+        const storage = storageProvider();
+        if (!storage || typeof storage.getItem !== 'function' || typeof storage.setItem !== 'function') {
+          throw new Error('Browser storage unavailable');
+        }
+        return storage;
+      }
+      function read() {
+        const raw = getStorage().getItem(STORAGE_KEY);
+        if (raw === null) return emptyEnvelope();
+        let parsed;
+        try { parsed = JSON.parse(raw); } catch (_) { throw new Error('Local journal JSON is corrupted'); }
+        validateEnvelope(parsed);
+        return clone(parsed);
+      }
+      function write(envelope) {
+        validateEnvelope(envelope);
+        const serialized = JSON.stringify(envelope);
+        try { getStorage().setItem(STORAGE_KEY, serialized); }
+        catch (error) { throw new Error('Journal storage write failed: ' + (error && error.message ? error.message : 'quota/security error')); }
+        return clone(envelope);
+      }
+      function addObservation(record) {
+        const envelope = read();
+        if (envelope.observations.length >= LIMITS.observations) throw new Error('Observation limit reached; export and archive the journal before adding more');
+        envelope.observations.push(clone(record));
+        return write(envelope);
+      }
+      function addFollowup(record) {
+        const envelope = read();
+        if (envelope.followups.length >= LIMITS.followups) throw new Error('Follow-up limit reached');
+        envelope.followups.push(clone(record));
+        return write(envelope);
+      }
+      function addActualTrade(record) {
+        const envelope = read();
+        if (envelope.actualTrades.length >= LIMITS.actualTrades) throw new Error('Actual-trade limit reached');
+        envelope.actualTrades.push(clone(record));
+        return write(envelope);
+      }
+      function exportJson() {
+        const envelope = read();
+        envelope.exportedAt = new Date().toISOString();
+        return JSON.stringify(envelope, null, 2);
+      }
+      function mergeRecords(existing, incoming, label) {
+        const byId = new Map(existing.map(record => [record.id, record]));
+        for (const record of incoming) {
+          const current = byId.get(record.id);
+          if (current) {
+            if (stableStringify(current) !== stableStringify(record)) {
+              throw new Error('Import ID collision in ' + label + ': ' + record.id);
+            }
+          } else {
+            const copied = clone(record);
+            existing.push(copied);
+            byId.set(copied.id, copied);
+          }
+        }
+      }
+      function importJson(jsonText, options = {}) {
+        let imported;
+        try { imported = JSON.parse(jsonText); } catch (_) { throw new Error('Import file is not valid JSON'); }
+        validateEnvelope(imported);
+        let current;
+        try { current = read(); }
+        catch (error) {
+          if (!options.replaceCorrupt) throw error;
+          current = emptyEnvelope();
+        }
+        mergeRecords(current.observations, imported.observations, 'observations');
+        mergeRecords(current.followups, imported.followups, 'followups');
+        mergeRecords(current.actualTrades, imported.actualTrades, 'actualTrades');
+        current.exportedAt = undefined;
+        validateEnvelope(current);
+        return write(current);
+      }
+      return Object.freeze({
+        STORAGE_KEY, FORMAT, FORMAT_VERSION, SCHEMA_VERSION, LIMITS,
+        createId, emptyEnvelope, validateEnvelope, load: read,
+        addObservation, addFollowup, addActualTrade, exportJson, importJson
+      });
+    }
+
+    function freezeJournalValue(value) {
+      if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+      Object.freeze(value);
+      for (const key of Object.keys(value)) freezeJournalValue(value[key]);
+      return value;
+    }
+
+    const MarketJournal = createMarketJournal(() => window.localStorage);
 
     // Единственное место создания 30-секундного REST-polling. Идемпотентна: повторный вызов
     // не создаёт второй интервал (сначала снимает существующий).
