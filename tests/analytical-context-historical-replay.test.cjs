@@ -24,6 +24,7 @@ for (const symbol of ['BTCUSDT', 'ETHUSDT']) {
     for (const item of series.windows) {
       assert.ok(item.cutoff_ms > 0);
       assert.ok(['UPTREND', 'DOWNTREND', 'RANGE', 'IMPULSE', 'TRANSITION', 'UNKNOWN'].includes(item.regime));
+      assert.ok(['UPTREND', 'DOWNTREND', 'RANGE', 'IMPULSE', 'TRANSITION', 'UNKNOWN'].includes(item.regime_v2));
       assert.ok(typeof item.support_available === 'boolean');
       assert.ok(typeof item.resistance_available === 'boolean');
       assert.ok(typeof item.impulse_classification === 'string' && item.impulse_classification.length > 0);
@@ -32,6 +33,7 @@ for (const symbol of ['BTCUSDT', 'ETHUSDT']) {
 }
 
 assert.ok(Object.keys(report.summary.regime_distribution).length >= 1);
+assert.ok(Object.keys(report.summary.regime_v2_distribution).length >= 1);
 assert.ok(Object.keys(report.summary.impulse_distribution).length >= 1);
 assert.ok(Number.isInteger(report.summary.range_thresholds_pass_windows));
 assert.ok(Number.isInteger(report.summary.range_structure_eligible_windows));
