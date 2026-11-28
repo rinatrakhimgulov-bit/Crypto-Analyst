@@ -124,3 +124,7 @@ Ticker timestamp regression fixtures were aligned with the stricter contract: al
 ## Stale-stream fallback regression — 2026-11-28
 
 Added Stage A regression `B1-D. Stale WS ticker and kline are ignored; REST price fallback is shown`. It verifies that ticker events older than `LIVE_TICKER_STALE_MS` are not treated as current, kline cache older than `LIVE_KLINE_STALE_MS` is not replayed, and the UI falls back to the REST market price while explicitly labeling the WS ticker stale. The test restores all mutated app/client/UI state. Exact-head CI pending.
+
+## Subscription-switch in-flight message regression — 2026-11-28
+
+Added Stage A regression `B1-D. In-flight messages from the previous symbol/timeframe are dropped`. It exercises real `onmessage` routing through same-socket timeframe and symbol changes, verifies old kline/ticker topics are dropped, and confirms the new ETHUSDT/60 ticker and kline streams are accepted after fresh ACKs. This covers the transition boundary, not just stale REST response tokens.
