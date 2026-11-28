@@ -831,3 +831,5 @@ Ticker integration fixtures now provide provider timestamps as required by the s
 B4 adds a stale-stream regression: stale ticker and kline caches are ignored, the visible price falls back to REST, and the UI marks the WS ticker stale. Source commit `4f5e369b52b4262dbad88d9ba54a3fc6d7378301`; exact-head CI pending.
 
 B4 now includes a same-socket subscription-switch regression: delayed messages from the old timeframe/symbol are dropped, and new ETHUSDT/60 ticker/kline messages are accepted only after fresh ACKs. Source commit `67dfd2f36d46c58e66b5fcb2f233cca61626da69`; exact-head CI pending.
+
+B4 now scopes live ticker/kline events and cached updates to both `connGen` and `recoveryGen`. This closes a reconnect edge where automatic reconnect could retain `connGen` while advancing `recoveryGen`, allowing a previous-cycle kline cache to appear current after new topic ACKs. Added regression. Latest source commit `d916e9a05b38ccb12758225e28f0a03fb82da3fe`; exact-head CI pending.
