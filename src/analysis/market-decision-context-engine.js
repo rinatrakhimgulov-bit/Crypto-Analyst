@@ -49,6 +49,7 @@
       symbol: meta.symbol || null,
       timeframe: meta.timeframe || null,
       analysis_as_of_ms: meta.asOf ?? null,
+      decision_available_at_ms: null,
       selected_setup_ids: [],
       setup_candidates: [],
       context: null,
@@ -268,10 +269,13 @@
       symbol: snapshot.canonical_symbol,
       timeframe,
       analysis_as_of_ms: asOf,
+      decision_available_at_ms: asOf,
       selected_setup_ids: selected.map(c => c.setup_id),
       setup_candidates: selected.map(c => ({
         setup_id: c.setup_id, setup_type: c.setup_type, direction: c.direction,
-        available_at_ms: c.available_at_ms, setup_invalidation_level: c.invalidation_level,
+        setup_available_at_ms: c.available_at_ms,
+        available_at_ms: asOf,
+        setup_invalidation_level: c.invalidation_level,
         reason_codes: c.reason_codes, explanation: c.explanation
       })),
       context: {
