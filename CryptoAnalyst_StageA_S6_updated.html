@@ -7987,6 +7987,7 @@
       latestJournalContext: null,
       journalEnvelope: null,
       journalError: null,
+      journalNotice: null,
       journalSelectedObservationId: null
     };
 
@@ -8255,6 +8256,8 @@
       state.liveReconcileTimer = null;
       state.liveTicker = null;
       state.liveKline = null;
+      state.latestJournalContext = null;
+      syncJournalSaveButton();
       state.lastConfirmedCandleKey = null;
       state.lastCandleUpdate = { status: 'not-tested', atMs: null };
       const diag = document.getElementById('liveDiagnostics');
@@ -8504,7 +8507,8 @@
 
     if (new URLSearchParams(window.location.search).get('test') === '1') {
       window.__CryptoAnalystTestHooks = Object.freeze({
-        chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient, runB2Analysis, renderB2Panel
+        chart, handleLiveTicker, handleLiveKline, clearLiveDataState, state, BybitWsClient, runB2Analysis, renderB2Panel,
+        MarketJournal, createMarketJournal, buildJournalObservation
       });
     }
 
@@ -9151,6 +9155,8 @@
       } catch (error) {
         b2Result = { status: 'BLOCKED', stage: 'B2-runtime', reasons: [error && error.message ? error.message : 'B2_RUNTIME_ERROR'] };
       }
+      state.latestJournalContext = { dataset, analysis, b2Result, decisionReasons: reasonsToShow.slice() };
+      syncJournalSaveButton();
       renderB2Panel(b2Result);
       chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis,
         live ? live.lastPrice : pInfo.currentMarketPrice);
@@ -9219,6 +9225,8 @@
       const controller = new AbortController();
       state.activeController = controller;
       const reqId = ++state.requestSeq;
+      state.latestJournalContext = null;
+      syncJournalSaveButton();
       const reqSymbol = state.symbol;
       const reqInterval = state.interval;
       const hasCached = state.snapshotsByKey.has(makeKey(reqSymbol, reqInterval));
@@ -10854,6 +10862,7 @@
     BybitWsClient.hooks.onKline = handleLiveKline;
     BybitWsClient.attachLifecycle();
 
+    initMarketJournal();
     loadAndAnalyze(true);
     startPeriodicPoll();
     BybitWsClient.start(state.symbol, state.interval);
