@@ -961,3 +961,18 @@ The owner tested the B7 application branch on the target device and confirmed th
 Usability, wording refinement, menu structure, navigation model and visual redesign are explicitly deferred. They will be handled together in a dedicated UX/UI design stage, when the menu and overall interaction model can be redesigned coherently. Do not spend current analytics-engineering time polishing or restructuring the existing menu/panel UI, and do not treat the current layout as the final product design.
 
 Current development priority remains analytical functionality, correctness, validation and evidence quality. Keep the interface changes minimal where needed to expose and test analytical capabilities. Revisit UX/UI as a consolidated later stage.
+
+
+## B8 opening — schema audit and first evaluator implementation — 2026-11-28
+
+Branch: `feature/b8-statistical-validation-2026-11-28` (draft; based on B7 head `46820a743fc1c08eb34b6c1851315d8b57ef8e1d`).
+
+- Audited B5 journal specification and actual capture implementation. Confirmed B5 stores the B7 result at `analysisSnapshot.b2.setups`, and the B7 candidate list at `analysisSnapshot.b2.setups.setup_candidates`.
+- Confirmed B5 candle window uses `ts`, `closeTs`, OHLCV, and explicit `finality`; B8 must exclude `forming` candles.
+- Added B8 methodology specification and opening schema audit.
+- Added pure causal outcome evaluator: post-availability closed-candle entry proxy, directional forward return, MFE/MAE, optional invalidation/target barriers, conservative stop-first same-bar ambiguity and adverse gap-stop proxy.
+- Added descriptive statistics with Wilson proportion intervals explicitly labelled as naive-independence intervals.
+- Added deterministic tests and a dedicated GitHub Actions workflow.
+- No production HTML, B1/B2/B7 engine, live decision path or UI was changed.
+
+Current limitations: historical candidate census/deduplication and chronological out-of-sample report are not implemented yet; prospective B5 validation requires explicit JSON export; funding is not applied; current historical archive ends 2025-12-05. This work does not establish profitability.
