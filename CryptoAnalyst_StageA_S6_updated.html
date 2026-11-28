@@ -227,7 +227,7 @@
       .topbar { padding: 9px 10px; gap: 8px; }
       .price-box { gap: 6px 9px; }
       .price { font-size: 19px; }
-      #liveDiagnostics { display: none; }
+      #liveDiagnostics { display: block; flex: 1 0 100%; width: 100%; min-width: 0; font-size: 10px; line-height: 1.35; white-space: normal; }
       .chart-card .card-header { margin-bottom: 7px; }
       .chart-legend { gap: 7px 10px; font-size: 10.5px; }
     }
@@ -7989,14 +7989,23 @@
       const ws = state.liveTicker && state.liveTicker.symbol === symbol ? state.liveTicker : null;
       const wsPrice = ws && Number.isFinite(ws.lastPrice) ? ws.lastPrice : null;
       const wsAge = ws && Number.isFinite(ws.receivedAtMs) ? Math.max(0, Date.now() - ws.receivedAtMs) : null;
+      const tickerEntry = BybitWsClient.state && BybitWsClient.state.tickerBySymbol instanceof Map
+        ? BybitWsClient.state.tickerBySymbol.get(symbol) : null;
+      const tickerState = tickerEntry && tickerEntry.ready && tickerEntry.state ? tickerEntry.state : null;
+      const tickerPrice = (key) => {
+        const value = Number(tickerState && tickerState[key]);
+        return Number.isFinite(value) && value > 0 ? fmtPrice(value) : 'нет';
+      };
       const candle = chart && chart.candles.length ? chart.candles[chart.candles.length - 1] : null;
       const eligible = Boolean(candle && chart.candles.length - 1 >= chart.closedCount);
       const delta = wsPrice !== null && restPrice !== null ? wsPrice - restPrice : null;
       const parts = [
         'REST ticker ' + (restPrice === null ? 'нет' : fmtPrice(restPrice)),
-        'WS last ' + (wsPrice === null ? 'нет' : fmtPrice(wsPrice)),
-        'Δ ' + (delta === null ? '—' : (delta > 0 ? '+' : '') + fmtPrice(delta)),
-        'WS age ' + (wsAge === null ? '—' : (wsAge / 1000).toFixed(1) + 'с'),
+        'WS Last ' + (wsPrice === null ? 'нет' : fmtPrice(wsPrice)),
+        'Mark ' + tickerPrice('markPrice'),
+        'Index ' + tickerPrice('indexPrice'),
+        'Δ WS−REST ' + (delta === null ? '—' : (delta > 0 ? '+' : '') + fmtPrice(delta)),
+        'WS event age ' + (wsAge === null ? '—' : (wsAge / 1000).toFixed(1) + 'с'),
         'свеча ' + (eligible ? 'FORMING' : candle ? 'CLOSED/NO-FORMING' : 'NONE'),
         'OHLC ' + (candle ? [candle.open,candle.high,candle.low,candle.close].map(fmtPrice).join('/') : '—'),
         'ticker→свеча ' + (state.lastCandleUpdate ? state.lastCandleUpdate.status : '—')
@@ -8037,7 +8046,7 @@
       if (live) {
         displayPrice = live.lastPrice;
         const ageMs = Math.max(0, Date.now() - live.receivedAtMs);
-        sourceText = `Источник цены: Bybit WS lastPrice · ${ageMs < 1000 ? ageMs + ' мс' : (ageMs / 1000).toFixed(1) + ' с'}`;
+        sourceText = `Источник цены: Bybit WS Last (lastPrice) · ${ageMs < 1000 ? ageMs + ' мс' : (ageMs / 1000).toFixed(1) + ' с'}`;
         sourceClass = 'meta status-ok';
       } else if (restPrices && Number.isFinite(restPrices.currentMarketPrice)) {
         displayPrice = restPrices.currentMarketPrice;
@@ -8138,6 +8147,9 @@
           event.recoveryGen !== wsState.recoveryGen ||
           event.symbol !== state.symbol || event.interval !== state.interval) return;
       if (!event.valid || !event.candle) {
+        // A malformed stream event breaks confidence in the cached WS candle.
+        // Do not replay an earlier candle over the REST snapshot while reconciling.
+        state.liveKline = null;
         scheduleLiveRestReconciliation(0, event.reason || 'invalid WebSocket kline');
         return;
       }
@@ -8156,6 +8168,9 @@
       const stepMs = BybitAdapter.intervalToMs(event.interval);
       const result = chart.upsertLiveCandle(event.candle, stepMs);
       if (['invalid', 'no-base', 'older', 'closed-candle', 'unconfirmed-predecessor', 'conflict', 'gap'].includes(result.status)) {
+        // An out-of-order older event does not invalidate the latest accepted cache.
+        // Structural conflicts and gaps do: REST must rebuild a trusted candle state.
+        if (result.status !== 'older') state.liveKline = null;
         scheduleLiveRestReconciliation(0, 'WebSocket kline requires REST reconciliation: ' + result.status);
         return;
       }
@@ -9626,6 +9641,73 @@
             });
             assert(events.length === 1 && events[0].valid === false, 'OHLC contradiction must be rejected');
             assert(S().invalidStreamMessages === 1, 'Invalid stream counter must increase');
+          });
+
+          await record('B1-D. Invalid kline invalidates the previous WS candle cache before REST reconciliation', (restoreList) => {
+            const savedLiveKline = state.liveKline;
+            const savedReconcileTimer = state.liveReconcileTimer;
+            if (savedReconcileTimer !== null) clearTimeout(savedReconcileTimer);
+            state.liveReconcileTimer = null;
+            restoreList.push(() => {
+              if (state.liveReconcileTimer !== null) clearTimeout(state.liveReconcileTimer);
+              state.liveReconcileTimer = savedReconcileTimer;
+              state.liveKline = savedLiveKline;
+            });
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            const now = Date.now();
+            state.liveKline = Object.freeze({
+              symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ts: 1, closeTs: 2, open: 60000, high: 60100, low: 59900, close: 60020, volume: 1, turnover: 60000, confirmed: false }),
+              providerEventTimeMs: now - 100,
+              receivedAtMs: now - 50,
+              connGen: S().connGen,
+              recoveryGen: S().recoveryGen
+            });
+            handleLiveKline({
+              valid: false, symbol: 'BTCUSDT', interval: '240',
+              reason: 'invalid provider event timestamp',
+              receivedAtMs: now, connGen: S().connGen, recoveryGen: S().recoveryGen
+            });
+            assert(state.liveKline === null,
+              'An invalid kline event must invalidate the previously cached WS candle before REST reconciliation');
+            assert(state.liveReconcileTimer !== null,
+              'An invalid kline event must still schedule REST reconciliation');
+
+            // A structurally unapplyable gap must also invalidate the cache.
+            const savedChart = {
+              candles: chart.candles,
+              closedCount: chart.closedCount,
+              analysis: chart.analysis,
+              marketPrice: chart.marketPrice
+            };
+            restoreList.push(() => {
+              chart.candles = savedChart.candles;
+              chart.closedCount = savedChart.closedCount;
+              chart.analysis = savedChart.analysis;
+              chart.marketPrice = savedChart.marketPrice;
+              chart.render();
+            });
+            const step = BybitAdapter.intervalToMs('240');
+            const base = { ts: 1, closeTs: 1 + step, open: 60000, high: 60100, low: 59900, close: 60020, volume: 1, turnover: 60000, confirmed: true };
+            chart.candles = [base];
+            chart.closedCount = 1;
+            state.liveKline = Object.freeze({
+              symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ...base }),
+              providerEventTimeMs: now - 50,
+              receivedAtMs: now - 25,
+              connGen: S().connGen,
+              recoveryGen: S().recoveryGen
+            });
+            handleLiveKline({
+              valid: true, symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ...base, ts: base.ts + step * 2, closeTs: base.closeTs + step * 2 }),
+              providerEventTimeMs: now, receivedAtMs: now,
+              connGen: S().connGen, recoveryGen: S().recoveryGen
+            });
+            assert(state.liveKline === null,
+              'A kline gap must invalidate the previous WS candle cache before REST reconciliation');
           });
 
           await record('B1-D. Chart live upsert changes forming candle without changing closed count', (restoreList) => {

@@ -469,7 +469,7 @@ async function main() {
       }
     });
     if (liveUiIntegration.tickerUi.price !== '65001.5' ||
-        !liveUiIntegration.tickerUi.source.includes('Bybit WS lastPrice') ||
+        !liveUiIntegration.tickerUi.source.includes('Bybit WS Last (lastPrice)') ||
         liveUiIntegration.tickerUi.chartPrice !== 65001.5 ||
         liveUiIntegration.klineUi.close !== 65001.5 ||
         liveUiIntegration.klineUi.volume !== 2 ||

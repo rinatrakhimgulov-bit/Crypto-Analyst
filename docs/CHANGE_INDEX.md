@@ -553,6 +553,18 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - Live Bybit remains unverified due runner HTTP 403. iPhone/Safari acceptance pending.
 
 
+- B4 latest source commit: fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60.
+- Invalid kline now clears the prior WS kline cache before REST reconciliation.
+- Exact-head B1/B2 workflows SUCCESS: Stage A 59/59; B1 contract 32/32; quality 72/72; MTF 20/20; B2-A…B2-G + mobile browser integration passed.
+- Live provider verification still requires iPhone/Safari; GitHub Actions REST probe was blocked with HTTP 403.
+
+
+- B4 source commit 86bf04418a9f270755a86c6e400565f0b6398978; HTML blob e29b50bb76c7b5dc2114bb002e5afb4ff50d2ba8.
+- Invalid or continuity-rejected kline events now invalidate the prior WS candle cache before REST reconciliation; older out-of-order messages are dropped without clearing the latest accepted cache.
+- Exact-head B1 SUCCESS (Stage A 59/59, B1 contract 32/32, quality 72/72, MTF 20/20); B2 application integration SUCCESS.
+- Live provider and iPhone/Safari acceptance still pending; GitHub Actions REST probe was blocked by HTTP 403.
+
+
 - B5 Market Journal: immutable observations, local persistence, follow-up events, completed actual trades and validated JSON backup/restore. Spec: `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`.
 
 - B5 exact-head checkpoint: PR #25 head `8f77ff6427e5c5d8021286d971c6a82bfc7f41b5`; B5 browser contract, B1 and B2 workflows all SUCCESS. iPhone Safari acceptance remains pending.
