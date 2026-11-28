@@ -240,3 +240,18 @@ test('rejects a structure engine version mismatch', () => {
   assert.equal(result.status, 'INVALID');
   assert.ok(result.admission.reasons[0].code.includes('STRUCTURE_RESULT'));
 });
+
+
+test('zero ATR returns UNKNOWN instead of emitting non-finite features', () => {
+  const data = fixture('range', 'UNESTABLISHED');
+  for (const candle of data.candles) {
+    candle.open = 100;
+    candle.high = 100;
+    candle.low = 100;
+    candle.close = 100;
+  }
+  const result = run(data);
+  assert.equal(result.status, 'INSUFFICIENT');
+  assert.equal(result.regime, 'UNKNOWN');
+  assert.equal(result.features, null);
+});
