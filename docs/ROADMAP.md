@@ -503,3 +503,5 @@ Kline events without a valid provider event timestamp (`msg.ts`) are rejected be
 Ticker messages now follow the same provider event-time gate as kline messages: invalid/missing `msg.ts` is rejected before ticker state mutation. Keep both contracts covered by deterministic tests and verify actual provider payloads in Safari.
 
 Valid ticker integration fixtures now carry provider event timestamps; the negative test deliberately omits `msg.ts` to preserve coverage of the fail-closed rule.
+
+Stale-stream fallback now has a deterministic regression: stale WS ticker/kline data is rejected, REST price fallback is displayed, and stale WS status is explicit. Actual Safari behavior remains a separate acceptance gate.
