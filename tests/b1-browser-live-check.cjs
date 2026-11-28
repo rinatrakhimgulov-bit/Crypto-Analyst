@@ -432,7 +432,8 @@ async function main() {
         chart.setData(base, 1, null, 100);
         handleLiveTicker({
           symbol: 'BTCUSDT', lastPrice: 65001.5, providerEventTimeMs: Date.now(),
-          receivedAtMs: Date.now(), cs: 123, type: 'delta', connGen: BybitWsClient.state.connGen
+          receivedAtMs: Date.now(), cs: 123, type: 'delta',
+          connGen: BybitWsClient.state.connGen, recoveryGen: BybitWsClient.state.recoveryGen
         });
         const tickerUi = {
           price: document.getElementById('livePrice').textContent,
@@ -441,6 +442,8 @@ async function main() {
         };
         handleLiveKline({
           valid: true, symbol: 'BTCUSDT', interval: '240', receivedAtMs: Date.now(),
+          providerEventTimeMs: Date.now() + 1,
+          connGen: BybitWsClient.state.connGen, recoveryGen: BybitWsClient.state.recoveryGen,
           candle: {
             ts: 2000, closeTs: 3000, open: 65000, high: 65002, low: 64999,
             close: 65001.5, volume: 2, turnover: 130003, confirmed: false
@@ -466,7 +469,7 @@ async function main() {
       }
     });
     if (liveUiIntegration.tickerUi.price !== '65001.5' ||
-        !liveUiIntegration.tickerUi.source.includes('Bybit WS lastPrice') ||
+        !liveUiIntegration.tickerUi.source.includes('Bybit WS Last (lastPrice)') ||
         liveUiIntegration.tickerUi.chartPrice !== 65001.5 ||
         liveUiIntegration.klineUi.close !== 65001.5 ||
         liveUiIntegration.klineUi.volume !== 2 ||

@@ -527,3 +527,39 @@ B3 was merged into `main` via PR #23 (merge commit `7d34a3539c9a655bca546bbb7b0c
 | B9 Explainable Decisions | LONG/SHORT/WAIT with reasons, invalidation and risk context | Planned |
 
 Market Journal must include WAIT and skipped observations, distinguish paper observations from actual trades, preserve snapshot-time information, and leave unresolved outcomes as pending. Do not claim profitability from UI, synthetic tests or small samples. Full current plan: docs/ROADMAP.md.
+
+
+## B4 — Live Data Path hardening (in progress, PR #24)
+
+- Main source audit: `docs/audits/B4_MAIN_AUDIT_2026-11-28.md`.
+- Current integrated data path: Bybit REST bootstrap/history + REST ticker snapshot + WebSocket ticker/kline live updates + 30s REST polling/reconciliation + reconnect/recovery.
+- First fix: confirmed WS candle immutable before REST boundary; ticker and late same-ts deltas cannot rewrite it; exact repeats are ignored; chart/volume render confirmed candles as closed.
+- Regression: Stage A B1-D test expanded.
+- Not accepted/merged. Await exact-head CI, further B4 audit, independent review and iPhone/Safari live verification.
+
+- Дополнительная защита REST/WS race: newer WS kline OHLCV replay после REST refresh, только при активной подтверждённой подписке, совпадающем connGen, свежем receive time и более новом provider event time.
+
+- Cross-topic provider-time ordering: предотвращает откат forming close из-за позднего ticker/kline сообщения с более ранним provider timestamp.
+
+- Event-time ordering: reject stale same-candle kline updates within one connection generation; preserve the later ticker close when kline arrives after it; drop older ticker events after a newer kline.
+- Verification at PR head 42f0511679167714e2a35c873ae0fc970502923c: B1 + B2 workflows SUCCESS; no browser page errors; live Bybit blocked by runner HTTP 403; not merged.
+
+
+### B4 exact tested source checkpoint
+
+- Source blob `c9711ffdd65c9667bfa7447b92ec05d73e60135f` / commit `01068b47736e9e1d9a206ae919accd8a6cea7255`.
+- B1 run 46103008965 SUCCESS: 50/50 Stage A, 32/32 B1 contract, 72/72 B1 quality, 20/20 MTF; zero browser page errors.
+- B2 run 46103008967 SUCCESS: B2-A…B2-G and mobile/browser integration.
+- Live Bybit remains unverified due runner HTTP 403. iPhone/Safari acceptance pending.
+
+
+- B4 latest source commit: fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60.
+- Invalid kline now clears the prior WS kline cache before REST reconciliation.
+- Exact-head B1/B2 workflows SUCCESS: Stage A 59/59; B1 contract 32/32; quality 72/72; MTF 20/20; B2-A…B2-G + mobile browser integration passed.
+- Live provider verification still requires iPhone/Safari; GitHub Actions REST probe was blocked with HTTP 403.
+
+
+- B4 source commit 86bf04418a9f270755a86c6e400565f0b6398978; HTML blob e29b50bb76c7b5dc2114bb002e5afb4ff50d2ba8.
+- Invalid or continuity-rejected kline events now invalidate the prior WS candle cache before REST reconciliation; older out-of-order messages are dropped without clearing the latest accepted cache.
+- Exact-head B1 SUCCESS (Stage A 59/59, B1 contract 32/32, quality 72/72, MTF 20/20); B2 application integration SUCCESS.
+- Live provider and iPhone/Safari acceptance still pending; GitHub Actions REST probe was blocked by HTTP 403.

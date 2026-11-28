@@ -852,3 +852,67 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Принят архитектурный принцип постепенного разделения data, quality, analytics, journal и UI для возможной будущей миграции без потери проверенной логики.
 
 Детальная спецификация планирования: docs/ROADMAP.md, актуализация от 2026-11-27.
+
+
+## 2026-11-28 — B4 audit and first finality hardening
+
+- Audited actual `main` HTML blob `6b5521195454bc3d3be3e18cc7f4fb10682ee48b`, 511,597 bytes / 9,514 lines.
+- Confirmed current main already integrates Bybit ticker+kline WebSocket callbacks into live price and forming-candle UI, alongside REST bootstrap, 30-second polling, reconciliation and reconnect/recovery. Historical LOG-ONLY / unmerged statements in older handover sections are stale and must not be used as current state.
+- Found a closed-candle immutability defect: between WS `confirm:true` and REST reconciliation, ticker and same-timestamp kline updates could still mutate the confirmed candle; chart styling also continued to call it forming.
+- Opened draft PR #24, branch `feature/b4-live-data-hardening-2026-11-28`.
+- Patched confirmed-candle immutability in ticker and kline upsert paths, exact duplicate handling, closed candle/volume styling, and extended Stage A B1-D regression coverage.
+- B4 remains in progress pending exact-head deterministic/browser CI, further source audit, independent review and live iPhone/Safari acceptance. GitHub runner HTTP 403 does not count as a live-provider test.
+
+- Второй найденный race: 30s REST refresh заменял chart candles и повторно применял только ticker price, теряя более свежие WS kline high/low/volume. Добавлен cache последней валидной kline с provider/receive timestamps и connGen; replay выполняется только при подтверждённой подписке и provider event time новее REST snapshot. Добавлен regression для replay и запрета старого WS поверх нового REST.
+
+- Добавлена provider-time ordering защита между независимыми WS ticker и kline topics. Older ticker не заменяет более новую kline; older kline после более нового ticker обновляет cumulative OHLCV, затем сохраняет более новый ticker close. Regression добавлен в Stage A B1-D suite.
+
+- Event ordering: отброшен out-of-order same-candle kline event по provider event time в рамках того же connection generation. Если kline приходит после более свежего ticker, OHLCV кумулятивно обновляется, затем более свежий ticker close применяется поверх. Если ticker приходит после более свежей kline, старый ticker отбрасывается.
+- PR head 42f0511679167714e2a35c873ae0fc970502923c: B1 workflow 46102775403 SUCCESS, B2 workflow 46102775296 SUCCESS, browser pageErrors отсутствуют. Live Bybit check skipped due HTTP 403 on GitHub runner. PR #24 remains unmerged pending remaining audit and iPhone/Safari acceptance.
+
+
+## Exact-head verification checkpoint — 2026-11-28
+
+- Current tested application source blob: `c9711ffdd65c9667bfa7447b92ec05d73e60135f` in commit `01068b47736e9e1d9a206ae919accd8a6cea7255` (PR #24).
+- B1 browser/live-data workflow run `46103008965`: SUCCESS. Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; browser page errors 0.
+- B2 application integration workflow run `46103008967`: SUCCESS. B2-A through B2-G and browser/mobile integration all completed successfully.
+- Live Bybit REST verification was `SKIPPED_PROVIDER_BLOCKED`: GitHub Actions runner received HTTP 403 from both `api.bybit.com` and `api.bytick.com`. This is not a live Bybit pass and does not prove that the user's iPhone is blocked.
+- Current remaining acceptance: real Bybit WebSocket + REST behavior on iPhone/Safari, including live lastPrice, forming-candle OHLCV, closed-candle immutability, REST reconciliation, disconnect/reconnect, stale fallback, BTC/ETH and 1H/4H/1D switching, background/foreground recovery.
+- PR #24 remains open and unmerged. Do not merge before owner iPhone/Safari acceptance and exact-source review.
+
+
+- B4 lifecycle coverage: added Stage A test `16d` for actual `pagehide`/`pageshow` listeners. It verifies old-socket invalidation, clean close state, fresh connection/recovery generations, and that new topics are not marked confirmed until ACK. Code commit: `1783a8e0b8294973366a61d32e75bb40458e338a`. CI for this exact code commit is pending; no real iPhone/Safari acceptance is claimed.
+
+- B4 fail-closed metadata fix: kline messages without a valid provider `msg.ts` are now rejected before entering the chart bridge, because they cannot be ordered against REST or ticker events. Added Stage A regression for missing `msg.ts`. Code commit: `730917fb52a33064b204f425dfd57bd9ab2f0490`. Exact-head CI pending; real Bybit/iPhone acceptance remains outstanding.
+
+- B4 ticker metadata guard: ticker `msg.ts` is now required and validated before any ticker-state mutation or live-price callback. Added Stage A regression proving missing provider time is rejected without changing readiness/state. Code commit: `c5be074817dcee28cb7a7df3e095939150579de7`. Exact-head CI pending.
+
+- Updated valid ticker integration fixtures to include provider `ts` after introducing the fail-closed ticker timestamp contract; the dedicated missing-timestamp regression remains intentionally timestamp-free. Source commit `109048c38bcaaabf18663e3897e87ecfdbe313d4`; exact-head CI pending.
+
+- B4 stale-stream coverage: added deterministic regression for stale ticker/kline rejection and REST price fallback with an explicit WS-stale label. Source commit: `4f5e369b52b4262dbad88d9ba54a3fc6d7378301`. Exact-head B1/B2 CI pending.
+
+- B4 subscription transition coverage: added deterministic integration regression for in-flight ticker/kline messages arriving from the previous timeframe or symbol after same-socket subscription changes. Old topics must be dropped; new ETHUSDT/60 topics must work after ACK. Source commit: `67dfd2f36d46c58e66b5fcb2f233cca61626da69`. Exact-head CI pending.
+
+- B4 recovery-cycle isolation: live ticker/kline events and caches now carry both connection and recovery generations. Freshness, bridge acceptance and same-candle/cross-topic ordering reject caches from a prior recovery cycle, including normal automatic reconnects that retain `connGen`. Added deterministic regression for this case. Code commits: `6e06eb472d9fb750fc9c8a9bacc2575b7768a5bb`, `d916e9a05b38ccb12758225e28f0a03fb82da3fe`. Exact-head CI pending.
+
+- Recovery-generation test fixture corrected to establish a valid ticker snapshot/readiness before testing prior-cycle cache invalidation. Source commit `40a36c90233c5bcd5186f1d0322620f99bd78939`; exact-head CI pending.
+
+- Recovery regression setup now explicitly initializes its ticker entry through `_getTickerEntry` before setting snapshot readiness. Source commit `a822133fc1b58356d39c2814a462314aa70fcb17`; exact-head CI pending.
+
+- Added `recoveryGen` to invalid-kline callbacks as well as valid events, preserving the generation guard while allowing invalid events to trigger REST reconciliation. Source commit `ff3fa83f59883fbe8f32864369dec7e5b697bc95`; exact-head CI pending.
+
+- Updated B1 Playwright live-UI synthetic ticker/kline events to include both current `connGen` and `recoveryGen`, matching the production event contract. The prior browser test failure was a fixture mismatch, not a runtime regression. Test commit `d5979626c38b51cd20decd5ab58cb92b510462c5`; exact-head CI pending.
+
+## B4 exact-head verification checkpoint — 2026-11-28
+
+- PR #24 head: `94513b348a36ed3a91385d56ef52f4df4569326d`.
+- Application HTML blob: `fffaa8c6c7448350c6db81bbdf6bee4d3a34504d`.
+- B1 browser/live-data CI run `46105030207`: SUCCESS. Stage A 58/58, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; browser page errors 0.
+- B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
+- Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
+- PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+- B4 second-pass audit found that invalid kline events did not invalidate the previous WS candle cache. Fixed in fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60; added Stage A regression. Exact-head B1/B2 workflows passed (runs 46109011261 and 46109011273). Live Bybit probe remains provider-blocked by Actions HTTP 403; iPhone/Safari acceptance is pending.
+
+
+- Extended B4 cache invalidation from malformed kline events to structural continuity failures (gap/conflict/closed candle/unconfirmed predecessor/no base/invalid). Older out-of-order events preserve the latest accepted cache. Source commit 86bf04418a9f270755a86c6e400565f0b6398978; B1 59/59 and B2 integration passed on exact head.

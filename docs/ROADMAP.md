@@ -477,3 +477,51 @@ Still pending: real iPhone/Safari Bybit WebSocket verification and independent e
 
 ## Критерий полезного прогресса
 Успех этапа измеряется не количеством экранов или линий на графике, а тем, что система получает достоверные данные, сохраняет контекст решения, позволяет воспроизвести его и объективно измерить результат.
+
+
+## B4 implementation progress — 2026-11-28
+
+B4 is active in draft PR #24: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/24. Audit the actual current main, not historical handover text. Main already contains a working Bybit ticker+kline WebSocket integration alongside REST bootstrap, 30-second polling, reconciliation and reconnect/recovery. The first audit found that a WS-confirmed candle could still be mutated by ticker or a late same-timestamp kline delta before REST advanced `closedCount`; B4 now blocks those mutations and renders provider-confirmed candles as closed. Exact audit: `docs/audits/B4_MAIN_AUDIT_2026-11-28.md`. The first hardening increments now cover confirmed-candle immutability, replay of a newer WS kline after a REST refresh, and provider-time ordering across ticker/kline topics, with connection-generation checks. This is not B4 completion. Continue reconnect, fallback, stale-state, switching and lifecycle audit; require deterministic/browser CI on the exact final head, exact-source review and real iPhone/Safari acceptance. Runner HTTP 403 is not live-provider verification.
+
+
+B4 checkpoint: PR #24 head 42f0511679167714e2a35c873ae0fc970502923c has B1 browser/live-data CI SUCCESS (46102775403) and B2 application/mobile integration CI SUCCESS (46102775296), with no browser page errors. Live Bybit REST probe remains unverified because GitHub runner receives HTTP 403. PR remains unmerged. Continue remaining reconnect, fallback, stale-state and lifecycle audit; independent review and actual iPhone/Safari acceptance remain required.
+
+
+### B4 exact-head checkpoint — 2026-11-28
+
+The current B4 application source blob `c9711ffdd65c9667bfa7447b92ec05d73e60135f` has passed B1 browser/live-data and B2 application integration CI (runs 46103008965 and 46103008967). Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; B2-A…B2-G and browser/mobile integration passed; no browser page errors. Live Bybit was skipped because GitHub Actions received HTTP 403 from both REST hosts. Remaining B4 acceptance is real Bybit REST/WS behavior on iPhone/Safari, reconnect/fallback and instrument/timeframe/lifecycle switching. PR #24 remains unmerged.
+
+
+### B4 additional verification — lifecycle
+
+Added deterministic `pagehide`/`pageshow` regression `16d` to verify old socket invalidation and a fresh recovery/subscription generation after page restoration. Keep real iPhone/Safari background/foreground testing as a separate required acceptance gate; automated browser coverage is not a substitute.
+
+### B4 additional data-quality gate — provider event time
+
+Kline events without a valid provider event timestamp (`msg.ts`) are rejected before chart mutation. Keep this fail-closed contract covered by regression tests and verify that actual Bybit messages on iPhone/Safari supply the expected timestamp.
+
+Ticker messages now follow the same provider event-time gate as kline messages: invalid/missing `msg.ts` is rejected before ticker state mutation. Keep both contracts covered by deterministic tests and verify actual provider payloads in Safari.
+
+Valid ticker integration fixtures now carry provider event timestamps; the negative test deliberately omits `msg.ts` to preserve coverage of the fail-closed rule.
+
+Stale-stream fallback now has a deterministic regression: stale WS ticker/kline data is rejected, REST price fallback is displayed, and stale WS status is explicit. Actual Safari behavior remains a separate acceptance gate.
+
+Subscription-switch coverage now verifies that in-flight messages from the previous symbol/timeframe cannot mutate the active chart after a same-socket subscription update, while the new subscription becomes usable after ACK.
+
+Live data freshness now requires both connection and recovery-cycle generation equality. This is specifically tested against automatic reconnects where the previous socket's connection generation may otherwise be retained. Keep this guard in B4 acceptance.
+
+Recovery-generation regression explicitly distinguishes subscription ACK from ticker snapshot readiness; ACK alone does not make ticker data ready.
+
+## B4 exact-head verification checkpoint — 2026-11-28
+
+- PR #24 head: `94513b348a36ed3a91385d56ef52f4df4569326d`.
+- Application HTML blob: `fffaa8c6c7448350c6db81bbdf6bee4d3a34504d`.
+- B1 browser/live-data CI run `46105030207`: SUCCESS. Stage A 58/58, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; browser page errors 0.
+- B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
+- Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
+- PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+B4 second-pass hardening: invalid WS kline events now clear the previously accepted WS candle cache before REST reconciliation. Exact-head B1/B2 CI passed at commit fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60. This does not replace real iPhone/Safari provider acceptance; Actions REST probe remains blocked by HTTP 403.
+
+
+B4 continuity-failure hardening: invalid or structurally unapplyable WS kline events clear the previous WS kline cache before REST reconciliation; an explicitly older out-of-order event does not clear a newer cache. Exact-head B1/B2 passed at source commit 86bf04418a9f270755a86c6e400565f0b6398978. Real iPhone/Safari provider acceptance remains outstanding.
