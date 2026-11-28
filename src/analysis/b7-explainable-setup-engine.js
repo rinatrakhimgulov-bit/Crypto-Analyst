@@ -227,18 +227,41 @@
       setups.push(candidate);
     };
 
+    const breakoutEventsById = new Map();
+    for (const event of b2c.events) {
+      if (!isObject(event) || typeof event.event_id !== 'string' || !event.event_id) continue;
+      if (!breakoutEventsById.has(event.event_id)) breakoutEventsById.set(event.event_id, event);
+      else breakoutEventsById.set(event.event_id, null);
+    }
+
     for (const lifecycle of b2e.lifecycles) {
       if (!isObject(lifecycle) || !FOLLOWUP_STATUSES.has(lifecycle.status) ||
           !isObject(lifecycle.historical_zone) || !isObject(lifecycle.confirmation) &&
           lifecycle.status !== 'WAITING_RETEST' && lifecycle.status !== 'RETEST_EXPIRED') continue;
       const zone = lifecycle.historical_zone;
-      if (!Number.isFinite(zone.lower_bound) || !Number.isFinite(zone.upper_bound) ||
+      const event = breakoutEventsById.get(lifecycle.breakout_event_id);
+      const expectedZoneRole = lifecycle.direction === 'BULLISH' ? 'RESISTANCE' :
+        lifecycle.direction === 'BEARISH' ? 'SUPPORT' : null;
+      if (!event || !expectedZoneRole || event.direction !== lifecycle.direction ||
+          event.event_type !== lifecycle.breakout_event_type ||
+          !Number.isSafeInteger(event.available_at_ms) || event.available_at_ms > asOf ||
+          lifecycle.breakout_available_at_ms !== event.available_at_ms ||
+          zone.role !== expectedZoneRole ||
+          !Number.isFinite(lifecycle.failure_buffer_price) || lifecycle.failure_buffer_price < 0 ||
+          !Number.isFinite(lifecycle.success_buffer_price) || lifecycle.success_buffer_price < 0 ||
+          !Number.isFinite(zone.lower_bound) || !Number.isFinite(zone.upper_bound) ||
           zone.lower_bound <= 0 || zone.upper_bound < zone.lower_bound ||
+          typeof zone.historical_zone_id !== 'string' || !zone.historical_zone_id ||
           typeof lifecycle.lifecycle_id !== 'string' || !lifecycle.lifecycle_id) continue;
+      const confirmationCandle = lifecycle.confirmation && candles.find(candle =>
+        candle.close_time_ms === lifecycle.confirmation.candle_close_time_ms);
+      const confirmationIsCausal = Boolean(confirmationCandle &&
+        confirmationCandle.close_time_ms + policy.finality_safety_lag_ms === lifecycle.confirmation.available_at_ms &&
+        lifecycle.confirmation.available_at_ms <= asOf &&
+        confirmationCandle.closed_state && CLOSED_STATES.has(confirmationCandle.closed_state) &&
+        confirmationCandle.close === lifecycle.confirmation.candle_close);
       if (lifecycle.status === 'RETEST_SUCCESSFUL' && lifecycle.confirmation &&
-          lifecycle.confirmation.outcome === 'SUCCESS' &&
-          Number.isSafeInteger(lifecycle.confirmation.available_at_ms) &&
-          lifecycle.confirmation.available_at_ms <= asOf) {
+          lifecycle.confirmation.outcome === 'SUCCESS' && confirmationIsCausal) {
         const bullish = lifecycle.direction === 'BULLISH';
         add(makeCandidate({
           setupId: 'B7:BREAKOUT_RETEST:' + lifecycle.lifecycle_id,
@@ -258,9 +281,7 @@
           }
         }));
       } else if (lifecycle.status === 'RETEST_FAILED' && lifecycle.confirmation &&
-          lifecycle.confirmation.outcome === 'FAILURE' &&
-          Number.isSafeInteger(lifecycle.confirmation.available_at_ms) &&
-          lifecycle.confirmation.available_at_ms <= asOf) {
+          lifecycle.confirmation.outcome === 'FAILURE' && confirmationIsCausal) {
         const originalBullish = lifecycle.direction === 'BULLISH';
         add(makeCandidate({
           setupId: 'B7:FALSE_BREAKOUT_RECLAIM:' + lifecycle.lifecycle_id,
