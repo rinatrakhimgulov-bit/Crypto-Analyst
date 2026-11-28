@@ -8930,6 +8930,10 @@
               providerEventTimeMs: now, receivedAtMs: now,
               connGen: oldConnGen, recoveryGen: oldRecoveryGen
             });
+            const initialTickerEntry = wsState.tickerBySymbol.get('BTCUSDT');
+            initialTickerEntry.ready = true;
+            initialTickerEntry.snapshotReceived = true;
+            initialTickerEntry.state = { symbol: 'BTCUSDT', lastPrice: '60000' };
             assert(freshLiveTicker() === state.liveTicker && freshLiveKline() === state.liveKline,
               'Current recovery-cycle caches should be fresh while their socket/topics are active');
 
