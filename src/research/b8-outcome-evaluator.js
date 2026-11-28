@@ -90,11 +90,13 @@ function makeBarrierOutcome(status, exitPrice, exitIndex, entryPrice, direction,
   const grossR = grossReturn / (riskDistance / entryPrice);
   const costsKnown = costModel && ['entry_fee_bps', 'exit_fee_bps', 'entry_slippage_bps', 'exit_slippage_bps']
     .every(key => finite(costModel[key]) && costModel[key] >= 0);
-  const totalCostBps = costsKnown
-    ? costModel.entry_fee_bps + costModel.exit_fee_bps +
-      costModel.entry_slippage_bps + costModel.exit_slippage_bps
-    : null;
-  const netReturn = costsKnown ? grossReturn - totalCostBps / 10000 : null;
+  // Entry costs are charged on entry notional; exit costs on exit notional.
+  const entryCostBps = costsKnown ? costModel.entry_fee_bps + costModel.entry_slippage_bps : null;
+  const exitCostBps = costsKnown ? costModel.exit_fee_bps + costModel.exit_slippage_bps : null;
+  const totalCostFraction = costsKnown
+    ? (entryCostBps + exitCostBps * (exitPrice / entryPrice)) / 10000 : null;
+  const totalCostBps = totalCostFraction == null ? null : totalCostFraction * 10000;
+  const netReturn = costsKnown ? grossReturn - totalCostFraction : null;
   return {
     status, exit_index: exitIndex, exit_price: exitPrice,
     gross_return_pct: grossReturn * 100, gross_r: grossR,
