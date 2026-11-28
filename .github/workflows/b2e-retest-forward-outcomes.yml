@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/b2e-retest-outcome-validation-2026-11-28
+      - feature/b2e-event-time-policy-2026-11-28
   pull_request:
     branches:
       - feature/b2e-breakout-forward-outcomes-2026-11-28
