@@ -944,3 +944,11 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Added separate B7 panel. B7 does not modify BasicAnalyticsEngine LONG/SHORT/WAIT, does not use B2-F as a hard gate, and does not produce probabilities, leverage, entry/SL/TP or orders.
 - Added 22 deterministic B7 tests and expanded source/inline parity. Browser integration checks B7 admission/panel and mobile layout. CI run `46115303655` SUCCESS: B2-A..G + B7 parity, 22 B7 tests, B2 regression suite, pinned historical replay, browser/mobile integration, pageErrors 0. Synthetic browser fixture returned B7 VALID / 0 candidates, which is an expected neutral result, not a setup-generation positive test.
 - Historical replay passed on pinned archive commit `9ca04178df06ce649f00779a49e11094fe5b1c70`: 30 production-equivalent 160-bar windows and 18 cutoff replays across BTC/ETH 1H/4H/1D; all candidates and confirmations were causal at cutoff and repeated prefix outputs deterministic. Remaining: independent review and iPhone Safari owner acceptance. B7 is not a validated trading strategy.
+
+
+## B7 pinned historical replay — 2026-11-28
+
+- Added B7 to the pinned B2 historical replay workflow. Each of six BTC/ETH timeframe series was checked across five 160-candle rolling windows and three historical prefix cutoffs.
+- CI `46115303655` SUCCESS. 30 rolling windows produced 40 research candidates (36 confirmed, 4 pending): 20 breakout+retest and 20 false-breakout+reclaim. No trend-continuation candidate occurred in this sample; this is not evidence that the scenario is profitable or invalid.
+- All 18 prefix runs passed deterministic repeatability and candidate/confirmation cutoff checks. B2 prefix invariance, B2 regression suite, 22 B7 unit tests, source/inline parity, browser/mobile integration all passed.
+- Detailed report: `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`. Historical wrapper/finality limitations remain; no fees, slippage, trade outcomes or expectancy are measured.
