@@ -46,9 +46,10 @@ function validateEnvelope(envelope) {
         !Array.isArray(record.candleWindow) || !record.candleWindow.length ||
         record.candleWindow.length > MAX_CANDLES) fail('B8_JOURNAL_OBSERVATION_INVALID');
     let previousTs = -Infinity;
+    let previousCloseTs = -Infinity;
     for (const candle of record.candleWindow) {
       if (!isObject(candle) || !Number.isSafeInteger(candle.ts) ||
-          candle.ts <= previousTs || candle.ts > record.capturedAtMs ||
+          candle.ts <= previousTs || candle.ts < previousCloseTs || candle.ts > record.capturedAtMs ||
           !Number.isSafeInteger(candle.closeTs) || candle.closeTs <= candle.ts ||
           !['closed', 'forming'].includes(candle.finality) ||
           (candle.finality === 'closed' && candle.closeTs > record.capturedAtMs) ||
@@ -60,6 +61,7 @@ function validateEnvelope(envelope) {
         fail('B8_JOURNAL_CANDLE_INVALID');
       }
       previousTs = candle.ts;
+      previousCloseTs = candle.closeTs;
     }
     observationIds.add(record.id);
   }
