@@ -21,6 +21,9 @@ jobs:
         run: |
           node --check src/research/b8-outcome-evaluator.js
           node --check src/research/b8-statistics.js
+          node --check src/research/b8-journal-adapter.js
           node --check tests/b8-outcome-evaluator.test.cjs
+          node --check tests/b8-journal-adapter.test.cjs
       - name: Deterministic evaluator tests
         run: node tests/b8-outcome-evaluator.test.cjs
+          node tests/b8-journal-adapter.test.cjs
