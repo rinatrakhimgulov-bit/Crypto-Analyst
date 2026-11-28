@@ -906,3 +906,6 @@ Initial B8-B implementation adds pure research modules:
 Baseline entry is the first candle close whose finality availability is strictly later than candidate availability. The evaluator computes forward returns/MFE/MAE and optional conservative barriers. Net fee/slippage output remains unavailable unless all four explicit cost inputs are supplied; funding is not applied. The evaluator is research-only and does not change the app HTML or LONG/SHORT/WAIT.
 
 Historical candidate generation/deduplication, chronological out-of-sample validation, B5 JSON import, dependence-aware uncertainty and independent review remain open. No profitability claim is permitted.
+
+
+B8 checkpoint: B8-A schema/methodology audit and B8-B deterministic evaluator + B5 import adapter are implemented in draft PR #28. Exact CI runs `46116869096` (evaluator/statistics) and `46116871532` (journal adapter) passed. This is not completion of B8: historical candidate census, deduplication, chronological out-of-sample validation, dependence-aware inference and prospective journal evaluation remain open.
