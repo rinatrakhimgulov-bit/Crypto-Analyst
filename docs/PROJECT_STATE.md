@@ -946,3 +946,34 @@ B8-C exploratory pipeline — PASS. B8-C statistical validation remains INCOMPLE
 B10 PR #30 remains draft on `feature/b10-supabase-journal-sync-2026-11-28`, based on B9 candidate head `28b7101bdd0ba999ff7396c49d07215ccb4fd911`. B9 PR #29 also remains draft. B10-A auth bootstrap is committed at `683529dc10a2495bf2b310d2fe464f3cc7e3a4bd`: pinned Supabase JS UMD, GitHub sign-in/sign-out UI, PKCE, persisted session and exact current HTTPS return URL. It uses only the publishable key and performs no database writes. Three inline scripts passed syntax parsing. Live OAuth/provider setup and iPhone acceptance remain pending.
 
 The currently published GitHub Pages app is still the `main` version. Its HTML was checked and does not contain the B9 journal or Supabase Auth. The B10 candidate is not yet deployed to Pages. Do not treat the user's successful opening of Pages as a test of B9/B10. No local journal data was migrated or deleted, and Supabase journal tables remain empty at the last verified audit.
+
+
+---
+
+## 2026-11-28 — старт Market Regime Engine v1
+
+- Создана отдельная аналитическая ветка feature/market-regime-engine-2026-11-28 от текущей рабочей ветки feature/b11-google-drive-backup-2026-11-28, чтобы сохранить существующую сборку и не менять main.
+- Начат новый изолированный компонент src/analysis/market-regime-engine.js.
+- Первая версия различает UPTREND, DOWNTREND, RANGE, IMPULSE, TRANSITION и UNKNOWN.
+- Вход привязан к точному B1 snapshot/quality report и, если передан, к тому же snapshot/cutoff B2-C result.
+- Расчёт использует только закрытые свечи, EMA20/50/200, ATR14, нормализованные наклоны/разрывы EMA, ширину диапазона и недавнее импульсное смещение.
+- Несовпадение B1 quality, происхождения свечей, finality, непрерывности или B2-C identity приводит к fail-closed результату.
+- Политика обязательная, версионированная и с явными параметрами. Первичные пороги не откалиброваны и предназначены только для детерминированных fixtures.
+- Добавлены tests/market-regime-engine.test.cjs, docs/specs/MARKET_REGIME_ENGINE_SPEC_2026-11-28.md и отдельный GitHub Actions workflow.
+- Локальная проверка точного исходного кандидата: 19/19 детерминированных тестов PASS; syntax parse PASS.
+- Компонент пока не встроен в HTML, не отображается в UI и не влияет на LONG/SHORT/WAIT. Никаких торговых выводов или утверждений о прибыльности не делается.
+- Следующие обязательные шаги: exact-head CI, независимый source review, replay на закреплённом BTC/ETH архиве 1H/4H/1D с prefix cutoffs и анализ чувствительности порогов. Только после этого решать вопрос о read-only UI интеграции.
+
+
+---
+
+## 2026-11-28 — analytical engine source audit and exact-head CI
+
+- GitHub Actions run 46164808349 completed successfully on exact candidate head a8b1f4bc1bb7a96801a52317a303716129ac1ed3: syntax parse PASS, deterministic tests 19/19 PASS.
+- Corrected the Market Regime Engine spec to report 19/19 tests; thresholds remain uncalibrated and the module remains isolated from the production HTML and LONG/SHORT/WAIT path.
+- Audited the existing application pipeline. The HTML already executes B2-A → B2-B → B2-C → B2-D → B2-E → B2-G and B7. Do not create duplicate support/resistance or breakout engines.
+- B2-F source exists but the current HTML does not invoke it; B2-G currently receives b2f_result: null.
+- B2-D currently creates zones from causal swing-pivot clusters, but zone width is a percentage-of-median-price setting in the HTML rather than ATR-normalized; freshness is NOT_CLASSIFIED and no active-zone strength ranking exists.
+- B2-E already handles close-confirmed structural breaks, historical-zone boundary clearance, retest lifecycle, failed retest and role reversal. Its buffers are also percentage-of-median-price-derived absolute values; volume/range expansion quality is not part of its break admission.
+- Added docs/specs/ANALYTICAL_ENGINE_AUDIT_2026-11-28.md as the source-of-truth audit and next implementation order.
+- Next code work: B2-D zone quality/freshness/ATR normalization, then B2-E breakout-quality/buffer improvements, then a dedicated bearish impulse/selloff classifier. No UI or LONG/SHORT/WAIT integration until historical replay and sensitivity validation.
