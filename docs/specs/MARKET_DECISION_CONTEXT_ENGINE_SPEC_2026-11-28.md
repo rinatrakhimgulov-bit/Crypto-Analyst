@@ -62,3 +62,8 @@ No probability, confidence score, entry price, stop-loss, take-profit, leverage,
 - Does not change upstream B2/B7 modules.
 - All thresholds are inherited from versioned upstream policies and remain uncalibrated.
 - No profitability or predictive-edge claims. Historical prefix replay is required before considering UI integration.
+
+
+## 2026-11-28 prefix replay result
+
+On the pinned BTC/ETH archive, the decision candidate produced 23 LONG, 11 SHORT and 440 WAIT results across 474 regular-stride prefixes. Every prefix passed deterministic repeat and cutoff assertions. This is only signal-frequency distribution; prefixes overlap and no trade outcome was evaluated. The module remains research-only and is not connected to the production HTML decision path.
