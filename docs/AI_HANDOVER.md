@@ -1385,3 +1385,5 @@ Latest B4 source commit `d916e9a05b38ccb12758225e28f0a03fb82da3fe` scopes live t
 Source commit `40a36c90233c5bcd5186f1d0322620f99bd78939` corrects the recovery-generation test fixture by explicitly priming ticker readiness before the initial freshness assertion. Recheck B1/B2 exact-head CI after this source update.
 
 Source commit `a822133fc1b58356d39c2814a462314aa70fcb17` initializes the recovery regression's ticker entry through `_getTickerEntry` before priming snapshot readiness. Check exact-head CI after this update.
+
+Source commit `ff3fa83f59883fbe8f32864369dec7e5b697bc95` adds `recoveryGen` to invalid-kline callbacks too. This is required because `handleLiveKline` now checks event generations before processing either valid or invalid events; without it, invalid kline events would not request REST reconciliation. Recheck exact-head CI.
