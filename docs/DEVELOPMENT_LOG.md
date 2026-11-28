@@ -864,3 +864,5 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B4 remains in progress pending exact-head deterministic/browser CI, further source audit, independent review and live iPhone/Safari acceptance. GitHub runner HTTP 403 does not count as a live-provider test.
 
 - Второй найденный race: 30s REST refresh заменял chart candles и повторно применял только ticker price, теряя более свежие WS kline high/low/volume. Добавлен cache последней валидной kline с provider/receive timestamps и connGen; replay выполняется только при подтверждённой подписке и provider event time новее REST snapshot. Добавлен regression для replay и запрета старого WS поверх нового REST.
+
+- Добавлена provider-time ordering защита между независимыми WS ticker и kline topics. Older ticker не заменяет более новую kline; older kline после более нового ticker обновляет cumulative OHLCV, затем сохраняет более новый ticker close. Regression добавлен в Stage A B1-D suite.
