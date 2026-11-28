@@ -218,6 +218,13 @@ const REGIME_POLICY = {
   range_max_mid_slow_spread_atr: 0.60,
   impulse_min_move_atr: 2.5, impulse_min_range_expansion: 1.25
 };
+const REGIME_POLICY_V2 = {
+  ...REGIME_POLICY,
+  version: 'market-regime-policy-v2-local-consolidation',
+  range_detection_mode: 'LOCAL_CONSOLIDATION_V2',
+  range_max_ema50_slope_atr: 0.30,
+  range_max_fast_mid_spread_atr: 0.50
+};
 const ZONE_CONTEXT_POLICY = {
   version: 'b2d-zone-context-v1',
   b2d_engine_version: '2.0.0-b2d',
@@ -282,6 +289,12 @@ function runAnalyticalContext(structure, zones, breakoutWindowBars = 160) {
   });
   assert(regime.status === 'VALID',
     'Market regime blocked: ' + JSON.stringify(regime.admission.reasons));
+  const regimeV2 = analyzeRegime({
+    policy: REGIME_POLICY_V2, snapshot, quality_report: quality,
+    structure_result: c, analysis_as_of_ms: asOf, timeframe
+  });
+  assert(regimeV2.status === 'VALID',
+    'Market regime v2 blocked: ' + JSON.stringify(regimeV2.admission.reasons));
   const impulse = analyzeImpulse({
     policy: IMPULSE_POLICY, snapshot, quality_report: quality,
     b2e_result: zones.e, zone_context_result: zoneContext,
@@ -289,7 +302,7 @@ function runAnalyticalContext(structure, zones, breakoutWindowBars = 160) {
   });
   assert(impulse.status === 'VALID',
     'Market impulse blocked: ' + JSON.stringify(impulse.admission.reasons));
-  return { regime, zoneContext, breakoutQuality, impulse };
+  return { regime, regimeV2, zoneContext, breakoutQuality, impulse };
 }
 function summarizeAnalyticalContext(result) {
   const selection = result.zoneContext.active_zone_selection;
@@ -309,6 +322,14 @@ function summarizeAnalyticalContext(result) {
       structure_state: result.regime.structure_state,
       features: result.regime.features,
       reasons: result.regime.reasons
+    },
+    regime_v2: {
+      status: result.regimeV2.status, label: result.regimeV2.regime,
+      directional_bias: result.regimeV2.directional_bias,
+      evidence_alignment: result.regimeV2.evidence_alignment,
+      structure_state: result.regimeV2.structure_state,
+      reasons: result.regimeV2.reasons,
+      features: result.regimeV2.features
     },
     zones: {
       current_close: result.zoneContext.current_close,
@@ -434,12 +455,14 @@ async function main() {
     dataset_commit: DATASET_COMMIT,
     analytical_engine_versions: {
       market_regime: '1.0.0-market-regime',
+      market_regime_v2: '1.0.0-market-regime-local-consolidation-v2',
       b2d_zone_context: '1.0.0-b2d-zone-context',
       b2e_breakout_quality: '1.0.0-b2e-breakout-quality',
       market_impulse: '1.0.0-market-impulse-event'
     },
     analytical_policy_versions: {
       market_regime: REGIME_POLICY.version,
+      market_regime_v2: REGIME_POLICY_V2.version,
       b2d_zone_context: ZONE_CONTEXT_POLICY.version,
       b2e_breakout_quality: BREAKOUT_QUALITY_POLICY.version,
       market_impulse: IMPULSE_POLICY.version
@@ -451,7 +474,7 @@ async function main() {
       mtf_provider_time: 'synthetic common cutoff with zero provider-time spread; this does not calibrate live B1 MTF',
       trading_edge: 'not evaluated; no entries, fees, funding, slippage, or trade outcomes are measured',
       b7_replay: 'B7 is evaluated on each 160-candle rolling window and at three historical prefix cutoffs. Each prefix run asserts deterministic output and that every candidate and confirmation is available by that cutoff. This is causal consistency testing, not strategy profitability validation.',
-      analytical_replay: 'Market regime, zone context, breakout quality and impulse are evaluated on full history, three chronological prefixes and rolling windows. Prefix runs assert determinism and cutoff-bounded evidence. This is classification coverage, not predictive-edge validation.',
+      analytical_replay: 'Market regime v1 and local-consolidation v2, zone context, breakout quality and impulse are evaluated on full history, three chronological prefixes and rolling windows. Prefix runs assert determinism and cutoff-bounded evidence. This is classification coverage, not predictive-edge validation.',
       archive_recency: 'Pinned archive ends 2025-12-05; this replay does not include 2026 market data.'
     },
     symbols: {}
