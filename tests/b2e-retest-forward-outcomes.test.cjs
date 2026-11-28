@@ -18,12 +18,12 @@ const success = {
   status: 'RETEST_SUCCESSFUL',
   confirmation: { candle_close_time_ms: rows[15].close_time_ms }
 };
-assert.equal(resolveLifecycleIndex(success, rows, index), 14);
+assert.equal(resolveLifecycleIndex(success, rows, index), 15);
 const failed = {
   status: 'RETEST_FAILED',
   confirmation: { candle_close_time_ms: rows[18].close_time_ms }
 };
-assert.equal(resolveLifecycleIndex(failed, rows, index), 17);
+assert.equal(resolveLifecycleIndex(failed, rows, index), 18);
 const expired = {
   status: 'RETEST_EXPIRED',
   breakout_candle_open_time_ms: rows[5].open_time_ms,
