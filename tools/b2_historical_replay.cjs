@@ -13,6 +13,7 @@ const { analyze: analyzeG } = require('../src/analysis/b2g-chart-projection-engi
 const { analyze: analyzeB7 } = require('../src/analysis/b7-explainable-setup-engine.js');
 
 const { analyze: analyzeRegime } = require('../src/analysis/market-regime-engine.js');
+const { analyze: analyzeRegimeV2 } = require('../src/analysis/market-regime-engine-v2.js');
 const { analyze: analyzeZoneContext } = require('../src/analysis/b2d-zone-context-engine.js');
 const { analyze: analyzeBreakoutQuality } = require('../src/analysis/b2e-breakout-quality-engine.js');
 const { analyze: analyzeImpulse } = require('../src/analysis/market-impulse-event-engine.js');
@@ -218,6 +219,30 @@ const REGIME_POLICY = {
   range_max_mid_slow_spread_atr: 0.60,
   impulse_min_move_atr: 2.5, impulse_min_range_expansion: 1.25
 };
+
+const REGIME_POLICY_V2 = {
+  version: 'market-regime-policy-v2-local-consolidation',
+  ema_fast_period: 20, ema_mid_period: 50, ema_slow_period: 200,
+  atr_period: 14, slope_lookback: 10, range_lookback: 20, impulse_lookback: 5,
+  b1_contract_version: '1.1.0', b1_validator_version: '1.1.0',
+  b1_quality_policy_version: QUALITY,
+  structure_engine_version: '2.1.0-b2c', structure_policy_version: 'b2c-state-v2',
+  finality_safety_lag_ms: LAG,
+  trend_min_ema50_slope_atr: 0.20, trend_min_ema200_slope_atr: 0.08,
+  trend_min_fast_mid_spread_atr: 0.05, trend_min_mid_slow_spread_atr: 0.10,
+  range_max_width_atr: 5.0, range_max_ema50_slope_atr: 0.30,
+  range_max_fast_mid_spread_atr: 0.50,
+  impulse_min_move_atr: 2.5, impulse_min_range_expansion: 1.25
+};
+function runRegimeV2(structure) {
+  const { snapshot, quality, c } = structure;
+  const timeframe = Object.keys(snapshot.candles_by_timeframe)[0];
+  return analyzeRegimeV2({
+    policy: REGIME_POLICY_V2, snapshot, quality_report: quality,
+    structure_result: c, analysis_as_of_ms: snapshot.analysis_as_of_ms, timeframe
+  });
+}
+
 const ZONE_CONTEXT_POLICY = {
   version: 'b2d-zone-context-v1',
   b2d_engine_version: '2.0.0-b2d',
@@ -281,7 +306,10 @@ function runAnalyticalContext(structure, zones, breakoutWindowBars = 160) {
     structure_result: c, analysis_as_of_ms: asOf, timeframe
   });
   assert(regime.status === 'VALID',
-    'Market regime blocked: ' + JSON.stringify(regime.admission.reasons));
+    'Market regime v1 blocked: ' + JSON.stringify(regime.admission.reasons));
+  const regimeV2 = runRegimeV2(structure);
+  assert(regimeV2.status === 'VALID',
+    'Market regime v2 blocked: ' + JSON.stringify(regimeV2.admission.reasons));
   const impulse = analyzeImpulse({
     policy: IMPULSE_POLICY, snapshot, quality_report: quality,
     b2e_result: zones.e, zone_context_result: zoneContext,
@@ -289,7 +317,7 @@ function runAnalyticalContext(structure, zones, breakoutWindowBars = 160) {
   });
   assert(impulse.status === 'VALID',
     'Market impulse blocked: ' + JSON.stringify(impulse.admission.reasons));
-  return { regime, zoneContext, breakoutQuality, impulse };
+  return { regime, regimeV2, zoneContext, breakoutQuality, impulse };
 }
 function summarizeAnalyticalContext(result) {
   const selection = result.zoneContext.active_zone_selection;
@@ -309,6 +337,15 @@ function summarizeAnalyticalContext(result) {
       structure_state: result.regime.structure_state,
       features: result.regime.features,
       reasons: result.regime.reasons
+    },
+    regime_v2: {
+      status: result.regimeV2.status, label: result.regimeV2.regime,
+      scope: result.regimeV2.regime_scope,
+      directional_bias: result.regimeV2.directional_bias,
+      evidence_alignment: result.regimeV2.evidence_alignment,
+      structure_state: result.regimeV2.structure_state,
+      features: result.regimeV2.features,
+      reasons: result.regimeV2.reasons
     },
     zones: {
       current_close: result.zoneContext.current_close,
@@ -712,4 +749,4 @@ if (require.main === module) {
   main().catch(error => { console.error(error && error.stack ? error.stack : error); process.exitCode = 1; });
 }
 
-module.exports = { loadRows, runStructure, runZones, runAnalyticalContext, summarizeAnalyticalContext, FILES, STEP, LAG, QUALITY };
+module.exports = { loadRows, runStructure, runZones, runRegimeV2, runAnalyticalContext, summarizeAnalyticalContext, FILES, STEP, LAG, QUALITY, REGIME_POLICY_V2 };
