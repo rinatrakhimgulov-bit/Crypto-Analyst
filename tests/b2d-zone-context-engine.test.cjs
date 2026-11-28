@@ -45,6 +45,7 @@ function makeZone(id, role, low, high, lastIndex, touches = 2) {
       pivot_id: id + '-p' + i,
       price: role === 'SUPPORT' ? low : high,
       source_time_ms: (index + 1) * STEP,
+      available_at_ms: (index + 3) * STEP + LAG,
       sequence_status: i === 0 ? 'ACCEPTED' : 'SUPERSEDED_FOR_SEQUENCE'
     });
   }
@@ -54,7 +55,7 @@ function makeZone(id, role, low, high, lastIndex, touches = 2) {
     touch_count: touches,
     first_touch_time_ms: Math.min(...items.map(x => x.source_time_ms)),
     last_touch_time_ms: lastTouch,
-    available_at_ms: lastTouch + STEP + LAG,
+    available_at_ms: Math.max(...items.map(x => x.available_at_ms)),
     touches: items
   };
 }
