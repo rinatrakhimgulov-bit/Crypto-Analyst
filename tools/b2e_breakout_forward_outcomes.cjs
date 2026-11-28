@@ -39,7 +39,7 @@ function calculateWilderAtr(candles, period = 14) {
       Math.abs(c.low - previousClose)));
   }
   let atr = ranges.slice(0, period).reduce((sum, value) => sum + value, 0) / period;
-  for (let i = period; i < ranges.length; i++) atr = (atr * 13 + ranges[i]) / 14;
+  for (let i = period; i < ranges.length; i++) atr = (atr * (period - 1) + ranges[i]) / period;
   return Number.isFinite(atr) && atr > 0 ? atr : null;
 }
 function sampleIndices(length, timeframe) {
