@@ -1115,3 +1115,15 @@ Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
 - One-factor sensitivity shows strong dependence on directional-pressure threshold: 0.8 returns to the stricter baseline frequency, while exact 2/3 admits 17 selloff labels. This is a classification-frequency result only, not a reason to optimize thresholds on this same sample.
 - Sensitivity counts and overlapping windows are correlated; they are not independent events or trade outcomes. B1 remains a synthetic VALID wrapper, finality is time-derived with 500ms lag, and thresholds remain uncalibrated.
 - No production HTML, UI or LONG/SHORT/WAIT path was changed. No merge is authorized.
+
+
+## 2026-11-28 — Market Decision Context Engine candidate
+
+- Draft PR #39: `feature/market-decision-context-engine-2026-11-28`, based on the unmerged Market Impulse candidate branch.
+- Added a research-only fusion layer requiring exact B1/B2-C/B2-D/B2-E/Market Regime/Market Impulse/B7 identities and causal timestamps.
+- LONG requires UPTREND + B2-C UP + causal confirmed B7 LONG setup; SHORT is symmetric. Breakout-retest setups additionally require exact B2-E RETEST_SUCCESSFUL lifecycle and STRONG_EVIDENCE. False-breakout reclaim requires the exact RETEST_FAILED lifecycle. Opposing impulse, regime/structure conflict, conflicting directions or missing evidence produce WAIT.
+- Exact-head engine/regression run 46168403263 passed: 16 decision-context tests plus 149 upstream regression assertions (165 PASS total).
+- Exact-head prefix replay run 46168403273 passed on the pinned BTC/ETH archive: 474 causal prefixes, deterministic repeat and cutoff checks passed.
+- Research-only decision distribution: 23 LONG, 11 SHORT, 440 WAIT. This is not an outcome backtest; prefixes overlap and are not independent trades.
+- No production HTML, BasicAnalyticsEngine decision logic, UI, MTF gate or trade execution was changed. The existing production decision still relies on EMA20 position/slope, EMA20-vs-EMA50 and volume ratio.
+- Keep PR #39 Draft and unmerged. Before UI/live integration, require independent review and chronological out-of-sample outcome evaluation.
