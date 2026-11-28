@@ -61,7 +61,7 @@
       Number.isFinite(rp.touch_tolerance_ratio) && rp.touch_tolerance_ratio >= 0 && rp.touch_tolerance_ratio <= 0.05 &&
       Number.isFinite(rp.success_buffer_ratio) && rp.success_buffer_ratio >= 0 && rp.success_buffer_ratio <= 0.05 &&
       Number.isFinite(rp.failure_buffer_ratio) && rp.failure_buffer_ratio >= 0 && rp.failure_buffer_ratio <= 0.05;
-    if (!isObject(rp) || !rp.version || rp.touch_method !== 'RANGE_INTERSECTION_V1' ||
+    if (!isObject(rp) || typeof rp.version !== 'string' || !rp.version.trim() || rp.touch_method !== 'RANGE_INTERSECTION_V1' ||
         !(absoluteRetestPolicy || relativeRetestPolicy) ||
         !Number.isSafeInteger(rp.retest_window_bars) || rp.retest_window_bars < 1 || rp.retest_window_bars > 500 ||
         !Number.isSafeInteger(rp.confirmation_window_bars) || rp.confirmation_window_bars < 1 || rp.confirmation_window_bars > 100) {
