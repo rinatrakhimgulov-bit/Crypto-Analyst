@@ -90,6 +90,13 @@ function validateEnvelope(envelope) {
   return true;
 }
 
+function deepClone(value) { return JSON.parse(JSON.stringify(value)); }
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  Object.freeze(value);
+  for (const key of Object.keys(value)) deepFreeze(value[key]);
+  return value;
+}
 function normalizeObservation(record) {
   const b2 = record.analysisSnapshot && record.analysisSnapshot.b2;
   const setups = b2 && b2.setups;
@@ -105,7 +112,10 @@ function normalizeObservation(record) {
   const candidates = setups && setups.status === 'VALID' && Array.isArray(setups.setup_candidates)
     ? setups.setup_candidates.filter(c => c && c.status === 'CONFIRMED' &&
         (c.direction === 'LONG' || c.direction === 'SHORT') &&
-        Number.isSafeInteger(c.available_at_ms) && c.available_at_ms <= record.capturedAtMs)
+        Number.isSafeInteger(c.available_at_ms) &&
+        c.available_at_ms <= record.capturedAtMs &&
+        Number.isSafeInteger(setups.analysis_as_of_ms) &&
+        c.available_at_ms <= setups.analysis_as_of_ms)
     : [];
   const setupStatus = setups && typeof setups.status === 'string' ? setups.status : 'UNAVAILABLE';
   return {
@@ -121,9 +131,15 @@ function normalizeObservation(record) {
     setup_engine_version: setups && setups.engine_version || null,
     setup_policy_version: setups && setups.policy_version || null,
     setup_status: setupStatus,
-    setup_candidates: candidates.map(c => ({ ...c })),
+    setup_candidates: candidates.map(deepClone),
     closed_candles: closedCandles,
     forming_candle_count: record.candleWindow.filter(c => c.finality === 'forming').length,
+    setup_candidate_status_counts: setups && Array.isArray(setups.setup_candidates)
+      ? setups.setup_candidates.reduce((acc, c) => {
+          const key = c && typeof c.status === 'string' ? c.status : 'INVALID';
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {}) : {},
     excluded_candidate_count: setups && Array.isArray(setups.setup_candidates)
       ? setups.setup_candidates.length - candidates.length : 0
   };
@@ -132,7 +148,7 @@ function normalizeObservation(record) {
 function importJournalEnvelope(envelope) {
   validateEnvelope(envelope);
   const normalized = envelope.observations.map(normalizeObservation);
-  return Object.freeze({
+  return deepFreeze({
     format: FORMAT,
     format_version: FORMAT_VERSION,
     observation_count: normalized.length,
@@ -143,8 +159,8 @@ function importJournalEnvelope(envelope) {
       return acc;
     }, {}),
     observations: normalized,
-    followups: envelope.followups.map(record => ({ ...record })),
-    actual_trades: envelope.actualTrades.map(record => ({ ...record }))
+    followups: envelope.followups.map(deepClone),
+    actual_trades: envelope.actualTrades.map(deepClone)
   });
 }
 
