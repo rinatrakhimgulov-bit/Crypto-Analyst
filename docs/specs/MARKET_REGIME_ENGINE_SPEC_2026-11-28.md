@@ -71,6 +71,7 @@ All output is deeply immutable. The engine does not mutate the snapshot or upstr
 
 ## 6. Safety boundaries
 
+- Zero or unavailable ATR returns INSUFFICIENT/UNKNOWN; non-finite normalized features are never emitted.
 - No forming candle input.
 - No look-ahead: every candle must be closed and final by the declared analysis cutoff plus the pinned safety lag.
 - No stale/degraded/invalid quality report can produce a regime.
