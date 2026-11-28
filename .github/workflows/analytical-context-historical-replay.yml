@@ -29,8 +29,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Market Regime Engine v1 baseline tests
+        run: node tests/market-regime-engine.test.cjs
       - name: Market Regime Engine v2 unit tests
         run: node tests/market-regime-engine-v2.test.cjs
+      - name: Read-only HTML integration assertions
+        run: node tests/analytical-engine-integration.test.cjs
       - name: Synthetic end-to-end analytical replay tests
         run: node tests/analytical-engine-replay.test.cjs
       - name: Replay six historical BTC/ETH series
