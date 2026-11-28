@@ -87,7 +87,8 @@ function envelope(observations) {
 }
 {
   const source = envelope([makeObservation('observation-7', 'LONG')]);
-  source.observations[0].candleWindow[0].closeTs = 200000;
+  source.observations[0].candleWindow[1].ts = 30000;
+  source.observations[0].candleWindow[1].closeTs = 90000;
   assert.throws(() => validateEnvelope(source), /B8_JOURNAL_CANDLE_INVALID/);
 }
 {
