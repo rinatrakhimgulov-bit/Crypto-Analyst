@@ -35,25 +35,29 @@ function addCount(target, key) {
 
 function compactWindow(result, endRow, symbol, timeframe, index) {
   const summary = summarizeAnalyticalContext(result);
-  const regime = summary.regime || {};
+  const regimeV1 = summary.regime || {};
+  const regime = summary.regime_v2 || regimeV1;
   const impulse = summary.impulse || {};
   const zones = summary.zones || {};
   const breakout = summary.breakout_quality || {};
-  const regimeFeatures = result.regime.features || {};
+  const regimeFeatures = (result.regimeV2 || result.regime).features || {};
   const rangeThresholdsPass = Number.isFinite(regimeFeatures.range_width_atr) &&
     regimeFeatures.range_width_atr <= 5.0 &&
-    Number.isFinite(regimeFeatures.ema50_slope_atr) && Math.abs(regimeFeatures.ema50_slope_atr) <= 0.12 &&
-    Number.isFinite(regimeFeatures.mid_slow_spread_atr) && Math.abs(regimeFeatures.mid_slow_spread_atr) <= 0.60;
+    Number.isFinite(regimeFeatures.ema50_slope_atr) && Math.abs(regimeFeatures.ema50_slope_atr) <= 0.30 &&
+    Number.isFinite(regimeFeatures.fast_mid_spread_atr) && Math.abs(regimeFeatures.fast_mid_spread_atr) <= 0.50;
   return {
     sample_index: index,
     cutoff_time: new Date(endRow.close_time_ms).toISOString(),
     cutoff_ms: endRow.close_time_ms + LAG,
     regime: regime.label || 'UNKNOWN',
+    regime_scope: regime.scope || 'UNKNOWN',
+    regime_v1: regimeV1.label || 'UNKNOWN',
+    regime_v1_scope: regimeV1.scope || 'UNKNOWN',
     directional_bias: regime.directional_bias || 'UNKNOWN',
     evidence_alignment: regime.evidence_alignment || 'UNKNOWN',
     structure_state: regime.structure_state || 'UNKNOWN',
     range_thresholds_pass: rangeThresholdsPass,
-    range_structure_eligible: regime.structure_state === 'UNESTABLISHED',
+    range_structure_eligible: regimeV1.structure_state === 'UNESTABLISHED',
     range_width_atr: regimeFeatures.range_width_atr ?? null,
     ema50_slope_atr: regimeFeatures.ema50_slope_atr ?? null,
     mid_slow_spread_atr: regimeFeatures.mid_slow_spread_atr ?? null,
@@ -80,7 +84,7 @@ async function replaySeries(symbol, timeframe, file) {
   const rows = loaded.rows;
   const indices = sampleEndIndices(rows.length, timeframe);
   const distribution = {
-    regimes: {}, directional_biases: {}, impulse_classifications: {},
+    regimes: {}, regimes_v1: {}, regime_scopes: {}, directional_biases: {}, impulse_classifications: {},
     breakout_quality: {}, support_windows: 0, resistance_windows: 0,
     range_thresholds_pass_windows: 0, range_structure_eligible_windows: 0,
     windows_with_breakouts: 0, total_breakout_events: 0
@@ -114,6 +118,8 @@ async function replaySeries(symbol, timeframe, file) {
     const item = compactWindow(context, end, symbol, timeframe, n);
     windows.push(item);
     addCount(distribution.regimes, item.regime);
+    addCount(distribution.regimes_v1, item.regime_v1);
+    addCount(distribution.regime_scopes, item.regime_scope);
     addCount(distribution.directional_biases, item.directional_bias);
     addCount(distribution.impulse_classifications, item.impulse_classification);
     if (item.range_thresholds_pass) distribution.range_thresholds_pass_windows++;
@@ -146,7 +152,7 @@ async function replaySeries(symbol, timeframe, file) {
 
 async function main() {
   const output = {
-    report_version: 'analytical-context-historical-replay-v1',
+    report_version: 'analytical-context-historical-replay-v2',
     generated_at: new Date().toISOString(),
     dataset: {
       repository: 'mestoness/btc-eth-candles-history',
@@ -154,7 +160,7 @@ async function main() {
       venue_description: 'Bybit USDT-M perpetual historical OHLCV archive',
       coverage_end: '2025-12-05'
     },
-    scope: 'Research-only causal replay of Market Regime, B2-D Zone Context, B2-E Breakout Quality and Market Impulse Event engines. Not a trading strategy backtest.',
+    scope: 'Research-only causal replay comparing Market Regime v1 and v2, plus B2-D Zone Context, B2-E Breakout Quality and Market Impulse Event engines. Not a trading strategy backtest.',
     limitations: [
       'The historical archive ends on 2025-12-05 and does not include 2026 market data.',
       'B1 quality is represented by the existing synthetic VALID wrapper after CSV integrity checks; the live B1 validator and historical provider timestamps are not independently replayed.',
@@ -211,6 +217,8 @@ async function main() {
       timeframe: series.timeframe,
       sampled_windows: series.method.sampled_windows,
       regimes: series.distribution.regimes,
+      regimes_v1: series.distribution.regimes_v1,
+      regime_scopes: series.distribution.regime_scopes,
       impulse_classifications: series.distribution.impulse_classifications,
       breakout_quality: series.distribution.breakout_quality,
       support_windows: series.distribution.support_windows,
@@ -223,6 +231,8 @@ async function main() {
     series_count: all.length,
     total_sampled_windows: all.reduce((sum, series) => sum + series.method.sampled_windows, 0),
     regime_distribution: {},
+    regime_v1_distribution: {},
+    regime_scope_distribution: {},
     impulse_distribution: {},
     breakout_quality_distribution: {},
     support_available_windows: all.reduce((sum, series) => sum + series.distribution.support_windows, 0),
@@ -235,6 +245,12 @@ async function main() {
   for (const series of all) {
     for (const [key, value] of Object.entries(series.distribution.regimes)) {
       output.summary.regime_distribution[key] = (output.summary.regime_distribution[key] || 0) + value;
+    }
+    for (const [key, value] of Object.entries(series.distribution.regimes_v1)) {
+      output.summary.regime_v1_distribution[key] = (output.summary.regime_v1_distribution[key] || 0) + value;
+    }
+    for (const [key, value] of Object.entries(series.distribution.regime_scopes)) {
+      output.summary.regime_scope_distribution[key] = (output.summary.regime_scope_distribution[key] || 0) + value;
     }
     for (const [key, value] of Object.entries(series.distribution.impulse_classifications)) {
       output.summary.impulse_distribution[key] = (output.summary.impulse_distribution[key] || 0) + value;

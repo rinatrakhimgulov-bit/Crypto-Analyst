@@ -1015,3 +1015,14 @@ The currently published GitHub Pages app is still the `main` version. Its HTML w
 - Impulse labels describe only the final 3-bar window at each 14-day sample. They are not a selloff-frequency census.
 - B1 quality is a synthetic VALID wrapper; finality uses a fixed 500ms lag. The archive does not cover 2026. No entries, exits, fees, funding, slippage, PnL, expectancy or drawdown were tested.
 - Next: build a separate regime-v2 research candidate to distinguish local consolidation from macro swing structure; use the same frozen sample for sensitivity, then manually inspect representative charts. Do not tune on an out-of-sample test cohort and do not wire these labels into LONG/SHORT/WAIT yet.
+
+
+## 2026-11-28 — Market Regime Engine v2 research candidate
+
+- Historical replay of 780 snapshots across BTCUSDT/ETHUSDT 1H/4H/1D showed that Market Regime v1 emitted zero RANGE labels. The v1 range rule required B2-C UNESTABLISHED structure; none of the sampled windows had that state. The original slope/spread thresholds also passed only 10/780 windows without the structure gate.
+- The feature distribution showed median absolute EMA50 slope about 0.56 ATR and median absolute EMA50/EMA200 spread about 2.82 ATR. A separate local-compression candidate using range width <=5 ATR, absolute EMA50 slope <=0.30 ATR and EMA20/EMA50 spread <=0.50 ATR passed 179/780 sampled windows.
+- Added `src/analysis/market-regime-engine-v2.js` without deleting v1. V2 separates local consolidation from broad market range and preserves B2-C UP/DOWN structure.
+- V2 returns `regime_scope`: MARKET_RANGE or LOCAL_CONSOLIDATION for RANGE; B2-C structure remains visible and unchanged. Trend and impulse classifications retain precedence.
+- Added v2 deterministic tests, app integration and side-by-side v1/v2 historical replay output. No v2 label is fed into LONG/SHORT/WAIT.
+- Initial v2 thresholds are exploratory engineering candidates, not calibrated parameters. The archive ends 2025-12-05, so the replay does not include 2026 data.
+- PR #39: `feature/market-regime-engine-v2-2026-11-28`, Draft, stacked on the analytical historical replay candidate. Do not merge before exact-head CI, review of v1/v2 comparison, denser replay, 2026 data refresh and owner browser acceptance.

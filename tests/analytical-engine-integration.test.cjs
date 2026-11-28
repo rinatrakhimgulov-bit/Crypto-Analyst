@@ -17,6 +17,7 @@ for (let i = 0; i < scripts.length; i++) {
 
 const requiredSymbols = [
   'MarketRegimeEngine.analyze',
+  'MarketRegimeEngineV2.analyze',
   'B2DZoneContextEngine.analyze',
   'B2EBreakoutQualityEngine.analyze',
   'MarketImpulseEventEngine.analyze',
@@ -28,6 +29,8 @@ for (const id of ['advancedAnalyticsCard', 'advancedAnalyticsStatus', 'advancedA
   assert.ok(html.includes('id="' + id + '"'), 'missing read-only analytics UI element: ' + id);
 }
 
+assert.ok(html.includes('LOCAL_CONSOLIDATION') && html.includes('MARKET_RANGE'),
+  'the UI must display regime scope and distinguish local consolidation from market range');
 assert.ok(html.includes('Влияние на решение') &&
   html.includes('LONG/SHORT/WAIT не изменяется'),
   'the UI must explicitly state that the new research layer does not change the existing decision');
@@ -36,7 +39,7 @@ const runStart = html.indexOf('function runB2Analysis(dataset)');
 const runEnd = html.indexOf('// 2. БАЗОВОЕ АНАЛИТИЧЕСКОЕ ЯДРО', runStart);
 assert.ok(runStart >= 0 && runEnd > runStart, 'could not isolate runB2Analysis');
 const runB2 = html.slice(runStart, runEnd);
-assert.ok(runB2.includes('regime, zoneContext, breakoutQuality, impulse'),
+assert.ok(runB2.includes('regime, regimeV1, regimeV2: regime'),
   'runB2Analysis must return all four analytical context results');
 
 const decisionStart = html.indexOf('const BasicAnalyticsEngine =');

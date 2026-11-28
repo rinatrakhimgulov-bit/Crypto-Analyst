@@ -22,8 +22,10 @@ jobs:
           node-version: '20'
       - name: Verify HTML integration and parse inline scripts
         run: node tests/analytical-engine-integration.test.cjs
-      - name: Market regime tests
+      - name: Market regime v1 regression tests
         run: node tests/market-regime-engine.test.cjs
+      - name: Market regime v2 tests
+        run: node tests/market-regime-engine-v2.test.cjs
       - name: B2-D support/resistance tests
         run: node tests/b2d-support-resistance-engine.test.cjs
       - name: B2-D zone context tests

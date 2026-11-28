@@ -38,6 +38,7 @@ function runAt(rows, label) {
 const rows = makeRows(320);
 const full = runAt(rows, 'full');
 assert.equal(full.analytical.regime.status, 'VALID');
+assert.equal(full.analytical.regimeV2.status, 'VALID');
 assert.equal(full.analytical.zoneContext.status, 'VALID');
 assert.equal(full.analytical.breakoutQuality.status, 'VALID');
 assert.equal(full.analytical.impulse.status, 'VALID');
@@ -55,6 +56,7 @@ assert.ok(summary.impulse.classification);
 
 const prefix = runAt(rows.slice(0, 270), 'prefix-270');
 assert.equal(prefix.analytical.regime.status, 'VALID');
+assert.equal(prefix.analytical.regimeV2.status, 'VALID');
 assert.ok(prefix.analytical.zoneContext.zones.every(zone => zone.available_at_ms <= prefix.asOf));
 assert.ok(prefix.analytical.breakoutQuality.breakouts.every(item =>
   item.breakout_candle_close_time_ms <= prefix.asOf - LAG));
