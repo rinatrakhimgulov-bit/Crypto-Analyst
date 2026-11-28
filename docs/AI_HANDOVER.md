@@ -1548,3 +1548,25 @@ Corrective work now in branch:
 Important B5 correction: current B5 does NOT automatically save every analysis. It exposes an explicit user-triggered “Save observation” action. Follow-ups are also manually appended. The B5 specification limits the journal to 100 observations and 160 candles per observation. Do not describe B5 as automatic capture. If automatic observation capture is desired, treat it as a separate B5 scope change requiring a deduplication/throttling policy, retention/export strategy and explicit owner acceptance. B8 must not silently modify B5 production behavior.
 
 B8 remains research-only. No production HTML, LONG/SHORT/WAIT, B2-F, B4/Live Price or UX/UI changes. Do not merge PR #28 until R1/R2 are verified, dependence-aware uncertainty is addressed or explicitly gated, the prospective journal pathway is truthful, and exact-head CI plus independent review pass.
+
+
+## B10 — Supabase Cloud Journal Sync (2026-11-28)
+
+The B10 dependent branch has been opened from B9 candidate head `28b7101bdd0ba999ff7396c49d07215ccb4fd911`. Architecture is documented in `docs/specs/B10_SUPABASE_CLOUD_JOURNAL_SYNC_SPEC_2026-11-28.md`.
+
+Live Supabase audit: project `ktqsaunwinmrsgrgojzf` is ACTIVE_HEALTHY; migrations `journal_cloud_foundation_v1` and `journal_record_types_align_b9_v1` are applied; `journal_records`, `journal_devices`, and `journal_import_batches` all have RLS enabled and currently contain zero rows. Owner-scoped policies use `auth.uid() = user_id`; authenticated SELECT/INSERT grants exist for records/import batches and SELECT/INSERT/UPDATE for devices; no anon grants were found. Security Advisor returned no lints. A modern publishable key exists; never use a service-role/secret key in the browser.
+
+Important: app-level Supabase Auth is distinct from Dashboard login, GitHub source-control integration, and the ChatGPT connector. GitHub OAuth inside the app requires a GitHub OAuth App configured in Supabase Auth Providers and the exact deployed redirect URL. This configuration has not been verified.
+
+B10 must address the known iPhone localStorage quota problem. B9 currently uses a bounded localStorage envelope with a 3.8 MB guard. Do not fetch the full cloud archive into that envelope. Implement an offline outbox, bounded cache, pagination, conflict detection and full-cloud export. Preserve the existing JSON format and do not clear `cryptoAnalyst.marketJournal.v1`.
+
+No cloud rows have been written and no live synchronization has been implemented. Before migration, the owner must export the existing iPhone journal JSON. B9 remains unmerged pending owner Safari acceptance. Do not merge B10 or change `main` before exact-head CI and iPhone/desktop acceptance.
+
+
+## B10-A current implementation checkpoint — 2026-11-28
+
+B10 branch commit `683529dc10a2495bf2b310d2fe464f3cc7e3a4bd` adds a minimal GitHub OAuth UI/client bootstrap to the B9 candidate HTML. It loads pinned `@supabase/supabase-js@2.119.2` UMD, uses the project's modern publishable key only, enables PKCE/persisted session/auto-refresh/URL callback detection, and returns to the current HTTPS app URL. Non-HTTPS origins disable sign-in. Auth status is separate from the journal status and explicitly states that cloud journal sync is not yet connected.
+
+Static checks: all 3 inline script blocks parse; auth UI and OAuth call are present; no service-role/secret key markers or journal database write calls. No Actions run was returned. Live OAuth, provider credentials, callback/session persistence and iPhone acceptance remain unverified. No database rows were written; no B9 local journal data was altered.
+
+Important deployment fact: GitHub Pages still serves `main`. The current `main` HTML blob `6b5521195454bc3d3be3e18cc7f4fb10682ee48b` was checked and contains neither B9 journal code nor Supabase Auth. B9 PR #29 and B10 PR #30 are still draft. Do not ask the owner to test OAuth against the current Pages deployment; it does not contain this implementation. Do not merge before B9/B10 acceptance and exact-head verification.
