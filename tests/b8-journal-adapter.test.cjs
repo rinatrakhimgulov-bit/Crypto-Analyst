@@ -62,6 +62,11 @@ function envelope(observations) {
   assert.throws(() => validateEnvelope(source), /B8_JOURNAL_CANDLE_INVALID/);
 }
 {
+  const source = envelope([makeObservation('observation-6', 'LONG')]);
+  source.observations[0].priceContext.lastPrice = NaN;
+  assert.throws(() => validateEnvelope(source), /B8_JOURNAL_OBSERVATION_INVALID/);
+}
+{
   const source = envelope([makeObservation('observation-5', 'LONG'), makeObservation('observation-5', 'WAIT')]);
   assert.throws(() => validateEnvelope(source), /B8_JOURNAL_RECORD_ID_OR_SCHEMA_INVALID/);
 }
