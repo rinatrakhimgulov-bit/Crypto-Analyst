@@ -8812,6 +8812,68 @@
               'Missing provider event time must be diagnosed and counted as an invalid stream message');
           });
 
+          await record('B1-D. Stale WS ticker and kline are ignored; REST price fallback is shown', (restoreList) => {
+            const wsState = BybitWsClient.state;
+            const saved = {
+              liveTicker: state.liveTicker,
+              liveKline: state.liveKline,
+              snapshotsByKey: state.snapshotsByKey,
+              tickerBySymbol: wsState.tickerBySymbol,
+              status: wsState.status,
+              connGen: wsState.connGen,
+              confirmedTopics: new Set(wsState.confirmedTopics),
+              livePriceText: document.getElementById('livePrice').textContent,
+              sourceText: document.getElementById('priceSourceLabel').textContent,
+              sourceClass: document.getElementById('priceSourceLabel').className
+            };
+            restoreList.push(() => {
+              state.liveTicker = saved.liveTicker;
+              state.liveKline = saved.liveKline;
+              state.snapshotsByKey = saved.snapshotsByKey;
+              wsState.tickerBySymbol = saved.tickerBySymbol;
+              wsState.status = saved.status;
+              wsState.connGen = saved.connGen;
+              wsState.confirmedTopics.clear();
+              for (const topic of saved.confirmedTopics) wsState.confirmedTopics.add(topic);
+              document.getElementById('livePrice').textContent = saved.livePriceText;
+              document.getElementById('priceSourceLabel').textContent = saved.sourceText;
+              document.getElementById('priceSourceLabel').className = saved.sourceClass;
+            });
+            wsState.status = 'open';
+            wsState.tickerBySymbol = new Map();
+            wsState.confirmedTopics.add('tickers.BTCUSDT');
+            wsState.confirmedTopics.add('kline.240.BTCUSDT');
+            const entry = BybitWsClient._getTickerEntry('BTCUSDT');
+            entry.ready = true;
+            entry.state = { symbol: 'BTCUSDT', lastPrice: '70000' };
+            const now = Date.now();
+            state.liveTicker = Object.freeze({
+              symbol: 'BTCUSDT', lastPrice: 70000,
+              providerEventTimeMs: now - LIVE_TICKER_STALE_MS - 1,
+              receivedAtMs: now - LIVE_TICKER_STALE_MS - 1,
+              connGen: wsState.connGen
+            });
+            state.liveKline = Object.freeze({
+              symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ts: 1, closeTs: 2, open: 10, high: 11, low: 9, close: 10, volume: 1, turnover: 10, confirmed: false }),
+              providerEventTimeMs: now - LIVE_KLINE_STALE_MS - 1,
+              receivedAtMs: now - LIVE_KLINE_STALE_MS - 1,
+              connGen: wsState.connGen
+            });
+            const restPrice = 65000;
+            state.snapshotsByKey = new Map([[makeKey('BTCUSDT', '240'), {
+              dataset: { prices: { currentMarketPrice: restPrice, currentPriceSource: 'Bybit REST' } }
+            }]]);
+            assert(freshLiveTicker() === null, 'Ticker older than the live freshness limit must not be treated as current');
+            assert(freshLiveKline() === null, 'Kline older than the live freshness limit must not be replayed');
+            renderLivePrice(false);
+            assert(document.getElementById('livePrice').textContent === fmtPrice(restPrice),
+              'When WS ticker is stale, the displayed price must fall back to the latest REST price');
+            assert(document.getElementById('priceSourceLabel').textContent.includes('Bybit REST') &&
+              document.getElementById('priceSourceLabel').textContent.includes('WS устарел'),
+              'The fallback source must identify REST and explicitly mark the WS ticker as stale');
+          });
+
           await record('B1-D. Malformed kline is rejected and requests reconciliation', () => {
             const events = [];
             BybitWsClient.hooks.onKline = (event) => events.push(event);
