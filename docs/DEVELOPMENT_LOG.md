@@ -1079,3 +1079,17 @@ Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
 - Локальная проверка точного исходного кандидата: 19/19 детерминированных тестов PASS; syntax parse PASS.
 - Компонент пока не встроен в HTML, не отображается в UI и не влияет на LONG/SHORT/WAIT. Никаких торговых выводов или утверждений о прибыльности не делается.
 - Следующие обязательные шаги: exact-head CI, независимый source review, replay на закреплённом BTC/ETH архиве 1H/4H/1D с prefix cutoffs и анализ чувствительности порогов. Только после этого решать вопрос о read-only UI интеграции.
+
+
+---
+
+## 2026-11-28 — analytical engine source audit and exact-head CI
+
+- GitHub Actions run 46164808349 completed successfully on exact candidate head a8b1f4bc1bb7a96801a52317a303716129ac1ed3: syntax parse PASS, deterministic tests 19/19 PASS.
+- Corrected the Market Regime Engine spec to report 19/19 tests; thresholds remain uncalibrated and the module remains isolated from the production HTML and LONG/SHORT/WAIT path.
+- Audited the existing application pipeline. The HTML already executes B2-A → B2-B → B2-C → B2-D → B2-E → B2-G and B7. Do not create duplicate support/resistance or breakout engines.
+- B2-F source exists but the current HTML does not invoke it; B2-G currently receives b2f_result: null.
+- B2-D currently creates zones from causal swing-pivot clusters, but zone width is a percentage-of-median-price setting in the HTML rather than ATR-normalized; freshness is NOT_CLASSIFIED and no active-zone strength ranking exists.
+- B2-E already handles close-confirmed structural breaks, historical-zone boundary clearance, retest lifecycle, failed retest and role reversal. Its buffers are also percentage-of-median-price-derived absolute values; volume/range expansion quality is not part of its break admission.
+- Added docs/specs/ANALYTICAL_ENGINE_AUDIT_2026-11-28.md as the source-of-truth audit and next implementation order.
+- Next code work: B2-D zone quality/freshness/ATR normalization, then B2-E breakout-quality/buffer improvements, then a dedicated bearish impulse/selloff classifier. No UI or LONG/SHORT/WAIT integration until historical replay and sensitivity validation.
