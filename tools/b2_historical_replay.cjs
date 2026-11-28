@@ -13,7 +13,9 @@ const { analyze: analyzeG } = require('../src/analysis/b2g-chart-projection-engi
 
 const LAG = 500;
 const QUALITY = 'b1-quality-policy-2026-11-27-v1';
-const RAW_BASE = 'https://raw.githubusercontent.com/mestoness/btc-eth-candles-history/master/';
+const DATASET_REPOSITORY = 'mestoness/btc-eth-candles-history';
+const DATASET_COMMIT = '9ca04178df06ce649f00779a49e11094fe5b1c70';
+const RAW_BASE = 'https://raw.githubusercontent.com/' + DATASET_REPOSITORY + '/' + DATASET_COMMIT + '/';
 const FILES = {
   BTCUSDT: { '1h': 'BTCUSDT_60.csv', '4h': 'BTCUSDT_240.csv', '1d': 'BTCUSDT_D.csv' },
   ETHUSDT: { '1h': 'ETHUSDT_60.csv', '4h': 'ETHUSDT_240.csv', '1d': 'ETHUSDT_D.csv' }
@@ -89,6 +91,8 @@ async function loadRows(file, timeframe) {
     const c = rows[i];
     if (!Number.isSafeInteger(c.open_time_ms) ||
         ![c.open, c.high, c.low, c.close, c.volume_base, c.volume_quote].every(Number.isFinite) ||
+        c.open_time_ms <= 0 || c.open <= 0 || c.high <= 0 || c.close <= 0 ||
+        c.volume_base < 0 || c.volume_quote < 0 ||
         c.low <= 0 || c.high < Math.max(c.open, c.close, c.low) ||
         c.low > Math.min(c.open, c.close, c.high)) invalid++;
     if (c.open_time_ms % STEP[timeframe] !== 0) offGrid++;
@@ -229,9 +233,18 @@ function summarizeZones(result) {
 
 async function main() {
   const datasets = {};
-  const output = { dataset_source: 'mestoness/btc-eth-candles-history (Bybit USDT-M perpetual archive)',
+  const output = {
+    dataset_source: DATASET_REPOSITORY + ' (Bybit USDT-M perpetual archive)',
+    dataset_commit: DATASET_COMMIT,
     replay_mode: 'synthetic B1-valid wrapper; full B2 engines; no live provider or trading-edge claim',
-    symbols: {} };
+    replay_assumptions: {
+      b1_quality: 'synthetic VALID wrapper after structural CSV integrity checks; actual B1 validator is not run',
+      candle_finality: 'TIME_DERIVED with fixed 500ms research lag; historical provider finality is not independently observed',
+      mtf_provider_time: 'synthetic common cutoff with zero provider-time spread; this does not calibrate live B1 MTF',
+      trading_edge: 'not evaluated; no entries, fees, funding, slippage, or trade outcomes are measured'
+    },
+    symbols: {}
+  };
   for (const symbol of Object.keys(FILES)) {
     datasets[symbol] = {};
     for (const tf of REQUIRED.slice().reverse()) {
