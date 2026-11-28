@@ -442,6 +442,7 @@ async function main() {
         };
         handleLiveKline({
           valid: true, symbol: 'BTCUSDT', interval: '240', receivedAtMs: Date.now(),
+          providerEventTimeMs: Date.now() + 1,
           connGen: BybitWsClient.state.connGen, recoveryGen: BybitWsClient.state.recoveryGen,
           candle: {
             ts: 2000, closeTs: 3000, open: 65000, high: 65002, low: 64999,
