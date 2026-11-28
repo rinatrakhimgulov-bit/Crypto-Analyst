@@ -536,3 +536,5 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - First fix: confirmed WS candle immutable before REST boundary; ticker and late same-ts deltas cannot rewrite it; exact repeats are ignored; chart/volume render confirmed candles as closed.
 - Regression: Stage A B1-D test expanded.
 - Not accepted/merged. Await exact-head CI, further B4 audit, independent review and iPhone/Safari live verification.
+
+- Дополнительная защита REST/WS race: newer WS kline OHLCV replay после REST refresh, только при активной подтверждённой подписке, совпадающем connGen, свежем receive time и более новом provider event time.
