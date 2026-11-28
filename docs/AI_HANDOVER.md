@@ -1561,3 +1561,12 @@ Important: app-level Supabase Auth is distinct from Dashboard login, GitHub sour
 B10 must address the known iPhone localStorage quota problem. B9 currently uses a bounded localStorage envelope with a 3.8 MB guard. Do not fetch the full cloud archive into that envelope. Implement an offline outbox, bounded cache, pagination, conflict detection and full-cloud export. Preserve the existing JSON format and do not clear `cryptoAnalyst.marketJournal.v1`.
 
 No cloud rows have been written and no live synchronization has been implemented. Before migration, the owner must export the existing iPhone journal JSON. B9 remains unmerged pending owner Safari acceptance. Do not merge B10 or change `main` before exact-head CI and iPhone/desktop acceptance.
+
+
+## B10-A current implementation checkpoint — 2026-11-28
+
+B10 branch commit `683529dc10a2495bf2b310d2fe464f3cc7e3a4bd` adds a minimal GitHub OAuth UI/client bootstrap to the B9 candidate HTML. It loads pinned `@supabase/supabase-js@2.119.2` UMD, uses the project's modern publishable key only, enables PKCE/persisted session/auto-refresh/URL callback detection, and returns to the current HTTPS app URL. Non-HTTPS origins disable sign-in. Auth status is separate from the journal status and explicitly states that cloud journal sync is not yet connected.
+
+Static checks: all 3 inline script blocks parse; auth UI and OAuth call are present; no service-role/secret key markers or journal database write calls. No Actions run was returned. Live OAuth, provider credentials, callback/session persistence and iPhone acceptance remain unverified. No database rows were written; no B9 local journal data was altered.
+
+Important deployment fact: GitHub Pages still serves `main`. The current `main` HTML blob `6b5521195454bc3d3be3e18cc7f4fb10682ee48b` was checked and contains neither B9 journal code nor Supabase Auth. B9 PR #29 and B10 PR #30 are still draft. Do not ask the owner to test OAuth against the current Pages deployment; it does not contain this implementation. Do not merge before B9/B10 acceptance and exact-head verification.
