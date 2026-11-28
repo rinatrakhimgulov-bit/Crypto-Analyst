@@ -1026,3 +1026,15 @@ The currently published GitHub Pages app is still the `main` version. Its HTML w
 - Added v2 deterministic tests, app integration and side-by-side v1/v2 historical replay output. No v2 label is fed into LONG/SHORT/WAIT.
 - Initial v2 thresholds are exploratory engineering candidates, not calibrated parameters. The archive ends 2025-12-05, so the replay does not include 2026 data.
 - PR #39: `feature/market-regime-engine-v2-2026-11-28`, Draft, stacked on the analytical historical replay candidate. Do not merge before exact-head CI, review of v1/v2 comparison, denser replay, 2026 data refresh and owner browser acceptance.
+
+
+## 2026-11-28 — ATR normalization sensitivity research
+
+- PR #44 / branch \`feature/atr-normalized-zones-retests-2026-11-28\` adds a 780-window BTC/ETH historical sensitivity replay for B2-D zone width and B2-E retest buffers.
+- Current price-ratio baseline (0.10% median close zone span / 0.05% median close retest buffers) yielded support/resistance availability 35.5%/35.4% across 780 snapshots.
+- A 0.15 ATR zone / 0.05 ATR retest candidate yielded 56.3%/56.5% availability; 0.20 ATR yielded 63.2%/63.2% but produced more zones and breakout lifecycles.
+- Provisional engineering candidate for further validation: 0.15 ATR zone span, 0.05 ATR retest buffers. This is not a production setting or a predictive optimum.
+- Current snapshot ATR is applied to the snapshot's historical pivots/events; per-pivot/per-breakout ATR normalization remains required before production use.
+- Retest label proportions are not predictive success rates; no forward outcome/PnL analysis was performed.
+- Archive ends 2025-12-05. No 2026 data is included.
+- Exact-head GitHub Actions passed on commit \`497d4a5c39ee90a2e667bd447ddf8de420e36364\`, including HTML integration regression tests and ATR sensitivity replay.

@@ -1,0 +1,35 @@
+name: Zone ATR Sensitivity Replay
+on:
+  push:
+    branches:
+      - feature/atr-normalized-zones-retests-2026-11-28
+  pull_request:
+    branches:
+      - feature/market-regime-engine-v2-2026-11-28
+    paths:
+      - 'tools/zone_atr_sensitivity_replay.cjs'
+      - 'tests/zone-atr-sensitivity-replay.test.cjs'
+      - 'tools/b2_historical_replay.cjs'
+      - 'src/analysis/**'
+      - '.github/workflows/zone-atr-sensitivity-replay.yml'
+  workflow_dispatch:
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Unit tests
+        run: node tests/zone-atr-sensitivity-replay.test.cjs
+      - name: Run ATR-normalized zone/retest historical replay
+        run: node tools/zone_atr_sensitivity_replay.cjs
+      - name: Upload sensitivity report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zone-atr-sensitivity-report
+          path: zone_atr_sensitivity_report.json
+          if-no-files-found: error
+          retention-days: 30
