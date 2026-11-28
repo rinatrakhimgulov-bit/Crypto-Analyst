@@ -67,7 +67,12 @@ function collectSeriesEntries(replay) {
             end_time_ms: Date.parse(window.end),
             candidates: window.b7 && Array.isArray(window.b7.candidates) ? window.b7.candidates : []
           }));
-      entries.push({ symbol, timeframe, windows });
+      entries.push({ symbol, timeframe, windows, scan: dense ? {
+        stride_bars: dense.stride_bars,
+        window_size_bars: dense.window_size_bars,
+        windows_evaluated: dense.windows_evaluated,
+        candidate_appearances: dense.candidate_appearances
+      } : null });
     }
   }
   return entries;
@@ -78,7 +83,8 @@ async function main() {
   assert(fs.existsSync(replayPath), 'B8_REQUIRES_B2_HISTORICAL_REPLAY_REPORT');
   const replay = JSON.parse(fs.readFileSync(replayPath, 'utf8'));
   assert(replay.dataset_commit === DATASET_COMMIT, 'B8_B2_REPLAY_DATASET_COMMIT_MISMATCH');
-  const candidates = deduplicateCandidates(collectSeriesEntries(replay));
+  const seriesEntries = collectSeriesEntries(replay);
+  const candidates = deduplicateCandidates(seriesEntries);
   const datasets = {};
   const results = [];
   const seriesSummary = [];
@@ -92,6 +98,7 @@ async function main() {
       const startMs = rows[0].open_time_ms;
       const endMs = rows[rows.length - 1].close_time_ms;
       const selected = candidates.filter(c => c.symbol === symbol && c.timeframe === timeframe);
+      const scanMeta = seriesEntries.find(entry => entry.symbol === symbol && entry.timeframe === timeframe)?.scan || null;
       const statusCounts = selected.reduce((acc, c) => {
         acc[c.status] = (acc[c.status] || 0) + 1;
         return acc;
@@ -137,6 +144,7 @@ async function main() {
       seriesSummary.push({
         symbol, timeframe, dataset_start: new Date(startMs).toISOString(),
         dataset_end: new Date(endMs).toISOString(), unique_candidate_count: selected.length,
+        dense_scan: scanMeta,
         status_counts: statusCounts, confirmed_evaluated: evaluated,
         confirmed_excluded: excluded, confirmed_purged_at_split_boundary: purged,
         split_boundaries: {
