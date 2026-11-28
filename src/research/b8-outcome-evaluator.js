@@ -7,17 +7,17 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
 
 function validateCandles(candles) {
   assert(Array.isArray(candles) && candles.length >= 2, 'B8_CANDLES_INSUFFICIENT');
-  let previousOpen = -Infinity;
+  let previousClose = -Infinity;
   for (const candle of candles) {
     assert(candle && Number.isSafeInteger(candle.open_time_ms) &&
       Number.isSafeInteger(candle.close_time_ms) &&
       candle.close_time_ms > candle.open_time_ms &&
-      candle.open_time_ms > previousOpen, 'B8_CANDLE_TIME_INVALID');
+      candle.open_time_ms >= previousClose, 'B8_CANDLE_TIME_INVALID');
     assert(['open', 'high', 'low', 'close'].every(key => finite(candle[key]) && candle[key] > 0),
       'B8_CANDLE_PRICE_INVALID');
     assert(candle.high >= Math.max(candle.open, candle.close, candle.low) &&
       candle.low <= Math.min(candle.open, candle.close, candle.high), 'B8_CANDLE_OHLC_INVALID');
-    previousOpen = candle.open_time_ms;
+    previousClose = candle.close_time_ms;
   }
 }
 
