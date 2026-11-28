@@ -7147,6 +7147,9 @@
         const index = this.candles.length - 1;
         if (index < this.closedCount) return false;
         const last = this.candles[index];
+        // A provider-confirmed candle is immutable even while REST has not yet
+        // advanced the analytics closed-candle boundary.
+        if (last.confirmed === true) return false;
         const high = Math.max(last.high, price);
         const low = Math.min(last.low, price);
         if (last.close === price && last.high === high && last.low === low) return false;
@@ -7185,6 +7188,15 @@
         if (candle.ts < last.ts) return { status: 'older' };
         if (candle.ts === last.ts) {
           if (lastIndex < this.closedCount) return { status: 'closed-candle' };
+          if (last.confirmed === true) {
+            const identicalConfirmedPayload = ['open', 'high', 'low', 'close', 'volume', 'turnover']
+              .every((key) => candle[key] === last[key]);
+            // Ignore exact repeats, but never let a late delta rewrite a candle
+            // after the provider has explicitly confirmed its final state.
+            return identicalConfirmedPayload
+              ? { status: 'duplicate' }
+              : { status: 'closed-candle' };
+          }
           const sameOpen = Math.abs(candle.open - last.open) <= 1e-10;
           const monotonic = candle.high >= last.high && candle.low <= last.low &&
             candle.volume >= last.volume && candle.turnover >= last.turnover;
@@ -7500,7 +7512,7 @@
         for (let i = 0; i < slice.length; i++) {
           const globalIdx = startIdx + i;
           const c = slice[i];
-          const isForming = globalIdx >= this.closedCount;
+          const isForming = globalIdx >= this.closedCount && c.confirmed !== true;
           const cx = padLeft + (i + 0.5) * stepX;
           const isBull = c.close >= c.open;
 
@@ -8726,6 +8738,19 @@
               ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: true
             }, 1000);
             assert(confirmed.status === 'updated' && chart.closedCount === 1, 'confirm не должен напрямую продвигать аналитическую границу закрытых свечей');
+            const confirmedClose = chart.candles[1].close;
+            assert(chart.updateFormingCandleFromTicker(12.5) === false && chart.candles[1].close === confirmedClose,
+              'Ticker must not mutate a provider-confirmed candle before REST reconciliation');
+            const lateDelta = chart.upsertLiveCandle({
+              ts: 2000, closeTs: 3000, open: 10, high: 12.5, low: 9, close: 11.5, volume: 3, turnover: 33, confirmed: false
+            }, 1000);
+            assert(lateDelta.status === 'closed-candle' && chart.candles[1].close === confirmedClose && chart.candles[1].volume === 2,
+              'Late same-candle WS delta must not rewrite a provider-confirmed candle');
+            const confirmedDuplicate = chart.upsertLiveCandle({
+              ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: true
+            }, 1000);
+            assert(confirmedDuplicate.status === 'duplicate' && chart.candles[1].close === confirmedClose,
+              'An exact repeat of the confirmed candle should be harmless');
             const appended = chart.upsertLiveCandle({
               ts: 3000, closeTs: 4000, open: 11, high: 12, low: 10, close: 11.5, volume: 1, turnover: 11.5, confirmed: false
             }, 1000);
