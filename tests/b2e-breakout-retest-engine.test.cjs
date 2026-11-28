@@ -315,9 +315,9 @@ run('event-relative v2 anchors historical zone and retest thresholds to breakout
     [first.lifecycles[0].historical_zone.lower_bound, first.lifecycles[0].historical_zone.upper_bound],
     [second.lifecycles[0].historical_zone.lower_bound, second.lifecycles[0].historical_zone.upper_bound]
   );
-  assert.equal(first.lifecycles[0].touch_tolerance_price, 0.102);
-  assert.equal(first.lifecycles[0].success_buffer_price, 0.102);
-  assert.equal(first.lifecycles[0].failure_buffer_price, 0.102);
+  assert.ok(Math.abs(first.lifecycles[0].touch_tolerance_price - 0.102) < 1e-12);
+  assert.ok(Math.abs(first.lifecycles[0].success_buffer_price - 0.102) < 1e-12);
+  assert.ok(Math.abs(first.lifecycles[0].failure_buffer_price - 0.102) < 1e-12);
 });
 
 run('relative retest policy rejects ratios above the safe bound', () => {
