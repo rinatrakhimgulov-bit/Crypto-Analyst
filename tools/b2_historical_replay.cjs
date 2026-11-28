@@ -307,9 +307,12 @@ function summarizeAnalyticalContext(result) {
       directional_bias: result.regime.directional_bias,
       evidence_alignment: result.regime.evidence_alignment,
       structure_state: result.regime.structure_state,
+      features: result.regime.features,
       reasons: result.regime.reasons
     },
     zones: {
+      current_close: result.zoneContext.current_close,
+      atr: result.zoneContext.atr,
       total: result.zoneContext.zones.length,
       active: result.zoneContext.diagnostics.active_zone_count,
       stale: result.zoneContext.diagnostics.stale_zone_count,
@@ -337,6 +340,8 @@ function summarizeAnalyticalContext(result) {
       range_expansion_atr: result.impulse.event.metrics.range_expansion_atr,
       directional_pressure: result.impulse.event.metrics.directional_pressure,
       volume_ratio: result.impulse.event.metrics.volume_ratio,
+      evidence_flags: result.impulse.event.evidence_flags,
+      positive_evidence_count: result.impulse.event.positive_evidence_count,
       bearish_breakout_context: result.impulse.event.bearish_breakout_context
     }
   };
@@ -427,13 +432,27 @@ async function main() {
   const output = {
     dataset_source: DATASET_REPOSITORY + ' (Bybit USDT-M perpetual archive)',
     dataset_commit: DATASET_COMMIT,
+    analytical_engine_versions: {
+      market_regime: '1.0.0-market-regime',
+      b2d_zone_context: '1.0.0-b2d-zone-context',
+      b2e_breakout_quality: '1.0.0-b2e-breakout-quality',
+      market_impulse: '1.0.0-market-impulse-event'
+    },
+    analytical_policy_versions: {
+      market_regime: REGIME_POLICY.version,
+      b2d_zone_context: ZONE_CONTEXT_POLICY.version,
+      b2e_breakout_quality: BREAKOUT_QUALITY_POLICY.version,
+      market_impulse: IMPULSE_POLICY.version
+    },
     replay_mode: 'synthetic B1-valid wrapper; full B2/B7 plus regime, zone-context, breakout-quality and impulse research engines; no live provider or trading-edge claim',
     replay_assumptions: {
       b1_quality: 'synthetic VALID wrapper after structural CSV integrity checks; actual B1 validator is not run',
       candle_finality: 'TIME_DERIVED with fixed 500ms research lag; historical provider finality is not independently observed',
       mtf_provider_time: 'synthetic common cutoff with zero provider-time spread; this does not calibrate live B1 MTF',
       trading_edge: 'not evaluated; no entries, fees, funding, slippage, or trade outcomes are measured',
-      b7_replay: 'B7 is evaluated on each 160-candle rolling window and at three historical prefix cutoffs. Each prefix run asserts deterministic output and that every candidate and confirmation is available by that cutoff. This is causal consistency testing, not strategy profitability validation.'
+      b7_replay: 'B7 is evaluated on each 160-candle rolling window and at three historical prefix cutoffs. Each prefix run asserts deterministic output and that every candidate and confirmation is available by that cutoff. This is causal consistency testing, not strategy profitability validation.',
+      analytical_replay: 'Market regime, zone context, breakout quality and impulse are evaluated on full history, three chronological prefixes and rolling windows. Prefix runs assert determinism and cutoff-bounded evidence. This is classification coverage, not predictive-edge validation.',
+      archive_recency: 'Pinned archive ends 2025-12-05; this replay does not include 2026 market data.'
     },
     symbols: {}
   };
@@ -608,6 +627,7 @@ async function main() {
           structure_state: full.c.structure_state,
           sequence_history: full.b.sequence_history.length,
           analytical_context: fullAnalyticalSummary,
+          prefix_replay_summaries: prefixChecks,
           prefix_invariance_checks: prefixChecks.length,
           strength_sensitivity: strengthSensitivity,
           lookback_sensitivity: lookbackSensitivity },
