@@ -134,16 +134,16 @@ No candidate means `NO_SETUP`; it does not mean the market is bearish or bullish
 - Trend continuation requires structure, protected level, zone touch, correction and candle evidence together.
 - Forming candle cannot confirm any setup.
 - No future available-at timestamp can enter output.
-- Prefix replay invariance and deterministic IDs.
+- Prefix-cutoff replay at three historical quantiles per symbol/timeframe; every candidate and confirmation must be available by the cutoff, with deterministic repeated output.
 - Duplicate lifecycle does not duplicate a setup.
 - Missing volume history produces unavailable context, not fabricated values.
 - Existing B1/B2 tests and source/inline parity remain green.
 
 ## 9. Acceptance gate
 
-B7 is complete when all three setup types are explainable, causal, deterministic, covered by negative tests, visible in the app without changing current decisions, and validated on pinned historical replay. It is not a trading-signal release; B8/B9 remain separate.
+B7 implementation acceptance is met when all three setup types are explainable, causal, deterministic, covered by negative tests, visible in the app without changing current decisions, and validated on pinned historical replay. It is not a trading-signal release; B8/B9 remain separate.
 
 
 ## 10. Implementation checkpoint — 2026-11-28
 
-Implementation is in draft PR #27 (`feature/b7-setup-engine-2026-11-28`). The engine is integrated into the production HTML with a separate B7 panel; exact source/inline parity, 22 unit tests, B2 regressions and browser/mobile integration passed in CI run `46114849599`. The browser synthetic fixture returned `VALID` with zero candidates and no page errors. Remaining acceptance gates are independent review, pinned historical/prefix replay specific to B7, and owner iPhone Safari validation. This implementation does not alter LONG/SHORT/WAIT and is not evidence of profitability.
+Implementation is in draft PR #27 (`feature/b7-setup-engine-2026-11-28`). The engine is integrated into the production HTML with a separate B7 panel; exact source/inline parity, 22 unit tests, B2 regressions, pinned historical replay and browser/mobile integration passed in CI run `46115303655`. The browser synthetic fixture returned `VALID` with zero candidates and no page errors. Historical replay used pinned archive commit `9ca04178df06ce649f00779a49e11094fe5b1c70`, covering 30 production-equivalent 160-bar windows and 18 prefix cutoffs across BTC/ETH 1H/4H/1D; candidate and confirmation availability never exceeded the cutoff, and repeated prefix runs were deterministic. Remaining acceptance gates are independent review and owner iPhone Safari validation. This implementation does not alter LONG/SHORT/WAIT and is not evidence of profitability.
