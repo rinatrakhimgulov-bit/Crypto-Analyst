@@ -543,3 +543,11 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 
 - Event-time ordering: reject stale same-candle kline updates within one connection generation; preserve the later ticker close when kline arrives after it; drop older ticker events after a newer kline.
 - Verification at PR head 42f0511679167714e2a35c873ae0fc970502923c: B1 + B2 workflows SUCCESS; no browser page errors; live Bybit blocked by runner HTTP 403; not merged.
+
+
+### B4 exact tested source checkpoint
+
+- Source blob `c9711ffdd65c9667bfa7447b92ec05d73e60135f` / commit `01068b47736e9e1d9a206ae919accd8a6cea7255`.
+- B1 run 46103008965 SUCCESS: 50/50 Stage A, 32/32 B1 contract, 72/72 B1 quality, 20/20 MTF; zero browser page errors.
+- B2 run 46103008967 SUCCESS: B2-A…B2-G and mobile/browser integration.
+- Live Bybit remains unverified due runner HTTP 403. iPhone/Safari acceptance pending.
