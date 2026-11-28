@@ -57,6 +57,7 @@ function compactWindow(result, endRow, symbol, timeframe, index) {
     range_width_atr: regimeFeatures.range_width_atr ?? null,
     ema50_slope_atr: regimeFeatures.ema50_slope_atr ?? null,
     mid_slow_spread_atr: regimeFeatures.mid_slow_spread_atr ?? null,
+    fast_mid_spread_atr: regimeFeatures.fast_mid_spread_atr ?? null,
     support_available: Boolean(zones.nearest_support),
     resistance_available: Boolean(zones.nearest_resistance),
     active_zone_count: zones.active || 0,
@@ -181,13 +182,16 @@ async function main() {
     { label: 'current_thresholds_without_structure_gate', width_max_atr: 5, slope_max_atr: 0.12, spread_max_atr: 0.60, require_unestablished: false },
     { label: 'moderately_relaxed_diagnostic', width_max_atr: 7.5, slope_max_atr: 0.20, spread_max_atr: 0.80, require_unestablished: false },
     { label: 'broad_relaxed_diagnostic', width_max_atr: 10, slope_max_atr: 0.30, spread_max_atr: 1.00, require_unestablished: false },
-    { label: 'very_broad_diagnostic', width_max_atr: 12, slope_max_atr: 0.40, spread_max_atr: 1.20, require_unestablished: false }
+    { label: 'very_broad_diagnostic', width_max_atr: 12, slope_max_atr: 0.40, spread_max_atr: 1.20, require_unestablished: false },
+    { label: 'local_range_candidate_a', width_max_atr: 5, slope_max_atr: 0.30, spread_max_atr: 0.50, require_unestablished: false, spread_feature: 'fast_mid_spread_atr' },
+    { label: 'local_range_candidate_b', width_max_atr: 6, slope_max_atr: 0.40, spread_max_atr: 0.75, require_unestablished: false, spread_feature: 'fast_mid_spread_atr' },
+    { label: 'local_range_candidate_c', width_max_atr: 7.5, slope_max_atr: 0.50, spread_max_atr: 1.00, require_unestablished: false, spread_feature: 'fast_mid_spread_atr' }
   ].map(policy => ({
     ...policy,
     qualifying_windows: sampledWindows.filter(item =>
       Number.isFinite(item.range_width_atr) && item.range_width_atr <= policy.width_max_atr &&
       Number.isFinite(item.ema50_slope_atr) && Math.abs(item.ema50_slope_atr) <= policy.slope_max_atr &&
-      Number.isFinite(item.mid_slow_spread_atr) && Math.abs(item.mid_slow_spread_atr) <= policy.spread_max_atr &&
+      Number.isFinite(item[policy.spread_feature || 'mid_slow_spread_atr']) && Math.abs(item[policy.spread_feature || 'mid_slow_spread_atr']) <= policy.spread_max_atr &&
       (!policy.require_unestablished || item.range_structure_eligible)
     ).length
   }));
@@ -197,7 +201,8 @@ async function main() {
     range_feature_percentiles: {
       range_width_atr: { p25: percentile(finiteFeature('range_width_atr'), 0.25), p50: percentile(finiteFeature('range_width_atr'), 0.50), p75: percentile(finiteFeature('range_width_atr'), 0.75), p90: percentile(finiteFeature('range_width_atr'), 0.90) },
       absolute_ema50_slope_atr: { p25: percentile(finiteFeature('ema50_slope_atr').map(Math.abs), 0.25), p50: percentile(finiteFeature('ema50_slope_atr').map(Math.abs), 0.50), p75: percentile(finiteFeature('ema50_slope_atr').map(Math.abs), 0.75), p90: percentile(finiteFeature('ema50_slope_atr').map(Math.abs), 0.90) },
-      absolute_mid_slow_spread_atr: { p25: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.25), p50: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.50), p75: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.75), p90: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.90) }
+      absolute_mid_slow_spread_atr: { p25: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.25), p50: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.50), p75: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.75), p90: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.90) },
+      absolute_fast_mid_spread_atr: { p25: percentile(finiteFeature('fast_mid_spread_atr').map(Math.abs), 0.25), p50: percentile(finiteFeature('fast_mid_spread_atr').map(Math.abs), 0.50), p75: percentile(finiteFeature('fast_mid_spread_atr').map(Math.abs), 0.75), p90: percentile(finiteFeature('fast_mid_spread_atr').map(Math.abs), 0.90) }
     },
     structure_state_distribution: structureStates,
     range_threshold_sensitivity: rangeSensitivity,
