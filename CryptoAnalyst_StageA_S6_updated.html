@@ -3296,6 +3296,7 @@
             snapshotReceived: false,
             ready: false,
             csLast: null,
+            providerEventTimeMs: null,
             snapshots: 0,
             deltas: 0,
             csFwd: 0,
@@ -3318,6 +3319,7 @@
           entry.snapshotReceived = false;
           entry.ready = false;
           entry.csLast = null;
+          entry.providerEventTimeMs = null;
         }
       },
 
@@ -3403,6 +3405,15 @@
         const entry = this._getTickerEntry(sym);
         const hasCs = typeof msg.cs === 'number';
 
+        // Provider event time is an independent ordering guard; cs may be absent.
+        // Equal timestamps are allowed because multiple valid updates can share one server millisecond.
+        if (Number.isSafeInteger(entry.providerEventTimeMs) &&
+            providerEventTimeMs < entry.providerEventTimeMs) {
+          this.state.invalidStreamMessages += 1;
+          this._log('warn', `Ticker ${sym}: старое provider event time (${providerEventTimeMs} < ${entry.providerEventTimeMs}) — сообщение отброшено`);
+          return;
+        }
+
         // 2) Delta до первого snapshot не применяется: без базового snapshot состояние было бы неполным
         if (msg.type === 'delta' && !entry.snapshotReceived) {
           entry.deltas += 1;
@@ -3440,6 +3451,7 @@
           if (missingKeys.length > 0) entry.preservedMissingCount += 1;
         }
         if (hasCs) entry.csLast = msg.cs;
+        entry.providerEventTimeMs = providerEventTimeMs;
 
         this._log('log', `Ticker ${sym} (${msg.type})`, {
           lastPrice: entry.state ? entry.state.lastPrice : undefined,
@@ -3748,6 +3760,7 @@
           nextTicker.snapshotReceived = false;
           nextTicker.ready = false;
           nextTicker.csLast = null;
+          nextTicker.providerEventTimeMs = null;
         }
         s.symbol = nextSymbol;
         s.interval = nextInterval;
@@ -8740,6 +8753,29 @@
             assert(events.length === 2, 'Ожидались snapshot и delta с новым lastPrice');
             assert(events[0].lastPrice === 60000 && events[1].lastPrice === 60001, 'В callback должен попадать lastPrice');
             assert(events[1].symbol === 'BTCUSDT' && events[1].connGen === S().connGen, 'Должны сохраняться symbol и generation');
+          });
+
+          await record('B1-D. Older ticker provider event time is rejected even when cs increases', () => {
+            const events = [];
+            BybitWsClient.hooks.onTicker = (event) => events.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+            const now = Date.now();
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 10, ts: now + 2,
+              data: { symbol: 'BTCUSDT', lastPrice: '60010' }
+            });
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'delta', cs: 11, ts: now + 1,
+              data: { lastPrice: '59990' }
+            });
+            const entry = BybitWsClient._getTickerEntry('BTCUSDT');
+            assert(events.length === 1 && events[0].lastPrice === 60010,
+              'Older provider-time ticker must not reach the live bridge even with a larger cs');
+            assert(entry.state.lastPrice === '60010' && entry.providerEventTimeMs === now + 2,
+              'Older provider-time ticker must not roll back cached price or event-time watermark');
+            assert(S().invalidStreamMessages === 1,
+              'Out-of-order provider event time must be counted as an invalid stream message');
           });
 
           await record('B1-D. Ticker without provider event timestamp is rejected before state mutation', () => {
