@@ -885,3 +885,24 @@ The owner tested the B7 application branch on the target device and confirmed th
 Usability, wording refinement, menu structure, navigation model and visual redesign are explicitly deferred. They will be handled together in a dedicated UX/UI design stage, when the menu and overall interaction model can be redesigned coherently. Do not spend current analytics-engineering time polishing or restructuring the existing menu/panel UI, and do not treat the current layout as the final product design.
 
 Current development priority remains analytical functionality, correctness, validation and evidence quality. Keep the interface changes minimal where needed to expose and test analytical capabilities. Revisit UX/UI as a consolidated later stage.
+
+
+## B8 — Statistical Validation (2026-11-28)
+
+**Status: IN PROGRESS.** Work is isolated in draft branch `feature/b8-statistical-validation-2026-11-28`, based on B7 candidate head `46820a743fc1c08eb34b6c1851315d8b57ef8e1d`.
+
+B8-A schema audit and draft methodology are recorded in:
+- `docs/specs/B8_STATISTICAL_VALIDATION_SPEC_2026-11-28.md`
+- `docs/audits/B8_OPENING_SCHEMA_AUDIT_2026-11-28.md`
+
+Confirmed B5 path: `observation.analysisSnapshot.b2.setups.setup_candidates`. B5 stores up to 160 candles with explicit `closed` / `forming` finality. Prospective journal validation requires an explicit user-exported JSON file; browser-localStorage is not accessible to repository CI.
+
+Initial B8-B implementation adds pure research modules:
+- `src/research/b8-outcome-evaluator.js`
+- `src/research/b8-statistics.js`
+- `tests/b8-outcome-evaluator.test.cjs`
+- `.github/workflows/b8-statistical-validation.yml`
+
+Baseline entry is the first candle close whose finality availability is strictly later than candidate availability. The evaluator computes forward returns/MFE/MAE and optional conservative barriers. Net fee/slippage output remains unavailable unless all four explicit cost inputs are supplied; funding is not applied. The evaluator is research-only and does not change the app HTML or LONG/SHORT/WAIT.
+
+Historical candidate generation/deduplication, chronological out-of-sample validation, B5 JSON import, dependence-aware uncertainty and independent review remain open. No profitability claim is permitted.
