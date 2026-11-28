@@ -167,8 +167,8 @@ function summarize(events, groupKey) {
   return result;
 }
 
-function runEventTimeLifecycle(rows, symbol, timeframe, candidate) {
-  const eventIndex = rows.findIndex(r => r.open_time_ms === candidate.breaking_candle_open_time_ms);
+function runEventTimeLifecycle(rows, symbol, timeframe, candidate, timeToIndex) {
+  const eventIndex = timeToIndex.get(candidate.breaking_candle_open_time_ms);
   if (eventIndex < WINDOW_BARS - 1) return { status: 'SKIPPED', reason: 'INSUFFICIENT_PRE_EVENT_HISTORY' };
   const endIndex = Math.min(rows.length - 1, eventIndex + RETEST_WINDOW_BARS + CONFIRMATION_WINDOW_BARS);
   const extendedRows = rows.slice(eventIndex - WINDOW_BARS + 1, endIndex + 1);
@@ -313,7 +313,7 @@ async function replaySeries(symbol, timeframe, file) {
   };
   const unmatchedReasons = {};
   for (const candidate of candidates.values()) {
-    const result = runEventTimeLifecycle(rows, symbol, timeframe, candidate);
+    const result = runEventTimeLifecycle(rows, symbol, timeframe, candidate, timeToIndex);
     if (result.status === 'SKIPPED') {
       diagnostics.skipped++;
       if (result.reason === 'EVENT_NOT_RECONSTRUCTED') diagnostics.event_reconstruction_missing++;
