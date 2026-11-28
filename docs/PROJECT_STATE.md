@@ -1048,3 +1048,13 @@ The currently published GitHub Pages app is still the `main` version. Its HTML w
 - 110 rolling 260-candle windows passed B2-D/E, regime v1/v2, zone context, breakout quality and impulse causal checks.
 - On this independent sample, v1 RANGE=0; v2 RANGE=22, all LOCAL_CONSOLIDATION; MARKET_RANGE=0. This is classification behavior only, not predictive accuracy.
 - Workflow artifacts: `binance-usdm-recent-replay-report` and `binance-usdm-recent-history`, 30-day retention.
+
+
+## 2026-11-28 — B2-D zone freshness/distance sensitivity research
+
+- The independent Binance USD-M replay showed that the current B2-D Zone Context defaults (FRESH <=10 bars, AGING <=20, STALE >20, active distance <=5 ATR) left no nearest support in 62/110 windows and no nearest resistance in 63/110 windows. Both sides were available in only 29/110 windows; neither side was available in 44/110.
+- This does not prove the policy is too strict: old levels can be irrelevant, and higher availability can add noise. The next step is sensitivity plus forward hold/break outcomes, not blind relaxation.
+- Added `runZoneContextWithPolicy` to the replay helper and an 11-variant policy grid across freshness and ATR-distance thresholds.
+- Added retrospective next-20-closed-candle zone outcome labels (HELD/BROKEN/NOT_TOUCHED/TESTED_UNRESOLVED/CENSORED/NO_ZONE). Future candles are only used to score outcomes after the cutoff, never to construct or select zones.
+- Added docs/specs/B2D_ZONE_CONTEXT_SENSITIVITY_SPEC_2026-11-28.md and report assertions.
+- PR #46: `feature/b2d-zone-context-sensitivity-2026-11-28`, Draft, stacked on the Binance recent replay candidate. Results pending exact-head CI. Do not change B2-D production defaults until the sensitivity report is reviewed across symbols and timeframes.
