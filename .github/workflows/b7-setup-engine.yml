@@ -1,0 +1,27 @@
+name: B7 explainable setup engine tests
+
+on:
+  pull_request:
+    branches:
+      - feature/b6-analytics-audit-2026-11-28
+  push:
+    branches:
+      - feature/b7-setup-engine-2026-11-28
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  b7-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run B7 deterministic setup tests
+        run: node tests/b7-explainable-setup-engine.test.cjs
