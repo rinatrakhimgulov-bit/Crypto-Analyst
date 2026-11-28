@@ -75,6 +75,7 @@ function fixture(options = {}) {
     status: 'VALID', snapshot_id: snapshot.snapshot_id,
     symbol: snapshot.canonical_symbol, timeframe: '1h',
     analysis_as_of_ms: asOf, checked_at_ms: asOf - 100,
+    validator_version: '1.1.0', policy_version: 'b1-quality-v1',
     closed_count: candles.length, valid_count: candles.length,
     insufficient_history: false
   };
