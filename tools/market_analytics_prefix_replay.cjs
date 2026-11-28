@@ -9,6 +9,7 @@ const { analyze: analyzeZoneContext } = require('../src/analysis/b2d-zone-contex
 const { analyze: analyzeBreakoutQuality } = require('../src/analysis/b2e-breakout-quality-engine.js');
 const { analyze: analyzeImpulse } = require('../src/analysis/market-impulse-event-engine.js');
 const { analyze: analyzeDecision } = require('../src/analysis/market-decision-context-engine.js');
+const { analyze: analyzeDecision } = require('../src/analysis/market-decision-context-engine.js');
 
 const DATASET_REPOSITORY = 'mestoness/btc-eth-candles-history';
 const DATASET_COMMIT = '9ca04178df06ce649f00779a49e11094fe5b1c70';
@@ -82,6 +83,20 @@ const POLICY_IMPULSE = {
   range_expansion_min_atr: 1.2, volume_expansion_min_ratio: 1.5,
   directional_pressure_min: 2 / 3, close_location_max: 0.35,
   context_lookback_bars: 10
+};
+
+const POLICY_DECISION = {
+  version: 'market-decision-context-v1',
+  b1_contract_version: '1.1.0',
+  b1_validator_version: '1.1.0',
+  b1_quality_policy_version: QUALITY,
+  b2c_engine_version: '2.1.0-b2c', b2c_policy_version: 'b2c-state-v2',
+  b2e_engine_version: '2.0.0-b2e', b2e_policy_version: 'b2e-retest-engine-v1',
+  zone_context_engine_version: '1.0.0-b2d-zone-context', zone_context_policy_version: 'b2d-zone-context-v1',
+  breakout_quality_engine_version: '1.0.0-b2e-breakout-quality', breakout_quality_policy_version: 'b2e-breakout-quality-v1',
+  regime_engine_version: '1.0.0-market-regime', regime_policy_version: 'market-regime-policy-v1-initial',
+  impulse_engine_version: '1.0.0-market-impulse-event', impulse_policy_version: 'market-impulse-event-v1',
+  b7_engine_version: '1.0.0-b7', b7_policy_version: 'b7-explainable-setups-v1'
 };
 
 const POLICY_DECISION = {
@@ -189,10 +204,16 @@ function verifyCutoff(result, asOf, label) {
   for (const setup of result.decision.setup_candidates) {
     assert(setup.available_at_ms <= asOf, label + ' selected decision setup is available after cutoff');
   }
+  for (const setup of result.decision.setup_candidates) {
+    assert(setup.available_at_ms <= asOf, label + ' selected decision setup is available after cutoff');
+  }
 }
 function compact(result) {
   return {
     cutoff: new Date(result.asOf).toISOString(),
+    decision: result.decision.decision,
+    decision_reason: result.decision.reasons[0] && result.decision.reasons[0].code,
+    selected_setup_ids: result.decision.selected_setup_ids,
     decision: result.decision.decision,
     decision_reason: result.decision.reasons[0] && result.decision.reasons[0].code,
     selected_setup_ids: result.decision.selected_setup_ids,
@@ -265,6 +286,7 @@ async function main() {
         increment(summary.regime_counts, result.regime.regime);
         increment(summary.impulse_counts, result.impulse.event.classification);
         increment(summary.decision_counts, result.decision.decision);
+        increment(summary.decision_counts, result.decision.decision);
         for (const variant of SENSITIVITY_VARIANTS) {
           const varied = analyzeImpulse({
             policy: { ...POLICY_IMPULSE, ...variant.overrides, version: 'market-impulse-sensitivity-' + variant.name },
@@ -285,6 +307,7 @@ async function main() {
         report.totals.windows_evaluated++;
         increment(report.totals.regime_counts, result.regime.regime);
         increment(report.totals.impulse_counts, result.impulse.event.classification);
+        increment(report.totals.decision_counts, result.decision.decision);
         increment(report.totals.decision_counts, result.decision.decision);
         for (const variant of SENSITIVITY_VARIANTS) {
           const varied = analyzeImpulse({
