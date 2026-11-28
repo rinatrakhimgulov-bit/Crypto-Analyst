@@ -1,0 +1,35 @@
+name: B2-E Event-Time ATR Policy Replay
+on:
+  push:
+    branches:
+      - feature/b2e-event-time-policy-replay-2026-11-28
+  pull_request:
+    branches:
+      - feature/b2e-retest-outcome-validation-2026-11-28
+    paths:
+      - 'tools/b2e_event_time_policy_replay.cjs'
+      - 'tests/b2e-event-time-policy-replay.test.cjs'
+      - 'src/analysis/b2d-support-resistance-engine.js'
+      - 'src/analysis/b2e-breakout-retest-engine.js'
+      - '.github/workflows/b2e-event-time-policy-replay.yml'
+  workflow_dispatch:
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Unit tests
+        run: node tests/b2e-event-time-policy-replay.test.cjs
+      - name: Run event-time ATR policy lifecycle replay
+        run: node tools/b2e_event_time_policy_replay.cjs
+      - name: Upload event-time policy report
+        uses: actions/upload-artifact@v4
+        with:
+          name: b2e-event-time-policy-report
+          path: b2e_event_time_policy_replay_report.json
+          if-no-files-found: error
+          retention-days: 30
