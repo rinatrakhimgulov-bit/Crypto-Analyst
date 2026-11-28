@@ -952,3 +952,12 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - CI `46115303655` SUCCESS. 30 rolling windows produced 40 research candidates (36 confirmed, 4 pending): 20 breakout+retest and 20 false-breakout+reclaim. No trend-continuation candidate occurred in this sample; this is not evidence that the scenario is profitable or invalid.
 - All 18 prefix runs passed deterministic repeatability and candidate/confirmation cutoff checks. B2 prefix invariance, B2 regression suite, 22 B7 unit tests, source/inline parity, browser/mobile integration all passed.
 - Detailed report: `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`. Historical wrapper/finality limitations remain; no fees, slippage, trade outcomes or expectancy are measured.
+
+
+## Owner acceptance and UI scope decision — 2026-11-28
+
+The owner tested the B7 application branch on the target device and confirmed that the application works and the new B7 panel provides detailed explanations. This is functional owner acceptance of the current B7 presentation, not a final UX/UI sign-off.
+
+Usability, wording refinement, menu structure, navigation model and visual redesign are explicitly deferred. They will be handled together in a dedicated UX/UI design stage, when the menu and overall interaction model can be redesigned coherently. Do not spend current analytics-engineering time polishing or restructuring the existing menu/panel UI, and do not treat the current layout as the final product design.
+
+Current development priority remains analytical functionality, correctness, validation and evidence quality. Keep the interface changes minimal where needed to expose and test analytical capabilities. Revisit UX/UI as a consolidated later stage.
