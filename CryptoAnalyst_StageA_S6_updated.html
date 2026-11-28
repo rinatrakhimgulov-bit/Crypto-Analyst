@@ -7843,6 +7843,7 @@
       timerId: null,
       selfTestRunning: false,
       liveTicker: null,
+      liveKline: null,
       liveTickerTimer: null,
       liveReconcileTimer: null,
       lastConfirmedCandleKey: null,
@@ -7853,6 +7854,7 @@
     // не создаёт второй интервал (сначала снимает существующий).
     const POLL_INTERVAL_MS = 30000;
     const LIVE_TICKER_STALE_MS = 10000;
+    const LIVE_KLINE_STALE_MS = 30000;
     const LIVE_CONFIRM_RECONCILE_DELAY_MS = B1_FINALITY_SAFETY_LAG_MS + 250;
     function clearLiveDataState() {
       if (state.liveTickerTimer !== null) clearTimeout(state.liveTickerTimer);
@@ -7860,6 +7862,7 @@
       state.liveTickerTimer = null;
       state.liveReconcileTimer = null;
       state.liveTicker = null;
+      state.liveKline = null;
       state.lastConfirmedCandleKey = null;
       state.lastCandleUpdate = { status: 'not-tested', atMs: null };
       const diag = document.getElementById('liveDiagnostics');
@@ -7957,6 +7960,37 @@
         renderLivePrice(true);
       }, LIVE_TICKER_STALE_MS + 25);
     }
+    function freshLiveKline(symbol = state.symbol, interval = state.interval, dataset = null) {
+      const item = state.liveKline;
+      const wsState = BybitWsClient.state;
+      const topic = `kline.${interval}.${symbol}`;
+      const streamReady = Boolean(wsState && wsState.status === 'open' &&
+        wsState.connGen === (item && item.connGen) && wsState.confirmedTopics.has(topic));
+      if (!streamReady || !item || item.symbol !== symbol || item.interval !== interval ||
+          !item.candle || !Number.isSafeInteger(item.providerEventTimeMs) ||
+          !Number.isSafeInteger(item.receivedAtMs) ||
+          Date.now() - item.receivedAtMs > LIVE_KLINE_STALE_MS) return null;
+      if (dataset && Number.isSafeInteger(dataset.providerServerTimeMs) &&
+          item.providerEventTimeMs <= dataset.providerServerTimeMs) return null;
+      return item;
+    }
+    function reapplyLiveKlineAfterRest(dataset) {
+      if (!dataset) return null;
+      const live = freshLiveKline(dataset.symbol, dataset.interval, dataset);
+      if (!live) return null;
+      const result = chart.upsertLiveCandle(live.candle, BybitAdapter.intervalToMs(dataset.interval));
+      if (result.status === 'older' || result.status === 'closed-candle') {
+        state.liveKline = null;
+        return result;
+      }
+      if (['invalid', 'no-base', 'unconfirmed-predecessor', 'conflict', 'gap'].includes(result.status)) {
+        state.liveKline = null;
+        scheduleLiveRestReconciliation(0, 'WS kline replay after REST requires reconciliation: ' + result.status);
+        return result;
+      }
+      state.lastCandleUpdate = { status: 'WS_KLINE_REAPPLIED_' + result.status.toUpperCase(), atMs: Date.now() };
+      return result;
+    }
     function handleLiveKline(event) {
       if (!event || event.symbol !== state.symbol || event.interval !== state.interval) return;
       if (!event.valid || !event.candle) {
@@ -7968,6 +8002,16 @@
       if (['invalid', 'no-base', 'older', 'closed-candle', 'unconfirmed-predecessor', 'conflict', 'gap'].includes(result.status)) {
         scheduleLiveRestReconciliation(0, 'WebSocket kline requires REST reconciliation: ' + result.status);
         return;
+      }
+      if (Number.isSafeInteger(event.providerEventTimeMs) && Number.isSafeInteger(event.receivedAtMs)) {
+        state.liveKline = Object.freeze({
+          symbol: event.symbol,
+          interval: event.interval,
+          candle: event.candle,
+          providerEventTimeMs: event.providerEventTimeMs,
+          receivedAtMs: event.receivedAtMs,
+          connGen: event.connGen
+        });
       }
       if (event.candle.confirmed) {
         const key = `${event.symbol}:${event.interval}:${event.candle.ts}`;
@@ -8205,9 +8249,9 @@
       chart.setData(dataset.allCandles, dataset.closedCandles.length, analysis,
         live ? live.lastPrice : pInfo.currentMarketPrice);
       chart.setMarketStructure(b2Result && b2Result.status === 'VALID' ? b2Result.projection : null);
-      // A 30-second REST refresh replaces the chart array. Re-apply the newest
-      // validated WS trade immediately so the forming OHLC does not snap back
-      // to the older REST kline snapshot while the stream remains fresh.
+      // REST refresh replaces the candle array. Replay a newer validated WS
+      // kline first (including volume), then apply the newest ticker lastPrice.
+      reapplyLiveKlineAfterRest(dataset);
       if (live) {
         const updated = chart.updateFormingCandleFromTicker(live.lastPrice);
         state.lastCandleUpdate = {
@@ -8704,11 +8748,20 @@
               candles: chart.candles.slice(), closedCount: chart.closedCount, analysis: chart.analysis,
               marketPrice: chart.marketPrice, visibleCount: chart.visibleCount, offsetFromEnd: chart.offsetFromEnd
             };
+            const savedLiveKline = state.liveKline;
+            const wsState = BybitWsClient.state;
+            const savedWsStatus = wsState.status;
+            const savedWsConnGen = wsState.connGen;
+            const savedConfirmedTopics = new Set(wsState.confirmedTopics);
             restoreList.push(() => {
               chart.setData(saved.candles, saved.closedCount, saved.analysis, saved.marketPrice);
               chart.visibleCount = saved.visibleCount;
               chart.offsetFromEnd = saved.offsetFromEnd;
               chart.render();
+              state.liveKline = savedLiveKline;
+              wsState.status = savedWsStatus;
+              wsState.connGen = savedWsConnGen;
+              wsState.confirmedTopics = new Set(savedConfirmedTopics);
             });
             const base = [
               { ts: 1000, closeTs: 2000, open: 10, high: 11, low: 9, close: 10, volume: 1, turnover: 10 },
@@ -8734,6 +8787,23 @@
             }, 1000);
             assert(updated.status === 'updated' && chart.candles[1].close === 11, 'Текущая свеча должна обновиться');
             assert(chart.closedCount === 1, 'WS update не должен менять число закрытых свечей для аналитики');
+            wsState.status = 'open';
+            wsState.confirmedTopics.add('kline.240.BTCUSDT');
+            const replayEvent = Object.freeze({
+              symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: false }),
+              providerEventTimeMs: 5000, receivedAtMs: Date.now(), connGen: wsState.connGen
+            });
+            state.liveKline = replayEvent;
+            chart.setData(base, 1, null, 10);
+            const replayed = reapplyLiveKlineAfterRest({ symbol: 'BTCUSDT', interval: '240', providerServerTimeMs: 4000 });
+            assert(replayed && replayed.status === 'updated' && chart.candles[1].volume === 2 && chart.candles[1].high === 12,
+              'A newer WS kline must restore its OHLCV after an older REST snapshot replaces chart data');
+            chart.setData(base, 1, null, 10);
+            const notReplayed = reapplyLiveKlineAfterRest({ symbol: 'BTCUSDT', interval: '240', providerServerTimeMs: 6000 });
+            assert(notReplayed === null && chart.candles[1].volume === 1,
+              'A WS kline older than the REST provider time must not overwrite the REST candle');
+            state.liveKline = null;
             const confirmed = chart.upsertLiveCandle({
               ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: true
             }, 1000);
