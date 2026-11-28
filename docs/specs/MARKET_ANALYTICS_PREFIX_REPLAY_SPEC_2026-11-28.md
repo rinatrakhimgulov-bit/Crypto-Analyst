@@ -16,12 +16,13 @@ Replay the new Market Regime, B2-D zone-context, B2-E breakout-quality and Marke
 - Every prefix is replayed twice; compact outputs must be byte-identical.
 - All breakout and retest availability timestamps and impulse-window end times must be at or before the prefix cutoff.
 - The replay reports regime labels, impulse labels, breakout evidence classes, bearish retest context and zone counts by series.
+- One-factor impulse sensitivity varies displacement, selloff displacement, range expansion, volume expansion and directional-pressure thresholds while holding all other baseline parameters fixed. These are descriptive classification-frequency checks only; they do not select a new policy.
 
 ## Explicit limitations
 - This is a regular-stride exploratory sample, not an exhaustive event census.
 - B1 quality is a synthetic VALID wrapper after CSV integrity checks; the production B1 validator is not run.
 - Historical finality is time-derived with a fixed 500ms lag.
-- Current thresholds are uncalibrated engineering defaults.
+- Current thresholds are uncalibrated engineering defaults. Sensitivity variants are not parameter optimization and must not be used to select thresholds on this same sample.
 - No trade outcomes, returns, fees, funding, slippage, expectancy or profitability are measured.
 - The output does not authorize changing the production LONG/SHORT/WAIT path.
 
