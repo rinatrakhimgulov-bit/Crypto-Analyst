@@ -2,12 +2,13 @@
 
 const fs = require('node:fs');
 const {
-  loadRows, runStructure, runZones, FILES, STEP, LAG, QUALITY
+  loadRows, runStructure, runZones, runSetups, FILES, STEP, LAG, QUALITY
 } = require('./b2_historical_replay.cjs');
 const { analyze: analyzeRegime } = require('../src/analysis/market-regime-engine.js');
 const { analyze: analyzeZoneContext } = require('../src/analysis/b2d-zone-context-engine.js');
 const { analyze: analyzeBreakoutQuality } = require('../src/analysis/b2e-breakout-quality-engine.js');
 const { analyze: analyzeImpulse } = require('../src/analysis/market-impulse-event-engine.js');
+const { analyze: analyzeDecision } = require('../src/analysis/market-decision-context-engine.js');
 
 const DATASET_REPOSITORY = 'mestoness/btc-eth-candles-history';
 const DATASET_COMMIT = '9ca04178df06ce649f00779a49e11094fe5b1c70';
@@ -83,6 +84,20 @@ const POLICY_IMPULSE = {
   context_lookback_bars: 10
 };
 
+const POLICY_DECISION = {
+  version: 'market-decision-context-v1',
+  b1_contract_version: '1.1.0',
+  b1_validator_version: '1.1.0',
+  b1_quality_policy_version: QUALITY,
+  b2c_engine_version: '2.1.0-b2c', b2c_policy_version: 'b2c-state-v2',
+  b2e_engine_version: '2.0.0-b2e', b2e_policy_version: 'b2e-retest-engine-v1',
+  zone_context_engine_version: '1.0.0-b2d-zone-context', zone_context_policy_version: 'b2d-zone-context-v1',
+  breakout_quality_engine_version: '1.0.0-b2e-breakout-quality', breakout_quality_policy_version: 'b2e-breakout-quality-v1',
+  regime_engine_version: '1.0.0-market-regime', regime_policy_version: 'market-regime-policy-v1-initial',
+  impulse_engine_version: '1.0.0-market-impulse-event', impulse_policy_version: 'market-impulse-event-v1',
+  b7_engine_version: '1.0.0-b7', b7_policy_version: 'b7-explainable-setups-v1'
+};
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -141,10 +156,22 @@ function buildWindow(rows, endIndex, symbol, timeframe) {
     symbol + ' ' + timeframe + ' Market Impulse blocked: ' +
     JSON.stringify(impulse.admission.reasons));
 
-  return { asOf, structure, zones, zoneContext, breakoutQuality, regime, impulse };
+  const setups = runSetups(structure, zones);
+  const decision = analyzeDecision({
+    policy: POLICY_DECISION, snapshot: structure.snapshot,
+    quality_report: structure.quality, analysis_as_of_ms: asOf, timeframe,
+    b2c_result: structure.c, b2e_result: zones.e,
+    zone_context_result: zoneContext, breakout_quality_result: breakoutQuality,
+    regime_result: regime, impulse_result: impulse, b7_result: setups
+  });
+  assert(decision.status === 'VALID',
+    symbol + ' ' + timeframe + ' Decision Context blocked: ' +
+    JSON.stringify(decision.admission.reasons));
+
+  return { asOf, structure, zones, zoneContext, breakoutQuality, regime, impulse, setups, decision };
 }
 function verifyCutoff(result, asOf, label) {
-  for (const [name, output] of [['Market Regime', result.regime], ['B2-D Zone Context', result.zoneContext], ['B2-E Breakout Quality', result.breakoutQuality], ['Market Impulse', result.impulse]]) {
+  for (const [name, output] of [['Market Regime', result.regime], ['B2-D Zone Context', result.zoneContext], ['B2-E Breakout Quality', result.breakoutQuality], ['Market Impulse', result.impulse], ['B7 Setup', result.setups], ['Decision Context', result.decision]]) {
     assert(output.analysis_as_of_ms === asOf, label + ' ' + name + ' cutoff mismatch');
   }
   for (const lifecycle of result.zones.e.lifecycles) {
@@ -163,6 +190,9 @@ function verifyCutoff(result, asOf, label) {
 function compact(result) {
   return {
     cutoff: new Date(result.asOf).toISOString(),
+    decision: result.decision.decision,
+    decision_reason: result.decision.reasons[0] && result.decision.reasons[0].code,
+    selected_setup_ids: result.decision.selected_setup_ids,
     regime: result.regime.regime,
     directional_bias: result.regime.directional_bias,
     structure_state: result.structure.c.structure_state,
@@ -203,7 +233,7 @@ async function main() {
     },
     totals: {
       series_count: 0, windows_evaluated: 0,
-      regime_counts: {}, impulse_counts: {}, breakout_quality_counts: {},
+      regime_counts: {}, impulse_counts: {}, decision_counts: {}, breakout_quality_counts: {},
       bearish_retest_status_counts: {}, sensitivity_counts: {}, zone_context_windows: 0,
       deterministic_repeat_checks: 0, cutoff_checks: 0
     },
@@ -218,7 +248,7 @@ async function main() {
       const summary = {
         dataset_integrity: loaded.integrity,
         windows_evaluated: 0,
-        regime_counts: {}, impulse_counts: {}, breakout_quality_counts: {},
+        regime_counts: {}, impulse_counts: {}, decision_counts: {}, breakout_quality_counts: {},
         bearish_retest_status_counts: {}, sensitivity_counts: {}, zone_counts: [],
         sample_windows: []
       };
@@ -231,6 +261,7 @@ async function main() {
 
         increment(summary.regime_counts, result.regime.regime);
         increment(summary.impulse_counts, result.impulse.event.classification);
+        increment(summary.decision_counts, result.decision.decision);
         for (const variant of SENSITIVITY_VARIANTS) {
           const varied = analyzeImpulse({
             policy: { ...POLICY_IMPULSE, ...variant.overrides, version: 'market-impulse-sensitivity-' + variant.name },
@@ -251,6 +282,7 @@ async function main() {
         report.totals.windows_evaluated++;
         increment(report.totals.regime_counts, result.regime.regime);
         increment(report.totals.impulse_counts, result.impulse.event.classification);
+        increment(report.totals.decision_counts, result.decision.decision);
         for (const variant of SENSITIVITY_VARIANTS) {
           const varied = analyzeImpulse({
             policy: { ...POLICY_IMPULSE, ...variant.overrides, version: 'market-impulse-sensitivity-' + variant.name },
