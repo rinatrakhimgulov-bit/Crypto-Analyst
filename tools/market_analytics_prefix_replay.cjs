@@ -79,7 +79,7 @@ const POLICY_IMPULSE = {
   volume_field: 'volume_base',
   impulse_displacement_atr: 1.2, selloff_displacement_atr: 2,
   range_expansion_min_atr: 1.2, volume_expansion_min_ratio: 1.5,
-  directional_pressure_min: 0.67, close_location_max: 0.35,
+  directional_pressure_min: 2 / 3, close_location_max: 0.35,
   context_lookback_bars: 10
 };
 
