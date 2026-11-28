@@ -939,3 +939,10 @@ B8-C exploratory pipeline — PASS. B8-C statistical validation remains INCOMPLE
 ## B9 — Automatic Market Journal Capture (2026-11-28)
 
 **Status: implementation candidate; CI and iPhone Safari acceptance pending.** Work is isolated in `feature/b9-automatic-market-journal-2026-11-28`, based on B8. The application now attempts to append an observation after a current successful analysis cycle. Capture includes LONG/SHORT/WAIT and B2/B7 context, including zero-candidate outcomes. Deterministic capture keys suppress repeated identical snapshots across both automatic and manual capture. Stale/error/aborted request paths are excluded. Existing localStorage and JSON export/import remain; no backend or closed-app execution is included. See `docs/specs/B9_AUTOMATIC_MARKET_JOURNAL_SPEC_2026-11-28.md`. Do not merge until exact-head CI and owner iPhone Safari checks pass.
+
+
+## 11. B10 — Cloud Journal Sync checkpoint (2026-11-28)
+
+B10 PR #30 remains draft on `feature/b10-supabase-journal-sync-2026-11-28`, based on B9 candidate head `28b7101bdd0ba999ff7396c49d07215ccb4fd911`. B9 PR #29 also remains draft. B10-A auth bootstrap is committed at `683529dc10a2495bf2b310d2fe464f3cc7e3a4bd`: pinned Supabase JS UMD, GitHub sign-in/sign-out UI, PKCE, persisted session and exact current HTTPS return URL. It uses only the publishable key and performs no database writes. Three inline scripts passed syntax parsing. Live OAuth/provider setup and iPhone acceptance remain pending.
+
+The currently published GitHub Pages app is still the `main` version. Its HTML was checked and does not contain the B9 journal or Supabase Auth. The B10 candidate is not yet deployed to Pages. Do not treat the user's successful opening of Pages as a test of B9/B10. No local journal data was migrated or deleted, and Supabase journal tables remain empty at the last verified audit.
