@@ -1570,3 +1570,20 @@ B10 branch commit `683529dc10a2495bf2b310d2fe464f3cc7e3a4bd` adds a minimal GitH
 Static checks: all 3 inline script blocks parse; auth UI and OAuth call are present; no service-role/secret key markers or journal database write calls. No Actions run was returned. Live OAuth, provider credentials, callback/session persistence and iPhone acceptance remain unverified. No database rows were written; no B9 local journal data was altered.
 
 Important deployment fact: GitHub Pages still serves `main`. The current `main` HTML blob `6b5521195454bc3d3be3e18cc7f4fb10682ee48b` was checked and contains neither B9 journal code nor Supabase Auth. B9 PR #29 and B10 PR #30 are still draft. Do not ask the owner to test OAuth against the current Pages deployment; it does not contain this implementation. Do not merge before B9/B10 acceptance and exact-head verification.
+
+
+---
+
+## 2026-11-28 — старт Market Regime Engine v1
+
+- Создана отдельная аналитическая ветка feature/market-regime-engine-2026-11-28 от текущей рабочей ветки feature/b11-google-drive-backup-2026-11-28, чтобы сохранить существующую сборку и не менять main.
+- Начат новый изолированный компонент src/analysis/market-regime-engine.js.
+- Первая версия различает UPTREND, DOWNTREND, RANGE, IMPULSE, TRANSITION и UNKNOWN.
+- Вход привязан к точному B1 snapshot/quality report и, если передан, к тому же snapshot/cutoff B2-C result.
+- Расчёт использует только закрытые свечи, EMA20/50/200, ATR14, нормализованные наклоны/разрывы EMA, ширину диапазона и недавнее импульсное смещение.
+- Несовпадение B1 quality, происхождения свечей, finality, непрерывности или B2-C identity приводит к fail-closed результату.
+- Политика обязательная, версионированная и с явными параметрами. Первичные пороги не откалиброваны и предназначены только для детерминированных fixtures.
+- Добавлены tests/market-regime-engine.test.cjs, docs/specs/MARKET_REGIME_ENGINE_SPEC_2026-11-28.md и отдельный GitHub Actions workflow.
+- Локальная проверка точного исходного кандидата: 19/19 детерминированных тестов PASS; syntax parse PASS.
+- Компонент пока не встроен в HTML, не отображается в UI и не влияет на LONG/SHORT/WAIT. Никаких торговых выводов или утверждений о прибыльности не делается.
+- Следующие обязательные шаги: exact-head CI, независимый source review, replay на закреплённом BTC/ETH архиве 1H/4H/1D с prefix cutoffs и анализ чувствительности порогов. Только после этого решать вопрос о read-only UI интеграции.
