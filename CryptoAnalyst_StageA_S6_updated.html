@@ -8072,7 +8072,10 @@
             !Array.isArray(record.decision.reasons)) throw new Error('Observation decision invalid');
         if (typeof record.snapshotId !== 'string' || !record.snapshotId ||
             !isObject(record.analysisSnapshot) || !Number.isSafeInteger(record.analysisSnapshot.analysisAsOfMs) ||
-            record.analysisSnapshot.analysisAsOfMs <= 0 || !isObject(record.analysisSnapshot.basic) ||
+            record.analysisSnapshot.analysisAsOfMs <= 0 ||
+            !Number.isSafeInteger(record.analysisSnapshot.chartDataAsOfMs) ||
+            record.analysisSnapshot.chartDataAsOfMs < record.analysisSnapshot.analysisAsOfMs ||
+            !isObject(record.analysisSnapshot.basic) ||
             !isObject(record.analysisSnapshot.structure) ||
             !['VALID', 'BLOCKED', 'INVALID'].includes(record.analysisSnapshot.structure.status)) throw new Error('Observation analysis snapshot invalid');
         const structure = record.analysisSnapshot.structure;
@@ -8709,6 +8712,11 @@
       const sourceCandles = chartMatchesSnapshot ? chart.candles : dataset.allCandles;
       const closedCountAtCapture = chartMatchesSnapshot ? chart.closedCount : dataset.closedCandles.length;
       const liveKlineAtCapture = freshLiveKline();
+      const chartDataAsOfMs = Math.max(
+        asOf,
+        live && Number.isSafeInteger(live.providerEventTimeMs) ? live.providerEventTimeMs : asOf,
+        liveKlineAtCapture && Number.isSafeInteger(liveKlineAtCapture.providerEventTimeMs) ? liveKlineAtCapture.providerEventTimeMs : asOf
+      );
       const eligibleCandles = sourceCandles
         .map((candle, index) => ({ candle, index }))
         .filter(item => item.candle && Number.isSafeInteger(item.candle.ts) && item.candle.ts <= asOf);
@@ -8815,6 +8823,7 @@
           totalCandleCount: sourceCandles.length,
           hasForming: candleWindow.some(candle => candle.finality === 'FORMING'),
           providerTimeSpreadMs: null,
+          analysisToChartLagMs: chartDataAsOfMs - asOf,
           mtfStatus: 'DISABLED_NOT_CALIBRATED'
         },
         decision: {
@@ -8825,6 +8834,7 @@
         },
         analysisSnapshot: {
           analysisAsOfMs: asOf,
+          chartDataAsOfMs,
           basic: {
             lastEma20: journalFiniteOrNull(metrics.lastEma20),
             lastEma50: journalFiniteOrNull(metrics.lastEma50),
@@ -8951,6 +8961,8 @@
       content.replaceChildren();
       appendJournalText(content, 'h4', record.market.symbol + ' · ' + tfLabel(record.market.interval) + ' · ' + record.decision.value);
       appendJournalText(content, 'p', 'Снимок: ' + record.capturedAt.iso + ' · цена ' + fmtPrice(record.priceContext.lastPrice) + ' (' + record.priceContext.source + ')');
+      appendJournalText(content, 'p', 'Анализ as-of: ' + new Date(record.analysisSnapshot.analysisAsOfMs).toISOString() +
+        ' · данные графика до: ' + new Date(record.analysisSnapshot.chartDataAsOfMs).toISOString());
       appendJournalText(content, 'p', 'Качество данных: ' + record.dataQuality.status + ' · закрытых свечей ' +
         record.dataQuality.closedCandleCount + ' · в снимке ' + record.candleWindow.length);
       appendJournalText(content, 'p', 'B2: ' + record.analysisSnapshot.structure.status + ' · событий ' +
