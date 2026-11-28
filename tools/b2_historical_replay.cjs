@@ -13,7 +13,9 @@ const { analyze: analyzeG } = require('../src/analysis/b2g-chart-projection-engi
 
 const LAG = 500;
 const QUALITY = 'b1-quality-policy-2026-11-27-v1';
-const RAW_BASE = 'https://raw.githubusercontent.com/mestoness/btc-eth-candles-history/master/';
+const DATASET_REPOSITORY = 'mestoness/btc-eth-candles-history';
+const DATASET_COMMIT = '9ca04178df06ce649f00779a49e11094fe5b1c70';
+const RAW_BASE = 'https://raw.githubusercontent.com/' + DATASET_REPOSITORY + '/' + DATASET_COMMIT + '/';
 const FILES = {
   BTCUSDT: { '1h': 'BTCUSDT_60.csv', '4h': 'BTCUSDT_240.csv', '1d': 'BTCUSDT_D.csv' },
   ETHUSDT: { '1h': 'ETHUSDT_60.csv', '4h': 'ETHUSDT_240.csv', '1d': 'ETHUSDT_D.csv' }
@@ -89,6 +91,8 @@ async function loadRows(file, timeframe) {
     const c = rows[i];
     if (!Number.isSafeInteger(c.open_time_ms) ||
         ![c.open, c.high, c.low, c.close, c.volume_base, c.volume_quote].every(Number.isFinite) ||
+        c.open_time_ms <= 0 || c.open <= 0 || c.high <= 0 || c.close <= 0 ||
+        c.volume_base < 0 || c.volume_quote < 0 ||
         c.low <= 0 || c.high < Math.max(c.open, c.close, c.low) ||
         c.low > Math.min(c.open, c.close, c.high)) invalid++;
     if (c.open_time_ms % STEP[timeframe] !== 0) offGrid++;
@@ -229,9 +233,18 @@ function summarizeZones(result) {
 
 async function main() {
   const datasets = {};
-  const output = { dataset_source: 'mestoness/btc-eth-candles-history (Bybit USDT-M perpetual archive)',
+  const output = {
+    dataset_source: DATASET_REPOSITORY + ' (Bybit USDT-M perpetual archive)',
+    dataset_commit: DATASET_COMMIT,
     replay_mode: 'synthetic B1-valid wrapper; full B2 engines; no live provider or trading-edge claim',
-    symbols: {} };
+    replay_assumptions: {
+      b1_quality: 'synthetic VALID wrapper after structural CSV integrity checks; actual B1 validator is not run',
+      candle_finality: 'TIME_DERIVED with fixed 500ms research lag; historical provider finality is not independently observed',
+      mtf_provider_time: 'synthetic common cutoff with zero provider-time spread; this does not calibrate live B1 MTF',
+      trading_edge: 'not evaluated; no entries, fees, funding, slippage, or trade outcomes are measured'
+    },
+    symbols: {}
+  };
   for (const symbol of Object.keys(FILES)) {
     datasets[symbol] = {};
     for (const tf of REQUIRED.slice().reverse()) {
@@ -254,6 +267,29 @@ async function main() {
           ambiguous_pivots: result.b.diagnostics.ambiguous_dual_pivot_count,
           structure_events: result.c.events.length,
           event_types: countBy(result.c.events, 'event_type') });
+      }
+      const lookbackSensitivity = [];
+      for (const count of [160, 400, 800, 1600]) {
+        if (rows.length < count) continue;
+        const slice = windowAt(rows, rows.length - 1, count);
+        const windowStart = slice[0].open_time_ms;
+        const recentStart = rows[Math.max(0, rows.length - 160)].open_time_ms;
+        const structure = runStructure(slice, symbol, tf, asOf,
+          'historical:' + symbol + ':' + tf + ':lookback:' + count);
+        const zones = runZones(structure, symbol, tf);
+        const recentEvents = structure.c.events.filter(event => event.available_at_ms >= recentStart);
+        const recentPivots = structure.a.pivots.filter(pivot => pivot.available_at_ms >= recentStart);
+        lookbackSensitivity.push({
+          lookback_candles: count,
+          history_days: Number(((rows[rows.length - 1].close_time_ms - windowStart) / 86400000).toFixed(2)),
+          structure_state: structure.c.structure_state,
+          matches_full_history_state: structure.c.structure_state === full.c.structure_state,
+          pivots_in_recent_160: recentPivots.length,
+          structure_events_in_recent_160: recentEvents.length,
+          recent_event_types: countBy(recentEvents, 'event_type'),
+          zones: zones.d.zones.length,
+          retest_statuses: countBy(zones.e.lifecycles, 'status')
+        });
       }
       const prefixChecks = [];
       for (const q of [0.25, 0.5, 0.75]) {
@@ -300,7 +336,8 @@ async function main() {
           structure_state: full.c.structure_state,
           sequence_history: full.b.sequence_history.length,
           prefix_invariance_checks: prefixChecks.length,
-          strength_sensitivity: strengthSensitivity },
+          strength_sensitivity: strengthSensitivity,
+          lookback_sensitivity: lookbackSensitivity },
         '160_candle_windows': windowResults
       };
     }

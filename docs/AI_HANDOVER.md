@@ -1419,3 +1419,7 @@ B5 is developed on `feature/b5-market-journal-2026-11-28`, stacked on the curren
 - B1 run `46106500094`: SUCCESS. Stage A 58/58, B1 contract 32/32, quality 72/72, MTF 20/20; live Bybit probe skipped because GitHub runner receives HTTP 403 from both public REST hosts.
 - B2 run `46106500087`: SUCCESS. B2-A…B2-G and browser/mobile integration passed; no browser page errors or horizontal overflow.
 - B5 remains a draft. Next gates are independent source review and iPhone Safari acceptance of persistence, export and import. Do not merge B5 directly to main before B4 is integrated.
+
+## B6 Analytics Core Audit — 2026-11-28
+
+Read `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`. B2-A..G audit result: PASS WITH CONDITIONS. Added `tests/b2-inline-source-parity.test.cjs` and CI step to ensure all seven tested `src/analysis` modules exactly match the inline production engines. Pinned historical replay archive to commit `9ca04178df06ce649f00779a49e11094fe5b1c70`; added 160/400/800/1600 lookback sensitivity. B2 app/parity run `46107248773` SUCCESS; historical replay run `46107248819` SUCCESS. At the archive's final cutoff, 160-bar structure state matched full history for all six BTC/ETH timeframe series. Zone count grows sharply with longer lookback; keep current 160-bar input until zone freshness/relevance is designed. B2-F remains out of directional decisions pending live provider-time calibration. Next: B7 setup definitions, then B8 validation using B5 journal; no trading-edge claim.

@@ -533,3 +533,7 @@ B5 spec: `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`. Implemented first ve
 ### B5 verification checkpoint — 2026-11-28
 
 B5 PR #25 head `8f77ff6427e5c5d8021286d971c6a82bfc7f41b5` has passed its dedicated browser contract run `46106500180`, B1 run `46106500094`, and B2 run `46106500087`. Contract coverage includes immutable observation capture, LONG/SHORT/WAIT, quality-blocked WAIT, causal candle window, follow-ups, completed actual trades, JSON backup/restore, import conflicts, storage failure and corruption recovery. Remaining acceptance: iPhone Safari persistence/export/import and independent source review. B5 remains stacked on B4 PR #24 and must not merge to main first.
+
+## B6 Analytics Core Audit — checkpoint
+
+B2-A..G audit is PASS WITH CONDITIONS. Source/inline parity is enforced; historical replay is pinned and includes lookback sensitivity. 160 bars reproduced full-history structure state at the archive's final cutoff across BTC/ETH 1H/4H/1D. Keep the production window at 160 until zone freshness is defined. Do not connect B2-F to LONG/SHORT until real provider-time spread is calibrated. See `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`. Next: B7 define a small number of explainable setups on top of B2 evidence; B8 use B5 journal for statistical validation.
