@@ -69,3 +69,15 @@ The current HTML's `runB2Analysis` executes B2-A → B2-B → B2-C → B2-D → 
 - No new cloud-storage, OAuth, Supabase or backup work.
 - No merging into `main` or publishing a new app build before tests and owner acceptance.
 - No claims of profitability, calibrated probability or predictive edge without out-of-sample and forward validation.
+
+
+## 2026-11-28 — analytical candidates and prefix replay checkpoint
+
+- B2-D zone-context candidate PR #34: exact-head CI passed; 15 new tests plus 21 B2-D and 24 B2-E regression tests.
+- B2-E breakout-quality candidate PR #35: exact-head CI passed; 16 new tests plus 15 B2-D and 24 B2-E regression tests.
+- Market Impulse Event candidate PR #36: exact-head CI passed; 16 impulse tests plus 15 B2-D and 16 B2-E quality regression tests.
+- Prefix replay exact-head run 46167377937 passed on pinned BTC/ETH archive commit `9ca04178df06ce649f00779a49e11094fe5b1c70`: 474 regular-stride 240-candle prefixes across six symbol/timeframe series, deterministic repeats and cutoff assertions passed.
+- Sensitivity exposed `0.67 > 2/3` for a 3-candle directional-pressure window. Research/test policy corrected to exact `2 / 3`; no engine code or production policy was changed.
+- Corrected research baseline across the 474 sampled prefixes: 17 STRONG_SELL_OFF, 15 BEARISH_IMPULSE, 34 BULLISH_IMPULSE, 51 DIRECTIONAL_MOVE_UNCONFIRMED, 357 NO_IMPULSE.
+- This is classification frequency, not a trade backtest. Prefixes overlap, events are not independent, B1 is a synthetic VALID wrapper, finality is time-derived with 500ms lag, and thresholds are uncalibrated.
+- Keep PRs #34, #35 and #36 Draft and unmerged. Do not integrate these outputs into production LONG/SHORT/WAIT until independent review and stronger out-of-sample evaluation.
