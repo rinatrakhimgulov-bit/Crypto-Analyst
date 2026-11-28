@@ -12,5 +12,5 @@ const atr = calculateWilderAtr(series, 14);
 assert.ok(Number.isFinite(atr) && atr > 0);
 assert.equal(calculateWilderAtr(series.slice(0, 10), 14), null);
 assert.deepEqual(sampleIndices(600, '1h'), [259, 595, 599]);
-assert.deepEqual(sampleIndices(280, '1d'), [259, 279]);
+assert.deepEqual(sampleIndices(280, '1d'), [259, 273, 279]);
 console.log('PASS ATR calculation and historical sampling boundary tests');
