@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { evaluateCandidate } = require('../src/research/b8-outcome-evaluator.js');
+const { evaluateCandidate, excursion } = require('../src/research/b8-outcome-evaluator.js');
 const { wilsonInterval, summarizeOutcomes } = require('../src/research/b8-statistics.js');
 
 function candles(rows, step = 60000) {
@@ -70,6 +70,10 @@ function candidate(overrides = {}) {
   assert.equal(r.horizons[1].mfe_pct >= 0, true);
   assert.equal(r.horizons[1].mae_pct >= 0, true);
 }
+assert.deepEqual(excursion(100, 99, 98, 'LONG'), { mfe: 0, mae: 0.02 });
+assert.deepEqual(excursion(100, 102, 101, 'LONG'), { mfe: 0.02, mae: 0 });
+assert.deepEqual(excursion(100, 102, 101, 'SHORT'), { mfe: 0, mae: 0.02 });
+assert.deepEqual(excursion(100, 99, 98, 'SHORT'), { mfe: 0.02, mae: 0 });
 assert.deepEqual(wilsonInterval(0, 0), null);
 assert.equal(wilsonInterval(8, 10).lower < 0.8, true);
 assert.equal(wilsonInterval(8, 10).upper > 0.8, true);
