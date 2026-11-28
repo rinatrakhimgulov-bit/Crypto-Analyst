@@ -1505,3 +1505,22 @@ Next:
 5. Produce historical outcome report and only then consider explicit B5 export prospective analysis.
 
 Do not merge PR #28 yet. B8-C through B8-E remain open. No changes to production HTML or LONG/SHORT/WAIT.
+
+
+### B8-C historical exploration checkpoint — 2026-11-28
+
+Exact CI run `46117156657` passed on code head `cf16dd38e9b8cc7fb7f923d7999add2c4a46b0e5`, including B7 pinned replay, B8 tests, historical outcome generation and artifact upload.
+
+Read `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`.
+
+Result: 40 unique sampled candidate IDs (36 confirmed, 4 pending); 36 confirmed had causal entry proxies. Chronological counts TRAIN 22 / VALIDATION 8 / TEST 6. This is a sparse five-quantile-window sample, not an exhaustive event census. TEST N=6 is inadequate for inference. Negative descriptive test returns are not proof that B7 is bad; training/validation positive results are not evidence of edge. No costs/funding/slippage applied. Do not present these figures as a win rate or profitability estimate.
+
+Next:
+1. Increase candidate coverage with a denser causal historical scan and stable-ID deduplication.
+2. Build cluster/block-aware uncertainty and per-setup/per-direction OOS sample-size gates.
+3. Keep test data untouched by tuning.
+4. Add explicit cost sensitivity and observed funding only where available.
+5. Validate B5 export in a separate prospective cohort when owner provides the JSON export.
+6. Independent review of split boundaries, candidate timing, outcome math, dependence and leakage.
+
+B8-C exploratory pipeline passed; statistical validation remains incomplete. No B9 directional integration.
