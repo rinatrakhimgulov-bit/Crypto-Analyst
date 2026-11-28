@@ -11,6 +11,9 @@ on:
       - 'src/analysis/market-impulse-event-engine.js'
       - 'src/analysis/market-decision-context-engine.js'
       - 'tests/market-decision-context-engine.test.cjs'
+      - 'docs/specs/MARKET_DECISION_CONTEXT_ENGINE_SPEC_2026-11-28.md'
+      - 'src/analysis/market-decision-context-engine.js'
+      - 'tests/market-decision-context-engine.test.cjs'
       - 'docs/specs/MARKET_ANALYTICS_PREFIX_REPLAY_SPEC_2026-11-28.md'
       - '.github/workflows/market-analytics-prefix-replay.yml'
   push:
