@@ -1362,3 +1362,8 @@ PR #24 current tested head: 42f0511679167714e2a35c873ae0fc970502923c. B1 workflo
 ### B4 exact tested checkpoint — 2026-11-28
 
 Current tested application source blob: `c9711ffdd65c9667bfa7447b92ec05d73e60135f`, commit `01068b47736e9e1d9a206ae919accd8a6cea7255`, PR #24. B1 run 46103008965 SUCCESS (Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20, zero page errors). B2 run 46103008967 SUCCESS (B2-A through B2-G and browser/mobile integration). Bybit live REST on the GitHub runner was SKIPPED_PROVIDER_BLOCKED due HTTP 403 from both hosts; never call this a live-provider pass. PR remains open/unmerged. Next is owner real iPhone/Safari acceptance: live price, forming OHLCV, confirmed candle immutability, REST reconciliation, disconnect/reconnect, stale fallback, BTC/ETH, 1H/4H/1D and background/foreground recovery.
+
+
+### B4 continuation checkpoint — page lifecycle test
+
+Latest code change: commit `1783a8e0b8294973366a61d32e75bb40458e338a` on `feature/b4-live-data-hardening-2026-11-28`, adding Stage A regression `16d` for the real `pagehide`/`pageshow` listeners. It asserts that pagehide invalidates the old connection generation and clears active subscription state, while pageshow opens a new socket/recovery generation and waits for fresh ACKs. Exact-head B1/B2 CI must be checked after this commit. This does not prove real iPhone/Safari lifecycle behavior. Continue audit of stale fallback and symbol/timeframe transitions; keep PR #24 unmerged until all gates pass.
