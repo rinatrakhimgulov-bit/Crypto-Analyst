@@ -52,3 +52,12 @@ This patch is the first B4 hardening increment, not B4 completion.
 - Do not merge B4 until code, deterministic/browser CI, independent review of the exact source and owner iPhone acceptance are complete.
 
 No trading execution, exchange credentials or auto-trading were introduced.
+
+
+## Additional REST/WS race found and fixed in the same B4 branch
+
+A 30-second REST refresh replaces the entire chart candle array. The existing code reapplied only the latest WS ticker price after this replacement; it did not replay the newer validated WS kline. Therefore high/low/volume information from the latest WS kline could be lost or snap back to an older REST candle.
+
+The B4 branch now keeps the latest accepted kline event with its provider event time, local receive time and connection generation. After REST renders, it replays that kline only when the active kline topic is confirmed, the same connection generation is still open, the event is fresh, and its provider event time is newer than the REST snapshot's provider server time. It then applies the latest ticker lastPrice. Older WS kline events cannot overwrite a newer REST snapshot. Symbol/timeframe reset clears the cache.
+
+The Stage A B1-D regression now also checks replay of newer WS OHLCV after an older REST replacement and refusal to replay a WS event older than REST provider time. Exact-head CI is still required; no live Bybit or iPhone acceptance is claimed.
