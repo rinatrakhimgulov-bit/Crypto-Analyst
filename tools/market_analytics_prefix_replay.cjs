@@ -270,7 +270,6 @@ async function main() {
         increment(summary.regime_counts, result.regime.regime);
         increment(summary.impulse_counts, result.impulse.event.classification);
         increment(summary.decision_counts, result.decision.decision);
-        increment(summary.decision_counts, result.decision.decision);
         for (const variant of SENSITIVITY_VARIANTS) {
           const varied = analyzeImpulse({
             policy: { ...POLICY_IMPULSE, ...variant.overrides, version: 'market-impulse-sensitivity-' + variant.name },
@@ -291,7 +290,6 @@ async function main() {
         report.totals.windows_evaluated++;
         increment(report.totals.regime_counts, result.regime.regime);
         increment(report.totals.impulse_counts, result.impulse.event.classification);
-        increment(report.totals.decision_counts, result.decision.decision);
         increment(report.totals.decision_counts, result.decision.decision);
         for (const variant of SENSITIVITY_VARIANTS) {
           const varied = analyzeImpulse({
