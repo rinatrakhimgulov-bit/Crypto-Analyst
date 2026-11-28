@@ -5,8 +5,7 @@ function canonicalCandidate(candidate) {
     setup_type: candidate.setup_type,
     direction: candidate.direction,
     status: candidate.status,
-    available_at_ms: candidate.available_at_ms,
-    invalidation_level: candidate.invalidation_level == null ? null : candidate.invalidation_level
+    available_at_ms: candidate.available_at_ms
   });
 }
 
@@ -24,7 +23,12 @@ function deduplicateCandidates(seriesEntries) {
           ...candidate,
           symbol: series.symbol,
           timeframe: series.timeframe,
-          first_seen_window_quantile: window.quantile
+          first_seen_window_quantile: window.quantile,
+          first_seen_window_end_ms: Number.isSafeInteger(window.end_time_ms) ? window.end_time_ms : null,
+          confirmation_observed_window_end_ms: candidate.status === 'CONFIRMED' && Number.isSafeInteger(window.end_time_ms)
+            ? window.end_time_ms : null,
+          invalidation_level_conflict: false,
+          invalidation_level_variant_count: 1
         };
         const prior = byKey.get(key);
         if (!prior) byKey.set(key, normalized);
@@ -32,9 +36,23 @@ function deduplicateCandidates(seriesEntries) {
             (prior.status === 'CONFIRMED' || normalized.status === 'CONFIRMED')) {
           // A pending candidate may become confirmed in a later sampled window.
           // Keep the confirmed event and its actual confirmation availability time.
-          if (normalized.status === 'CONFIRMED') byKey.set(key, normalized);
+          if (normalized.status === 'CONFIRMED') byKey.set(key, {
+            ...normalized,
+            first_seen_window_quantile: prior.first_seen_window_quantile,
+            first_seen_window_end_ms: prior.first_seen_window_end_ms,
+            confirmation_observed_window_end_ms: Number.isSafeInteger(window.end_time_ms)
+              ? window.end_time_ms : null
+          });
         } else if (canonicalCandidate(prior) !== canonicalCandidate(normalized)) {
           throw new Error('B8_HISTORICAL_DUPLICATE_ID_CONFLICT:' + key);
+        } else if (prior.invalidation_level !== normalized.invalidation_level) {
+          // The stable event identity is unchanged, but a window-derived stop proxy drifted.
+          // Do not select a favorable version: disable barrier scoring for this candidate.
+          prior.invalidation_level = null;
+          prior.invalidation_level_conflict = true;
+          prior.invalidation_level_variant_count = (prior.invalidation_level_variant_count || 1) + 1;
+        } else if (prior.invalidation_level_conflict) {
+          prior.invalidation_level_variant_count = (prior.invalidation_level_variant_count || 1) + 1;
         }
       }
     }
