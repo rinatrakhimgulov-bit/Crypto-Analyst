@@ -9580,6 +9580,34 @@
             assert(S().status === 'connecting' || S().status === 'reconnecting', 'До открытия нового сокета нет ложного open');
           });
 
+          await record('16d. Lifecycle: pagehide closes the old socket; pageshow starts a fresh recovery generation', () => {
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws1 = lastWs();
+            ws1.triggerOpen();
+            ackAll(ws1);
+            const oldConnGen = S().connGen;
+            const oldRecoveryGen = S().recoveryGen;
+            window.dispatchEvent(new Event('pagehide'));
+            assert(S().stoppedByPagehide === true && S().manualClose === true, 'pagehide должен пометить остановку и закрыть клиент');
+            assert(S().status === 'closed' && S().ws === null && S().confirmedTopics.size === 0,
+              'После pagehide старый сокет и подтверждённые топики должны быть сброшены');
+            const hiddenConnGen = S().connGen;
+            assert(hiddenConnGen > oldConnGen, 'pagehide должен инвалидировать прежнее поколение соединения');
+            window.dispatchEvent(new Event('pageshow'));
+            const ws2 = lastWs();
+            assert(ws2 && ws2 !== ws1, 'pageshow должен создать новый WebSocket');
+            assert(S().manualClose === false && S().stoppedByPagehide === false,
+              'pageshow должен снять флаги ручной остановки и pagehide');
+            assert(S().connGen > hiddenConnGen && S().recoveryGen > oldRecoveryGen && S().recovering === true,
+              'pageshow должен начать новое поколение соединения и recovery');
+            ws2.triggerOpen();
+            assert(S().status === 'open', 'Новый сокет должен перейти в open только после onopen');
+            assert(S().confirmedTopics.size === 0, 'До ACK новые топики не считаются подтверждёнными');
+            ackAll(ws2);
+            assert(S().confirmedTopics.size === S().topics.length,
+              'После ACK все активные топики нового соединения должны подтвердиться');
+          });
+
           if (opts.inject === 'test') throw new Error('inject: исключение вне record()');
         } catch (err) {
           setupError = err && err.message ? err.message : String(err);
