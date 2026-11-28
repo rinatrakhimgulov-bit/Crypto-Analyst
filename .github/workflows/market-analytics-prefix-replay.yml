@@ -9,6 +9,8 @@ on:
       - 'src/analysis/b2d-zone-context-engine.js'
       - 'src/analysis/b2e-breakout-quality-engine.js'
       - 'src/analysis/market-impulse-event-engine.js'
+      - 'src/analysis/market-decision-context-engine.js'
+      - 'tests/market-decision-context-engine.test.cjs'
       - 'docs/specs/MARKET_ANALYTICS_PREFIX_REPLAY_SPEC_2026-11-28.md'
       - '.github/workflows/market-analytics-prefix-replay.yml'
   push:
