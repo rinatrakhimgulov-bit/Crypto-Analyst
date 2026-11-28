@@ -718,7 +718,7 @@
                   <input id="journalTradeEntryPrice" type="number" min="0" step="any" placeholder="Цена входа" />
                 </div>
                 <div class="journal-form-field">
-                  <label for="journalTradeQuantity">Количество</label>
+                  <label for="journalTradeQuantity">Количество (базовый актив)</label>
                   <input id="journalTradeQuantity" type="number" min="0" step="any" placeholder="Количество" />
                 </div>
                 <div class="journal-form-field">
@@ -726,11 +726,11 @@
                   <input id="journalTradeExitPrice" type="number" min="0" step="any" placeholder="Цена выхода" />
                 </div>
                 <div class="journal-form-field">
-                  <label for="journalTradeFees">Комиссии в котируемой валюте</label>
+                  <label for="journalTradeFees">Комиссии, USDT</label>
                   <input id="journalTradeFees" type="number" min="0" step="any" placeholder="Заполнить для net PnL" />
                 </div>
                 <div class="journal-form-field">
-                  <label for="journalTradeFunding">Funding cashflow (+получено / -уплачено)</label>
+                  <label for="journalTradeFunding">Funding cashflow, USDT (+получено / -уплачено)</label>
                   <input id="journalTradeFunding" type="number" step="any" placeholder="Заполнить для net PnL" />
                 </div>
                 <div class="journal-form-field full">
@@ -8142,6 +8142,7 @@
         if (!isObject(record) || record.recordType !== 'actual_trade' || record.schemaVersion !== SCHEMA_VERSION ||
             typeof record.id !== 'string' || !record.id.trim() ||
             !observationIds.has(record.observationId) || !['LONG', 'SHORT'].includes(record.side) ||
+            record.quoteCurrency !== 'USDT' || record.quantityUnit !== 'base_asset' ||
             !TRADE_STATUSES.has(record.status) || !isObject(record.entry) ||
             !Number.isFinite(record.entry.price) || record.entry.price <= 0) {
           throw new Error('Invalid actual-trade record');
@@ -8985,7 +8986,7 @@
       trades.forEach(item => {
         const pnl = item.realizedPnlQuote === null ? 'net PnL не рассчитан' : 'net PnL ' + item.realizedPnlQuote.toFixed(4);
         appendJournalText(content, 'p', item.side + ' · ' + item.status + ' · вход ' + fmtPrice(item.entry.price) +
-          (item.exit ? ' · выход ' + fmtPrice(item.exit.price) : '') + ' · qty ' + item.quantity + ' · ' + pnl);
+          (item.exit ? ' · выход ' + fmtPrice(item.exit.price) : '') + ' · qty ' + item.quantity + ' ' + record.market.symbol.replace('USDT', '') + ' · ' + pnl + ' USDT');
       });
       detail.hidden = false;
     }
@@ -9076,6 +9077,8 @@
           recordedAtMs: now,
           side,
           status,
+          quoteCurrency: 'USDT',
+          quantityUnit: 'base_asset',
           entry: { price: entryPrice, atMs: now },
           exit: status === 'closed' ? { price: exitPrice, atMs: now } : null,
           quantity,
