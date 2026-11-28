@@ -976,3 +976,14 @@ Branch: `feature/b8-statistical-validation-2026-11-28` (draft; based on B7 head 
 - No production HTML, B1/B2/B7 engine, live decision path or UI was changed.
 
 Current limitations: historical candidate census/deduplication and chronological out-of-sample report are not implemented yet; prospective B5 validation requires explicit JSON export; funding is not applied; current historical archive ends 2025-12-05. This work does not establish profitability.
+
+
+### B8-B deterministic evaluator and journal adapter checkpoint — 2026-11-28
+
+- PR #28 opened as draft, stacked on B7 branch.
+- CI run `46116869096`: evaluator/statistics syntax and deterministic tests SUCCESS.
+- CI run `46116871532`: evaluator + B5 journal adapter syntax and deterministic tests SUCCESS.
+- Corrected test fixtures after CI exposed two mistakes: the forward-return fixture expected the wrong candle close, and barrier fixtures initially placed touches inside the entry candle. The evaluator's causal entry rule was retained; test data was moved to candles after entry.
+- Cost arithmetic now charges entry costs on entry notional and exit costs on exit notional.
+- B5 importer validates journal envelope/reference structure, preserves WAIT and no-setup coverage, filters candidates against both capturedAt and B7 analysis cutoff, excludes forming candles, keeps actual trades separate, and deep-clones/freezes its normalized output.
+- Historical candidate census, deduplication, chronological OOS, cluster-aware uncertainty and prospective journal outcome study are still NOT IMPLEMENTED.
