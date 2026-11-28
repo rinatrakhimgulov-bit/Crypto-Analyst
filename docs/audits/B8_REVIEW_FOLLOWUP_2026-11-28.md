@@ -49,3 +49,17 @@ No win-rate, accuracy, expectancy or profitability claim is supported by this re
 **B8-D prospective evidence: awaiting an actual B5 export and future outcome observations.**  
 **B8-E independent audit: not yet closed.**  
 **PR #28: keep Draft / do not merge yet.**
+
+
+## Prospective candidate counting correction — 2026-11-28
+
+A further report-level issue was found during exact-source review: the prospective report previously counted each confirmed B7 candidate snapshot as a separate candidate. The same stable setup can appear in several B5 observations, so that number represented appearances rather than unique setup identities.
+
+Correction on the current B8 branch:
+- unique prospective candidates are deduplicated by `symbol | timeframe | setup_id`;
+- `unique_candidate_count` / `candidate_count` now represent unique identities;
+- `candidate_appearance_count` and `duplicate_candidate_appearance_count` preserve the snapshot frequency separately;
+- setup/direction summaries use unique candidates, with separate appearance breakdowns;
+- a deterministic test repeats one setup across two observations and verifies 2 appearances / 1 unique candidate.
+
+This prevents repeated journal snapshots from inflating the unique candidate count. It does not create candidate-linked future outcomes: B5 follow-ups still link to observations rather than individual B7 setup IDs. Prospective outcome validation therefore remains incomplete until the B5 schema provides a causal candidate-to-follow-up link or an approved future extension.
