@@ -1,0 +1,26 @@
+name: Market Regime Engine Candidate
+
+on:
+  pull_request:
+    branches:
+      - feature/b11-google-drive-backup-2026-11-28
+      - main
+    paths:
+      - 'src/analysis/market-regime-engine.js'
+      - 'tests/market-regime-engine.test.cjs'
+      - 'docs/specs/MARKET_REGIME_ENGINE_SPEC_2026-11-28.md'
+      - '.github/workflows/market-regime-engine.yml'
+  workflow_dispatch:
+
+jobs:
+  deterministic-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse engine source
+        run: node -e "new Function(require('fs').readFileSync('src/analysis/market-regime-engine.js', 'utf8')); console.log('Market Regime Engine syntax PASS')"
+      - name: Run deterministic tests
+        run: node --test tests/market-regime-engine.test.cjs
