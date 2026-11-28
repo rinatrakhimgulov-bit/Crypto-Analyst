@@ -751,21 +751,23 @@
       </div>
       <div class="roadmap-grid">
         <div class="subcard">
-          <h4>Реализовано в Этапе 1</h4>
+          <h4>Реализовано в текущем кандидате</h4>
           <ul>
-            <li><strong>Публичный Bybit V5 REST API:</strong> загрузка свечей и тикера для <code>BTCUSDT</code> и <code>ETHUSDT</code> (<code>Linear Perpetual</code>) с резервным доменом и явной диагностикой сбоя тикера.</li>
-            <li><strong>Контроль меток времени и пропусков:</strong> проверка UTC-привязки (включая полночь UTC для <code>1D</code>), разделение реальных пропусков свечей, аномальных интервалов и некорректных меток.</li>
-            <li><strong>Привязка пивотов по timestamp:</strong> каждый пивот <code>SH/SL</code> хранит <code>ts</code> и привязывается к свече по метке времени с учётом формирующейся свечи.</li>
-            <li><strong>Зум относительно курсора/жеста и чистая очистка UI:</strong> масштабирование по позиции курсора/двух касаний и централизованный сброс метрик через <code>resetMetricsUi()</code>.</li>
+            <li><strong>Рыночные данные:</strong> Bybit V5 REST history/bootstrap и ticker+kline WebSocket для <code>BTCUSDT</code> и <code>ETHUSDT</code>; REST-сверка и восстановление после разрывов.</li>
+            <li><strong>Качество и финальность данных:</strong> UTC grid, пропуски, provider timestamps, stale gates, immutable confirmed candles, REST/WS reconciliation и generation isolation.</li>
+            <li><strong>График:</strong> свечи, EMA20/EMA50, ATR, объём, локальные экстремумы, zoom/pan и формирующаяся свеча с live-обновлениями.</li>
+            <li><strong>Аналитические слои:</strong> базовый LONG/SHORT/WAIT с quality gate; исследовательская разметка HH/HL/LH/LL, BOS/CHoCH, зон и ретестов B2. MTF directional integration пока отключён.</li>
+            <li><strong>Market Journal B5:</strong> локальные неизменяемые снимки LONG/SHORT/WAIT, последующие наблюдения, отдельные фактические сделки и versioned JSON backup/restore.</li>
           </ul>
         </div>
         <div class="subcard">
-          <h4>Не реализовано (Этапы 2 и 3)</h4>
+          <h4>Следующие этапы</h4>
           <ul>
-            <li><strong>Потоковый WebSocket:</strong> Bybit ticker обновляет текущую цену и ценовую линию; kline-поток обновляет формирующуюся свечу. REST остаётся источником истории, контрольной сверки и восстановления.</li>
-            <li><strong>Полноценные зоны уровней, структура и режимы:</strong> оценка ретестов/реакций/пробоев уровней, классификация <code>BOS / CHoCH</code>, рыночные режимы и мультитаймфреймовый движок (<code>1D + 4H + 1H</code>) — в Этапе 2.</li>
-            <li><strong>Библиотека моделей, пороги объёма и риск-калькулятор:</strong> проверка порогов на истории, модели, цели TP/SL с учётом комиссий/проскальзывания и алерты — в Этапах 2–3.</li>
-            <li><strong>Полноценный офлайн PWA и бэктест:</strong> отдельные PNG-иконки, Service Worker и исторический прогон стратегий — в Этапах 2–3.</li>
+            <li><strong>Торговые сценарии:</strong> ограниченный набор объяснимых setup types (breakout + retest, false breakout + reclaim, trend continuation).</li>
+            <li><strong>Статистическая проверка:</strong> out-of-sample наблюдения, комиссии, проскальзывание, funding, expectancy, просадка и частота ложных сигналов.</li>
+            <li><strong>Калибровка MTF:</strong> подключать MTF к directional decision только после измерения provider-time spread и проверки общего временного среза.</li>
+            <li><strong>Управление риском:</strong> entry/SL/TP и калькулятор после валидации setup logic; автоторговля не входит в текущую цель.</li>
+            <li><strong>Офлайн PWA и бэктест:</strong> отдельный приоритет после завершения аналитического ядра и сбора журнала наблюдений.</li>
           </ul>
         </div>
       </div>
