@@ -32,6 +32,10 @@ assert.ok(html.includes('Влияние на решение') &&
   html.includes('LONG/SHORT/WAIT не изменяется'),
   'the UI must explicitly state that the new research layer does not change the existing decision');
 
+assert.ok(html.includes('Интерпретация ретеста') &&
+  html.includes('не самостоятельный сигнал LONG/SHORT'),
+  'the UI must distinguish retest structure state from a standalone trade signal');
+
 const runStart = html.indexOf('function runB2Analysis(dataset)');
 const runEnd = html.indexOf('// 2. БАЗОВОЕ АНАЛИТИЧЕСКОЕ ЯДРО', runStart);
 assert.ok(runStart >= 0 && runEnd > runStart, 'could not isolate runB2Analysis');
