@@ -7930,6 +7930,7 @@
       const currentKline = state.liveKline;
       const tickerBehindKline = Boolean(currentKline && currentKline.symbol === symbol &&
         currentKline.interval === state.interval && currentKline.connGen === (wsState && wsState.connGen) &&
+        currentKline.recoveryGen === (wsState && wsState.recoveryGen) &&
         Number.isSafeInteger(currentKline.providerEventTimeMs) &&
         (!Number.isSafeInteger(item && item.providerEventTimeMs) ||
           item.providerEventTimeMs < currentKline.providerEventTimeMs));
