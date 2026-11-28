@@ -6,9 +6,9 @@ const {
 } = require('./b2_historical_replay.cjs');
 const { evaluateCandidate } = require('../src/research/b8-outcome-evaluator.js');
 
-const WINDOW_BARS = 1000;
+const WINDOW_BARS = { '1h': 2000, '4h': 2000, '1d': 700 };
 const BREAKOUT_LOOKBACK_BARS = 160;
-const STRIDE_BARS = { '1h': 80, '4h': 20, '1d': 3 };
+const STRIDE_BARS = { '1h': 80, '4h': 20, '1d': 2 };
 const HORIZONS = [1, 3, 6, 12];
 const REPORT_PATH = 'b2e_breakout_event_outcome_report.json';
 const STEP_MS = { '1h': 3600000, '4h': 14400000, '1d': 86400000 };
@@ -22,7 +22,7 @@ function sampleEndIndices(length, timeframe) {
   const stride = STRIDE_BARS[timeframe];
   assert(Number.isInteger(stride) && stride > 0, 'INVALID_STRIDE:' + timeframe);
   const indices = [];
-  for (let index = WINDOW_BARS - 1; index < length; index += stride) indices.push(index);
+  for (let index = WINDOW_BARS[timeframe] - 1; index < length; index += stride) indices.push(index);
   if (indices.length && indices[indices.length - 1] !== length - 1) indices.push(length - 1);
   return indices;
 }
@@ -158,7 +158,7 @@ async function replaySeries(symbol, timeframe, file) {
 
   for (let n = 0; n < indices.length; n++) {
     const endIndex = indices[n];
-    const slice = rows.slice(endIndex - WINDOW_BARS + 1, endIndex + 1);
+    const slice = rows.slice(endIndex - WINDOW_BARS[timeframe] + 1, endIndex + 1);
     const end = slice[slice.length - 1];
     const asOf = end.close_time_ms + LAG;
     const id = ['b2e-event-study', symbol, timeframe, end.open_time_ms].join(':');
@@ -211,10 +211,10 @@ async function replaySeries(symbol, timeframe, file) {
     symbol, timeframe,
     dataset_integrity: loaded.integrity,
     method: {
-      lookback_bars: WINDOW_BARS,
+      lookback_bars: WINDOW_BARS[timeframe],
       breakout_quality_lookback_bars: BREAKOUT_LOOKBACK_BARS,
       stride_bars: STRIDE_BARS[timeframe],
-      approximate_calendar_stride_days: 3.3,
+      approximate_calendar_stride_days: STRIDE_BARS[timeframe] * STEP_MS[timeframe] / 86400000,
       sampled_windows: indices.length,
       windows_with_breakouts: windowsWithBreakouts,
       breakout_observations: breakoutObservations,
@@ -266,6 +266,16 @@ async function main() {
     sampled_windows: all.reduce((sum, series) => sum + series.method.sampled_windows, 0),
     breakout_observations: all.reduce((sum, series) => sum + series.method.breakout_observations, 0),
     unique_breakout_events: allEvents.length,
+    events_with_zone_boundary_changes: allEvents.filter(event => event.zone_boundary_changes > 0).length,
+    zone_boundary_change_event_rate_pct: allEvents.length
+      ? Number((allEvents.filter(event => event.zone_boundary_changes > 0).length / allEvents.length * 100).toFixed(2)) : null,
+    series_breakdown: all.map(series => ({
+      symbol: series.symbol, timeframe: series.timeframe,
+      sampled_windows: series.method.sampled_windows,
+      unique_breakout_events: series.method.unique_breakout_events,
+      events_with_zone_boundary_changes: series.events.filter(event => event.zone_boundary_changes > 0).length,
+      zone_boundary_changes: series.events.reduce((sum, event) => sum + event.zone_boundary_changes, 0)
+    })),
     quality_outcomes: summarizeEvents(allEvents).quality_outcomes,
     retest_status_at_first_observation: summarizeEvents(allEvents).retest_status_at_first_observation,
     latest_observed_retest_status: summarizeEvents(allEvents).latest_observed_retest_status,
