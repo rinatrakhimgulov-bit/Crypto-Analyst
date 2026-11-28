@@ -12,7 +12,7 @@ const observation = {
   dataQuality: { status: 'VALID', reasonCodes: [] },
   decision: 'WAIT',
   analysisSnapshot: { reasons: ['no confirmed direction'], b2: { setups: {
-    status: 'VALID', engine_version: 'b7-test', policy_version: 'b7-test',
+    status: 'VALID', engine_version: '1.0.0-b7', policy_version: 'b7-explainable-setups-v1',
     analysis_as_of_ms: 1000000,
     setup_candidates: [{
       setup_id: 'candidate-0001', setup_type: 'BREAKOUT_RETEST',
