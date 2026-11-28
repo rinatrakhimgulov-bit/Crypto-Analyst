@@ -131,7 +131,9 @@ function buildWindow(rows, endIndex, symbol, timeframe) {
   return { asOf, structure, zones, zoneContext, breakoutQuality, regime, impulse };
 }
 function verifyCutoff(result, asOf, label) {
-  assert(result.analysis_as_of_ms === asOf, label + ' cutoff mismatch');
+  for (const [name, output] of [['Market Regime', result.regime], ['B2-D Zone Context', result.zoneContext], ['B2-E Breakout Quality', result.breakoutQuality], ['Market Impulse', result.impulse]]) {
+    assert(output.analysis_as_of_ms === asOf, label + ' ' + name + ' cutoff mismatch');
+  }
   for (const lifecycle of result.zones.e.lifecycles) {
     assert(lifecycle.breakout_available_at_ms <= asOf, label + ' breakout available after cutoff');
     if (lifecycle.confirmation && Number.isSafeInteger(lifecycle.confirmation.available_at_ms)) {
