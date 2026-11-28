@@ -22,6 +22,7 @@ function candidate(overrides = {}) {
   assert.equal(r.entry.index, 1, 'entry must not use the candle open that predates candidate availability');
   assert.equal(r.entry.price, 102);
   assert.equal(r.entry.available_at_ms, 120500);
+  assert.equal(r.entry.delay_bars, 1);
   assert.equal(r.horizons[1].forward_return_pct, (104-102)/102*100);
 }
 {
@@ -79,4 +80,32 @@ const summary = summarizeOutcomes([
 assert.equal(summary.n, 2);
 assert.equal(summary.positive_close_count, 1);
 assert.equal(summary.positive_close_rate, 0.5);
-console.log('B8 evaluator/statistics: 12 assertions PASS');
+{
+  const cs = candles([[100,101,99,100],[100,102,99,101],[101,110,100,109],[109,111,108,110]]);
+  const r = evaluateCandidate({
+    candidate: candidate({ available_at_ms: 60500, invalidation_level: 95 }),
+    candles: cs, horizons: [1], barrierMaxBars: 1,
+    costModel: { entry_fee_bps: 5, exit_fee_bps: 5, entry_slippage_bps: 5, exit_slippage_bps: 5, funding_status: 'UNKNOWN' }
+  });
+  assert.equal(r.barriers['1R'].status, 'TARGET');
+  assert.equal(r.barriers['1R'].cost_bps, 20);
+  assert.equal(r.barriers['1R'].funding_status, 'UNKNOWN_NOT_MODELED');
+  assert.ok(r.barriers['1R'].net_r < r.barriers['1R'].gross_r);
+}
+{
+  const cs = candles([[100,101,99,100],[100,101,99,100]]);
+  const r = evaluateCandidate({ candidate: candidate({ available_at_ms: 999999 }), candles: cs, horizons: [1] });
+  assert.equal(r.status, 'EXCLUDED');
+  assert.equal(r.reason, 'NO_CAUSAL_ENTRY_CANDLE');
+}
+{
+  const cs = candles([[100,101,99,100],[100,102,99,101],[101,103,100,102]]);
+  assert.throws(() => evaluateCandidate({
+    candidate: candidate(), candles: cs, horizons: [1],
+    costModel: { entry_fee_bps: -1 }
+  }), /B8_COST_MODEL_INVALID/);
+  assert.throws(() => evaluateCandidate({
+    candidate: candidate(), candles: cs, horizons: [1], analysisAsOfMs: 60000
+  }), /B8_CANDIDATE_AFTER_ANALYSIS_CUTOFF/);
+}
+console.log('B8 evaluator/statistics: deterministic assertions PASS');
