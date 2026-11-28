@@ -573,3 +573,14 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - Extended `tools/b2_historical_replay.cjs` to execute B7 on 30 pinned 160-candle rolling windows and 18 prefix cutoffs; deterministic output and causal availability are asserted.
 - CI `46115303655` SUCCESS. 40 detected candidates (36 confirmed, 4 pending); 20 breakout+retest and 20 false-breakout+reclaim. No trend-continuation candidate in this sample.
 - Added `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`. This is research consistency validation, not a trading backtest.
+
+
+## B8 — Statistical Validation (2026-11-28)
+
+- Specification: `docs/specs/B8_STATISTICAL_VALIDATION_SPEC_2026-11-28.md`
+- Opening schema audit: `docs/audits/B8_OPENING_SCHEMA_AUDIT_2026-11-28.md`
+- Outcome evaluator: `src/research/b8-outcome-evaluator.js`
+- Descriptive statistics: `src/research/b8-statistics.js`
+- Tests: `tests/b8-outcome-evaluator.test.cjs`
+- CI workflow: `.github/workflows/b8-statistical-validation.yml`
+- Journal candidate source: `analysisSnapshot.b2.setups.setup_candidates`
