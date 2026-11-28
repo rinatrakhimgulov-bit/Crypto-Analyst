@@ -1662,3 +1662,17 @@ Important deployment fact: GitHub Pages still serves `main`. The current `main` 
 - Full B2/B7 historical replay run 46168468254: SUCCESS; regime v1/v2 included in full-history, prefix and rolling-window research summaries.
 - V2 produced 169 RANGE labels vs 0 in v1; trend and impulse label counts were unchanged. This proves the revised local-range path is reachable on the frozen sample, not that all labels are correct.
 - V2 remains unaccepted pending manual chart inspection and a newer 2026 data cohort. No HTML, LONG/SHORT/WAIT or autotrading integration.
+
+
+## 2026-11-28 — B2-E unique breakout event outcome study
+
+- PR #43: `feature/b2e-breakout-event-outcomes-2026-11-28`, Draft; no production decision-path change.
+- Exact-head study run 46169155969: SUCCESS. Pinned archive commit `9ca04178df06ce649f00779a49e11094fe5b1c70`, six series BTC/ETH × 1h/4h/1d.
+- 3,357 sampled windows; 8,548 repeated observations; 3,084 unique breakout events.
+- First-observation quality groups: STRONG 1,912; MIXED 783; WEAK 389; PARTIAL 0.
+- Latest observed retest statuses: SUCCESSFUL 1,514; FAILED 1,119; EXPIRED 413; UNRESOLVED 16; WAITING 22.
+- Quality status was stable across repeated observations (0 changes). Zone boundaries changed in 404 repeated observations, affecting 241 unique events.
+- Aggregate 12-bar positive return rates: STRONG 49.45%, MIXED 51.47%, WEAK 46.39%; mean gross directional returns +0.0536%, +0.0707%, -0.2375%. Aggregate dominated by 1h; only 25 daily events. Per-symbol/timeframe results vary.
+- First-observation delay median: 40 bars on 1h, 10 bars on 4h, 1 bar on 1d. This is delayed sampled detection, not immediate real-time breakout execution.
+- Findings do not establish predictive edge. B2-E evidence labels are not approved standalone LONG/SHORT signals.
+- Next research task: make historical B2-E zone reconstruction use a price/volatility scale available at the breakout's own time, then rerun the event study. No fees, slippage, funding or strategy PnL tested; archive ends 2025-12-05.
