@@ -120,3 +120,7 @@ A further audit confirmed that `_handleKlineMessage` previously parsed `msg.ts` 
 The same ordering requirement also applies to ticker events. `_handleTickerMessage` previously updated its cached ticker state and emitted a live-price event even if `msg.ts` was absent or invalid; in that case cross-topic ordering against kline events could not be established. The handler now validates provider event time before mutating ticker state and rejects unorderable messages. A Stage A regression verifies that a ticker without `msg.ts` neither changes ticker readiness/state nor reaches the live bridge. Kline and ticker now share the same fail-closed timestamp contract.
 
 Ticker timestamp regression fixtures were aligned with the stricter contract: all valid ticker snapshots/deltas in integration tests now include provider `ts`; the dedicated missing-timestamp test intentionally omits it. Source commit `109048c38bcaaabf18663e3897e87ecfdbe313d4`.
+
+## Stale-stream fallback regression — 2026-11-28
+
+Added Stage A regression `B1-D. Stale WS ticker and kline are ignored; REST price fallback is shown`. It verifies that ticker events older than `LIVE_TICKER_STALE_MS` are not treated as current, kline cache older than `LIVE_KLINE_STALE_MS` is not replayed, and the UI falls back to the REST market price while explicitly labeling the WS ticker stale. The test restores all mutated app/client/UI state. Exact-head CI pending.
