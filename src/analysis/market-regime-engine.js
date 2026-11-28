@@ -70,6 +70,15 @@
     for (const key of positiveThresholds) {
       if (!Number.isFinite(policy[key]) || policy[key] <= 0) return 'REGIME_POLICY_' + key.toUpperCase() + '_INVALID';
     }
+    const rangeMode = policy.range_detection_mode || 'LEGACY_GLOBAL_COMPRESSION_V1';
+    if (!['LEGACY_GLOBAL_COMPRESSION_V1', 'LOCAL_CONSOLIDATION_V2'].includes(rangeMode)) {
+      return 'REGIME_POLICY_RANGE_DETECTION_MODE_INVALID';
+    }
+    if (rangeMode === 'LOCAL_CONSOLIDATION_V2' &&
+        (!Number.isFinite(policy.range_max_fast_mid_spread_atr) ||
+         policy.range_max_fast_mid_spread_atr <= 0)) {
+      return 'REGIME_POLICY_RANGE_MAX_FAST_MID_SPREAD_ATR_INVALID';
+    }
     return null;
   }
 
@@ -266,9 +275,14 @@
 
     const impulse = Math.abs(impulseMoveAtr) >= policy.impulse_min_move_atr &&
       recentRangeExpansion >= policy.impulse_min_range_expansion;
+    const rangeMode = policy.range_detection_mode || 'LEGACY_GLOBAL_COMPRESSION_V1';
     const narrowRange = rangeWidthAtr <= policy.range_max_width_atr &&
       Math.abs(ema50SlopeAtr) <= policy.range_max_ema50_slope_atr &&
-      Math.abs(midSlowSpreadAtr) <= policy.range_max_mid_slow_spread_atr;
+      (rangeMode === 'LOCAL_CONSOLIDATION_V2'
+        ? Math.abs(fastMidSpreadAtr) <= policy.range_max_fast_mid_spread_atr
+        : Math.abs(midSlowSpreadAtr) <= policy.range_max_mid_slow_spread_atr);
+    const rangeStructureAllowed = rangeMode === 'LOCAL_CONSOLIDATION_V2' ||
+      structure.state === 'UNESTABLISHED' || structure.state === 'NOT_PROVIDED';
 
     let regime = 'TRANSITION';
     let bias = 'NEUTRAL';
@@ -290,11 +304,16 @@
       bias = 'BEARISH';
       evidenceAlignment = 'CONVERGENT';
       reasons.push('EMA_STACK_BEARISH', 'EMA_SLOPES_BEARISH', 'STRUCTURE_DOWN');
-    } else if (narrowRange && (structure.state === 'UNESTABLISHED' || structure.state === 'NOT_PROVIDED')) {
+    } else if (narrowRange && rangeStructureAllowed) {
       regime = 'RANGE';
       bias = 'NEUTRAL';
-      evidenceAlignment = structure.state === 'NOT_PROVIDED' ? 'PARTIAL' : 'CONVERGENT';
-      reasons.push('RANGE_WIDTH_COMPRESSED', 'TREND_SLOPE_WEAK', 'EMA_SPREAD_COMPRESSED');
+      evidenceAlignment = structure.state === 'UNESTABLISHED' ? 'CONVERGENT' : 'PARTIAL';
+      reasons.push('RANGE_WIDTH_COMPRESSED', 'TREND_SLOPE_WEAK',
+        rangeMode === 'LOCAL_CONSOLIDATION_V2' ? 'LOCAL_EMA20_50_SPREAD_COMPRESSED' : 'EMA50_200_SPREAD_COMPRESSED');
+      if (rangeMode === 'LOCAL_CONSOLIDATION_V2' &&
+          (structure.state === 'UP' || structure.state === 'DOWN')) {
+        reasons.push(structure.state === 'UP' ? 'MACRO_STRUCTURE_UP_CONTEXT' : 'MACRO_STRUCTURE_DOWN_CONTEXT');
+      }
     } else {
       if (bullishAlignment || bearishAlignment) reasons.push('EMA_STRUCTURE_CONFLICT_OR_UNAVAILABLE');
       else reasons.push('NO_DOMINANT_REGIME_SIGNATURE');
