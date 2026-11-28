@@ -48,3 +48,7 @@ These are engineering defaults, not calibrated thresholds. Historical replay and
 - No replacement of Market Regime Engine, B2-C structural break events, B2-D zones or B2-E retest lifecycle.
 - No automatic trading decisions, UI integration or autotrading.
 - No profitability or probability claims.
+
+## Policy clarification — 2026-11-28
+
+The intended directional-pressure threshold is exact `2 / 3` for the three-candle baseline window. A decimal threshold of `0.67` is slightly greater than 2/3 and therefore effectively requires 3/3 candles. The replay policy and deterministic test fixture now use `2 / 3`. This is a research/test policy correction; no production app policy has been changed.
