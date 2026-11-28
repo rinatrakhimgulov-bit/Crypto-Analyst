@@ -860,3 +860,11 @@ B5 PR #25 is a draft stacked on B4 PR #24. Current feature slice includes immuta
 ## B6 audit checkpoint — 2026-11-28
 
 B2-A through B2-G passed static contract review, source/inline parity, unit/integration tests and pinned historical replay. Exact source/inline parity is now enforced in CI. Historical replay uses BTC/ETH USDT-M perpetual archive pinned to `9ca04178df06ce649f00779a49e11094fe5b1c70`; all six series have zero invalid rows, duplicates, gaps and off-grid timestamps. At final archive cutoff, the 160-bar structure state matched full-history output across all six series and 160/400/800/1600 lookbacks. Longer lookbacks add many old zones, so retain 160 bars until freshness/relevance logic is implemented. B2-F remains display/research context only, not a directional signal. Audit: `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`. CI: B2 app/parity `46107248773` SUCCESS; replay `46107248819` SUCCESS.
+
+## B7 Setup Engine checkpoint — 2026-11-28
+
+- B7 implementation is on draft PR #27, branch `feature/b7-setup-engine-2026-11-28`, stacked on B6 PR #26. Do not merge directly to `main` ahead of B4/B5/B6 dependencies.
+- Added deterministic `B7ExplainableSetupEngine` for BREAKOUT_RETEST, FALSE_BREAKOUT_RECLAIM and TREND_CONTINUATION_AFTER_CORRECTION. It consumes same-snapshot B1-valid closed candles and B2-A/B/C/D/E outputs; validates B2-C breakout provenance for B2-E lifecycles and confirmation-candle finality.
+- Integrated the engine into the production HTML with a separate Russian-language B7 setup panel. Existing LONG/SHORT/WAIT decisions are unchanged. B2-F MTF is not a directional gate. B5 observation snapshots preserve the B7 result inside the captured B2 analysis object.
+- B7 exact source/inline parity is enforced by `tests/b2-inline-source-parity.test.cjs`. B7 unit suite: 18 deterministic tests. CI run `46114849599` SUCCESS: B2-A..G + B7 parity, B7 unit tests, B2 regression suite, browser integration and mobile layout; browser fixture reported B7 VALID with zero candidates, pageErrors 0.
+- Remaining: independent review, B7 pinned historical/prefix replay, and owner iPhone Safari acceptance. B7 candidates are research evidence, not trade signals or proof of profitability. B8 statistical validation remains required before B9 directional integration.
