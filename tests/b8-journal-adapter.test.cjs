@@ -70,4 +70,32 @@ function envelope(observations) {
   const source = envelope([makeObservation('observation-5', 'LONG'), makeObservation('observation-5', 'WAIT')]);
   assert.throws(() => validateEnvelope(source), /B8_JOURNAL_RECORD_ID_OR_SCHEMA_INVALID/);
 }
+{
+  const source = envelope([makeObservation('observation-7', 'LONG')]);
+  source.observations[0].candleWindow[0].closeTs = 200000;
+  assert.throws(() => validateEnvelope(source), /B8_JOURNAL_CANDLE_INVALID/);
+}
+{
+  const observation = makeObservation('observation-8', 'LONG');
+  const source = envelope([observation]);
+  source.followups.push({
+    id: 'followup-0008', recordType: 'followup', schemaVersion: 1,
+    observationId: observation.id, recordedAt: new Date(100000).toISOString(),
+    recordedAtMs: 100000, status: 'missed'
+  });
+  assert.throws(() => validateEnvelope(source), /B8_JOURNAL_FOLLOWUP_INVALID/);
+}
+{
+  const observation = makeObservation('observation-9', 'LONG');
+  const source = envelope([observation]);
+  source.actualTrades.push({
+    id: 'trade-00009', recordType: 'actual_trade', schemaVersion: 1,
+    observationId: observation.id, recordedAt: new Date(200000).toISOString(),
+    recordedAtMs: 200000, side: 'LONG', status: 'closed',
+    entryAt: new Date(100000).toISOString(), entryAtMs: 100000,
+    exitAt: new Date(150000).toISOString(), exitAtMs: 150000,
+    entryPrice: 100, exitPrice: 101
+  });
+  assert.throws(() => validateEnvelope(source), /B8_JOURNAL_TRADE_CLOSE_INVALID/);
+}
 console.log('B8 journal adapter: deterministic assertions PASS');
