@@ -827,3 +827,5 @@ The B4 branch now requires a valid provider event timestamp (`msg.ts`) on each i
 B4 also requires valid provider `msg.ts` on ticker messages before mutating ticker cache or emitting live-price updates. Missing/invalid timestamps are counted as invalid stream messages and rejected. Regression added alongside the kline timestamp guard. Latest code commit: `c5be074817dcee28cb7a7df3e095939150579de7`; exact-head CI pending.
 
 Ticker integration fixtures now provide provider timestamps as required by the stricter B4 contract; the missing-timestamp negative test remains explicit. Latest source commit `109048c38bcaaabf18663e3897e87ecfdbe313d4`; exact-head CI pending.
+
+B4 adds a stale-stream regression: stale ticker and kline caches are ignored, the visible price falls back to REST, and the UI marks the WS ticker stale. Source commit `4f5e369b52b4262dbad88d9ba54a3fc6d7378301`; exact-head CI pending.
