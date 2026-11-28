@@ -911,3 +911,5 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
+
+- B5 implementation branch `feature/b5-market-journal-stack-2026-11-28` created from current B4 PR #24 head `aa85840da21f3c470010b678d4909e03d146d7a2`. Carried forward approved spec `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`; implementation is now active. B4 remains a separate open/unmerged PR.
