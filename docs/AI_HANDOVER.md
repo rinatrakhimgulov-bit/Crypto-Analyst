@@ -1601,3 +1601,14 @@ Important deployment fact: GitHub Pages still serves `main`. The current `main` 
 - B2-E already handles close-confirmed structural breaks, historical-zone boundary clearance, retest lifecycle, failed retest and role reversal. Its buffers are also percentage-of-median-price-derived absolute values; volume/range expansion quality is not part of its break admission.
 - Added docs/specs/ANALYTICAL_ENGINE_AUDIT_2026-11-28.md as the source-of-truth audit and next implementation order.
 - Next code work: B2-D zone quality/freshness/ATR normalization, then B2-E breakout-quality/buffer improvements, then a dedicated bearish impulse/selloff classifier. No UI or LONG/SHORT/WAIT integration until historical replay and sensitivity validation.
+
+
+## 2026-11-28 — B2-D/B2-E evidence layers and Market Impulse Event Engine
+
+- B2-D zone-context candidate: PR #34, branch `feature/b2d-zone-context-engine-2026-11-28`; exact-head GitHub Actions run 46165819188 succeeded. Deterministic suites: zone context 15/15, existing B2-D 21/21, existing B2-E 24/24. Candidate remains Draft and unmerged.
+- B2-E breakout-quality candidate: PR #35, branch `feature/b2e-breakout-quality-engine-2026-11-28`; exact-head GitHub Actions run 46166190540 succeeded. Deterministic suites: breakout quality 16/16, B2-D zone context 15/15, B2-E retest 24/24. Candidate remains Draft and unmerged.
+- Market Impulse Event Engine: PR #36, branch `feature/bearish-impulse-selloff-engine-2026-11-28`; exact-head GitHub Actions run 46166752868 succeeded. Deterministic suites: impulse/selloff 16/16, B2-D zone context 15/15, B2-E breakout quality 16/16 (47 assertions total). Candidate remains Draft and unmerged.
+- Impulse engine separates strong selloff, partial-evidence selloff, bearish/bullish impulse, unconfirmed directional move and no impulse. B2-E retest outcomes are reported separately: successful bearish retest means broken support held as resistance; failed retest means support was reclaimed and the breakdown invalidated.
+- Initial thresholds are engineering defaults only. No historical calibration, predictive edge, production HTML integration or LONG/SHORT/WAIT change has been established.
+- An accidental duplicate B3 impulse implementation was removed from this branch. Keep `market-impulse-event-engine.js` as the single impulse/selloff candidate.
+- Next work: audit the current production decision path and historical replay contracts; build a reproducible prefix-only BTC/ETH replay harness for the regime, zone, breakout and impulse candidates. Do not integrate uncalibrated labels into live trade decisions.
