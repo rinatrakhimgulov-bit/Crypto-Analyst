@@ -183,6 +183,8 @@
     if (!Array.isArray(b2e.lifecycles) || !Array.isArray(breakoutQuality.breakouts) ||
         !Array.isArray(b7.setup_candidates) || !isObject(impulse.event) ||
         !IMPULSE_CLASSES.has(impulse.event.classification) ||
+        !['BULLISH', 'BEARISH', 'NEUTRAL'].includes(impulse.event.direction) ||
+        !isObject(zoneContext.active_zone_selection) ||
         !['UPTREND', 'DOWNTREND', 'RANGE', 'IMPULSE', 'TRANSITION', 'UNKNOWN'].includes(regime.regime) ||
         !['UP', 'DOWN', 'UNESTABLISHED'].includes(b2c.structure_state) ||
         !['BULLISH', 'BEARISH', 'NEUTRAL', 'NONE'].includes(regime.directional_bias)) {
