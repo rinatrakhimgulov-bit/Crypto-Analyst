@@ -90,8 +90,8 @@
     }
     return null;
   }
-  function enrichZone(zone, atr, currentClose, asOf, stepMs, policy) {
-    const ageBars = Math.max(0, Math.floor((asOf - zone.last_touch_time_ms) / stepMs));
+  function enrichZone(zone, atr, currentClose, currentOpenTimeMs, asOf, stepMs, policy) {
+    const ageBars = Math.max(0, Math.floor((currentOpenTimeMs - zone.last_touch_time_ms) / stepMs));
     const freshnessStatus = ageBars <= policy.freshness_recent_bars
       ? 'FRESH'
       : ageBars <= policy.freshness_aging_bars ? 'AGING' : 'STALE';
@@ -110,7 +110,7 @@
     const distanceAtr = distancePrice / atr;
     const touches = Array.isArray(zone.touches) ? zone.touches : [];
     const recentTouchCount = touches.filter(t => Number.isSafeInteger(t.source_time_ms) &&
-      Math.floor((asOf - t.source_time_ms) / stepMs) <= policy.freshness_recent_bars).length;
+      Math.floor((currentOpenTimeMs - t.source_time_ms) / stepMs) <= policy.freshness_recent_bars).length;
     const evidence = {
       touch_count: Number.isSafeInteger(zone.touch_count) ? zone.touch_count : touches.length,
       recent_touch_count: recentTouchCount,
@@ -206,8 +206,24 @@
           zone.lower_bound <= 0 || zone.upper_bound < zone.lower_bound ||
           !Number.isSafeInteger(zone.last_touch_time_ms) || zone.last_touch_time_ms > asOf ||
           !Number.isSafeInteger(zone.available_at_ms) || zone.available_at_ms > asOf ||
-          !Array.isArray(zone.touches)) return blocked('B2D_ZONE_EVIDENCE_INVALID', meta);
-      zones.push(enrichZone(zone, atr, currentClose, asOf, stepMs, policy));
+          !Array.isArray(zone.touches) || zone.touches.length < 2) return blocked('B2D_ZONE_EVIDENCE_INVALID', meta);
+      const touchTimes = new Set();
+      let latestTouch = -1;
+      let latestAvailability = -1;
+      for (const touch of zone.touches) {
+        if (!isObject(touch) || typeof touch.pivot_id !== 'string' || !touch.pivot_id ||
+            !Number.isSafeInteger(touch.source_time_ms) || touch.source_time_ms > asOf ||
+            !Number.isSafeInteger(touch.available_at_ms) || touch.available_at_ms > asOf ||
+            touch.available_at_ms < touch.source_time_ms ||
+            !['ACCEPTED', 'SUPERSEDED_FOR_SEQUENCE', 'AMBIGUOUS_FOR_SEQUENCE'].includes(touch.sequence_status) ||
+            touchTimes.has(touch.source_time_ms)) return blocked('B2D_ZONE_TOUCH_EVIDENCE_INVALID', meta);
+        touchTimes.add(touch.source_time_ms);
+        latestTouch = Math.max(latestTouch, touch.source_time_ms);
+        latestAvailability = Math.max(latestAvailability, touch.available_at_ms);
+      }
+      if (zone.touch_count !== touchTimes.size || zone.last_touch_time_ms !== latestTouch ||
+          zone.available_at_ms < latestAvailability) return blocked('B2D_ZONE_TOUCH_EVIDENCE_INVALID', meta);
+      zones.push(enrichZone(zone, atr, currentClose, candles[candles.length - 1].open_time_ms, asOf, stepMs, policy));
     }
     const intersecting = zones.filter(z => z.relative_position === 'CONTAINS_CURRENT_PRICE')
       .map(z => z.zone_id).sort();
