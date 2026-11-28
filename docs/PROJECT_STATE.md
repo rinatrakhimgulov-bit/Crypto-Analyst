@@ -814,3 +814,8 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - B2 run 46103008967 SUCCESS: B2-A…B2-G and browser/mobile integration passed.
 - Live Bybit runner probe skipped because both REST hosts returned HTTP 403 from GitHub Actions. Not a live-provider pass.
 - PR #24 remains open/unmerged. iPhone/Safari real-provider acceptance and exact-source review are still required.
+
+
+## B4 lifecycle test update — 2026-11-28
+
+B4 PR #24 adds Stage A regression `16d` for actual `pagehide`/`pageshow` listeners. It checks old WebSocket generation invalidation, close-state cleanup, new recovery generation, and fresh subscription ACK gating. The test is deterministic browser-side coverage only; actual iPhone/Safari background/foreground behavior remains an acceptance gate. Code commit: `1783a8e0b8294973366a61d32e75bb40458e338a`; exact-head CI pending at the time of this note.
