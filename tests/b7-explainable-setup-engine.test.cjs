@@ -252,7 +252,7 @@ run('invalid timeframe scope blocks analysis', () => {
 
 run('same input produces byte-stable deterministic output', () => {
   const input = fixture();
-  input.b2e_result.lifecycles = [lifecycle()];
+  attachLifecycles(input, [lifecycle()]);
   assert.deepEqual(analyze(input), analyze(input));
 });
 
