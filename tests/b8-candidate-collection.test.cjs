@@ -29,6 +29,12 @@ assert.equal(lifecycle[0].available_at_ms, 300);
 assert.equal(chronologicalSplit({ available_at_ms: 59 }, 0, 100), 'TRAIN');
 assert.equal(chronologicalSplit({ available_at_ms: 60 }, 0, 100), 'VALIDATION');
 assert.equal(chronologicalSplit({ available_at_ms: 80 }, 0, 100), 'TEST');
+assert.equal(chronologicalSplit({ available_at_ms: 59 }, 0, 100, 59), 'TRAIN');
+assert.equal(chronologicalSplit({ available_at_ms: 59 }, 0, 100, 60), 'PURGED_TRAIN_BOUNDARY');
+assert.equal(chronologicalSplit({ available_at_ms: 60 }, 0, 100, 79), 'VALIDATION');
+assert.equal(chronologicalSplit({ available_at_ms: 60 }, 0, 100, 80), 'PURGED_VALIDATION_BOUNDARY');
+assert.equal(chronologicalSplit({ available_at_ms: 80 }, 0, 100, 99), 'TEST');
+assert.throws(() => chronologicalSplit({ available_at_ms: 59 }, 0, 100, NaN), /B8_SPLIT_OUTCOME_END_INVALID/);
 assert.throws(() => deduplicateCandidates([{ symbol: 'BTCUSDT', timeframe: '1h',
   windows: [{ candidates: [a, { ...a, direction: 'SHORT' }] }] }]), /B8_HISTORICAL_DUPLICATE_ID_CONFLICT/);
 console.log('B8 candidate collection: deterministic assertions PASS');
