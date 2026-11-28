@@ -180,7 +180,6 @@ async function main() {
       resistance_windows: series.distribution.resistance_windows,
       range_thresholds_pass_windows: series.distribution.range_thresholds_pass_windows,
       range_structure_eligible_windows: series.distribution.range_structure_eligible_windows,
-      unused_resistance_windows: series.distribution.resistance_windows,
       windows_with_breakouts: series.distribution.windows_with_breakouts,
       total_breakout_events: series.distribution.total_breakout_events
     })),
