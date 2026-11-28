@@ -527,3 +527,12 @@ B3 was merged into `main` via PR #23 (merge commit `7d34a3539c9a655bca546bbb7b0c
 | B9 Explainable Decisions | LONG/SHORT/WAIT with reasons, invalidation and risk context | Planned |
 
 Market Journal must include WAIT and skipped observations, distinguish paper observations from actual trades, preserve snapshot-time information, and leave unresolved outcomes as pending. Do not claim profitability from UI, synthetic tests or small samples. Full current plan: docs/ROADMAP.md.
+
+
+## B4 — Live Data Path hardening (in progress, PR #24)
+
+- Main source audit: `docs/audits/B4_MAIN_AUDIT_2026-11-28.md`.
+- Current integrated data path: Bybit REST bootstrap/history + REST ticker snapshot + WebSocket ticker/kline live updates + 30s REST polling/reconciliation + reconnect/recovery.
+- First fix: confirmed WS candle immutable before REST boundary; ticker and late same-ts deltas cannot rewrite it; exact repeats are ignored; chart/volume render confirmed candles as closed.
+- Regression: Stage A B1-D test expanded.
+- Not accepted/merged. Await exact-head CI, further B4 audit, independent review and iPhone/Safari live verification.
