@@ -540,3 +540,6 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - Дополнительная защита REST/WS race: newer WS kline OHLCV replay после REST refresh, только при активной подтверждённой подписке, совпадающем connGen, свежем receive time и более новом provider event time.
 
 - Cross-topic provider-time ordering: предотвращает откат forming close из-за позднего ticker/kline сообщения с более ранним provider timestamp.
+
+- Event-time ordering: reject stale same-candle kline updates within one connection generation; preserve the later ticker close when kline arrives after it; drop older ticker events after a newer kline.
+- Verification at PR head 42f0511679167714e2a35c873ae0fc970502923c: B1 + B2 workflows SUCCESS; no browser page errors; live Bybit blocked by runner HTTP 403; not merged.
