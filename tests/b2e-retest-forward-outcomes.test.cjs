@@ -37,7 +37,7 @@ const unresolved = {
 };
 assert.equal(resolveLifecycleIndex(unresolved, rows, index), 13);
 
-const forward = computeForwardOutcomes(rows, 10, 'BULLISH', 2, [5, 10, 20]);
+const forward = computeForwardOutcomes(rows, 25, 'BULLISH', 2, [5, 10, 20]);
 assert.ok(forward[5].direction_adjusted_return_atr > 0);
 assert.equal(forward[20], null);
 console.log('PASS retest resolution timestamps and post-resolution outcome tests');
