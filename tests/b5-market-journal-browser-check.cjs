@@ -76,6 +76,32 @@ async function main() {
       throw new Error('B5 capture setup failed: ' + JSON.stringify(setup));
     }
 
+    const initialTabs = await page.evaluate(() => ({
+      analysisVisible: document.getElementById('analysisTabContent').hidden === false,
+      journalHidden: document.getElementById('journalCard').hidden === true,
+      analysisTabSelected: document.getElementById('analysisTabBtn').getAttribute('aria-selected') === 'true'
+    }));
+    if (!initialTabs.analysisVisible || !initialTabs.journalHidden || !initialTabs.analysisTabSelected) {
+      throw new Error('B5 must open on the Analysis tab with Journal separated and hidden');
+    }
+    await page.locator('#journalTabBtn').click();
+    const journalTabActive = await page.evaluate(() => ({
+      journalVisible: document.getElementById('journalCard').hidden === false,
+      analysisHidden: document.getElementById('analysisTabContent').hidden === true,
+      roadmapHidden: document.getElementById('analysisRoadmap').hidden === true,
+      selected: document.getElementById('journalTabBtn').getAttribute('aria-selected') === 'true'
+    }));
+    if (!journalTabActive.journalVisible || !journalTabActive.analysisHidden ||
+        !journalTabActive.roadmapHidden || !journalTabActive.selected) {
+      throw new Error('Journal tab did not isolate the journal panel');
+    }
+    await page.locator('#analysisTabBtn').click();
+    const analysisRestored = await page.evaluate(() =>
+      document.getElementById('analysisTabContent').hidden === false &&
+      document.getElementById('journalCard').hidden === true);
+    if (!analysisRestored) throw new Error('Analysis tab did not restore the analysis panel');
+    await page.locator('#journalTabBtn').click();
+
     await page.locator('#journalSaveBtn').click();
     const afterButtonCapture = await page.evaluate(() => window.__CryptoAnalystTestHooks.journal.state.envelope.observations.length);
     if (afterButtonCapture !== 1) throw new Error('Save observation button did not persist an observation');
