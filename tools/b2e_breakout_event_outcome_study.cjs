@@ -6,7 +6,7 @@ const {
 } = require('./b2_historical_replay.cjs');
 const { evaluateCandidate } = require('../src/research/b8-outcome-evaluator.js');
 
-const WINDOW_BARS = 260;
+const WINDOW_BARS = 1000;
 const BREAKOUT_LOOKBACK_BARS = 160;
 const STRIDE_BARS = { '1h': 80, '4h': 20, '1d': 3 };
 const HORIZONS = [1, 3, 6, 12];
@@ -244,7 +244,7 @@ async function main() {
       'B1 quality is represented by a synthetic VALID wrapper after CSV integrity checks; actual live B1 validation and provider finality are not replayed.',
       'Finality uses a fixed 500ms time-derived research lag.',
       'Events are sampled from rolling windows, not discovered from a separately validated tick-level event feed. The first observation time is used as candidate availability to avoid pretending the event was known at its breakout candle close.',
-      'The zone-span policy in the current replay is based on the median price of each 260-candle snapshot. Zone boundaries can differ between observations of the same event; the report records boundary changes and uses the first observation for the outcome cohort.',
+      'The zone-span policy in the current replay is based on the median price of each 1000-candle snapshot. Zone boundaries can differ between observations of the same event; the report records boundary changes and uses the first observation for the outcome cohort.',
       'Forward returns, MFE and MAE are descriptive bar-based outcomes. No fees, slippage, funding, stop/target fills, expectancy, drawdown or account PnL are modeled.',
       'Events within the same symbol/timeframe and nearby dates are correlated. Raw positive-return rates are not independent-trial probabilities and no significance claim is made.'
     ],
