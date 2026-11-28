@@ -38,17 +38,17 @@ function candidate(overrides = {}) {
   assert.equal(r.barriers['1R'].status, 'TIMEOUT');
 }
 {
-  const cs = candles([[100,101,99,100],[100,110,90,100],[100,101,99,100]]);
+  const cs = candles([[100,101,99,100],[100,101,99,100],[100,110,90,100]]);
   const r = evaluateCandidate({ candidate: candidate({ available_at_ms: 60500, invalidation_level: 95 }), candles: cs, horizons: [1], barrierMaxBars: 1 });
   assert.equal(r.barriers['1R'].status, 'STOP_FIRST_AMBIGUOUS');
 }
 {
-  const cs = candles([[100,101,99,100],[100,101,94,96],[96,97,95,96]]);
+  const cs = candles([[100,101,99,100],[100,101,99,100],[100,101,94,96]]);
   const r = evaluateCandidate({ candidate: candidate({ available_at_ms: 60500, invalidation_level: 95 }), candles: cs, horizons: [1], barrierMaxBars: 1 });
   assert.equal(r.barriers['1R'].status, 'STOP');
 }
 {
-  const cs = candles([[100,101,99,100],[90,92,89,91],[91,92,90,91]]);
+  const cs = candles([[100,101,99,100],[100,101,99,100],[90,92,89,91]]);
   const r = evaluateCandidate({ candidate: candidate({ available_at_ms: 60500, invalidation_level: 95 }), candles: cs, horizons: [1], barrierMaxBars: 1 });
   assert.equal(r.barriers['1R'].status, 'STOP_GAP');
 }
