@@ -1104,3 +1104,15 @@ Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
 - Initial thresholds are engineering defaults only. No historical calibration, predictive edge, production HTML integration or LONG/SHORT/WAIT change has been established.
 - An accidental duplicate B3 impulse implementation was removed from this branch. Keep `market-impulse-event-engine.js` as the single impulse/selloff candidate.
 - Next work: audit the current production decision path and historical replay contracts; build a reproducible prefix-only BTC/ETH replay harness for the regime, zone, breakout and impulse candidates. Do not integrate uncalibrated labels into live trade decisions.
+
+
+## 2026-11-28 — read-only analytical engine integration candidate
+
+- PR #37: `feature/analytical-engine-integration-2026-11-28`, Draft, based on the current analytical candidate stack. It modifies only the single-file application HTML, an integration regression test, and a dedicated workflow.
+- Embedded the Market Regime, B2-D Zone Context, B2-E Breakout Quality and Market Impulse Event engines into `CryptoAnalyst_StageA_S6_updated.html`.
+- `runB2Analysis` now computes these four research outputs from the same B1 snapshot/cutoff and the corresponding B2 upstream results.
+- Added a read-only UI card showing regime, nearest active support/resistance, latest breakout evidence/retest status and impulse/selloff classification.
+- The existing `BasicAnalyticsEngine` LONG/SHORT/WAIT calculation is unchanged. The new research outputs are not passed into it and cannot alter the decision.
+- Exact current integration head: `6284b355b89094816fc198bc9bd1eaed0bf0e47a`. GitHub Actions run 46166985164: SUCCESS.
+- Integration assertions: 4/4 PASS; B2-D existing 21/21; B2-D zone context 15/15; B2-E retest 24/24; B2-E breakout quality 16/16; Market Impulse 16/16. Market Regime test workflow step also passed. Total explicitly logged PASS assertions: 96.
+- Candidate remains Draft and is not deployed to GitHub Pages/main. Historical BTC/ETH prefix replay, threshold sensitivity, iPhone/PC browser acceptance and owner approval remain required before merge or any decision-path integration.
