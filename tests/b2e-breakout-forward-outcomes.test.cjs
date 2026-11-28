@@ -12,7 +12,7 @@ assert.ok(calculateWilderAtr(candles, 14) > 0);
 assert.equal(calculateWilderAtr(candles.slice(0, 10), 14), null);
 assert.deepEqual(sampleIndices(600, '1h'), [259, 595, 599]);
 
-const outcomes = computeForwardOutcomes(candles, 5, 'BULLISH', 2, [5, 10, 20]);
+const outcomes = computeForwardOutcomes(candles, 15, 'BULLISH', 2, [5, 10, 20]);
 assert.ok(outcomes[5].direction_adjusted_return_atr > 0);
 assert.ok(outcomes[5].favorable_excursion_atr >= 0);
 assert.equal(outcomes[20], null);
