@@ -408,6 +408,30 @@ async function main() {
           },
           parameter_grid: parameterGrid });
       }
+      const denseScanStrideBars = 80;
+      const denseScanEndIndices = [];
+      for (let index = 159; index < rows.length; index += denseScanStrideBars) denseScanEndIndices.push(index);
+      if (denseScanEndIndices[denseScanEndIndices.length - 1] !== rows.length - 1) denseScanEndIndices.push(rows.length - 1);
+      const denseB7Scan = { window_size_bars: 160, stride_bars: denseScanStrideBars,
+        windows_evaluated: 0, candidate_appearances: 0, windows: [] };
+      for (const endIndex of denseScanEndIndices) {
+        const slice = rows.slice(endIndex - 159, endIndex + 1);
+        const end = slice[slice.length - 1];
+        const windowAsOf = end.close_time_ms + LAG;
+        const structure = runStructure(slice, symbol, tf, windowAsOf,
+          'historical:' + symbol + ':' + tf + ':dense-b7:' + endIndex);
+        const zones = runZones(structure, symbol, tf, 0.001, 0.0005);
+        const setups = runSetups(structure, zones);
+        const candidates = compactSetups(setups);
+        for (const candidate of setups.setup_candidates) {
+          assert(candidate.available_at_ms <= windowAsOf,
+            symbol + ' ' + tf + ' dense B7 candidate available after window cutoff');
+        }
+        denseB7Scan.windows.push({ end_time_ms: end.close_time_ms, analysis_as_of_ms: windowAsOf,
+          candidates });
+        denseB7Scan.windows_evaluated++;
+        denseB7Scan.candidate_appearances += candidates.length;
+      }
       byTf[tf] = {
         integrity: data.integrity,
         full_history: { raw_pivots: full.a.pivots.length,
@@ -420,7 +444,8 @@ async function main() {
           prefix_invariance_checks: prefixChecks.length,
           strength_sensitivity: strengthSensitivity,
           lookback_sensitivity: lookbackSensitivity },
-        '160_candle_windows': windowResults
+        '160_candle_windows': windowResults,
+        b7_dense_scan: denseB7Scan
       };
     }
 
