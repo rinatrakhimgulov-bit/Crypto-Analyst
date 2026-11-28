@@ -1,6 +1,6 @@
 # B7 Explainable Setup Engine Specification
 Date: 2026-11-28
-Status: Approved for implementation
+Status: Implemented in draft PR #27; owner acceptance and historical replay pending
 Base: B6 candidate branch `feature/b6-analytics-audit-2026-11-28`
 
 ## 1. Purpose
@@ -142,3 +142,8 @@ No candidate means `NO_SETUP`; it does not mean the market is bearish or bullish
 ## 9. Acceptance gate
 
 B7 is complete when all three setup types are explainable, causal, deterministic, covered by negative tests, visible in the app without changing current decisions, and validated on pinned historical replay. It is not a trading-signal release; B8/B9 remain separate.
+
+
+## 10. Implementation checkpoint — 2026-11-28
+
+Implementation is in draft PR #27 (`feature/b7-setup-engine-2026-11-28`). The engine is integrated into the production HTML with a separate B7 panel; exact source/inline parity, 18 unit tests, B2 regressions and browser/mobile integration passed in CI run `46114849599`. The browser synthetic fixture returned `VALID` with zero candidates and no page errors. Remaining acceptance gates are independent review, pinned historical/prefix replay specific to B7, and owner iPhone Safari validation. This implementation does not alter LONG/SHORT/WAIT and is not evidence of profitability.
