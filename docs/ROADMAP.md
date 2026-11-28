@@ -477,3 +477,8 @@ Still pending: real iPhone/Safari Bybit WebSocket verification and independent e
 
 ## Критерий полезного прогресса
 Успех этапа измеряется не количеством экранов или линий на графике, а тем, что система получает достоверные данные, сохраняет контекст решения, позволяет воспроизвести его и объективно измерить результат.
+
+
+## B4 implementation progress — 2026-11-28
+
+B4 is active in draft PR #24: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/24. Audit the actual current main, not historical handover text. Main already contains a working Bybit ticker+kline WebSocket integration alongside REST bootstrap, 30-second polling, reconciliation and reconnect/recovery. The first audit found that a WS-confirmed candle could still be mutated by ticker or a late same-timestamp kline delta before REST advanced `closedCount`; B4 now blocks those mutations and renders provider-confirmed candles as closed. Exact audit: `docs/audits/B4_MAIN_AUDIT_2026-11-28.md`. This is a first hardening increment, not B4 completion. Continue REST/WS race, reconnect, fallback, stale-state, switching and lifecycle audit; require deterministic/browser CI, exact-source review and real iPhone/Safari acceptance. Runner HTTP 403 is not live-provider verification.
