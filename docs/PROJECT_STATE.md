@@ -798,3 +798,5 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - Stage A B1-D тест расширен на ticker-after-confirm, late delta и exact duplicate.
 - B4 остаётся IN PROGRESS. CI на точном финальном PR HEAD, полный аудит race/recovery/fallback и реальный iPhone/Safari acceptance ещё обязательны. Live Bybit на GitHub runner не подтверждён.
 - Подробности: `docs/audits/B4_MAIN_AUDIT_2026-11-28.md`.
+
+- Дополнительно закрывается REST/WS race: REST refresh раньше восстанавливал только ticker lastPrice, теряя более свежий WS kline OHLCV. Добавлен versioned/freshness-aware replay последней kline только если она новее provider time REST snapshot; добавлен детерминированный regression. См. B4 audit.
