@@ -987,3 +987,17 @@ Current limitations: historical candidate census/deduplication and chronological
 - Cost arithmetic now charges entry costs on entry notional and exit costs on exit notional.
 - B5 importer validates journal envelope/reference structure, preserves WAIT and no-setup coverage, filters candidates against both capturedAt and B7 analysis cutoff, excludes forming candles, keeps actual trades separate, and deep-clones/freezes its normalized output.
 - Historical candidate census, deduplication, chronological OOS, cluster-aware uncertainty and prospective journal outcome study are still NOT IMPLEMENTED.
+
+
+### B8-C first historical outcome exploration — 2026-11-28
+
+- Added stable `setup_id` to compact B7 historical replay output.
+- Added deterministic candidate deduplication by symbol/timeframe/setup ID and explicit pending-to-confirmed lifecycle reconciliation.
+- Added chronological 60/20/20 TRAIN/VALIDATION/TEST assignment per historical series.
+- Added `tools/b8_historical_validation.cjs` and artifact generation in the B8 workflow.
+- Exact CI run `46117156657` on code head `cf16dd38e9b8cc7fb7f923d7999add2c4a46b0e5`: SUCCESS. B7 pinned replay, B8 deterministic tests, historical outcome generation and artifact upload all passed.
+- Result: 40 unique sampled candidates, 36 confirmed, 4 pending. All 36 confirmed candidates received a causal entry proxy. Split counts: TRAIN 22, VALIDATION 8, TEST 6.
+- The TEST cohort is too small to support inference. Its descriptive returns are negative, but no conclusion about setup quality is justified. No fees/funding/slippage are observed or applied. The five-window candidate population is not exhaustive.
+- Detailed audit: `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`.
+
+B8-C exploratory pipeline passed; B8-C statistical validation is still incomplete. B8-D prospective journal outcomes and B8-E independent audit remain open.
