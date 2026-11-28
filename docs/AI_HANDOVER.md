@@ -1357,3 +1357,8 @@ Continue B4 by auditing all REST/WS race conditions, reconnect/resubscribe, fall
 ### B4 checkpoint (2026-11-28)
 
 PR #24 current tested head: 42f0511679167714e2a35c873ae0fc970502923c. B1 workflow run 46102775403 and B2 integration run 46102775296 both SUCCESS on the exact PR head (PR merge ref); no browser page errors, B2 mobile layout has no horizontal overflow. Live Bybit was SKIPPED_PROVIDER_BLOCKED due runner HTTP 403. Do not describe that as a live pass. PR remains unmerged. Continue auditing reconnect/resubscribe, fallback/stale state, lifecycle and symbol/timeframe switching; require independent review and actual iPhone/Safari owner acceptance.
+
+
+### B4 exact tested checkpoint — 2026-11-28
+
+Current tested application source blob: `c9711ffdd65c9667bfa7447b92ec05d73e60135f`, commit `01068b47736e9e1d9a206ae919accd8a6cea7255`, PR #24. B1 run 46103008965 SUCCESS (Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20, zero page errors). B2 run 46103008967 SUCCESS (B2-A through B2-G and browser/mobile integration). Bybit live REST on the GitHub runner was SKIPPED_PROVIDER_BLOCKED due HTTP 403 from both hosts; never call this a live-provider pass. PR remains open/unmerged. Next is owner real iPhone/Safari acceptance: live price, forming OHLCV, confirmed candle immutability, REST reconciliation, disconnect/reconnect, stale fallback, BTC/ETH, 1H/4H/1D and background/foreground recovery.
