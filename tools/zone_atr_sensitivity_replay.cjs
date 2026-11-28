@@ -9,8 +9,8 @@ const {
 const WINDOW_BARS = 260;
 const STRIDE_BARS = { '1h': 336, '4h': 84, '1d': 14 };
 const ATR_PERIOD = 14;
-const ZONE_WIDTH_ATR = [0.25, 0.50, 0.75];
-const RETEST_BUFFER_ATR = [0.05, 0.10, 0.20];
+const ZONE_WIDTH_ATR = [0.10, 0.15, 0.20, 0.25];
+const RETEST_BUFFER_ATR = [0.05, 0.10, 0.15];
 const REPORT_PATH = 'zone_atr_sensitivity_report.json';
 
 function assert(condition, message) {
@@ -35,6 +35,11 @@ function calculateWilderAtr(candles, period = ATR_PERIOD) {
   }
   return Number.isFinite(atr) && atr > 0 ? atr : null;
 }
+function percentile(values, fraction) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) * fraction)];
+}
 function sampleIndices(length, timeframe) {
   const stride = STRIDE_BARS[timeframe];
   const indices = [];
@@ -47,7 +52,8 @@ function newAccumulator(config) {
     config, windows: 0, support_available_windows: 0, resistance_available_windows: 0,
     active_zone_total: 0, stale_zone_total: 0, confirmed_zone_total: 0,
     candidate_cluster_total: 0, breakout_total: 0, unmatched_breakout_total: 0,
-    retest_status_counts: {}, breakout_quality_counts: {}, impulse_counts: {}
+    retest_status_counts: {}, breakout_quality_counts: {}, impulse_counts: {},
+    effective_zone_span_atr_values: [], effective_retest_buffer_atr_values: []
   };
 }
 function increment(target, key, amount = 1) {
@@ -73,8 +79,13 @@ function addContext(acc, structure, zones) {
   increment(acc.impulse_counts, context.impulse.event.classification);
 }
 function finalize(acc) {
+  const { effective_zone_span_atr_values, effective_retest_buffer_atr_values, ...base } = acc;
   return {
-    ...acc,
+    ...base,
+    baseline_effective_atr_distribution: acc.config.mode === 'PRICE_RATIO' ? {
+      zone_span_atr: { p10: percentile(effective_zone_span_atr_values, 0.10), p50: percentile(effective_zone_span_atr_values, 0.50), p90: percentile(effective_zone_span_atr_values, 0.90) },
+      retest_buffer_atr: { p10: percentile(effective_retest_buffer_atr_values, 0.10), p50: percentile(effective_retest_buffer_atr_values, 0.50), p90: percentile(effective_retest_buffer_atr_values, 0.90) }
+    } : null,
     support_availability_rate: acc.windows ? acc.support_available_windows / acc.windows : 0,
     resistance_availability_rate: acc.windows ? acc.resistance_available_windows / acc.windows : 0,
     mean_active_zones_per_window: acc.windows ? acc.active_zone_total / acc.windows : 0,
@@ -126,6 +137,8 @@ async function main() {
             ? atr * config.retest_buffer_atr / priceScale : config.retest_buffer_price_ratio;
           const zones = runZones(structure, symbol, timeframe, spanRatio, retestRatio);
           const acc = accumulators.get(config.name);
+          acc.effective_zone_span_atr_values.push(priceScale * spanRatio / atr);
+          acc.effective_retest_buffer_atr_values.push(priceScale * retestRatio / atr);
           addContext(acc, structure, zones);
           if (zones.d.zones.some(z => z.available_at_ms > asOf) ||
               zones.e.lifecycles.some(l => l.breakout_available_at_ms > asOf)) {
@@ -154,7 +167,7 @@ async function main() {
     }
   }
   const report = {
-    report_version: 'zone-atr-sensitivity-replay-v1',
+    report_version: 'zone-atr-sensitivity-replay-v2',
     generated_at: new Date().toISOString(),
     dataset: {
       repository: 'mestoness/btc-eth-candles-history',
@@ -172,6 +185,7 @@ async function main() {
     total_sampled_windows: totalWindows,
     zone_width_atr_candidates: ZONE_WIDTH_ATR,
     retest_buffer_atr_candidates: RETEST_BUFFER_ATR,
+    baseline_price_ratio: { zone_span: 0.001, retest_buffer: 0.0005 },
     results
   };
   fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2) + '\n');
