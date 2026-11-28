@@ -8848,6 +8848,51 @@
               'Missing provider event time must be diagnosed and counted as an invalid stream message');
           });
 
+          await record('B1-D. In-flight messages from the previous symbol/timeframe are dropped', () => {
+            const tickerEvents = [];
+            const klineEvents = [];
+            BybitWsClient.hooks.onTicker = (event) => tickerEvents.push(event);
+            BybitWsClient.hooks.onKline = (event) => klineEvents.push(event);
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws = lastWs(); ws.triggerOpen(); ackAll(ws);
+
+            BybitWsClient.setSubscription('BTCUSDT', '60');
+            ackAll(ws);
+            const droppedAfterTfSwitch = S().staleMessagesDropped;
+            ws.triggerMessage({ topic: 'kline.240.BTCUSDT', type: 'snapshot', ts: Date.now(), data: [] });
+            assert(S().staleMessagesDropped === droppedAfterTfSwitch + 1 && klineEvents.length === 0,
+              'A delayed kline from the previous timeframe must be dropped after timeframe switch');
+
+            BybitWsClient.setSubscription('ETHUSDT', '60');
+            ackAll(ws);
+            const droppedAfterSymbolSwitch = S().staleMessagesDropped;
+            ws.triggerMessage({
+              topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 2, ts: Date.now(),
+              data: { symbol: 'BTCUSDT', lastPrice: '65000' }
+            });
+            ws.triggerMessage({ topic: 'kline.60.BTCUSDT', type: 'snapshot', ts: Date.now(), data: [] });
+            assert(S().staleMessagesDropped === droppedAfterSymbolSwitch + 2 && tickerEvents.length === 0 && klineEvents.length === 0,
+              'Delayed ticker and kline messages from the previous symbol must be dropped');
+
+            const step = BybitAdapter.intervalToMs('60');
+            const start = Math.floor(Date.now() / step) * step;
+            ws.triggerMessage({
+              topic: 'tickers.ETHUSDT', type: 'snapshot', cs: 1, ts: Date.now(),
+              data: { symbol: 'ETHUSDT', lastPrice: '3000' }
+            });
+            ws.triggerMessage({
+              topic: 'kline.60.ETHUSDT', type: 'snapshot', ts: Date.now(),
+              data: [{ start: String(start), end: String(start + step - 1), interval: '60',
+                open: '2990', high: '3010', low: '2980', close: '3000',
+                volume: '5', turnover: '15000', confirm: false }]
+            });
+            assert(tickerEvents.length === 1 && tickerEvents[0].symbol === 'ETHUSDT',
+              'The current symbol ticker must work after switching');
+            assert(klineEvents.length === 1 && klineEvents[0].valid && klineEvents[0].symbol === 'ETHUSDT' &&
+              klineEvents[0].interval === '60',
+              'The current symbol/timeframe kline must work after switching');
+          });
+
           await record('B1-D. Stale WS ticker and kline are ignored; REST price fallback is shown', (restoreList) => {
             const wsState = BybitWsClient.state;
             const saved = {
