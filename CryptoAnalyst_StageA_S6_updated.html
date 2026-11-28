@@ -8592,6 +8592,469 @@
       ]);
     }
 
+
+    function journalFiniteOrNull(value) {
+      return Number.isFinite(value) ? value : null;
+    }
+
+    function buildJournalObservation(context, capturedAtMs, note = '') {
+      if (!context || !context.dataset || !context.analysis || !Number.isSafeInteger(capturedAtMs) || capturedAtMs <= 0) {
+        throw new Error('Нет целостного контекста анализа для сохранения');
+      }
+      const dataset = context.dataset;
+      const analysis = context.analysis;
+      const b2Result = context.b2Result || null;
+      const snapshot = dataset.canonicalSnapshot;
+      const report = dataset.qualityReport;
+      const asOf = snapshot && snapshot.analysis_as_of_ms;
+      if (!snapshot || !report || !Number.isSafeInteger(asOf) || asOf <= 0 ||
+          typeof snapshot.snapshot_id !== 'string' || !snapshot.snapshot_id ||
+          snapshot.canonical_symbol !== dataset.symbol ||
+          report.snapshot_id !== snapshot.snapshot_id || report.symbol !== dataset.symbol ||
+          report.timeframe !== ({ '60': '1h', '240': '4h', D: '1d' })[dataset.interval]) {
+        throw new Error('B1 snapshot identity или analysis-as-of некорректны');
+      }
+      const qualityStatus = report.status;
+      if (!['VALID', 'INVALID', 'STALE'].includes(qualityStatus)) {
+        throw new Error('Сохранение запрещено: качество данных не оценено');
+      }
+      if (!['LONG', 'SHORT', 'WAIT'].includes(analysis.decision)) {
+        throw new Error('Неизвестное аналитическое решение');
+      }
+      if (qualityStatus !== 'VALID' && analysis.decision !== 'WAIT') {
+        throw new Error('При INVALID/STALE данных можно сохранить только WAIT');
+      }
+      if (analysis.qualityGate && analysis.qualityGate.blocked && analysis.decision !== 'WAIT') {
+        throw new Error('Quality gate заблокировал направленное решение');
+      }
+      if (!Number.isSafeInteger(dataset.fetchedAtLocalMs) || !Array.isArray(dataset.allCandles) ||
+          !Array.isArray(dataset.closedCandles) || !dataset.allCandles.length) {
+        throw new Error('Нет целостной истории свечей для снимка');
+      }
+      const priceInfo = dataset.prices || {};
+      const live = freshLiveTicker(dataset.symbol);
+      const lastPrice = live ? live.lastPrice : priceInfo.currentMarketPrice;
+      if (!Number.isFinite(lastPrice) || lastPrice <= 0) {
+        throw new Error('Нет достоверной текущей цены для снимка');
+      }
+
+      const eligibleCandles = dataset.allCandles.filter(candle =>
+        candle && Number.isSafeInteger(candle.ts) && candle.ts <= asOf
+      );
+      const candleWindowRaw = eligibleCandles.slice(-MarketJournal.LIMITS.candlesPerObservation);
+      if (!candleWindowRaw.length) throw new Error('Нет свечей на момент analysis-as-of');
+      const closedTimes = new Set(dataset.closedCandles.map(candle => candle.ts));
+      const candleWindow = candleWindowRaw.map(candle => {
+        if (!Number.isSafeInteger(candle.closeTs) || candle.closeTs <= candle.ts ||
+            ![candle.open, candle.high, candle.low, candle.close, candle.volume].every(Number.isFinite)) {
+          throw new Error('Свечной снимок содержит некорректные OHLCV или timestamp');
+        }
+        return {
+          ts: candle.ts,
+          closeTs: candle.closeTs,
+          open: candle.open,
+          high: candle.high,
+          low: candle.low,
+          close: candle.close,
+          volume: candle.volume,
+          turnover: journalFiniteOrNull(candle.turnover),
+          finality: closedTimes.has(candle.ts) ? 'CLOSED' : 'FORMING'
+        };
+      });
+
+      const projection = b2Result && b2Result.status === 'VALID' ? b2Result.projection : null;
+      const visibleItems = (items, key = 'visible_at_ms') => Array.isArray(items)
+        ? items.filter(item => item && Number.isSafeInteger(item[key]) && item[key] <= asOf)
+          .map(item => JSON.parse(JSON.stringify(item)))
+        : [];
+      const structure = projection ? {
+        status: 'VALID',
+        engineVersion: projection.engine_version,
+        policyVersion: projection.policy_version,
+        timeframe: projection.timeframe,
+        analysisAsOfMs: projection.analysis_as_of_ms,
+        swingMarkers: visibleItems(projection.swing_markers),
+        supersededPivots: visibleItems(projection.superseded_pivots),
+        ambiguousPivots: visibleItems(projection.ambiguous_pivots),
+        structureEvents: visibleItems(projection.structure_events),
+        zones: visibleItems(projection.zones),
+        candidateLevels: visibleItems(projection.candidate_levels),
+        retestLifecycles: visibleItems(projection.retest_lifecycles),
+        mtfContext: null,
+        mtfStatus: 'DISABLED_NOT_CALIBRATED'
+      } : {
+        status: b2Result && b2Result.status ? b2Result.status : 'BLOCKED',
+        stage: b2Result && b2Result.stage ? b2Result.stage : 'B2_UNAVAILABLE',
+        reasons: b2Result && Array.isArray(b2Result.reasons) ? b2Result.reasons.slice(0, 10) : ['B2_NOT_AVAILABLE'],
+        timeframe: ({ '60': '1h', '240': '4h', D: '1d' })[dataset.interval],
+        analysisAsOfMs: asOf,
+        swingMarkers: [], supersededPivots: [], ambiguousPivots: [],
+        structureEvents: [], zones: [], candidateLevels: [], retestLifecycles: [],
+        mtfContext: null,
+        mtfStatus: 'DISABLED_NOT_CALIBRATED'
+      };
+      const metrics = analysis.metrics || {};
+      const qualityReasons = Array.isArray(report.reasons)
+        ? report.reasons.map(reason => ({
+            code: reason && reason.code ? String(reason.code) : 'UNKNOWN',
+            severity: reason && reason.severity ? String(reason.severity) : 'INFO'
+          })).slice(0, 30)
+        : [];
+      const decisionReasons = Array.isArray(context.decisionReasons)
+        ? context.decisionReasons.slice(0, 30).map(String)
+        : (Array.isArray(analysis.reasons) ? analysis.reasons.slice(0, 30).map(String) : []);
+      if (priceInfo.priceWarning) decisionReasons.push('Предупреждение по цене: ' + String(priceInfo.priceWarning));
+
+      return freezeJournalValue({
+        id: MarketJournal.createId(),
+        recordType: 'observation',
+        schemaVersion: MarketJournal.SCHEMA_VERSION,
+        observationType: 'PAPER_OBSERVATION',
+        appVersion: APP_VERSION,
+        capturedAt: { epochMs: capturedAtMs, iso: new Date(capturedAtMs).toISOString() },
+        market: {
+          symbol: dataset.symbol,
+          interval: dataset.interval,
+          source: String(dataset.source || 'unknown'),
+          marketType: String(dataset.marketType || 'unknown')
+        },
+        snapshotId: snapshot.snapshot_id,
+        priceContext: {
+          lastPrice,
+          source: live ? 'Bybit WS ticker' : String(priceInfo.currentPriceSource || 'REST snapshot'),
+          providerEventTimeMs: live && Number.isSafeInteger(live.providerEventTimeMs)
+            ? live.providerEventTimeMs
+            : (Number.isSafeInteger(dataset.providerServerTimeMs) ? dataset.providerServerTimeMs : null),
+          localReceivedAtMs: live && Number.isSafeInteger(live.receivedAtMs) ? live.receivedAtMs : dataset.fetchedAtLocalMs,
+          freshnessStatus: live ? 'WS_FRESH' : 'REST_SNAPSHOT',
+          priceWarning: priceInfo.priceWarning ? String(priceInfo.priceWarning) : null
+        },
+        dataQuality: {
+          status: qualityStatus,
+          reasonCodes: qualityReasons,
+          closedCandleCount: dataset.closedCandles.length,
+          totalCandleCount: dataset.allCandles.length,
+          hasForming: Boolean(dataset.quality && dataset.quality.hasForming),
+          providerTimeSpreadMs: null,
+          mtfStatus: 'DISABLED_NOT_CALIBRATED'
+        },
+        decision: {
+          value: analysis.decision,
+          reasons: decisionReasons,
+          qualityBlocked: Boolean(analysis.qualityGate && analysis.qualityGate.blocked),
+          qualityStatus
+        },
+        analysisSnapshot: {
+          analysisAsOfMs: asOf,
+          basic: {
+            lastEma20: journalFiniteOrNull(metrics.lastEma20),
+            lastEma50: journalFiniteOrNull(metrics.lastEma50),
+            lastAtr: journalFiniteOrNull(metrics.lastAtr),
+            atrPct: journalFiniteOrNull(metrics.atrPct),
+            volRatio: journalFiniteOrNull(metrics.volRatio),
+            distEma20Pct: journalFiniteOrNull(metrics.distEma20Pct),
+            support: journalFiniteOrNull(analysis.levels && analysis.levels.support),
+            resistance: journalFiniteOrNull(analysis.levels && analysis.levels.resistance),
+            qualityGate: analysis.qualityGate ? JSON.parse(JSON.stringify(analysis.qualityGate)) : null
+          },
+          structure
+        },
+        engineVersions: {
+          app: APP_VERSION,
+          b1Contract: snapshot.contract_version || null,
+          b1Validator: report.validator_version || null,
+          b1QualityPolicy: report.policy_version || null,
+          b2a: b2Result && b2Result.b2a && b2Result.b2a.engine_version || null,
+          b2b: b2Result && b2Result.b2b && b2Result.b2b.engine_version || null,
+          b2c: b2Result && b2Result.b2c && b2Result.b2c.engine_version || null,
+          b2d: b2Result && b2Result.b2d && b2Result.b2d.engine_version || null,
+          b2e: b2Result && b2Result.b2e && b2Result.b2e.engine_version || null,
+          b2g: projection && projection.engine_version || null,
+          b2f: null
+        },
+        candleWindow,
+        note: typeof note === 'string' ? note.slice(0, 500) : ''
+      });
+    }
+
+    function syncJournalSaveButton() {
+      const button = document.getElementById('saveObservationBtn');
+      if (button) button.disabled = !state.latestJournalContext || Boolean(state.journalError);
+      const quick = document.getElementById('journalQuickStatus');
+      if (quick) {
+        quick.textContent = state.journalError
+          ? 'Журнал недоступен: ' + state.journalError
+          : (state.latestJournalContext ? 'Снимок анализа готов' : 'Ожидание целостного снимка');
+      }
+    }
+
+    function setJournalStatus(message, kind = '') {
+      const status = document.getElementById('journalStatus');
+      if (!status) return;
+      status.textContent = message;
+      status.className = 'meta journal-status' + (kind ? ' ' + kind : '');
+    }
+
+    function appendJournalText(parent, tag, text, className = '') {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      node.textContent = text == null ? '' : String(text);
+      parent.appendChild(node);
+      return node;
+    }
+
+    function renderJournalPanel() {
+      const count = document.getElementById('journalCount');
+      const list = document.getElementById('journalList');
+      const detail = document.getElementById('journalDetail');
+      if (!count || !list || !detail) return;
+      const envelope = state.journalEnvelope;
+      const observations = envelope && Array.isArray(envelope.observations) ? envelope.observations : [];
+      count.textContent = observations.length + ' наблюдений';
+      list.replaceChildren();
+      if (state.journalError) {
+        setJournalStatus('Локальный журнал не прочитан: ' + state.journalError, 'status-err');
+      } else if (state.journalNotice) {
+        setJournalStatus(state.journalNotice, 'status-warn');
+      } else {
+        setJournalStatus('Хранится только в этом браузере. Регулярно экспортируй JSON-резервную копию.', 'status-ok');
+      }
+      if (!observations.length) {
+        appendJournalText(list, 'p', state.journalError ? 'Список недоступен из-за ошибки хранения.' : 'Пока нет сохранённых наблюдений.', 'meta');
+      } else {
+        observations.slice().sort((a, b) => b.capturedAt.epochMs - a.capturedAt.epochMs).forEach(record => {
+          const item = document.createElement('div');
+          item.className = 'journal-entry';
+          const head = document.createElement('div');
+          head.className = 'journal-entry-head';
+          appendJournalText(head, 'span', record.market.symbol + ' · ' + tfLabel(record.market.interval), 'journal-entry-title');
+          appendJournalText(head, 'span', record.decision.value, 'decision-pill decision-' + record.decision.value);
+          item.appendChild(head);
+          appendJournalText(item, 'div', new Date(record.capturedAt.epochMs).toLocaleString('ru-RU') +
+            ' · ' + fmtPrice(record.priceContext.lastPrice) + ' · B1 ' + record.dataQuality.status, 'journal-entry-meta');
+          const actions = document.createElement('div');
+          actions.className = 'journal-entry-actions';
+          const open = document.createElement('button');
+          open.type = 'button'; open.className = 'btn'; open.textContent = 'Открыть';
+          open.addEventListener('click', () => {
+            state.journalSelectedObservationId = record.id;
+            renderJournalDetail();
+          });
+          actions.appendChild(open);
+          item.appendChild(actions);
+          list.appendChild(item);
+        });
+      }
+      if (state.journalSelectedObservationId && observations.some(record => record.id === state.journalSelectedObservationId)) {
+        renderJournalDetail();
+      } else {
+        detail.hidden = true;
+      }
+      const exportButton = document.getElementById('exportJournalBtn');
+      if (exportButton) exportButton.disabled = Boolean(state.journalError);
+      syncJournalSaveButton();
+    }
+
+    function renderJournalDetail() {
+      const detail = document.getElementById('journalDetail');
+      const content = document.getElementById('journalDetailContent');
+      if (!detail || !content || !state.journalEnvelope) return;
+      const record = state.journalEnvelope.observations.find(item => item.id === state.journalSelectedObservationId);
+      if (!record) { detail.hidden = true; return; }
+      content.replaceChildren();
+      appendJournalText(content, 'h4', record.market.symbol + ' · ' + tfLabel(record.market.interval) + ' · ' + record.decision.value);
+      appendJournalText(content, 'p', 'Снимок: ' + record.capturedAt.iso + ' · цена ' + fmtPrice(record.priceContext.lastPrice) + ' (' + record.priceContext.source + ')');
+      appendJournalText(content, 'p', 'Качество данных: ' + record.dataQuality.status + ' · закрытых свечей ' +
+        record.dataQuality.closedCandleCount + ' · в снимке ' + record.candleWindow.length);
+      appendJournalText(content, 'p', 'B2: ' + record.analysisSnapshot.structure.status + ' · событий ' +
+        record.analysisSnapshot.structure.structureEvents.length + ' · зон ' + record.analysisSnapshot.structure.zones.length +
+        ' · ретестов ' + record.analysisSnapshot.structure.retestLifecycles.length);
+      appendJournalText(content, 'p', 'Причины решения: ' + (record.decision.reasons.join(' · ') || 'Не указаны'));
+      if (record.note) appendJournalText(content, 'p', 'Комментарий: ' + record.note);
+      appendJournalText(content, 'p', 'Снимок свечей неизменяемый. Формирующаяся свеча помечена отдельно; последующие события записываются ниже.');
+      const followups = state.journalEnvelope.followups.filter(item => item.observationId === record.id);
+      appendJournalText(content, 'h4', 'Последующие наблюдения (' + followups.length + ')');
+      if (!followups.length) appendJournalText(content, 'p', 'Пока нет последующих записей.');
+      followups.forEach(item => appendJournalText(content, 'p',
+        new Date(item.recordedAt.epochMs).toLocaleString('ru-RU') + ' · ' + item.status +
+        (item.observedPrice ? ' · ' + fmtPrice(item.observedPrice) : '') + (item.note ? ' · ' + item.note : '')));
+      const trades = state.journalEnvelope.actualTrades.filter(item => item.observationId === record.id);
+      appendJournalText(content, 'h4', 'Фактические сделки (' + trades.length + ')');
+      if (!trades.length) appendJournalText(content, 'p', 'Фактические сделки не добавлены.');
+      trades.forEach(item => {
+        const pnl = item.realizedPnlQuote === null ? 'net PnL не рассчитан' : 'net PnL ' + item.realizedPnlQuote.toFixed(4);
+        appendJournalText(content, 'p', item.side + ' · ' + item.status + ' · вход ' + fmtPrice(item.entry.price) +
+          (item.exit ? ' · выход ' + fmtPrice(item.exit.price) : '') + ' · qty ' + item.quantity + ' · ' + pnl);
+      });
+      detail.hidden = false;
+    }
+
+    function refreshJournalEnvelope() {
+      state.journalEnvelope = MarketJournal.load();
+      state.journalError = null;
+      renderJournalPanel();
+    }
+
+    function saveCurrentObservation() {
+      try {
+        if (!state.latestJournalContext) throw new Error('Нет готового снимка анализа');
+        const note = document.getElementById('journalObservationNote').value || '';
+        const observation = buildJournalObservation(state.latestJournalContext, Date.now(), note);
+        state.journalEnvelope = MarketJournal.addObservation(observation);
+        state.journalError = null;
+        state.journalNotice = 'Наблюдение сохранено локально. Снимок не будет изменён последующими данными.';
+        document.getElementById('journalObservationNote').value = '';
+        state.journalSelectedObservationId = observation.id;
+        renderJournalPanel();
+      } catch (error) {
+        state.journalNotice = 'Не удалось сохранить наблюдение: ' + (error && error.message ? error.message : String(error));
+        renderJournalPanel();
+      }
+    }
+
+    function addJournalFollowup() {
+      try {
+        if (!state.journalSelectedObservationId) throw new Error('Сначала выбери наблюдение');
+        const rawPrice = document.getElementById('journalObservedPrice').value.trim();
+        const observedPrice = rawPrice === '' ? null : Number(rawPrice);
+        if (observedPrice !== null && (!Number.isFinite(observedPrice) || observedPrice <= 0)) throw new Error('Цена наблюдения некорректна');
+        const now = Date.now();
+        state.journalEnvelope = MarketJournal.addFollowup({
+          id: MarketJournal.createId(),
+          recordType: 'followup',
+          schemaVersion: MarketJournal.SCHEMA_VERSION,
+          observationId: state.journalSelectedObservationId,
+          recordedAt: { epochMs: now, iso: new Date(now).toISOString() },
+          status: document.getElementById('journalFollowupStatus').value,
+          observedPrice,
+          note: document.getElementById('journalFollowupNote').value.slice(0, 2000)
+        });
+        state.journalNotice = 'Последующее наблюдение добавлено отдельной записью.';
+        document.getElementById('journalObservedPrice').value = '';
+        document.getElementById('journalFollowupNote').value = '';
+        renderJournalPanel();
+      } catch (error) {
+        state.journalNotice = 'Не удалось добавить наблюдение: ' + (error && error.message ? error.message : String(error));
+        renderJournalPanel();
+      }
+    }
+
+    function addJournalActualTrade() {
+      try {
+        if (!state.journalSelectedObservationId) throw new Error('Сначала выбери наблюдение');
+        const side = document.getElementById('journalTradeSide').value;
+        const status = document.getElementById('journalTradeStatus').value;
+        const entryPrice = Number(document.getElementById('journalTradeEntryPrice').value);
+        const quantity = Number(document.getElementById('journalTradeQuantity').value);
+        const exitRaw = document.getElementById('journalTradeExitPrice').value.trim();
+        const feesRaw = document.getElementById('journalTradeFees').value.trim();
+        const fundingRaw = document.getElementById('journalTradeFunding').value.trim();
+        const exitPrice = exitRaw === '' ? null : Number(exitRaw);
+        const feesQuote = feesRaw === '' ? null : Number(feesRaw);
+        const fundingQuote = fundingRaw === '' ? null : Number(fundingRaw);
+        if (!Number.isFinite(entryPrice) || entryPrice <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
+          throw new Error('Укажи корректные цену входа и количество');
+        }
+        if (status === 'closed' && (!Number.isFinite(exitPrice) || exitPrice <= 0)) {
+          throw new Error('Для закрытой сделки нужна цена выхода');
+        }
+        if (feesQuote !== null && (!Number.isFinite(feesQuote) || feesQuote < 0)) throw new Error('Комиссии должны быть неотрицательными');
+        if (fundingQuote !== null && !Number.isFinite(fundingQuote)) throw new Error('Funding cashflow некорректен');
+        const now = Date.now();
+        const grossPnlQuote = status === 'closed'
+          ? (side === 'LONG' ? exitPrice - entryPrice : entryPrice - exitPrice) * quantity
+          : null;
+        const realizedPnlQuote = status === 'closed' && feesQuote !== null && fundingQuote !== null
+          ? grossPnlQuote - feesQuote + fundingQuote
+          : null;
+        state.journalEnvelope = MarketJournal.addActualTrade({
+          id: MarketJournal.createId(),
+          recordType: 'actual_trade',
+          schemaVersion: MarketJournal.SCHEMA_VERSION,
+          observationId: state.journalSelectedObservationId,
+          recordedAtMs: now,
+          side,
+          status,
+          entry: { price: entryPrice, atMs: now },
+          exit: status === 'closed' ? { price: exitPrice, atMs: now } : null,
+          quantity,
+          feesQuote,
+          fundingQuote,
+          grossPnlQuote,
+          realizedPnlQuote,
+          note: ''
+        });
+        state.journalNotice = realizedPnlQuote === null
+          ? 'Фактическая сделка сохранена отдельно. Net PnL не рассчитан без комиссии и funding.'
+          : 'Фактическая сделка сохранена отдельно; net PnL рассчитан с указанными комиссиями и funding.';
+        ['journalTradeEntryPrice', 'journalTradeQuantity', 'journalTradeExitPrice', 'journalTradeFees', 'journalTradeFunding']
+          .forEach(id => { document.getElementById(id).value = ''; });
+        renderJournalPanel();
+      } catch (error) {
+        state.journalNotice = 'Не удалось сохранить сделку: ' + (error && error.message ? error.message : String(error));
+        renderJournalPanel();
+      }
+    }
+
+    function exportMarketJournal() {
+      try {
+        const json = MarketJournal.exportJson();
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'crypto-analyst-journal-' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        state.journalNotice = 'JSON-резервная копия подготовлена.';
+        renderJournalPanel();
+      } catch (error) {
+        state.journalNotice = 'Экспорт не выполнен: ' + (error && error.message ? error.message : String(error));
+        renderJournalPanel();
+      }
+    }
+
+    async function importMarketJournal(file) {
+      try {
+        if (!file || file.size > 10 * 1024 * 1024) throw new Error('Файл отсутствует или превышает 10 МБ');
+        const json = await file.text();
+        const replaceCorrupt = Boolean(state.journalError &&
+          window.confirm('Локальный журнал повреждён. Заменить его содержимое проверенной резервной копией?'));
+        state.journalEnvelope = MarketJournal.importJson(json, { replaceCorrupt });
+        state.journalError = null;
+        state.journalNotice = 'Импорт завершён. Записи объединены по ID; конфликтующие данные не перезаписывались.';
+        state.journalSelectedObservationId = null;
+        renderJournalPanel();
+      } catch (error) {
+        state.journalNotice = 'Импорт отклонён без изменения журнала: ' + (error && error.message ? error.message : String(error));
+        renderJournalPanel();
+      }
+    }
+
+    function initMarketJournal() {
+      try {
+        state.journalEnvelope = MarketJournal.load();
+        state.journalError = null;
+      } catch (error) {
+        state.journalEnvelope = null;
+        state.journalError = error && error.message ? error.message : String(error);
+      }
+      renderJournalPanel();
+      syncJournalSaveButton();
+      document.getElementById('saveObservationBtn').addEventListener('click', saveCurrentObservation);
+      document.getElementById('exportJournalBtn').addEventListener('click', exportMarketJournal);
+      document.getElementById('importJournalBtn').addEventListener('click', () => document.getElementById('journalImportFile').click());
+      document.getElementById('journalImportFile').addEventListener('change', event => {
+        const file = event.target.files && event.target.files[0];
+        if (file) importMarketJournal(file);
+        event.target.value = '';
+      });
+      document.getElementById('journalAddFollowupBtn').addEventListener('click', addJournalFollowup);
+      document.getElementById('journalAddTradeBtn').addEventListener('click', addJournalActualTrade);
+    }
+
     function renderSuccess(dataset, analysis) {
       const tfText = tfLabel(dataset.interval);
       document.getElementById('chartTitle').textContent = `График — ${dataset.symbol} (${tfText})`;
