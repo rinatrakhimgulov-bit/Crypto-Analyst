@@ -8955,6 +8955,21 @@
       syncJournalSaveButton();
     }
 
+    function journalFollowupStatusLabel(status) {
+      return ({
+        still_waiting: 'Ожидаем',
+        triggered: 'Сценарий сработал',
+        invalidated: 'Сценарий отменён',
+        expired: 'Сценарий истёк',
+        missed: 'Пропущенная возможность',
+        manual_note: 'Заметка'
+      })[status] || status;
+    }
+
+    function journalTradeStatusLabel(status) {
+      return ({ open: 'Открыта', closed: 'Закрыта', void: 'Аннулирована' })[status] || status;
+    }
+
     function renderJournalDetail() {
       const detail = document.getElementById('journalDetail');
       const content = document.getElementById('journalDetailContent');
@@ -8978,14 +8993,14 @@
       appendJournalText(content, 'h4', 'Последующие наблюдения (' + followups.length + ')');
       if (!followups.length) appendJournalText(content, 'p', 'Пока нет последующих записей.');
       followups.forEach(item => appendJournalText(content, 'p',
-        new Date(item.recordedAt.epochMs).toLocaleString('ru-RU') + ' · ' + item.status +
+        new Date(item.recordedAt.epochMs).toLocaleString('ru-RU') + ' · ' + journalFollowupStatusLabel(item.status) +
         (item.observedPrice ? ' · ' + fmtPrice(item.observedPrice) : '') + (item.note ? ' · ' + item.note : '')));
       const trades = state.journalEnvelope.actualTrades.filter(item => item.observationId === record.id);
       appendJournalText(content, 'h4', 'Фактические сделки (' + trades.length + ')');
       if (!trades.length) appendJournalText(content, 'p', 'Фактические сделки не добавлены.');
       trades.forEach(item => {
         const pnl = item.realizedPnlQuote === null ? 'net PnL не рассчитан' : 'net PnL ' + item.realizedPnlQuote.toFixed(4);
-        appendJournalText(content, 'p', item.side + ' · ' + item.status + ' · вход ' + fmtPrice(item.entry.price) +
+        appendJournalText(content, 'p', item.side + ' · ' + journalTradeStatusLabel(item.status) + ' · вход ' + fmtPrice(item.entry.price) +
           (item.exit ? ' · выход ' + fmtPrice(item.exit.price) : '') + ' · qty ' + item.quantity + ' ' + record.market.symbol.replace('USDT', '') + ' · ' + pnl + ' USDT');
       });
       detail.hidden = false;
