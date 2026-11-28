@@ -3,6 +3,7 @@ name: B7 explainable setup engine tests
 on:
   pull_request:
     branches:
+      - feature/b8-statistical-validation-2026-11-28
       - feature/b6-analytics-audit-2026-11-28
   push:
     branches:

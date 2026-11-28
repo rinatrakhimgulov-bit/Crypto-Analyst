@@ -1006,3 +1006,27 @@ Current limitations: historical candidate census/deduplication and chronological
 - Detailed audit: `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`.
 
 B8-C exploratory pipeline passed; B8-C statistical validation is still incomplete. B8-D prospective journal outcomes and B8-E independent audit remain open.
+
+
+## B9 Automatic Market Journal Capture — 2026-11-28
+
+- Opened isolated candidate branch `feature/b9-automatic-market-journal-2026-11-28` on top of B8. No merge to main.
+- Added deterministic observation capture keys and duplicate suppression shared by automatic and manual capture.
+- Added automatic capture after a current, non-superseded REST analysis cycle completes and renders successfully. Stale-cache/error/aborted paths are excluded.
+- Captures LONG/SHORT/WAIT and retains B1 quality state plus B2/B7 result, including zero-candidate/no-setup outcomes. Invalid quality is retained as WAIT with reasons.
+- Preserved local-only storage, manual trade/follow-up workflows, and JSON envelope version. Background operation while the page is closed remains explicitly deferred.
+- Extended the Playwright journal contract to test AUTO capture, repeated-snapshot idempotency, WAIT/no-setup, and invalid-quality capture. CI status is pending at this documentation checkpoint; do not claim tests passed until exact-head runs are read.
+- iPhone Safari acceptance remains required before merge.
+- Specification: `docs/specs/B9_AUTOMATIC_MARKET_JOURNAL_SPEC_2026-11-28.md`.
+
+
+### B9 exact-head verification checkpoint — 2026-11-28
+
+Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
+
+- B5 Market Journal browser contract run `46122848453`: SUCCESS. AUTO capture, duplicate suppression, WAIT capture, invalid-quality WAIT capture, existing manual/follow-up/trade workflows, JSON export/import, storage corruption recovery and zero page errors passed.
+- B2 application integration run `46122848390`: SUCCESS. B2-A..G regression and browser/mobile integration passed; B7 panel was VALID with zero candidates in the deterministic fixture, which is a valid no-setup result.
+- B7 setup engine run `46122848466`: SUCCESS. B1/B2/B7 source parity, deterministic B7 tests, B2 regression and pinned historical replay passed.
+- B1 browser/live-data run `46122848461`: SUCCESS. Browser/self-test and data-quality checks passed with zero page errors. Live Bybit probe was explicitly skipped because GitHub Actions received HTTP 403 from both public REST hosts; this is not a live-provider success claim.
+- B8 statistical workflow run `46122848380`: still in progress at this checkpoint; syntax and deterministic evaluator tests passed, pinned replay generation remained active.
+- No merge performed. Owner iPhone Safari acceptance remains mandatory.

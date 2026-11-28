@@ -102,9 +102,28 @@ async function main() {
     if (!analysisRestored) throw new Error('Analysis tab did not restore the analysis panel');
     await page.locator('#journalTabBtn').click();
 
+    const autoCaptureCheck = await page.evaluate(() => {
+      const journal = window.__CryptoAnalystTestHooks.journal;
+      const first = journal.autoCapture();
+      const duplicate = journal.autoCapture();
+      const cached = state.snapshotsByKey.get('BTCUSDT:240');
+      cached.dataset.allCandles[159].close += 0.25;
+      const changedSnapshot = journal.autoCapture();
+      const records = journal.state.envelope.observations;
+      return { first, duplicate, changedSnapshot, count: records.length,
+        mode: records[0] && records[0].captureMode,
+        changedMode: records[1] && records[1].captureMode,
+        hasCaptureKey: Boolean(records[0] && records[0].captureKey),
+        changedCaptureKey: Boolean(records[1] && records[1].captureKey && records[1].captureKey !== records[0].captureKey) };
+    });
+    if (!autoCaptureCheck.first || !autoCaptureCheck.duplicate || !autoCaptureCheck.changedSnapshot ||
+        autoCaptureCheck.count !== 2 || autoCaptureCheck.mode !== 'AUTO' || autoCaptureCheck.changedMode !== 'AUTO' ||
+        !autoCaptureCheck.hasCaptureKey || !autoCaptureCheck.changedCaptureKey) {
+      throw new Error('B9 automatic capture/idempotency failed: ' + JSON.stringify(autoCaptureCheck));
+    }
     await page.locator('#journalSaveBtn').click();
     const afterButtonCapture = await page.evaluate(() => window.__CryptoAnalystTestHooks.journal.state.envelope.observations.length);
-    if (afterButtonCapture !== 1) throw new Error('Save observation button did not persist an observation');
+    if (afterButtonCapture !== 2) throw new Error('Save observation button did not persist an observation');
 
     await page.locator('#journalFollowupStatus').selectOption('missed');
     await page.locator('#journalFollowupPrice').fill('60300');
@@ -156,16 +175,19 @@ async function main() {
 
       cached.analysis.decision = 'WAIT';
       cached.analysis.reasons = ['Нет подтверждённого сценария'];
-      journal.capture();
+      const waitAutoFirst = journal.autoCapture();
+      const waitAutoDuplicate = journal.autoCapture();
       cached.dataset.qualityReport = {
         status: 'INVALID', validator_version: '1.1.0',
         reasons: [{ code: 'VOLUME_NEGATIVE', severity: 'error', detail: 'fixture invalid' }]
       };
       cached.analysis.decision = 'LONG';
       cached.analysis.qualityGate = { blocked: true, status: 'INVALID', reasons: ['VOLUME_NEGATIVE'] };
-      journal.capture();
+      const invalidAuto = journal.autoCapture();
       const decisions = journal.state.envelope.observations.map(r => r.decision);
-      const invalidStatus = journal.state.envelope.observations[2].dataQuality.status;
+      const invalidRecord = journal.state.envelope.observations.find(record =>
+        record.decision === 'WAIT' && record.dataQuality.status === 'INVALID');
+      const invalidStatus = invalidRecord ? invalidRecord.dataQuality.status : null;
       cached.dataset.qualityReport.status = 'STALE';
       const staleBlocked = journal.canCapture() === false;
       cached.dataset.qualityReport.status = 'VALID';
@@ -220,6 +242,7 @@ async function main() {
 
       return {
         frozen, immutable, hasFuture, forming, decisions, invalidStatus, staleBlocked, followupTradeChecks,
+        waitAutoFirst, waitAutoDuplicate, invalidAuto, autoModes: journal.state.envelope.observations.map(r => r.captureMode),
         collisionRejected, collisionPreserved, invalidRejected, invalidPreserved,
         missingFieldsRejected, missingFieldsPreserved, invalidFollowupRejected, invalidTradeRejected, invalidLinkedRecordsPreserved,
         storageFailureRejected, storagePreserved, emptyBeforeImport, importedCount, duplicateIdempotent,
@@ -229,12 +252,14 @@ async function main() {
     });
 
     const expected = checks.frozen && checks.immutable && !checks.hasFuture && checks.forming === 'forming' &&
-      checks.decisions.join('|') === 'LONG|WAIT|WAIT' && checks.invalidStatus === 'INVALID' &&
+      checks.decisions.join('|') === 'LONG|LONG|WAIT|WAIT' && checks.invalidStatus === 'INVALID' &&
+      checks.waitAutoFirst && checks.waitAutoDuplicate && checks.invalidAuto &&
+      checks.autoModes.every(mode => mode === 'AUTO') &&
       checks.staleBlocked && checks.followupTradeChecks && checks.collisionRejected && checks.collisionPreserved &&
       checks.invalidRejected && checks.invalidPreserved && checks.missingFieldsRejected &&
       checks.missingFieldsPreserved && checks.invalidFollowupRejected &&
       checks.invalidTradeRejected && checks.invalidLinkedRecordsPreserved && checks.storageFailureRejected &&
-      checks.storagePreserved && checks.emptyBeforeImport && checks.importedCount === 3 && checks.duplicateIdempotent &&
+      checks.storagePreserved && checks.emptyBeforeImport && checks.importedCount === 4 && checks.duplicateIdempotent &&
       checks.followupsAfterImport === 1 && checks.tradesAfterImport === 1;
     if (!expected) throw new Error('B5 journal contract assertions failed: ' + JSON.stringify(checks));
 
@@ -244,7 +269,7 @@ async function main() {
     const downloadPath = await download.path();
     const exported = JSON.parse(fs.readFileSync(downloadPath, 'utf8'));
     if (download.suggestedFilename().indexOf('crypto-analyst-journal-') !== 0 ||
-        exported.format !== 'crypto-analyst-journal' || exported.observations.length !== 3 ||
+        exported.format !== 'crypto-analyst-journal' || exported.observations.length !== 4 ||
         exported.followups.length !== 1 || exported.actualTrades.length !== 1) {
       throw new Error('B5 JSON export failed');
     }
@@ -263,7 +288,7 @@ async function main() {
     });
     await page.waitForFunction(() => {
       const e = window.__CryptoAnalystTestHooks.journal.state.envelope;
-      return e.observations.length === 3 && e.followups.length === 1 && e.actualTrades.length === 1;
+      return e.observations.length === 4 && e.followups.length === 1 && e.actualTrades.length === 1;
     }, { timeout: 5000 });
 
     const corruption = await page.evaluate(() => {
@@ -276,14 +301,14 @@ async function main() {
       const corruptBytesPreserved = localStorage.getItem(key) === '{broken-json';
       localStorage.setItem(key, raw);
       journal.initialize();
-      const recovered = journal.state.readOnly === false && journal.state.envelope.observations.length === 3;
+      const recovered = journal.state.readOnly === false && journal.state.envelope.observations.length === 4;
       return { readOnlyOnCorrupt, corruptBytesPreserved, recovered };
     });
     if (!corruption.readOnlyOnCorrupt || !corruption.corruptBytesPreserved || !corruption.recovered) {
       throw new Error('B5 corrupt-storage recovery assertions failed: ' + JSON.stringify(corruption));
     }
     if (pageErrors.length) throw new Error('Browser page errors: ' + pageErrors.join(' | '));
-    console.log(JSON.stringify({ b5: checks, exportFilename: download.suggestedFilename(), corruption, pageErrors }, null, 2));
+    console.log(JSON.stringify({ b5: checks, b9: autoCaptureCheck, exportFilename: download.suggestedFilename(), corruption, pageErrors }, null, 2));
   } finally {
     await browser.close();
     await new Promise(resolve => server.close(resolve));
