@@ -1383,3 +1383,5 @@ Latest B4 code commit `67dfd2f36d46c58e66b5fcb2f233cca61626da69` adds same-socke
 Latest B4 source commit `d916e9a05b38ccb12758225e28f0a03fb82da3fe` scopes live ticker/kline events and caches to both `connGen` and `recoveryGen`. Normal automatic reconnect advances `recoveryGen` while retaining `connGen`, so the earlier cache-only connGen check was insufficient. The new regression explicitly reproduces that reconnect path and verifies prior-cycle ticker/kline caches are rejected. Recheck B1/B2 exact-head CI after the latest commit.
 
 Source commit `40a36c90233c5bcd5186f1d0322620f99bd78939` corrects the recovery-generation test fixture by explicitly priming ticker readiness before the initial freshness assertion. Recheck B1/B2 exact-head CI after this source update.
+
+Source commit `a822133fc1b58356d39c2814a462314aa70fcb17` initializes the recovery regression's ticker entry through `_getTickerEntry` before priming snapshot readiness. Check exact-head CI after this update.
