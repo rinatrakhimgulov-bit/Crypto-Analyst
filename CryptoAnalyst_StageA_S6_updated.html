@@ -133,6 +133,32 @@
     }
 
     .btn:hover { border-color: var(--accent); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; border-color: var(--border); }
+    .journal-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .journal-note-input, .journal-form-field input, .journal-form-field select, .journal-form-field textarea {
+      width: 100%; min-width: 0; background: var(--panel-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+      font: inherit; font-size: 13px;
+    }
+    .journal-note-input { flex: 1 1 170px; }
+    .journal-list { display: grid; gap: 8px; margin-top: 10px; max-height: 360px; overflow: auto; }
+    .journal-entry { background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px; padding: 10px; }
+    .journal-entry-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .journal-entry-title { font-size: 13px; font-weight: 700; }
+    .journal-entry-meta { color: var(--muted); font-size: 11px; margin-top: 4px; }
+    .journal-entry-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .journal-detail { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
+    .journal-detail[hidden] { display: none; }
+    .journal-detail h4 { margin: 10px 0 6px; font-size: 13px; }
+    .journal-detail p { margin: 4px 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+    .journal-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+    .journal-form-field { min-width: 0; }
+    .journal-form-field label { display: block; color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+    .journal-form-field.full { grid-column: 1 / -1; }
+    .journal-trade-details { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .journal-trade-details summary { cursor: pointer; color: var(--accent); font-size: 12px; font-weight: 600; }
+    .journal-status { min-height: 18px; margin-top: 8px; }
+    @media (max-width: 520px) { .journal-form-grid { grid-template-columns: minmax(0, 1fr); } }
 
     .price-box {
       display: flex;
@@ -603,6 +629,11 @@
             <li>Загрузка данных с Bybit...</li>
           </ul>
           <div class="kv-list" id="scenarioMeta"></div>
+          <div class="journal-actions">
+            <input id="journalObservationNote" class="journal-note-input" type="text" maxlength="500" placeholder="Комментарий к наблюдению (необязательно)" />
+            <button class="btn" id="saveObservationBtn" type="button" disabled>Сохранить наблюдение</button>
+            <span class="meta" id="journalQuickStatus">Ожидание данных</span>
+          </div>
           <div class="note-box">
             <strong>Важно:</strong> это базовый эвристический разбор Этапа 1. Решение строится только по закрытым свечам при наличии EMA(20) и EMA(50); экстремумы SH/SL не являются полноценными зонами поддержки/сопротивления.
           </div>
@@ -628,6 +659,85 @@
           </div>
           <div class="note-box">
             Исследовательский слой: разметка HH/HL/LH/LL, BOS/CHoCH, зон и ретестов. Не формирует торговое решение. Параметры зон и ретеста пока экспериментальные. MTF-контекст отключён до калибровки времени провайдера.
+          </div>
+        </section>
+
+        <!-- B5 local-first market journal -->
+        <section class="card" id="journalCard">
+          <div class="card-header">
+            <span class="card-title">Журнал наблюдений</span>
+            <span class="meta" id="journalCount">0 наблюдений</span>
+          </div>
+          <div class="controls">
+            <button class="btn" id="exportJournalBtn" type="button">Экспорт JSON</button>
+            <button class="btn" id="importJournalBtn" type="button">Импорт JSON</button>
+            <input id="journalImportFile" type="file" accept=".json,application/json" hidden />
+          </div>
+          <div class="meta journal-status" id="journalStatus">Локальный журнал загружается...</div>
+          <div class="journal-list" id="journalList"></div>
+          <div class="journal-detail" id="journalDetail" hidden>
+            <div id="journalDetailContent"></div>
+            <h4>Добавить наблюдение по сценарию</h4>
+            <div class="journal-form-grid">
+              <div class="journal-form-field">
+                <label for="journalFollowupStatus">Статус сценария</label>
+                <select id="journalFollowupStatus">
+                  <option value="still_waiting">Ожидаем</option>
+                  <option value="triggered">Сценарий сработал</option>
+                  <option value="invalidated">Сценарий отменён</option>
+                  <option value="expired">Сценарий истёк</option>
+                  <option value="missed">Пропущенная возможность</option>
+                  <option value="manual_note">Заметка</option>
+                </select>
+              </div>
+              <div class="journal-form-field">
+                <label for="journalObservedPrice">Цена при наблюдении (необязательно)</label>
+                <input id="journalObservedPrice" type="number" min="0" step="any" placeholder="Цена" />
+              </div>
+              <div class="journal-form-field full">
+                <label for="journalFollowupNote">Комментарий</label>
+                <textarea id="journalFollowupNote" rows="2" maxlength="2000" placeholder="Что произошло после сигнала или WAIT?"></textarea>
+              </div>
+              <div class="journal-form-field full">
+                <button class="btn" id="journalAddFollowupBtn" type="button">Добавить запись наблюдения</button>
+              </div>
+            </div>
+            <details class="journal-trade-details">
+              <summary>Добавить фактическую сделку отдельно</summary>
+              <div class="journal-form-grid">
+                <div class="journal-form-field">
+                  <label for="journalTradeSide">Сторона сделки</label>
+                  <select id="journalTradeSide"><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select>
+                </div>
+                <div class="journal-form-field">
+                  <label for="journalTradeStatus">Статус</label>
+                  <select id="journalTradeStatus"><option value="open">Открыта</option><option value="closed">Закрыта</option></select>
+                </div>
+                <div class="journal-form-field">
+                  <label for="journalTradeEntryPrice">Цена входа</label>
+                  <input id="journalTradeEntryPrice" type="number" min="0" step="any" placeholder="Цена входа" />
+                </div>
+                <div class="journal-form-field">
+                  <label for="journalTradeQuantity">Количество</label>
+                  <input id="journalTradeQuantity" type="number" min="0" step="any" placeholder="Количество" />
+                </div>
+                <div class="journal-form-field">
+                  <label for="journalTradeExitPrice">Цена выхода (для закрытой)</label>
+                  <input id="journalTradeExitPrice" type="number" min="0" step="any" placeholder="Цена выхода" />
+                </div>
+                <div class="journal-form-field">
+                  <label for="journalTradeFees">Комиссии в котируемой валюте</label>
+                  <input id="journalTradeFees" type="number" min="0" step="any" placeholder="Заполнить для net PnL" />
+                </div>
+                <div class="journal-form-field">
+                  <label for="journalTradeFunding">Funding cashflow (+получено / -уплачено)</label>
+                  <input id="journalTradeFunding" type="number" step="any" placeholder="Заполнить для net PnL" />
+                </div>
+                <div class="journal-form-field full">
+                  <button class="btn" id="journalAddTradeBtn" type="button">Сохранить фактическую сделку</button>
+                </div>
+              </div>
+            </details>
           </div>
         </section>
       </div>
