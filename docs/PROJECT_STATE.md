@@ -787,3 +787,14 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - Архитектурная цель: отделять data, quality, analytics, journal и UI, чтобы будущий переход на TypeScript/React и/или backend не требовал выбрасывать проверенные алгоритмы и тесты. Переписывание интерфейса при миграции возможно.
 
 Единая актуальная дорожная карта: docs/ROADMAP.md, раздел «Актуализация продуктового направления и ближайших этапов — 2026-11-27».
+
+
+## 2026-11-28 — B4 начат, аудит фактического main
+
+- Создана draft PR #24: `B4: harden live candle finality and REST/WS reconciliation`; ветка `feature/b4-live-data-hardening-2026-11-28`.
+- Аудированный main HTML blob до изменений: `6b5521195454bc3d3be3e18cc7f4fb10682ee48b` (511,597 bytes, 9,514 lines).
+- Важное уточнение: текущий main уже содержит реальную интеграцию Bybit ticker+kline WebSocket в UI, REST bootstrap/history, 30s polling, REST reconciliation и reconnect. Старые описания LOG-ONLY / unmerged для этого кода устарели.
+- Найден и исправляется дефект finality: подтверждённая WS-свеча могла измениться до REST reconciliation. Патч запрещает ticker и поздним same-ts WS delta менять `confirmed:true`; точный повтор считается duplicate; подтверждённая свеча отображается как закрытая.
+- Stage A B1-D тест расширен на ticker-after-confirm, late delta и exact duplicate.
+- B4 остаётся IN PROGRESS. CI на точном финальном PR HEAD, полный аудит race/recovery/fallback и реальный iPhone/Safari acceptance ещё обязательны. Live Bybit на GitHub runner не подтверждён.
+- Подробности: `docs/audits/B4_MAIN_AUDIT_2026-11-28.md`.
