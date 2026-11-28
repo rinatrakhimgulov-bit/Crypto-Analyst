@@ -42,7 +42,7 @@ assert.ok(report.summary.quality_outcomes.STRONG_EVIDENCE);
 assert.ok(report.summary.quality_outcomes.WEAK_EVIDENCE);
 assert.ok(Number.isInteger(report.summary.quality_status_changes));
 assert.ok(Number.isInteger(report.summary.zone_boundary_changes));
-assert.ok(report.summary.zone_boundary_change_event_rate_pct <= 10,
+assert.ok(report.summary.zone_boundary_change_event_rate_pct <= 2,
   'zone-boundary drift across repeated event observations must remain below 10% of unique events');
 assert.ok(Array.isArray(report.summary.series_breakdown) && report.summary.series_breakdown.length === 6);
 assert.ok(Array.isArray(report.limitations) && report.limitations.length >= 6);
