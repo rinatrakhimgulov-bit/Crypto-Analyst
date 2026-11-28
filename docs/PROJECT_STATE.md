@@ -819,3 +819,7 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 ## B4 lifecycle test update — 2026-11-28
 
 B4 PR #24 adds Stage A regression `16d` for actual `pagehide`/`pageshow` listeners. It checks old WebSocket generation invalidation, close-state cleanup, new recovery generation, and fresh subscription ACK gating. The test is deterministic browser-side coverage only; actual iPhone/Safari background/foreground behavior remains an acceptance gate. Code commit: `1783a8e0b8294973366a61d32e75bb40458e338a`; exact-head CI pending at the time of this note.
+
+## B4 provider timestamp guard — 2026-11-28
+
+The B4 branch now requires a valid provider event timestamp (`msg.ts`) on each incoming kline message. Missing/invalid event time is rejected before chart mutation, with invalid-stream diagnostics. This prevents unorderable OHLCV events from entering the live chart and later diverging from REST reconciliation. Regression added. Commit `730917fb52a33064b204f425dfd57bd9ab2f0490`; exact-head CI pending. This does not establish live provider acceptance.
