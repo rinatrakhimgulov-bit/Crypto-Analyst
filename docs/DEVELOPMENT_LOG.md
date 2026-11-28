@@ -886,3 +886,5 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B4 fail-closed metadata fix: kline messages without a valid provider `msg.ts` are now rejected before entering the chart bridge, because they cannot be ordered against REST or ticker events. Added Stage A regression for missing `msg.ts`. Code commit: `730917fb52a33064b204f425dfd57bd9ab2f0490`. Exact-head CI pending; real Bybit/iPhone acceptance remains outstanding.
 
 - B4 ticker metadata guard: ticker `msg.ts` is now required and validated before any ticker-state mutation or live-price callback. Added Stage A regression proving missing provider time is rejected without changing readiness/state. Code commit: `c5be074817dcee28cb7a7df3e095939150579de7`. Exact-head CI pending.
+
+- Updated valid ticker integration fixtures to include provider `ts` after introducing the fail-closed ticker timestamp contract; the dedicated missing-timestamp regression remains intentionally timestamp-free. Source commit `109048c38bcaaabf18663e3897e87ecfdbe313d4`; exact-head CI pending.
