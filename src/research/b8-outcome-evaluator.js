@@ -183,8 +183,10 @@ function evaluateCandidate(input) {
       status: 'AVAILABLE', level: stop,
       risk_distance_pct: riskDistance / entryPrice * 100
     };
-    const maxBars = input.barrierMaxBars || Math.max(...horizons);
+    const maxBars = input.barrierMaxBars == null ? Math.max(...horizons) : input.barrierMaxBars;
+    assert(Number.isSafeInteger(maxBars) && maxBars > 0, 'B8_BARRIER_MAX_BARS_INVALID');
     const targets = input.targetRMultiples || [1, 2];
+    assert(Array.isArray(targets) && targets.length > 0, 'B8_TARGETS_INVALID');
     for (const targetR of targets) {
       assert(finite(targetR) && targetR > 0, 'B8_TARGET_R_INVALID');
       result.barriers[String(targetR) + 'R'] = barrierResult({
