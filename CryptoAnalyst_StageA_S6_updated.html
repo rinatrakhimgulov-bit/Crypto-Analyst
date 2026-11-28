@@ -9194,7 +9194,7 @@
             assert(S().pongsConfirmed === 1 && S().pongEchoSeen === 1, 'Эхо принято');
             at(h, 26);                                   // ping-2 без ответа → пропуск
             assert(S().missedPongs === 1 && S().timedOutPings.length === 1, 'ping-2 пропущен');
-            at(h, 30); h.ws.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', data: { symbol: 'BTCUSDT', lastPrice: '1' } });  // поток жив: без этого сработал бы stall (тишина > 30 с)
+            at(h, 30); h.ws.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', ts: Date.now(), data: { symbol: 'BTCUSDT', lastPrice: '1' } });  // поток жив: без этого сработал бы stall (тишина > 30 с)
             at(h, 41); h.ws.triggerMessage({ op: 'pong' });  // ping-3, pong без эха
             assert(S().ambiguousPongs === 1, 'Без эха при просроченном ping-2 — ambiguous');
             at(h, 46);
@@ -9417,13 +9417,13 @@
             BybitWsClient.start('BTCUSDT', '240');
             const first = lastWs(); const firstGen = S().connGen; first.triggerOpen();
             const dropped0 = S().staleMessagesDropped;
-            first.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', data: { symbol: 'BTCUSDT', lastPrice: '95000' } });
+            first.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', ts: Date.now(), data: { symbol: 'BTCUSDT', lastPrice: '95000' } });
             assert(S().lastMsgAt !== null && S().staleMessagesDropped === dropped0, 'Валидное сообщение текущего соединения принимается');
             BybitWsClient.start('BTCUSDT', '240');
             const second = lastWs(); second.triggerOpen();
             clock.advance(500);
             const lastAt = S().lastMsgAt, dropped1 = S().staleMessagesDropped;
-            BybitWsClient._handleMessage({ data: JSON.stringify({ topic: 'tickers.BTCUSDT', type: 'snapshot', data: { symbol: 'BTCUSDT', lastPrice: '96000' } }) }, firstGen);
+            BybitWsClient._handleMessage({ data: JSON.stringify({ topic: 'tickers.BTCUSDT', type: 'snapshot', ts: Date.now(), data: { symbol: 'BTCUSDT', lastPrice: '96000' } }) }, firstGen);
             assert(S().staleMessagesDropped === dropped1 + 1, 'staleMessagesDropped +1');
             assert(S().lastMsgAt === lastAt, 'lastMsgAt нового соединения не меняется');
           });
@@ -9453,7 +9453,7 @@
             const calls = [];
             BybitWsClient.hooks.onRecovered = (...a) => calls.push(a);
             const ws2 = connectAndDrop();             // реальный путь: обрыв → recovery → новый сокет, ACK ещё не получен
-            const snapMsg = { topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 100, data: { symbol: 'BTCUSDT', lastPrice: '64200', bid1Price: '64100' } };
+            const snapMsg = { topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 100, ts: Date.now(), data: { symbol: 'BTCUSDT', lastPrice: '64200', bid1Price: '64100' } };
             ws2.triggerMessage(snapMsg);
             assert(S().confirmedTopics.size === 0 && calls.length === 0, 'Потоковое сообщение не подтверждает подписку и не запускает resync');
             // Новый сокет: готовность сброшена; ниже — чистый старт потока на этом же соединении
@@ -9465,28 +9465,28 @@
             assert(entry.ready === false && entry.snapshotReceived === false && entry.state === null, 'После нового сокета ready/snapshotReceived сбрасываются');
             // delta до snapshot
             const inv0 = S().invalidStreamMessages;
-            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 10, data: { bid1Price: '64120.5', extraUnknownField: 'ok' } });
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 10, ts: Date.now(), data: { bid1Price: '64120.5', extraUnknownField: 'ok' } });
             assert(entry.snapshotReceived === false && entry.ready === false && entry.state === null, 'Delta до snapshot не делает тикер готовым и не создаёт state');
             assert(S().deltasBeforeSnapshot === 1 && S().invalidStreamMessages === inv0, 'Delta до snapshot учитывается отдельно, не как invalid');
             // чужой symbol
-            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 100, data: { symbol: 'ETHUSDT', lastPrice: '3500' } });
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 100, ts: Date.now(), data: { symbol: 'ETHUSDT', lastPrice: '3500' } });
             assert(S().invalidStreamMessages === inv0 + 1 && entry.state === null && !S().tickerBySymbol.has('ETHUSDT'), 'Несовпадающий symbol отклоняется без изменения состояния');
             // невалидное поле
-            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 100, data: { symbol: 'BTCUSDT', lastPrice: 'bad' } });
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'snapshot', cs: 100, ts: Date.now(), data: { symbol: 'BTCUSDT', lastPrice: 'bad' } });
             assert(S().invalidStreamMessages === inv0 + 2 && entry.state === null, 'Невалидное поле отклоняется без изменения состояния');
             // валидный snapshot
             ws3.triggerMessage(snapMsg);
             assert(entry.snapshotReceived && entry.ready && entry.state.lastPrice === '64200' && entry.state.bid1Price === '64100', 'Snapshot применён');
             // дубликат cs
-            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 100, data: { bid1Price: '1' } });
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 100, ts: Date.now(), data: { bid1Price: '1' } });
             assert(entry.csDup === 1 && entry.state.bid1Price === '64100', 'Дубликат cs не перезаписывает данные, csDup=1');
             // cs назад
             const inv1 = S().invalidStreamMessages;
-            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 50, data: { bid1Price: '2' } });
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 50, ts: Date.now(), data: { bid1Price: '2' } });
             assert(entry.csBack === 1 && S().invalidStreamMessages === inv1 + 1, 'Старый cs: csBack и invalidStreamMessages увеличены');
             assert(entry.state.bid1Price === '64100', "Старый cs не перезаписывает bid1Price (остаётся '64100')");
             // нормальная delta вперёд
-            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 101, data: { bid1Price: '64110' } });
+            ws3.triggerMessage({ topic: 'tickers.BTCUSDT', type: 'delta', cs: 101, ts: Date.now(), data: { bid1Price: '64110' } });
             assert(entry.csFwd === 1 && entry.state.bid1Price === '64110' && entry.state.lastPrice === '64200', 'Delta вперёд применена, прочие поля сохранены');
             // ACK по реальному пути завершает цепочку recovery → resync
             ackAll(ws3);
