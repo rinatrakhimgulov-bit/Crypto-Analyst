@@ -898,3 +898,5 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Recovery-generation test fixture corrected to establish a valid ticker snapshot/readiness before testing prior-cycle cache invalidation. Source commit `40a36c90233c5bcd5186f1d0322620f99bd78939`; exact-head CI pending.
 
 - Recovery regression setup now explicitly initializes its ticker entry through `_getTickerEntry` before setting snapshot readiness. Source commit `a822133fc1b58356d39c2814a462314aa70fcb17`; exact-head CI pending.
+
+- Added `recoveryGen` to invalid-kline callbacks as well as valid events, preserving the generation guard while allowing invalid events to trigger REST reconciliation. Source commit `ff3fa83f59883fbe8f32864369dec7e5b697bc95`; exact-head CI pending.
