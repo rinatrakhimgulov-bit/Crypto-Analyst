@@ -160,6 +160,15 @@ function fixture(options = {}) {
     }
   }
 
+  if (options.currentPrice !== undefined) {
+    const last = rows.length - 1;
+    rows[last] = {
+      ...rows[last], close: options.currentPrice,
+      high: Math.max(rows[last].high, options.currentPrice),
+      low: Math.min(rows[last].low, options.currentPrice)
+    };
+  }
+
   const asOf = rows[rows.length - 1].close_time_ms + LAG;
   const report = {
     snapshot_id: SNAPSHOT_ID, symbol: 'BTCUSDT', timeframe: '1h',
@@ -234,7 +243,9 @@ function fixture(options = {}) {
     snapshot_id: SNAPSHOT_ID, symbol: 'BTCUSDT', timeframe: '1h',
     analysis_as_of_ms: asOf,
     cluster_method: options.zonePolicyVersion === 'b2d-relative-span-v2' ? 'MAX_TOTAL_SPAN_RELATIVE_V2' : 'MAX_TOTAL_SPAN_V1',
-    max_cluster_span_price: options.maxClusterSpanPrice ?? 2,
+    max_cluster_span_price: options.zonePolicyVersion === 'b2d-relative-span-v2'
+      ? rows[rows.length - 1].close * (options.maxClusterSpanRatio ?? 0.02)
+      : 2,
     max_cluster_span_ratio: options.maxClusterSpanRatio ?? null,
     min_independent_touches: 2,
     zones, candidate_levels: []
@@ -287,7 +298,6 @@ run('event-relative v2 anchors historical zone and retest thresholds to breakout
   const options = {
     touchAt: 7,
     zonePolicyVersion: 'b2d-relative-span-v2',
-    maxClusterSpanPrice: 0.01,
     maxClusterSpanRatio: 0.02,
     retestPolicy: {
       version: 'retest-policy-relative-v2',
@@ -296,8 +306,8 @@ run('event-relative v2 anchors historical zone and retest thresholds to breakout
       failure_buffer_ratio: 0.001
     }
   };
-  const first = analyze(fixture(options));
-  const second = analyze(fixture({ ...options, maxClusterSpanPrice: 9999 }));
+  const first = analyze(fixture({ ...options, currentPrice: 105 }));
+  const second = analyze(fixture({ ...options, currentPrice: 210 }));
   assert.equal(first.status, 'VALID', JSON.stringify(first.admission.reasons));
   assert.equal(second.status, 'VALID', JSON.stringify(second.admission.reasons));
   assert.equal(first.lifecycles.length, 1);
