@@ -1,12 +1,12 @@
 name: B5 Market Journal Verification
 
 on:
-  push:
-    branches:
-      - feature/b5-market-journal-2026-11-28
   pull_request:
     branches:
       - feature/b4-live-data-hardening-2026-11-28
+      - feature/b5-market-journal-2026-11-28
+      - feature/b6-analytics-audit-2026-11-28
+      - feature/b7-setup-engine-2026-11-28
   workflow_dispatch:
 
 permissions:

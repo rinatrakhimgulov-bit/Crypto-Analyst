@@ -966,3 +966,43 @@ The owner tested the B7 application branch on the target device and confirmed th
 Usability, wording refinement, menu structure, navigation model and visual redesign are explicitly deferred. They will be handled together in a dedicated UX/UI design stage, when the menu and overall interaction model can be redesigned coherently. Do not spend current analytics-engineering time polishing or restructuring the existing menu/panel UI, and do not treat the current layout as the final product design.
 
 Current development priority remains analytical functionality, correctness, validation and evidence quality. Keep the interface changes minimal where needed to expose and test analytical capabilities. Revisit UX/UI as a consolidated later stage.
+
+
+## B8 opening — schema audit and first evaluator implementation — 2026-11-28
+
+Branch: `feature/b8-statistical-validation-2026-11-28` (draft; based on B7 head `46820a743fc1c08eb34b6c1851315d8b57ef8e1d`).
+
+- Audited B5 journal specification and actual capture implementation. Confirmed B5 stores the B7 result at `analysisSnapshot.b2.setups`, and the B7 candidate list at `analysisSnapshot.b2.setups.setup_candidates`.
+- Confirmed B5 candle window uses `ts`, `closeTs`, OHLCV, and explicit `finality`; B8 must exclude `forming` candles.
+- Added B8 methodology specification and opening schema audit.
+- Added pure causal outcome evaluator: post-availability closed-candle entry proxy, directional forward return, MFE/MAE, optional invalidation/target barriers, conservative stop-first same-bar ambiguity and adverse gap-stop proxy.
+- Added descriptive statistics with Wilson proportion intervals explicitly labelled as naive-independence intervals.
+- Added deterministic tests and a dedicated GitHub Actions workflow.
+- No production HTML, B1/B2/B7 engine, live decision path or UI was changed.
+
+Current limitations: historical candidate census/deduplication and chronological out-of-sample report are not implemented yet; prospective B5 validation requires explicit JSON export; funding is not applied; current historical archive ends 2025-12-05. This work does not establish profitability.
+
+
+### B8-B deterministic evaluator and journal adapter checkpoint — 2026-11-28
+
+- PR #28 opened as draft, stacked on B7 branch.
+- CI run `46116869096`: evaluator/statistics syntax and deterministic tests SUCCESS.
+- CI run `46116871532`: evaluator + B5 journal adapter syntax and deterministic tests SUCCESS.
+- Corrected test fixtures after CI exposed two mistakes: the forward-return fixture expected the wrong candle close, and barrier fixtures initially placed touches inside the entry candle. The evaluator's causal entry rule was retained; test data was moved to candles after entry.
+- Cost arithmetic now charges entry costs on entry notional and exit costs on exit notional.
+- B5 importer validates journal envelope/reference structure, preserves WAIT and no-setup coverage, filters candidates against both capturedAt and B7 analysis cutoff, excludes forming candles, keeps actual trades separate, and deep-clones/freezes its normalized output.
+- Historical candidate census, deduplication, chronological OOS, cluster-aware uncertainty and prospective journal outcome study are still NOT IMPLEMENTED.
+
+
+### B8-C first historical outcome exploration — 2026-11-28
+
+- Added stable `setup_id` to compact B7 historical replay output.
+- Added deterministic candidate deduplication by symbol/timeframe/setup ID and explicit pending-to-confirmed lifecycle reconciliation.
+- Added chronological 60/20/20 TRAIN/VALIDATION/TEST assignment per historical series.
+- Added `tools/b8_historical_validation.cjs` and artifact generation in the B8 workflow.
+- Exact CI run `46117156657` on code head `cf16dd38e9b8cc7fb7f923d7999add2c4a46b0e5`: SUCCESS. B7 pinned replay, B8 deterministic tests, historical outcome generation and artifact upload all passed.
+- Result: 40 unique sampled candidates, 36 confirmed, 4 pending. All 36 confirmed candidates received a causal entry proxy. Split counts: TRAIN 22, VALIDATION 8, TEST 6.
+- The TEST cohort is too small to support inference. Its descriptive returns are negative, but no conclusion about setup quality is justified. No fees/funding/slippage are observed or applied. The five-window candidate population is not exhaustive.
+- Detailed audit: `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`.
+
+B8-C exploratory pipeline passed; B8-C statistical validation is still incomplete. B8-D prospective journal outcomes and B8-E independent audit remain open.

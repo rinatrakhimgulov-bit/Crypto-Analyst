@@ -1452,3 +1452,99 @@ The owner tested the B7 application branch on the target device and confirmed th
 Usability, wording refinement, menu structure, navigation model and visual redesign are explicitly deferred. They will be handled together in a dedicated UX/UI design stage, when the menu and overall interaction model can be redesigned coherently. Do not spend current analytics-engineering time polishing or restructuring the existing menu/panel UI, and do not treat the current layout as the final product design.
 
 Current development priority remains analytical functionality, correctness, validation and evidence quality. Keep the interface changes minimal where needed to expose and test analytical capabilities. Revisit UX/UI as a consolidated later stage.
+
+
+## B8 continuation checkpoint — 2026-11-28
+
+Current branch: `feature/b8-statistical-validation-2026-11-28`. It is based on B7 branch head `46820a743fc1c08eb34b6c1851315d8b57ef8e1d`. Do not merge to main or bypass the stacked B4/B5/B6/B7 dependency order.
+
+Read first:
+1. `docs/specs/B8_STATISTICAL_VALIDATION_SPEC_2026-11-28.md`
+2. `docs/audits/B8_OPENING_SCHEMA_AUDIT_2026-11-28.md`
+3. `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`
+4. `docs/specs/B7_EXPLAINABLE_SETUP_ENGINE_SPEC_2026-11-28.md`
+5. `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`
+
+Important exact schema facts:
+- B5 capture calls `runB2Analysis(dataset)`.
+- That function returns `setups` from `B7ExplainableSetupEngine.analyze()`.
+- Journal path: `observation.analysisSnapshot.b2.setups.setup_candidates`.
+- Journal candle rows: `ts`, `closeTs`, `open`, `high`, `low`, `close`, `volume`, `turnover`, `finality`.
+- Never treat a `forming` candle as closed.
+- The journal is localStorage only. Do not claim access to the owner's journal. Request an explicit export only when prospective validation is ready.
+
+Initial B8 modules:
+- `src/research/b8-outcome-evaluator.js`
+- `src/research/b8-statistics.js`
+- `tests/b8-outcome-evaluator.test.cjs`
+- workflow `.github/workflows/b8-statistical-validation.yml`
+
+Next required work:
+- Verify exact-head CI and inspect logs; do not assume pass.
+- Independently hand-check entry timing, directional return, MFE/MAE, stop/target, gap and cost arithmetic.
+- Add a historical candidate generator that evaluates B7 at declared cutoffs, deduplicates stable candidate IDs across overlapping windows and preserves pinned dataset provenance.
+- Establish chronological train/validation/test or walk-forward boundaries before inspecting test outcomes.
+- Add coverage/exclusion accounting and dependence-aware intervals; naive Wilson intervals must remain labelled as such.
+- Add strict B5 export validation/normalization and keep actual trades separate.
+- Keep B8 research-only. Do not change LONG/SHORT/WAIT, B2-F gating, Live Price/B4 or UX/UI.
+
+Known constraints: existing B7 replay has 40 appearances across 30 windows, not 40 independent events; synthetic B1-VALID wrapper; fixed 500ms time-derived finality; archive ends 2025-12-05; no tick fills, fees, funding, slippage or outcomes. Trend-continuation has no appearance in the existing 30 windows. No profitability claim.
+
+
+### B8 implementation checkpoint — 2026-11-28
+
+PR #28: `https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/28`, draft, base `feature/b7-setup-engine-2026-11-28`.
+
+B8-A and initial B8-B are implemented. Exact CI passed:
+- run `46116869096`: evaluator/statistics.
+- run `46116871532`: B5 journal adapter and evaluator.
+
+Important implementation review notes:
+- Outcome entry proxy is the first candle close with `close_time_ms + finalitySafetyLagMs > candidate.available_at_ms`. This intentionally does not use a next-bar open that predates candidate availability.
+- Forward returns, MFE and MAE are descriptive path statistics, not trade win/loss.
+- Barrier model is research-only; same-bar ambiguity is stop-first, stop gaps use the adverse open, target gaps are capped at target.
+- Fee/slippage bps are applied to respective entry and exit notionals. Net values stay null unless all four inputs exist. Funding is marked not applied.
+- Journal adapter reads B7 only from `analysisSnapshot.b2.setups`, filters candidate availability against capturedAt and B7 analysis cutoff, excludes forming candles, preserves WAIT and separate actual trades, and does not mutate the source JSON.
+
+Next:
+1. Independently review B8 arithmetic and the journal adapter.
+2. Build historical candidate census with stable-ID deduplication and pinned dataset provenance.
+3. Add chronological train/validation/test or walk-forward analysis with explicit boundaries.
+4. Add cluster/block-aware uncertainty or clearly limit claims to descriptive statistics.
+5. Produce historical outcome report and only then consider explicit B5 export prospective analysis.
+
+Do not merge PR #28 yet. B8-C through B8-E remain open. No changes to production HTML or LONG/SHORT/WAIT.
+
+
+### B8-C historical exploration checkpoint — 2026-11-28
+
+Exact CI run `46117156657` passed on code head `cf16dd38e9b8cc7fb7f923d7999add2c4a46b0e5`, including B7 pinned replay, B8 tests, historical outcome generation and artifact upload.
+
+Read `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`.
+
+Result: 40 unique sampled candidate IDs (36 confirmed, 4 pending); 36 confirmed had causal entry proxies. Chronological counts TRAIN 22 / VALIDATION 8 / TEST 6. This is a sparse five-quantile-window sample, not an exhaustive event census. TEST N=6 is inadequate for inference. Negative descriptive test returns are not proof that B7 is bad; training/validation positive results are not evidence of edge. No costs/funding/slippage applied. Do not present these figures as a win rate or profitability estimate.
+
+Next:
+1. Increase candidate coverage with a denser causal historical scan and stable-ID deduplication.
+2. Build cluster/block-aware uncertainty and per-setup/per-direction OOS sample-size gates.
+3. Keep test data untouched by tuning.
+4. Add explicit cost sensitivity and observed funding only where available.
+5. Validate B5 export in a separate prospective cohort when owner provides the JSON export.
+6. Independent review of split boundaries, candidate timing, outcome math, dependence and leakage.
+
+B8-C exploratory pipeline passed; statistical validation remains incomplete. No B9 directional integration.
+
+
+### B8 independent review and journal-capture clarification — 2026-11-28
+
+Independent review recorded in `docs/audits/B8_INDEPENDENT_REVIEW_FINDINGS_2026-11-28.md`. Current PR head before corrective commits passed CI, but review found split-boundary outcome contamination, sparse five-window candidate sampling, missing dependence-aware uncertainty, and incomplete prospective outcome semantics.
+
+Corrective work now in branch:
+- `chronologicalSplit(candidate, startMs, endMs, outcomeEndMs)` purges TRAIN/VALIDATION candidates whose 12-bar endpoint reaches or crosses the next split boundary.
+- Deterministic tests cover both boundary purge rules and exact-boundary behavior.
+- B7 historical replay adds a denser causal scan of 160-candle windows at an 80-bar stride plus the final endpoint; B8 historical validation consumes this scan and deduplicates stable setup IDs.
+- Exact-head CI is pending; do not assume the dense scan or purging passes until the run completes.
+
+Important B5 correction: current B5 does NOT automatically save every analysis. It exposes an explicit user-triggered “Save observation” action. Follow-ups are also manually appended. The B5 specification limits the journal to 100 observations and 160 candles per observation. Do not describe B5 as automatic capture. If automatic observation capture is desired, treat it as a separate B5 scope change requiring a deduplication/throttling policy, retention/export strategy and explicit owner acceptance. B8 must not silently modify B5 production behavior.
+
+B8 remains research-only. No production HTML, LONG/SHORT/WAIT, B2-F, B4/Live Price or UX/UI changes. Do not merge PR #28 until R1/R2 are verified, dependence-aware uncertainty is addressed or explicitly gated, the prospective journal pathway is truthful, and exact-head CI plus independent review pass.

@@ -537,3 +537,27 @@ B5 PR #25 head `8f77ff6427e5c5d8021286d971c6a82bfc7f41b5` has passed its dedicat
 ## B6 Analytics Core Audit — checkpoint
 
 B2-A..G audit is PASS WITH CONDITIONS. Source/inline parity is enforced; historical replay is pinned and includes lookback sensitivity. 160 bars reproduced full-history structure state at the archive's final cutoff across BTC/ETH 1H/4H/1D. Keep the production window at 160 until zone freshness is defined. Do not connect B2-F to LONG/SHORT until real provider-time spread is calibrated. See `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`. Next: B7 define a small number of explainable setups on top of B2 evidence; B8 use B5 journal for statistical validation.
+
+## B8 — Statistical Validation (opened 2026-11-28)
+
+**Status: IN PROGRESS.** B8 validates B7 research candidates using two separate evidence populations: pinned historical replay and prospective immutable B5 journal observations. Actual B5 trades remain a third, separate population.
+
+Sequence:
+1. B8-A schema/methodology audit.
+2. B8-B deterministic causal outcome evaluator and independently checked arithmetic.
+3. B8-C deduplicated historical candidate census, chronological out-of-sample/walk-forward validation, cost sensitivity and uncertainty reporting.
+4. B8-D explicit B5 JSON export validation and prospective tracking; no backend or automatic upload.
+5. B8-E independent audit and exact-head CI.
+
+Baseline entry uses the first fully closed candle whose finality availability is strictly later than the candidate's available-at timestamp. Report forward returns, MFE/MAE and invalidation/target outcomes separately. Do not call forward-positive observations winning trades. Barrier simulation is secondary and conservative. Fees/slippage are applied only from explicit assumptions; unknown funding is never silently zeroed.
+
+No change to the current LONG/SHORT/WAIT path, no production dashboard, no B2-F directional gate, and no profitability claim at this stage. See `docs/specs/B8_STATISTICAL_VALIDATION_SPEC_2026-11-28.md` and `docs/audits/B8_OPENING_SCHEMA_AUDIT_2026-11-28.md`.
+
+
+### B8-C exploratory historical checkpoint — 2026-11-28
+
+The first pinned B8 historical outcome pipeline passed CI run `46117156657`. It deduplicated stable candidate IDs surfaced by the five existing B7 quantile windows and evaluated 36 confirmed candidates (4 pending) with causal bar-close entries and 1/3/6/12-bar forward outcomes. Chronological counts: TRAIN 22 / VALIDATION 8 / TEST 6.
+
+This is explicitly exploratory, not statistical validation: five-window sample is not exhaustive; TEST N=6 is too small; confidence intervals are naive independence; no fees/funding/slippage are observed. See `docs/audits/B8_HISTORICAL_OUTCOME_EXPLORATION_2026-11-28.md`.
+
+Next B8 work: denser/exhaustive causal candidate scan, dependence-aware inference, adequate OOS samples by setup/direction, explicit cost sensitivity, prospective B5 cohort, independent audit. Do not connect results to LONG/SHORT/WAIT.
