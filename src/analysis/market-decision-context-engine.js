@@ -102,15 +102,19 @@
 
     if (candidate.setup_type === 'BREAKOUT_RETEST') {
       const lifecycle = findLifecycle(b2e, candidate);
-      if (!lifecycle || lifecycle.status !== 'RETEST_SUCCESSFUL' ||
+      if (!lifecycle || !['BULLISH', 'BEARISH'].includes(lifecycle.direction) ||
+          candidate.direction !== (lifecycle.direction === 'BULLISH' ? 'LONG' : 'SHORT') ||
+          lifecycle.status !== 'RETEST_SUCCESSFUL' ||
           !lifecycle.confirmation || lifecycle.confirmation.outcome !== 'SUCCESS' ||
           !Number.isSafeInteger(lifecycle.confirmation.available_at_ms) ||
           lifecycle.confirmation.available_at_ms > asOf) return 'B2E_BREAKOUT_RETEST_NOT_CONFIRMED';
       const quality = findBreakoutQuality(breakoutQuality, candidate);
-      if (!quality || quality.quality_status !== 'STRONG_EVIDENCE') return 'BREAKOUT_QUALITY_NOT_STRONG';
+      if (!quality || quality.direction !== lifecycle.direction || quality.quality_status !== 'STRONG_EVIDENCE') return 'BREAKOUT_QUALITY_NOT_STRONG';
     } else if (candidate.setup_type === 'FALSE_BREAKOUT_RECLAIM') {
       const lifecycle = findLifecycle(b2e, candidate);
-      if (!lifecycle || lifecycle.status !== 'RETEST_FAILED' ||
+      if (!lifecycle || !['BULLISH', 'BEARISH'].includes(lifecycle.direction) ||
+          candidate.direction !== (lifecycle.direction === 'BULLISH' ? 'SHORT' : 'LONG') ||
+          lifecycle.status !== 'RETEST_FAILED' ||
           !lifecycle.confirmation || lifecycle.confirmation.outcome !== 'FAILURE' ||
           !Number.isSafeInteger(lifecycle.confirmation.available_at_ms) ||
           lifecycle.confirmation.available_at_ms > asOf) return 'FALSE_BREAKOUT_RECLAIM_NOT_CONFIRMED';
@@ -181,7 +185,7 @@
         !IMPULSE_CLASSES.has(impulse.event.classification) ||
         !['UPTREND', 'DOWNTREND', 'RANGE', 'IMPULSE', 'TRANSITION', 'UNKNOWN'].includes(regime.regime) ||
         !['UP', 'DOWN', 'UNESTABLISHED'].includes(b2c.structure_state) ||
-        !['BULLISH', 'BEARISH', 'NEUTRAL'].includes(regime.directional_bias)) {
+        !['BULLISH', 'BEARISH', 'NEUTRAL', 'NONE'].includes(regime.directional_bias)) {
       return blocked('MARKET_DECISION_UPSTREAM_PAYLOAD_INVALID', meta);
     }
     if (regime.structure_state !== b2c.structure_state) return blocked('MARKET_REGIME_STRUCTURE_CONFLICT', meta);
