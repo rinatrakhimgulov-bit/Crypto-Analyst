@@ -21,7 +21,7 @@ const POLICY = Object.freeze({
   selloff_displacement_atr: 2,
   range_expansion_min_atr: 1.2,
   volume_expansion_min_ratio: 1.5,
-  directional_pressure_min: 0.67,
+  directional_pressure_min: 2 / 3,
   close_location_max: 0.35,
   context_lookback_bars: 10
 });
@@ -121,7 +121,8 @@ run('directional pressure requires multiple candles closing near their direction
     { open: 101, high: 106, low: 95, close: 105, volume: 220 },
     { open: 105, high: 106, low: 88, close: 89, volume: 260 }
   ] }));
-  assert.ok(result.event.metrics.directional_pressure < 1);
+  assert.equal(result.event.metrics.directional_pressure, 2 / 3);
+  assert.equal(result.event.classification, 'STRONG_SELL_OFF');
 });
 run('bearish successful retest means broken support held as resistance', () => {
   const lifecycle = {
