@@ -7573,7 +7573,7 @@
               const value = volumeValues[i];
               if (value <= 0) continue;
               const globalIdx = startIdx + i;
-              const isForming = globalIdx >= this.closedCount;
+              const isForming = globalIdx >= this.closedCount && c.confirmed !== true;
               const barHeight = Math.max(1, (value / maxVisibleVolume) * Math.max(4, volumeHeight - 4));
               const cx = padLeft + (i + 0.5) * stepX;
               ctx.fillStyle = isForming
