@@ -1,7 +1,8 @@
 'use strict';
 const assert = require('node:assert/strict');
 const {
-  calculateWilderAtr, sampleIndices, computeForwardOutcomes, resolveLifecycleIndex
+  calculateWilderAtr, sampleIndices, computeForwardOutcomes, resolveLifecycleIndex,
+  deriveEventTimePolicy
 } = require('../tools/b2e_retest_forward_outcomes.cjs');
 
 const rows = Array.from({ length: 40 }, (_, i) => ({
@@ -13,6 +14,15 @@ const index = new Map(rows.map((r, i) => [r.open_time_ms, i]));
 assert.ok(calculateWilderAtr(rows.slice(0, 20), 14) > 0);
 assert.equal(calculateWilderAtr(rows.slice(0, 10), 14), null);
 assert.deepEqual(sampleIndices(600, '1h'), [259, 595, 599]);
+
+const frozenPolicyA = deriveEventTimePolicy(100);
+const frozenPolicyB = deriveEventTimePolicy(100);
+assert.deepEqual(frozenPolicyA, frozenPolicyB);
+assert.equal(frozenPolicyA.zone_span_price, 15);
+assert.equal(frozenPolicyA.retest_buffer_price, 5);
+assert.equal(frozenPolicyA.atr_at_breakout, 100);
+assert.equal(deriveEventTimePolicy(null), null);
+assert.equal(deriveEventTimePolicy(0), null);
 
 const success = {
   status: 'RETEST_SUCCESSFUL',
