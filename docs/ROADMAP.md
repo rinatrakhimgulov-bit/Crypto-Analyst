@@ -490,3 +490,8 @@ B4 checkpoint: PR #24 head 42f0511679167714e2a35c873ae0fc970502923c has B1 brows
 ### B4 exact-head checkpoint — 2026-11-28
 
 The current B4 application source blob `c9711ffdd65c9667bfa7447b92ec05d73e60135f` has passed B1 browser/live-data and B2 application integration CI (runs 46103008965 and 46103008967). Stage A 50/50, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; B2-A…B2-G and browser/mobile integration passed; no browser page errors. Live Bybit was skipped because GitHub Actions received HTTP 403 from both REST hosts. Remaining B4 acceptance is real Bybit REST/WS behavior on iPhone/Safari, reconnect/fallback and instrument/timeframe/lifecycle switching. PR #24 remains unmerged.
+
+
+### B4 additional verification — lifecycle
+
+Added deterministic `pagehide`/`pageshow` regression `16d` to verify old socket invalidation and a fresh recovery/subscription generation after page restoration. Keep real iPhone/Safari background/foreground testing as a separate required acceptance gate; automated browser coverage is not a substitute.
