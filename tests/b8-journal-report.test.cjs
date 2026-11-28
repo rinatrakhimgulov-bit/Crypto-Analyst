@@ -39,10 +39,29 @@ const report = buildJournalReport(envelope);
 assert.equal(report.observation_count, 1);
 assert.deepEqual(report.decision_counts, { WAIT: 1 });
 assert.equal(report.candidate_count, 1);
+assert.equal(report.unique_candidate_count, 1);
+assert.equal(report.candidate_appearance_count, 1);
+assert.equal(report.duplicate_candidate_appearance_count, 0);
 assert.deepEqual(report.followup_counts_by_status, { missed: 1 });
 assert.equal(report.observations_with_followup_count, 1);
 assert.equal(report.actual_trade_count, 0);
 assert.equal(report.actual_closed_trade_net_pnl.n, 0);
 assert.ok(report.limitations.some(x => x.includes('user-triggered snapshots')));
 assert.equal(envelope.observations[0].candleWindow.length, 2, 'source envelope must remain unchanged');
+{
+  const second = JSON.parse(JSON.stringify(observation));
+  second.id = 'observation-0002';
+  second.capturedAtMs = capturedAtMs + 60000;
+  second.capturedAt = new Date(second.capturedAtMs).toISOString();
+  const repeated = buildJournalReport({
+    ...envelope,
+    observations: [observation, second],
+    followups: []
+  });
+  assert.equal(repeated.candidate_appearance_count, 2,
+    'same setup observed in two snapshots remains two appearances');
+  assert.equal(repeated.unique_candidate_count, 1,
+    'same setup ID in same symbol/timeframe counts once as a unique candidate');
+  assert.equal(repeated.duplicate_candidate_appearance_count, 1);
+}
 console.log('B8 journal report: deterministic assertions PASS');
