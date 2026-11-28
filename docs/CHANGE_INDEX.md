@@ -570,3 +570,18 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - B5 exact-head checkpoint: PR #25 head `8f77ff6427e5c5d8021286d971c6a82bfc7f41b5`; B5 browser contract, B1 and B2 workflows all SUCCESS. iPhone Safari acceptance remains pending.
 
 - B6 Analytics Core Audit: B2-A..G source/inline parity gate, pinned historical archive, lookback sensitivity and audit report `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`. CI: B2 app/parity `46107248773` PASS; historical replay `46107248819` PASS.
+
+### B7 Explainable Setup Engine — 2026-11-28
+
+- Added `src/analysis/b7-explainable-setup-engine.js` and byte-identical production inline copy.
+- Added setup candidates for BREAKOUT_RETEST, FALSE_BREAKOUT_RECLAIM and TREND_CONTINUATION_AFTER_CORRECTION with causal B1/B2 binding, closed-candle confirmation, B2-C/B2-E breakout provenance, deterministic IDs and immutable evidence.
+- Added separate B7 market-setups panel; existing LONG/SHORT/WAIT decision path remains unchanged. B2-F is not a directional gate.
+- Added 22 unit tests, B7 source/inline parity and browser/mobile assertions. CI run `46115303655` SUCCESS, including 22 B7 tests, exact source/inline parity, B2 regression, pinned historical replay and browser/mobile integration.
+- Draft PR #27 is stacked on B6 PR #26. Historical replay passed on pinned archive commit `9ca04178df06ce649f00779a49e11094fe5b1c70`: 30 production-equivalent 160-bar windows and 18 prefix cutoffs across BTC/ETH 1H/4H/1D. Remaining gates: independent review and iPhone Safari acceptance.
+
+
+### B7 historical replay — 2026-11-28
+
+- Extended `tools/b2_historical_replay.cjs` to execute B7 on 30 pinned 160-candle rolling windows and 18 prefix cutoffs; deterministic output and causal availability are asserted.
+- CI `46115303655` SUCCESS. 40 detected candidates (36 confirmed, 4 pending); 20 breakout+retest and 20 false-breakout+reclaim. No trend-continuation candidate in this sample.
+- Added `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`. This is research consistency validation, not a trading backtest.

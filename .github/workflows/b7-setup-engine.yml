@@ -1,0 +1,46 @@
+name: B7 explainable setup engine tests
+
+on:
+  pull_request:
+    branches:
+      - feature/b6-analytics-audit-2026-11-28
+  push:
+    branches:
+      - feature/b7-setup-engine-2026-11-28
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  b7-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: B1/B2/B7 source and inline parity
+        run: node tests/b2-inline-source-parity.test.cjs
+      - name: Run B7 deterministic setup tests
+        run: node tests/b7-explainable-setup-engine.test.cjs
+      - name: Run B2 regression tests
+        run: |
+          node tests/b2a-causal-swing-engine.test.cjs
+          node tests/b2b-swing-sequence-engine.test.cjs
+          node tests/b2c-swing-structure-engine.test.cjs
+          node tests/b2d-support-resistance-engine.test.cjs
+          node tests/b2e-breakout-retest-engine.test.cjs
+          node tests/b2f-mtf-structure-confluence-engine.test.cjs
+          node tests/b2g-chart-projection-engine.test.cjs
+      - name: Pinned historical B7 replay and prefix invariance
+        run: node tools/b2_historical_replay.cjs
+      - name: Browser integration and mobile layout checks
+        run: node tests/b2-app-browser-integration.cjs

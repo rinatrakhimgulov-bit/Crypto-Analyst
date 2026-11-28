@@ -10,6 +10,7 @@ const { analyze: analyzeD } = require('../src/analysis/b2d-support-resistance-en
 const { analyze: analyzeE } = require('../src/analysis/b2e-breakout-retest-engine.js');
 const { analyze: analyzeF } = require('../src/analysis/b2f-mtf-structure-confluence-engine.js');
 const { analyze: analyzeG } = require('../src/analysis/b2g-chart-projection-engine.js');
+const { analyze: analyzeB7 } = require('../src/analysis/b7-explainable-setup-engine.js');
 
 const LAG = 500;
 const QUALITY = 'b1-quality-policy-2026-11-27-v1';
@@ -197,6 +198,51 @@ function runZones(structure, symbol, timeframe, spanRatio = 0.001, retestRatio =
   assert(e.status === 'VALID', 'B2-E blocked: ' + JSON.stringify(e.admission.reasons));
   return { d, e, zonePolicy, retestPolicy };
 }
+const POLICY_B7 = {
+  version: 'b7-explainable-setups-v1',
+  b1_contract_version: '1.1.0',
+  b1_validator_version: '1.1.0',
+  b1_quality_policy_version: QUALITY,
+  b2a_engine_version: '2.0.0-b2a', b2a_policy_version: POLICY_A.version,
+  b2b_engine_version: '2.2.0-b2b', b2b_policy_version: POLICY_B.version,
+  b2c_engine_version: '2.1.0-b2c', b2c_policy_version: POLICY_C.version,
+  b2d_engine_version: '2.0.0-b2d', b2d_policy_version: 'b2d-zone-engine-v1',
+  b2e_engine_version: '2.0.0-b2e', b2e_policy_version: 'b2e-retest-engine-v1',
+  finality_safety_lag_ms: LAG,
+  max_candidates: 20,
+  candle_feature_policy: {
+    version: 'b7-candle-features-v1',
+    rejection_wick_body_ratio: 2,
+    max_rejection_body_range_ratio: 0.45,
+    bullish_close_location_min: 0.65,
+    bearish_close_location_max: 0.35,
+    doji_body_range_max: 0.1,
+    volume_lookback: 20,
+    correction_lookback_bars: 3
+  }
+};
+function runSetups(structure, zones) {
+  const { snapshot, quality, a, b, c } = structure;
+  const result = analyzeB7({
+    policy: POLICY_B7, snapshot, quality_report: quality,
+    timeframe: Object.keys(snapshot.candles_by_timeframe)[0],
+    analysis_as_of_ms: snapshot.analysis_as_of_ms,
+    b2a_result: a, b2b_result: b, b2c_result: c,
+    b2d_result: zones.d, b2e_result: zones.e
+  });
+  assert(result.status === 'VALID', 'B7 blocked: ' + JSON.stringify(result.admission.reasons));
+  return result;
+}
+function compactSetups(result) {
+  return result.setup_candidates.map(item => ({
+    setup_type: item.setup_type, direction: item.direction, status: item.status,
+    available_at_ms: item.available_at_ms, invalidation_level: item.invalidation_level,
+    breakout_event_id: item.evidence.breakout_event_id || null,
+    lifecycle_id: item.evidence.lifecycle_id || null,
+    zone_id: item.evidence.zone_id || item.evidence.historical_zone_id || null
+  }));
+}
+
 function comparePrefix(full, prefix, cutoff, label) {
   const fullPivots = full.a.pivots.filter(p => p.available_at_ms <= cutoff);
   assert(JSON.stringify(fullPivots) === JSON.stringify(prefix.a.pivots),
@@ -241,7 +287,8 @@ async function main() {
       b1_quality: 'synthetic VALID wrapper after structural CSV integrity checks; actual B1 validator is not run',
       candle_finality: 'TIME_DERIVED with fixed 500ms research lag; historical provider finality is not independently observed',
       mtf_provider_time: 'synthetic common cutoff with zero provider-time spread; this does not calibrate live B1 MTF',
-      trading_edge: 'not evaluated; no entries, fees, funding, slippage, or trade outcomes are measured'
+      trading_edge: 'not evaluated; no entries, fees, funding, slippage, or trade outcomes are measured',
+      b7_replay: 'B7 is evaluated on each 160-candle rolling window and at three historical prefix cutoffs. Each prefix run asserts deterministic output and that every candidate and confirmation is available by that cutoff. This is causal consistency testing, not strategy profitability validation.'
     },
     symbols: {}
   };
@@ -298,7 +345,30 @@ async function main() {
         const cutoff = prefixRows[prefixRows.length - 1].close_time_ms + LAG;
         const prefix = runStructure(prefixRows, symbol, tf, cutoff, 'historical:' + symbol + ':' + tf + ':prefix:' + q);
         comparePrefix(full, prefix, cutoff, symbol + ' ' + tf + ' q=' + q);
-        prefixChecks.push(q);
+        const prefixZones = runZones(prefix, symbol, tf);
+        const prefixSetups = runSetups(prefix, prefixZones);
+        const repeatedPrefixSetups = runSetups(prefix, prefixZones);
+        assert(JSON.stringify(prefixSetups) === JSON.stringify(repeatedPrefixSetups),
+          symbol + ' ' + tf + ' B7 deterministic prefix replay failed at q=' + q);
+        for (const candidate of prefixSetups.setup_candidates) {
+          assert(candidate.available_at_ms <= cutoff,
+            symbol + ' ' + tf + ' B7 candidate available after prefix cutoff at q=' + q);
+          const evidence = candidate.evidence || {};
+          if (evidence.confirmation) {
+            assert(evidence.confirmation.available_at_ms <= cutoff &&
+              evidence.confirmation.candle_close_time_ms <= cutoff - LAG,
+              symbol + ' ' + tf + ' B7 confirmation leaks beyond prefix cutoff at q=' + q);
+          }
+          if (evidence.confirmation_candle) {
+            assert(evidence.confirmation_candle.close_time_ms + LAG <= cutoff,
+              symbol + ' ' + tf + ' B7 trend confirmation leaks beyond prefix cutoff at q=' + q);
+          }
+        }
+        prefixChecks.push({ quantile: q, b2_prefix_invariance: true,
+          b7_prefix_replay: 'PASS', candidate_count: prefixSetups.diagnostics.candidate_count,
+          confirmed_count: prefixSetups.diagnostics.confirmed_count,
+          pending_count: prefixSetups.diagnostics.pending_count,
+          all_evidence_causal_at_cutoff: true, deterministic_repeat: true });
       }
       const windowResults = [];
       for (const q of [0.2, 0.4, 0.6, 0.8, 1]) {
@@ -309,6 +379,7 @@ async function main() {
         const structure = runStructure(slice, symbol, tf, windowAsOf,
           'historical:' + symbol + ':' + tf + ':window:' + q);
         const zones = runZones(structure, symbol, tf, 0.001, 0.0005);
+        const setups = runSetups(structure, zones);
         const parameterGrid = [];
         for (const spanRatio of [0.0005, 0.001, 0.0025, 0.005]) {
           for (const retestRatio of [0.00025, 0.0005, 0.001]) {
@@ -324,7 +395,17 @@ async function main() {
           event_count: structure.c.events.length,
           event_types: countBy(structure.c.events, 'event_type'),
           ambiguous_pivot_count: structure.b.diagnostics.ambiguous_dual_pivot_count,
-          ...summarizeZones(zones), parameter_grid: parameterGrid });
+          ...summarizeZones(zones),
+          b7: {
+            status: setups.status, summary: setups.summary,
+            candidate_count: setups.diagnostics.candidate_count,
+            confirmed_count: setups.diagnostics.confirmed_count,
+            pending_count: setups.diagnostics.pending_count,
+            setup_types: countBy(setups.setup_candidates, 'setup_type'),
+            directions: countBy(setups.setup_candidates, 'direction'),
+            candidates: compactSetups(setups)
+          },
+          parameter_grid: parameterGrid });
       }
       byTf[tf] = {
         integrity: data.integrity,
