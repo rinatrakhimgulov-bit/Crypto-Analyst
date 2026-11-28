@@ -295,3 +295,40 @@ run('missing volume history is explicitly unavailable rather than fabricated', (
   assert.equal(result.latest_candle_features.volume_status, 'VOLUME_MISSING');
   assert.equal(result.latest_candle_features.volume_ratio_20, null);
 });
+
+
+run('lifecycle without its matching B2-C breakout event is ignored', () => {
+  const input = fixture();
+  attachLifecycles(input, [lifecycle()]);
+  input.b2c_result.events = [];
+  const result = analyze(input);
+  assert.equal(result.status, 'VALID');
+  assert.equal(result.setup_candidates.length, 0);
+});
+
+run('B2-C event direction mismatch cannot create a setup', () => {
+  const input = fixture();
+  attachLifecycles(input, [lifecycle()]);
+  input.b2c_result.events[0].direction = 'BEARISH';
+  const result = analyze(input);
+  assert.equal(result.setup_candidates.length, 0);
+});
+
+run('confirmation whose close does not match the closed snapshot candle is rejected', () => {
+  const input = fixture();
+  attachLifecycles(input, [lifecycle()]);
+  const candle = input.snapshot.candles_by_timeframe['1h'].find(row =>
+    row.close_time_ms === 13 * STEP);
+  candle.close = 102;
+  const result = analyze(input);
+  assert.equal(result.setup_candidates.length, 0);
+});
+
+run('negative or missing B2-E invalidation buffer cannot produce a confirmed setup', () => {
+  const input = fixture();
+  const item = lifecycle();
+  item.failure_buffer_price = -1;
+  attachLifecycles(input, [item]);
+  const result = analyze(input);
+  assert.equal(result.setup_candidates.length, 0);
+});
