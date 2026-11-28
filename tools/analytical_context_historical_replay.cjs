@@ -23,6 +23,12 @@ function sampleEndIndices(length, timeframe) {
   return indices;
 }
 
+function percentile(values, fraction) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) * fraction)];
+}
+
 function addCount(target, key) {
   target[key] = (target[key] || 0) + 1;
 }
@@ -168,7 +174,33 @@ async function main() {
   }
 
   const all = Object.values(output.series).flatMap(byTf => Object.values(byTf));
+  const sampledWindows = all.flatMap(series => series.windows);
+  const finiteFeature = key => sampledWindows.map(item => item[key]).filter(Number.isFinite);
+  const rangeSensitivity = [
+    { label: 'current_thresholds_plus_structure_gate', width_max_atr: 5, slope_max_atr: 0.12, spread_max_atr: 0.60, require_unestablished: true },
+    { label: 'current_thresholds_without_structure_gate', width_max_atr: 5, slope_max_atr: 0.12, spread_max_atr: 0.60, require_unestablished: false },
+    { label: 'moderately_relaxed_diagnostic', width_max_atr: 7.5, slope_max_atr: 0.20, spread_max_atr: 0.80, require_unestablished: false },
+    { label: 'broad_relaxed_diagnostic', width_max_atr: 10, slope_max_atr: 0.30, spread_max_atr: 1.00, require_unestablished: false },
+    { label: 'very_broad_diagnostic', width_max_atr: 12, slope_max_atr: 0.40, spread_max_atr: 1.20, require_unestablished: false }
+  ].map(policy => ({
+    ...policy,
+    qualifying_windows: sampledWindows.filter(item =>
+      Number.isFinite(item.range_width_atr) && item.range_width_atr <= policy.width_max_atr &&
+      Number.isFinite(item.ema50_slope_atr) && Math.abs(item.ema50_slope_atr) <= policy.slope_max_atr &&
+      Number.isFinite(item.mid_slow_spread_atr) && Math.abs(item.mid_slow_spread_atr) <= policy.spread_max_atr &&
+      (!policy.require_unestablished || item.range_structure_eligible)
+    ).length
+  }));
+  const structureStates = {};
+  for (const item of sampledWindows) addCount(structureStates, item.structure_state);
   output.summary = {
+    range_feature_percentiles: {
+      range_width_atr: { p25: percentile(finiteFeature('range_width_atr'), 0.25), p50: percentile(finiteFeature('range_width_atr'), 0.50), p75: percentile(finiteFeature('range_width_atr'), 0.75), p90: percentile(finiteFeature('range_width_atr'), 0.90) },
+      absolute_ema50_slope_atr: { p25: percentile(finiteFeature('ema50_slope_atr').map(Math.abs), 0.25), p50: percentile(finiteFeature('ema50_slope_atr').map(Math.abs), 0.50), p75: percentile(finiteFeature('ema50_slope_atr').map(Math.abs), 0.75), p90: percentile(finiteFeature('ema50_slope_atr').map(Math.abs), 0.90) },
+      absolute_mid_slow_spread_atr: { p25: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.25), p50: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.50), p75: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.75), p90: percentile(finiteFeature('mid_slow_spread_atr').map(Math.abs), 0.90) }
+    },
+    structure_state_distribution: structureStates,
+    range_threshold_sensitivity: rangeSensitivity,
     series_breakdown: all.map(series => ({
       symbol: series.symbol,
       timeframe: series.timeframe,
