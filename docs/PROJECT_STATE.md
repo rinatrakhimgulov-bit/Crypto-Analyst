@@ -802,3 +802,6 @@ A separate integration-preview branch now embeds B2-A through B2-G into the sing
 - Дополнительно закрывается REST/WS race: REST refresh раньше восстанавливал только ticker lastPrice, теряя более свежий WS kline OHLCV. Добавлен versioned/freshness-aware replay последней kline только если она новее provider time REST snapshot; добавлен детерминированный regression. См. B4 audit.
 
 - Добавлена защита от межтопикового out-of-order: provider timestamps не позволяют старому ticker перезаписать более новую kline; старая kline может обновить накопленный OHLCV, но не регрессировать close относительно более нового ticker. Regression проверяет оба порядка.
+
+- Последняя проверка B4 PR #24, head 42f0511679167714e2a35c873ae0fc970502923c: B1 browser/live-data CI SUCCESS (run 46102775403), B2 app integration SUCCESS (run 46102775296), pageErrors отсутствуют. Live Bybit probe пропущен из-за HTTP 403 с GitHub runner. PR не слит; нужны дальнейший аудит и iPhone/Safari acceptance.
+- Дополнительно защищён порядок WS-событий: более старый event time для той же свечи не откатывает OHLCV; более свежий ticker восстанавливает close после kline; старый ticker не перезаписывает более свежую kline. Сравнение same-candle event time ограничено тем же connGen.
