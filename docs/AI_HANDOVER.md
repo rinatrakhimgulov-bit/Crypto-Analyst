@@ -1673,3 +1673,13 @@ Important deployment fact: GitHub Pages still serves `main`. The current `main` 
 - Current B2-E evidence labels do not demonstrate a clear directional follow-through edge in this sample. They remain descriptive and must not be used as predictive confidence in LONG/SHORT decisions.
 - Forward windows overlap, event discovery is sparse, daily samples are small, and archive coverage ends 2025-12-05. This is not a strategy backtest.
 - Exact-head CI and the forward outcome replay passed on commit \`70173382210c82a7323c6f1816bb0fd657e59cda\`.
+
+
+## 2026-11-28 — B2-E retest forward-outcome evaluation
+
+- PR #49 / branch \`feature/b2e-retest-outcome-validation-2026-11-28\` adds post-resolution forward outcome metrics for B2-E retest lifecycle states.
+- 2,633 unique lifecycles were evaluated across BTC/ETH 1H/4H/1D. RETEST_SUCCESSFUL median direction-adjusted returns were -0.106 / -0.100 / -0.051 ATR at 5/10/20 bars; RETEST_FAILED were -0.088 / -0.147 / -0.078 ATR in the original breakout direction.
+- RETEST_FAILED reverse-direction median returns were +0.09 / +0.14 / +0.08 ATR, with positive-close rates around 51–55%. This is weak evidence, not a validated trading edge.
+- 247 duplicate-status conflicts were observed across overlapping windows. The current snapshot-ATR policy changes historical zone/retest buffers as volatility changes. Per-breakout ATR and zone-boundary policy must be stored and fixed at event time before lifecycle labels can be trusted.
+- No app decision path changes. No profitability claims.
+- Exact-head workflow passed on code commit \`384399ff3859e0f2721fe2e9c961631bdf784567\`.
