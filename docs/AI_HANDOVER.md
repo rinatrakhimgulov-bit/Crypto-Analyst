@@ -1371,3 +1371,5 @@ Latest code change: commit `1783a8e0b8294973366a61d32e75bb40458e338a` on `featur
 ### B4 continuation checkpoint — provider event-time validation
 
 Latest code commit `730917fb52a33064b204f425dfd57bd9ab2f0490` requires a valid Bybit kline `msg.ts` provider event timestamp before emitting a valid live-candle event. Previously, a candle with missing provider time could mutate the chart despite being unorderable against REST/ticker state. Added regression `B1-D. Kline without provider event timestamp is rejected fail-closed`. Check B1/B2 CI on the final branch head. Verify actual Bybit payload compatibility on iPhone/Safari; do not claim live acceptance from mocked tests.
+
+Latest B4 code commit `c5be074817dcee28cb7a7df3e095939150579de7` extends fail-closed provider event-time validation to ticker messages. Missing/invalid ticker `msg.ts` is rejected before ticker cache mutation or live-price callback; a regression verifies this. Kline and ticker now share the same ordering metadata requirement. Recheck B1/B2 exact-head CI after this commit and verify real Bybit ticker/kline payloads on iPhone/Safari.
