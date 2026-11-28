@@ -1,0 +1,35 @@
+name: B2-E Breakout Forward Outcome Replay
+on:
+  push:
+    branches:
+      - feature/b2e-breakout-forward-outcomes-2026-11-28
+  pull_request:
+    branches:
+      - feature/atr-normalized-zones-retests-2026-11-28
+    paths:
+      - 'tools/b2e_breakout_forward_outcomes.cjs'
+      - 'tests/b2e-breakout-forward-outcomes.test.cjs'
+      - 'tools/b2_historical_replay.cjs'
+      - 'src/analysis/**'
+      - '.github/workflows/b2e-breakout-forward-outcomes.yml'
+  workflow_dispatch:
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Unit tests
+        run: node tests/b2e-breakout-forward-outcomes.test.cjs
+      - name: Run event-time causal reconstruction and forward outcome replay
+        run: node tools/b2e_breakout_forward_outcomes.cjs
+      - name: Upload forward outcome report
+        uses: actions/upload-artifact@v4
+        with:
+          name: b2e-breakout-forward-outcomes-report
+          path: b2e_breakout_forward_outcomes_report.json
+          if-no-files-found: error
+          retention-days: 30
