@@ -57,6 +57,13 @@ function envelope(observations) {
   assert.equal(result.observations[0].excluded_candidate_count, 1);
 }
 {
+  const source = envelope([makeObservation('observation-unsupported-b7', 'LONG')]);
+  source.observations[0].analysisSnapshot.b2.setups.engine_version = '2.0.0-b7';
+  const result = importJournalEnvelope(source);
+  assert.equal(result.observations[0].setup_status, 'UNSUPPORTED_VERSION');
+  assert.equal(result.observations[0].setup_candidates.length, 0);
+}
+{
   const source = envelope([makeObservation('observation-future-cutoff', 'LONG')]);
   source.observations[0].analysisSnapshot.b2.setups.analysis_as_of_ms = 240000;
   const result = importJournalEnvelope(source);
