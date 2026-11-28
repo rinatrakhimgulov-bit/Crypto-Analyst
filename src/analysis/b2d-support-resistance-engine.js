@@ -44,9 +44,11 @@
         policy.price_equality_policy !== 'EXACT_PRICE_V1' ||
         policy.b2b_same_candle_dual_pivot_policy !== 'EXCLUDE_BOTH_FROM_SEQUENCE_V1') return 'B2D_UPSTREAM_POLICY_BINDING_INVALID';
     const absoluteSpanPolicy = isObject(zonePolicy) &&
+      zonePolicy.version === 'b2d-absolute-span-v1' &&
       zonePolicy.cluster_method === 'MAX_TOTAL_SPAN_V1' &&
       Number.isFinite(zonePolicy.max_cluster_span_price) && zonePolicy.max_cluster_span_price > 0;
     const relativeSpanPolicy = isObject(zonePolicy) &&
+      zonePolicy.version === 'b2d-relative-span-v2' &&
       zonePolicy.cluster_method === 'MAX_TOTAL_SPAN_RELATIVE_V2' &&
       Number.isFinite(zonePolicy.max_cluster_span_ratio) &&
       zonePolicy.max_cluster_span_ratio > 0 && zonePolicy.max_cluster_span_ratio <= 0.05;
