@@ -499,3 +499,5 @@ Added deterministic `pagehide`/`pageshow` regression `16d` to verify old socket 
 ### B4 additional data-quality gate — provider event time
 
 Kline events without a valid provider event timestamp (`msg.ts`) are rejected before chart mutation. Keep this fail-closed contract covered by regression tests and verify that actual Bybit messages on iPhone/Safari supply the expected timestamp.
+
+Ticker messages now follow the same provider event-time gate as kline messages: invalid/missing `msg.ts` is rejected before ticker state mutation. Keep both contracts covered by deterministic tests and verify actual provider payloads in Safari.
