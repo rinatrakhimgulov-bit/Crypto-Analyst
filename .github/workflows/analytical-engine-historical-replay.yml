@@ -1,0 +1,39 @@
+name: Analytical Engine Historical Replay
+
+on:
+  pull_request:
+    paths:
+      - 'tools/b2_historical_replay.cjs'
+      - 'tests/analytical-engine-replay.test.cjs'
+      - '.github/workflows/analytical-engine-historical-replay.yml'
+      - 'src/analysis/market-regime-engine.js'
+      - 'src/analysis/b2d-zone-context-engine.js'
+      - 'src/analysis/b2e-breakout-quality-engine.js'
+      - 'src/analysis/market-impulse-event-engine.js'
+  push:
+    branches:
+      - 'feature/analytical-engine-historical-replay-2026-11-28'
+
+jobs:
+  analytical-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax checks
+        run: |
+          node --check tools/b2_historical_replay.cjs
+          node --check tests/analytical-engine-replay.test.cjs
+      - name: Deterministic analytical replay tests
+        run: node tests/analytical-engine-replay.test.cjs
+      - name: Run pinned BTC/ETH historical replay
+        run: node tools/b2_historical_replay.cjs > /dev/null
+      - name: Upload analytical replay report
+        uses: actions/upload-artifact@v4
+        with:
+          name: analytical-engine-historical-replay
+          path: b2_historical_replay_report.json
+          if-no-files-found: error
