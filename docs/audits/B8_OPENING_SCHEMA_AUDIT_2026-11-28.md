@@ -91,3 +91,14 @@ The evaluator selects a post-availability closed-candle entry proxy, computes di
 ## Decision
 
 B8-A schema mapping is complete with conditions. B8-B evaluator implementation is in progress. No profitability conclusion is possible at this checkpoint, and no production decision path or UI has changed.
+
+
+## Verification update — 2026-11-28
+
+Initial deterministic implementation CI passed:
+- evaluator/statistics run `46116869096` — SUCCESS;
+- evaluator + journal adapter run `46116871532` — SUCCESS.
+
+The first CI iterations exposed incorrect fixture expectations, not syntax defects: one forward-return expected value pointed to the wrong close, and barrier fixtures had placed the touch in the entry candle. The fixtures were corrected to test post-entry outcomes. Cost arithmetic was also tightened to apply exit costs to exit notional rather than entry notional.
+
+B8-B is therefore implemented with passing deterministic unit coverage, subject to independent review. Historical census/OOS and prospective journal validation remain incomplete.
