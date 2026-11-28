@@ -1018,3 +1018,15 @@ B8-C exploratory pipeline passed; B8-C statistical validation is still incomplet
 - Extended the Playwright journal contract to test AUTO capture, repeated-snapshot idempotency, WAIT/no-setup, and invalid-quality capture. CI status is pending at this documentation checkpoint; do not claim tests passed until exact-head runs are read.
 - iPhone Safari acceptance remains required before merge.
 - Specification: `docs/specs/B9_AUTOMATIC_MARKET_JOURNAL_SPEC_2026-11-28.md`.
+
+
+### B9 exact-head verification checkpoint — 2026-11-28
+
+Candidate head: `42d4e6b64cf1622d1937d03af67113dead19b34d`.
+
+- B5 Market Journal browser contract run `46122848453`: SUCCESS. AUTO capture, duplicate suppression, WAIT capture, invalid-quality WAIT capture, existing manual/follow-up/trade workflows, JSON export/import, storage corruption recovery and zero page errors passed.
+- B2 application integration run `46122848390`: SUCCESS. B2-A..G regression and browser/mobile integration passed; B7 panel was VALID with zero candidates in the deterministic fixture, which is a valid no-setup result.
+- B7 setup engine run `46122848466`: SUCCESS. B1/B2/B7 source parity, deterministic B7 tests, B2 regression and pinned historical replay passed.
+- B1 browser/live-data run `46122848461`: SUCCESS. Browser/self-test and data-quality checks passed with zero page errors. Live Bybit probe was explicitly skipped because GitHub Actions received HTTP 403 from both public REST hosts; this is not a live-provider success claim.
+- B8 statistical workflow run `46122848380`: still in progress at this checkpoint; syntax and deterministic evaluator tests passed, pinned replay generation remained active.
+- No merge performed. Owner iPhone Safari acceptance remains mandatory.
