@@ -35,6 +35,26 @@ function findEntryIndex(candles, availableAtMs, lagMs) {
   // later than the candidate. Never use a candle open that predates availability.
   return candles.findIndex(c => c.close_time_ms + lagMs > availableAtMs);
 }
+function findCandidateContextIndex(candles, availableAtMs, lagMs) {
+  let index = -1;
+  for (let i = 0; i < candles.length; i++) {
+    if (candles[i].close_time_ms + lagMs <= availableAtMs) index = i;
+    else break;
+  }
+  return index;
+}
+function validateCostModel(costModel) {
+  if (costModel == null) return;
+  for (const key of ['entry_fee_bps', 'exit_fee_bps', 'entry_slippage_bps', 'exit_slippage_bps']) {
+    if (costModel[key] != null && (!finite(costModel[key]) || costModel[key] < 0)) {
+      throw new Error('B8_COST_MODEL_INVALID:' + key);
+    }
+  }
+  if (costModel.funding_status != null &&
+      !['UNKNOWN', 'OBSERVED', 'SCENARIO'].includes(costModel.funding_status)) {
+    throw new Error('B8_FUNDING_STATUS_INVALID');
+  }
+}
 
 function barrierResult({ candles, entryIndex, entryPrice, stop, direction, targetR, riskDistance, maxBars, costModel }) {
   const target = direction === 'LONG'
@@ -82,7 +102,8 @@ function makeBarrierOutcome(status, exitPrice, exitIndex, entryPrice, direction,
     net_return_pct: netReturn == null ? null : netReturn * 100,
     net_r: netReturn == null ? null : netReturn / (riskDistance / entryPrice),
     funding_status: costModel && costModel.funding_status === 'OBSERVED'
-      ? 'OBSERVED_INPUT_REQUIRED' : 'UNKNOWN'
+      ? 'OBSERVED_NOT_APPLIED' : (costModel && costModel.funding_status === 'SCENARIO'
+        ? 'SCENARIO_NOT_APPLIED' : 'UNKNOWN_NOT_MODELED')
   };
 }
 
@@ -98,6 +119,9 @@ function evaluateCandidate(input) {
   const lag = input.finalitySafetyLagMs == null ? 500 : input.finalitySafetyLagMs;
   assert(Number.isSafeInteger(lag) && lag >= 0, 'B8_FINALITY_LAG_INVALID');
   const horizons = input.horizons || DEFAULT_HORIZONS;
+  validateCostModel(input.costModel || null);
+  if (input.analysisAsOfMs != null && (!Number.isSafeInteger(input.analysisAsOfMs) ||
+      candidate.available_at_ms > input.analysisAsOfMs)) throw new Error('B8_CANDIDATE_AFTER_ANALYSIS_CUTOFF');
   assert(Array.isArray(horizons) && horizons.length > 0 &&
     horizons.every(n => Number.isSafeInteger(n) && n > 0), 'B8_HORIZONS_INVALID');
 
@@ -108,6 +132,7 @@ function evaluateCandidate(input) {
   };
   const entry = candles[entryIndex];
   const entryPrice = entry.close;
+  const candidateContextIndex = findCandidateContextIndex(candles, candidate.available_at_ms, lag);
   const result = {
     status: 'EVALUATED',
     candidate_id: candidate.setup_id || null,
@@ -119,7 +144,7 @@ function evaluateCandidate(input) {
       close_time_ms: entry.close_time_ms,
       available_at_ms: entry.close_time_ms + lag,
       delay_ms: entry.close_time_ms + lag - candidate.available_at_ms,
-      delay_bars: entryIndex
+      delay_bars: entryIndex - candidateContextIndex
     },
     horizons: {},
     invalidation: { status: 'UNAVAILABLE', reason: 'INVALIDATION_LEVEL_MISSING' },
