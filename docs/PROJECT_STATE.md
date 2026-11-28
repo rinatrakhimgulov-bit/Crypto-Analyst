@@ -1037,3 +1037,14 @@ The currently published GitHub Pages app is still the `main` version. Its HTML w
 - Added parser/checksum tests, replay report tests, workflow artifacts and docs/specs/BINANCE_USDM_RECENT_REPLAY_SPEC_2026-11-28.md.
 - This is an independent provider comparison, not a continuous extension of the Bybit archive. B1 remains a synthetic VALID research wrapper; no LONG/SHORT/WAIT changes or profitability claims.
 - PR #43: `feature/binance-usdm-recent-replay-2026-11-28`, Draft, based on Market Regime v2 candidate. Exact-head CI and data availability are pending.
+
+
+## 2026-11-28 — Binance recent replay exact-head verification
+
+- PR #45 current candidate head before this documentation checkpoint: e44ebf505d2b3ecfa75e50473af0bd8780158431.
+- GitHub Actions run 46169714916: SUCCESS.
+- 228 Binance USD-M Futures monthly/daily ZIP files passed SHA-256 checksum verification.
+- Six series passed continuity/finality checks: BTCUSDT/ETHUSDT 1H (8,568 rows each), 4H (2,142 each), 1D (357 each), covering 2025-12-06 through 2026-11-28 00:00 UTC.
+- 110 rolling 260-candle windows passed B2-D/E, regime v1/v2, zone context, breakout quality and impulse causal checks.
+- On this independent sample, v1 RANGE=0; v2 RANGE=22, all LOCAL_CONSOLIDATION; MARKET_RANGE=0. This is classification behavior only, not predictive accuracy.
+- Workflow artifacts: `binance-usdm-recent-replay-report` and `binance-usdm-recent-history`, 30-day retention.
