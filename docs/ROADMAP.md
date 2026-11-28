@@ -521,6 +521,11 @@ Recovery-generation regression explicitly distinguishes subscription ACK from ti
 - Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
 - PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
 
+B4 second-pass hardening: invalid WS kline events now clear the previously accepted WS candle cache before REST reconciliation. Exact-head B1/B2 CI passed at commit fb3152f1a1d778f6f95f246fd1c77a0ef90fbf60. This does not replace real iPhone/Safari provider acceptance; Actions REST probe remains blocked by HTTP 403.
+
+
+B4 continuity-failure hardening: invalid or structurally unapplyable WS kline events clear the previous WS kline cache before REST reconciliation; an explicitly older out-of-order event does not clear a newer cache. Exact-head B1/B2 passed at source commit 86bf04418a9f270755a86c6e400565f0b6398978. Real iPhone/Safari provider acceptance remains outstanding.
+
 ## B5 Market Journal — implementation in progress
 
 B5 spec: `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`. Implemented first vertical slice: immutable LONG/SHORT/WAIT observations, localStorage persistence, explicit versioned JSON export/import, append-only follow-ups, and separate completed actual trades. Dedicated browser tests cover immutable snapshots, quality-blocked WAIT, no-look-ahead candle window, record linkage, PnL arithmetic, import collision/idempotency, storage failure and corrupt-storage recovery. Keep B5 stacked on B4 candidate PR #24, not merged to main independently. Remaining gates: exact-head CI, independent source review, and iPhone Safari acceptance. Open-position tracking is deferred.
