@@ -26,6 +26,14 @@ function buildJournalReport(envelope) {
       ...candidate, symbol: observation.symbol, timeframe: observation.timeframe,
       observation_id: observation.observation_id
     })));
+  const candidateKey = candidate => [candidate.symbol, candidate.timeframe || 'UNKNOWN', candidate.setup_id].join('|');
+  const uniqueCandidateMap = new Map();
+  for (const candidate of candidates) {
+    if (typeof candidate.setup_id !== 'string' || !candidate.setup_id) continue;
+    const key = candidateKey(candidate);
+    if (!uniqueCandidateMap.has(key)) uniqueCandidateMap.set(key, candidate);
+  }
+  const uniqueCandidates = Array.from(uniqueCandidateMap.values());
   const followups = envelope.followups.map(row => {
     const observation = observationById.get(row.observationId);
     return { id: row.id, observation_id: row.observationId, status: row.status,
@@ -42,10 +50,15 @@ function buildJournalReport(envelope) {
     decision_counts: normalized.decision_counts,
     quality_status_counts: countBy(normalized.observations, o => o.data_quality_status),
     setup_snapshot_status_counts: countBy(normalized.observations, o => o.setup_status),
-    candidate_count: candidates.length,
-    candidate_counts_by_setup: countBy(candidates, c => c.setup_type),
-    candidate_counts_by_direction: countBy(candidates, c => c.direction),
-    candidate_counts_by_status: countBy(normalized.observations.flatMap(o =>
+    candidate_count: uniqueCandidates.length,
+    unique_candidate_count: uniqueCandidates.length,
+    candidate_appearance_count: candidates.length,
+    duplicate_candidate_appearance_count: candidates.length - uniqueCandidates.length,
+    candidate_counts_by_setup: countBy(uniqueCandidates, c => c.setup_type),
+    candidate_counts_by_direction: countBy(uniqueCandidates, c => c.direction),
+    candidate_appearance_counts_by_setup: countBy(candidates, c => c.setup_type),
+    candidate_appearance_counts_by_direction: countBy(candidates, c => c.direction),
+    candidate_status_appearance_counts: countBy(normalized.observations.flatMap(o =>
       Object.entries(o.setup_candidate_status_counts).flatMap(([status, count]) =>
         Array.from({ length: count }, () => ({ status })))), c => c.status),
     followup_count: followups.length,
