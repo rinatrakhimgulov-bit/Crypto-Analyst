@@ -1,0 +1,31 @@
+name: B5 market journal verification
+
+on:
+  push:
+    branches:
+      - feature/b5-market-journal-stack-2026-11-28
+  pull_request:
+    branches:
+      - feature/b4-live-data-hardening-2026-11-28
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  market-journal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout B5 candidate
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Market journal storage, snapshot, import/export and UI checks
+        run: node tests/b5-market-journal-check.cjs
