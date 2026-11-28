@@ -8074,6 +8074,9 @@
       const stepMs = BybitAdapter.intervalToMs(event.interval);
       const result = chart.upsertLiveCandle(event.candle, stepMs);
       if (['invalid', 'no-base', 'older', 'closed-candle', 'unconfirmed-predecessor', 'conflict', 'gap'].includes(result.status)) {
+        // An out-of-order older event does not invalidate the latest accepted cache.
+        // Structural conflicts and gaps do: REST must rebuild a trusted candle state.
+        if (result.status !== 'older') state.liveKline = null;
         scheduleLiveRestReconciliation(0, 'WebSocket kline requires REST reconciliation: ' + result.status);
         return;
       }
@@ -9120,6 +9123,41 @@
               'An invalid kline event must invalidate the previously cached WS candle before REST reconciliation');
             assert(state.liveReconcileTimer !== null,
               'An invalid kline event must still schedule REST reconciliation');
+
+            // A structurally unapplyable gap must also invalidate the cache.
+            const savedChart = {
+              candles: chart.candles,
+              closedCount: chart.closedCount,
+              analysis: chart.analysis,
+              marketPrice: chart.marketPrice
+            };
+            restoreList.push(() => {
+              chart.candles = savedChart.candles;
+              chart.closedCount = savedChart.closedCount;
+              chart.analysis = savedChart.analysis;
+              chart.marketPrice = savedChart.marketPrice;
+              chart.render();
+            });
+            const step = BybitAdapter.intervalToMs('240');
+            const base = { ts: 1, closeTs: 1 + step, open: 60000, high: 60100, low: 59900, close: 60020, volume: 1, turnover: 60000, confirmed: true };
+            chart.candles = [base];
+            chart.closedCount = 1;
+            state.liveKline = Object.freeze({
+              symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ...base }),
+              providerEventTimeMs: now - 50,
+              receivedAtMs: now - 25,
+              connGen: S().connGen,
+              recoveryGen: S().recoveryGen
+            });
+            handleLiveKline({
+              valid: true, symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ...base, ts: base.ts + step * 2, closeTs: base.closeTs + step * 2 }),
+              providerEventTimeMs: now, receivedAtMs: now,
+              connGen: S().connGen, recoveryGen: S().recoveryGen
+            });
+            assert(state.liveKline === null,
+              'A kline gap must invalidate the previous WS candle cache before REST reconciliation');
           });
 
           await record('B1-D. Chart live upsert changes forming candle without changing closed count', (restoreList) => {
