@@ -823,3 +823,5 @@ B4 PR #24 adds Stage A regression `16d` for actual `pagehide`/`pageshow` listene
 ## B4 provider timestamp guard — 2026-11-28
 
 The B4 branch now requires a valid provider event timestamp (`msg.ts`) on each incoming kline message. Missing/invalid event time is rejected before chart mutation, with invalid-stream diagnostics. This prevents unorderable OHLCV events from entering the live chart and later diverging from REST reconciliation. Regression added. Commit `730917fb52a33064b204f425dfd57bd9ab2f0490`; exact-head CI pending. This does not establish live provider acceptance.
+
+B4 also requires valid provider `msg.ts` on ticker messages before mutating ticker cache or emitting live-price updates. Missing/invalid timestamps are counted as invalid stream messages and rejected. Regression added alongside the kline timestamp guard. Latest code commit: `c5be074817dcee28cb7a7df3e095939150579de7`; exact-head CI pending.
