@@ -268,6 +268,29 @@ async function main() {
           structure_events: result.c.events.length,
           event_types: countBy(result.c.events, 'event_type') });
       }
+      const lookbackSensitivity = [];
+      for (const count of [160, 400, 800, 1600]) {
+        if (rows.length < count) continue;
+        const slice = windowAt(rows, rows.length - 1, count);
+        const windowStart = slice[0].open_time_ms;
+        const recentStart = rows[Math.max(0, rows.length - 160)].open_time_ms;
+        const structure = runStructure(slice, symbol, tf, asOf,
+          'historical:' + symbol + ':' + tf + ':lookback:' + count);
+        const zones = runZones(structure, symbol, tf);
+        const recentEvents = structure.c.events.filter(event => event.available_at_ms >= recentStart);
+        const recentPivots = structure.a.pivots.filter(pivot => pivot.available_at_ms >= recentStart);
+        lookbackSensitivity.push({
+          lookback_candles: count,
+          history_days: Number(((rows[rows.length - 1].close_time_ms - windowStart) / 86400000).toFixed(2)),
+          structure_state: structure.c.structure_state,
+          matches_full_history_state: structure.c.structure_state === full.c.structure_state,
+          pivots_in_recent_160: recentPivots.length,
+          structure_events_in_recent_160: recentEvents.length,
+          recent_event_types: countBy(recentEvents, 'event_type'),
+          zones: zones.d.zones.length,
+          retest_statuses: countBy(zones.e.lifecycles, 'status')
+        });
+      }
       const prefixChecks = [];
       for (const q of [0.25, 0.5, 0.75]) {
         const index = Math.floor((rows.length - 1) * q);
@@ -313,7 +336,8 @@ async function main() {
           structure_state: full.c.structure_state,
           sequence_history: full.b.sequence_history.length,
           prefix_invariance_checks: prefixChecks.length,
-          strength_sensitivity: strengthSensitivity },
+          strength_sensitivity: strengthSensitivity,
+          lookback_sensitivity: lookbackSensitivity },
         '160_candle_windows': windowResults
       };
     }
