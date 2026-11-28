@@ -52,5 +52,5 @@ assert.ok(baseVariant.resistance_available_rate >= 0 && baseVariant.resistance_a
 const regimeTotal = Object.values(report.summary.regime_v2_distribution).reduce((a, b) => a + b, 0);
 assert.equal(regimeTotal, report.summary.window_count);
 process.stdout.write('PASS Binance recent replay covers all six futures series through 2026\n');
-process.stdout.write('PASS all sampled windows have valid v1/v2 regime and causal evidence
-PASS 11 zone freshness/distance policies are compared with forward hold/break outcomes\n');
+process.stdout.write('PASS all sampled windows have valid v1/v2 regime and causal evidence\\n');
+process.stdout.write('PASS 11 zone freshness/distance policies are compared with forward hold/break outcomes\\n');
