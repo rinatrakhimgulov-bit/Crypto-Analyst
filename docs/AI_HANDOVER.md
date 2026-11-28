@@ -1340,3 +1340,15 @@ B3 is merged into main and the user reports that the chart is significantly bett
 Then proceed B6 analytical core, B7 a limited set of 2–3 explainable setups, B8 journal + historical/out-of-sample validation with costs and uncertainty, B9 explainable decisions and risk context. Avoid feature sprawl, premature public release, multi-exchange expansion, auto-trading and stack migration without demonstrated need.
 
 Long-term architecture principle: keep data adapters, quality, analytics, journal and UI behind stable contracts so the current HTML/JavaScript prototype can later move toward TypeScript/React and/or a backend without discarding validated algorithms and tests. UI/integration code may need rewriting; migration is not assumed to be zero-effort. The canonical detailed plan is docs/ROADMAP.md, section dated 2026-11-27.
+
+
+---
+## Current continuation handover — B4, 2026-11-28
+
+Current next stage is B4 in draft PR #24: https://github.com/rinatrakhimgulov-bit/Crypto-Analyst/pull/24. Branch: `feature/b4-live-data-hardening-2026-11-28`.
+
+Read `docs/audits/B4_MAIN_AUDIT_2026-11-28.md` first. Critical correction to older handover text: actual current main already has integrated Bybit ticker+kline WebSocket callbacks updating the live price and forming candle, REST history/bootstrap, 30-second polling, REST reconciliation and reconnect/recovery. Do not treat the WebSocket as LOG-ONLY or PR #9 as the current implementation state; those notes describe an older candidate and are superseded by the audited source.
+
+The first B4 defect found was that `confirm:true` did not make a chart candle immutable until REST advanced `closedCount`. Ticker fallback and late same-timestamp kline deltas could still mutate it, and it was styled as forming. PR #24 blocks those writes, treats exact repeats as duplicates, renders confirmed candles as closed and extends the B1-D regression.
+
+Continue B4 by auditing all REST/WS race conditions, reconnect/resubscribe, fallback and stale state, symbol/timeframe switching, lifecycle pause/resume and gap recovery. Run CI on the exact final PR head. Do not claim live Bybit based on mocked/browser CI or GitHub runner HTTP 403. Real iPhone/Safari acceptance and independent exact-source review remain merge gates. B1 MTF stays disconnected from directional decisions pending measured provider-time spread calibration. B4 is NOT COMPLETE and PR #24 must remain draft until all gates pass.
