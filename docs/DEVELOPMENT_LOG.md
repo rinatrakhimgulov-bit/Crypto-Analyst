@@ -896,3 +896,5 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B4 recovery-cycle isolation: live ticker/kline events and caches now carry both connection and recovery generations. Freshness, bridge acceptance and same-candle/cross-topic ordering reject caches from a prior recovery cycle, including normal automatic reconnects that retain `connGen`. Added deterministic regression for this case. Code commits: `6e06eb472d9fb750fc9c8a9bacc2575b7768a5bb`, `d916e9a05b38ccb12758225e28f0a03fb82da3fe`. Exact-head CI pending.
 
 - Recovery-generation test fixture corrected to establish a valid ticker snapshot/readiness before testing prior-cycle cache invalidation. Source commit `40a36c90233c5bcd5186f1d0322620f99bd78939`; exact-head CI pending.
+
+- Recovery regression setup now explicitly initializes its ticker entry through `_getTickerEntry` before setting snapshot readiness. Source commit `a822133fc1b58356d39c2814a462314aa70fcb17`; exact-head CI pending.
