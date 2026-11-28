@@ -24,10 +24,10 @@ Total: **474 prefixes** across six series. This is a regular-stride exploratory 
 |---|---:|---:|---:|---:|---:|
 | BTCUSDT 1h | 49,957 | 0 | 0 | 0 | 0 |
 | BTCUSDT 4h | 12,489 | 0 | 0 | 0 | 0 |
-| BTCUSDT 1d | 1,716 | 0 | 0 | 0 | 0 |
-| ETHUSDT 1h | 41,435 | 0 | 0 | 0 | 0 |
-| ETHUSDT 4h | 10,360 | 0 | 0 | 0 | 0 |
-| ETHUSDT 1d | 1,431 | 0 | 0 | 0 | 0 |
+| BTCUSDT 1d | 2,081 | 0 | 0 | 0 | 0 |
+| ETHUSDT 1h | 41,447 | 0 | 0 | 0 | 0 |
+| ETHUSDT 4h | 10,361 | 0 | 0 | 0 | 0 |
+| ETHUSDT 1d | 1,726 | 0 | 0 | 0 | 0 |
 
 ## 3. Regime and impulse classification
 
