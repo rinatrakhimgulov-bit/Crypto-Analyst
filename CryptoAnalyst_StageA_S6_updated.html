@@ -3471,7 +3471,8 @@
             receivedAtMs: recvAt,
             cs: hasCs ? msg.cs : null,
             type: msg.type,
-            connGen: cGen
+            connGen: cGen,
+            recoveryGen: this.state.recoveryGen
           });
           const onTicker = this.hooks && this.hooks.onTicker;
           if (typeof onTicker === 'function') {
@@ -3569,6 +3570,7 @@
             providerEventTimeMs,
             receivedAtMs: recvAt,
             connGen: cGen,
+            recoveryGen: this.state.recoveryGen,
             messageType: msg.type
           });
           this._log('log', `Kline ${msg.topic} (${msg.type})`, {
@@ -7923,7 +7925,8 @@
       const entry = wsState && wsState.tickerBySymbol instanceof Map
         ? wsState.tickerBySymbol.get(symbol) : null;
       const streamReady = Boolean(wsState && wsState.status === 'open' &&
-        wsState.confirmedTopics.has(tickerTopic) && entry && entry.ready);
+        wsState.confirmedTopics.has(tickerTopic) && entry && entry.ready &&
+        item && item.connGen === wsState.connGen && item.recoveryGen === wsState.recoveryGen);
       const currentKline = state.liveKline;
       const tickerBehindKline = Boolean(currentKline && currentKline.symbol === symbol &&
         currentKline.interval === state.interval && currentKline.connGen === (wsState && wsState.connGen) &&
@@ -7977,7 +7980,10 @@
       }, Math.max(0, delayMs));
     }
     function handleLiveTicker(event) {
-      if (!event || event.symbol !== state.symbol || !Number.isFinite(event.lastPrice) || event.lastPrice <= 0) return;
+      const wsState = BybitWsClient.state;
+      if (!event || !wsState || event.connGen !== wsState.connGen ||
+          event.recoveryGen !== wsState.recoveryGen ||
+          event.symbol !== state.symbol || !Number.isFinite(event.lastPrice) || event.lastPrice <= 0) return;
       const newerKline = freshLiveKline(event.symbol, state.interval);
       if (newerKline && (!Number.isSafeInteger(event.providerEventTimeMs) ||
           isOlderProviderEvent(event.providerEventTimeMs, newerKline.providerEventTimeMs))) {
@@ -8006,7 +8012,8 @@
       const wsState = BybitWsClient.state;
       const topic = `kline.${interval}.${symbol}`;
       const streamReady = Boolean(wsState && wsState.status === 'open' &&
-        wsState.connGen === (item && item.connGen) && wsState.confirmedTopics.has(topic));
+        item && wsState.connGen === item.connGen && wsState.recoveryGen === item.recoveryGen &&
+        wsState.confirmedTopics.has(topic));
       if (!streamReady || !item || item.symbol !== symbol || item.interval !== interval ||
           !item.candle || !Number.isSafeInteger(item.providerEventTimeMs) ||
           !Number.isSafeInteger(item.receivedAtMs) ||
@@ -8040,13 +8047,17 @@
       return result;
     }
     function handleLiveKline(event) {
-      if (!event || event.symbol !== state.symbol || event.interval !== state.interval) return;
+      const wsState = BybitWsClient.state;
+      if (!event || !wsState || event.connGen !== wsState.connGen ||
+          event.recoveryGen !== wsState.recoveryGen ||
+          event.symbol !== state.symbol || event.interval !== state.interval) return;
       if (!event.valid || !event.candle) {
         scheduleLiveRestReconciliation(0, event.reason || 'invalid WebSocket kline');
         return;
       }
       const previousKline = state.liveKline;
       if (previousKline && previousKline.connGen === event.connGen &&
+          previousKline.recoveryGen === event.recoveryGen &&
           previousKline.symbol === event.symbol && previousKline.interval === event.interval &&
           previousKline.candle && previousKline.candle.ts === event.candle.ts &&
           Number.isSafeInteger(previousKline.providerEventTimeMs) &&
@@ -8069,7 +8080,8 @@
           candle: event.candle,
           providerEventTimeMs: event.providerEventTimeMs,
           receivedAtMs: event.receivedAtMs,
-          connGen: event.connGen
+          connGen: event.connGen,
+          recoveryGen: event.recoveryGen
         });
       }
       const newerTicker = freshLiveTicker(event.symbol);
@@ -8896,6 +8908,48 @@
               'The current symbol/timeframe kline must work after switching');
           });
 
+          await record('B1-D. Live caches from the previous recovery cycle are invalidated after reconnect', (restoreList) => {
+            const savedTicker = state.liveTicker;
+            const savedKline = state.liveKline;
+            restoreList.push(() => { state.liveTicker = savedTicker; state.liveKline = savedKline; });
+            BybitWsClient.start('BTCUSDT', '240');
+            const ws1 = lastWs(); ws1.triggerOpen(); ackAll(ws1);
+            const wsState = BybitWsClient.state;
+            const oldRecoveryGen = wsState.recoveryGen;
+            const oldConnGen = wsState.connGen;
+            const now = Date.now();
+            state.liveTicker = Object.freeze({
+              symbol: 'BTCUSDT', lastPrice: 60000,
+              providerEventTimeMs: now, receivedAtMs: now,
+              connGen: oldConnGen, recoveryGen: oldRecoveryGen
+            });
+            state.liveKline = Object.freeze({
+              symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ts: 1, closeTs: 2, open: 10, high: 11, low: 9, close: 10, volume: 1, turnover: 10, confirmed: false }),
+              providerEventTimeMs: now, receivedAtMs: now,
+              connGen: oldConnGen, recoveryGen: oldRecoveryGen
+            });
+            assert(freshLiveTicker() === state.liveTicker && freshLiveKline() === state.liveKline,
+              'Current recovery-cycle caches should be fresh while their socket/topics are active');
+
+            ws1.dropConnection();
+            assert(wsState.recoveryGen > oldRecoveryGen, 'A normal socket close must advance recoveryGen');
+            clock.advance(BybitWsClient.reconnectMaxMs + 10);
+            const ws2 = lastWs();
+            assert(ws2 !== ws1, 'Reconnect must create a new WebSocket instance');
+            ws2.triggerOpen(); ackAll(ws2);
+            assert(wsState.connGen === oldConnGen,
+              'This regression specifically covers automatic reconnects that retain connGen');
+            const tickerEntry = wsState.tickerBySymbol.get('BTCUSDT');
+            tickerEntry.ready = true;
+            tickerEntry.snapshotReceived = true;
+            tickerEntry.state = { symbol: 'BTCUSDT', lastPrice: '60001' };
+            assert(freshLiveTicker() === null,
+              'A ticker cache from the previous recovery cycle must not become fresh after new topic ACK');
+            assert(freshLiveKline() === null,
+              'A kline cache from the previous recovery cycle must not be replayed after reconnect');
+          });
+
           await record('B1-D. Stale WS ticker and kline are ignored; REST price fallback is shown', (restoreList) => {
             const wsState = BybitWsClient.state;
             const saved = {
@@ -8904,7 +8958,7 @@
               snapshotsByKey: state.snapshotsByKey,
               tickerBySymbol: wsState.tickerBySymbol,
               status: wsState.status,
-              connGen: wsState.connGen,
+              connGen: wsState.connGen, recoveryGen: wsState.recoveryGen,
               confirmedTopics: new Set(wsState.confirmedTopics),
               livePriceText: document.getElementById('livePrice').textContent,
               sourceText: document.getElementById('priceSourceLabel').textContent,
@@ -8935,14 +8989,14 @@
               symbol: 'BTCUSDT', lastPrice: 70000,
               providerEventTimeMs: now - LIVE_TICKER_STALE_MS - 1,
               receivedAtMs: now - LIVE_TICKER_STALE_MS - 1,
-              connGen: wsState.connGen
+              connGen: wsState.connGen, recoveryGen: wsState.recoveryGen
             });
             state.liveKline = Object.freeze({
               symbol: 'BTCUSDT', interval: '240',
               candle: Object.freeze({ ts: 1, closeTs: 2, open: 10, high: 11, low: 9, close: 10, volume: 1, turnover: 10, confirmed: false }),
               providerEventTimeMs: now - LIVE_KLINE_STALE_MS - 1,
               receivedAtMs: now - LIVE_KLINE_STALE_MS - 1,
-              connGen: wsState.connGen
+              connGen: wsState.connGen, recoveryGen: wsState.recoveryGen
             });
             const restPrice = 65000;
             state.snapshotsByKey = new Map([[makeKey('BTCUSDT', '240'), {
@@ -8965,7 +9019,7 @@
               liveKline: state.liveKline,
               tickerBySymbol: wsState.tickerBySymbol,
               status: wsState.status,
-              connGen: wsState.connGen,
+              connGen: wsState.connGen, recoveryGen: wsState.recoveryGen,
               confirmedTopics: new Set(wsState.confirmedTopics)
             };
             restoreList.push(() => {
@@ -8989,14 +9043,14 @@
               symbol: 'BTCUSDT', lastPrice: 60050,
               providerEventTimeMs: now - 1500,
               receivedAtMs: now - 100,
-              connGen: wsState.connGen
+              connGen: wsState.connGen, recoveryGen: wsState.recoveryGen
             });
             state.liveKline = Object.freeze({
               symbol: 'BTCUSDT', interval: '240',
               candle: Object.freeze({ ts: 1, closeTs: 2, open: 60000, high: 60100, low: 59900, close: 60020, volume: 1, turnover: 60000, confirmed: false }),
               providerEventTimeMs: now - 1000,
               receivedAtMs: now - 100,
-              connGen: wsState.connGen
+              connGen: wsState.connGen, recoveryGen: wsState.recoveryGen
             });
             assert(freshLiveTicker() === null,
               'Ticker older than cached WS kline must initially be ineligible');
@@ -9082,14 +9136,14 @@
             const replayEvent = Object.freeze({
               symbol: 'BTCUSDT', interval: '240',
               candle: Object.freeze({ ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11, volume: 2, turnover: 22, confirmed: false }),
-              providerEventTimeMs: 5000, receivedAtMs: Date.now(), connGen: wsState.connGen
+              providerEventTimeMs: 5000, receivedAtMs: Date.now(), connGen: wsState.connGen, recoveryGen: wsState.recoveryGen
             });
             state.liveKline = replayEvent;
             chart.setData(base, 1, null, 10);
             handleLiveKline({
               valid: true, symbol: 'BTCUSDT', interval: '240',
               candle: Object.freeze({ ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 10.5, volume: 2, turnover: 21, confirmed: false }),
-              providerEventTimeMs: 4500, receivedAtMs: Date.now(), connGen: wsState.connGen
+              providerEventTimeMs: 4500, receivedAtMs: Date.now(), connGen: wsState.connGen, recoveryGen: wsState.recoveryGen
             });
             assert(chart.candles[1].close === 10 && state.liveKline.providerEventTimeMs === 5000,
               'An older same-candle WS event time must not roll back the accepted OHLCV state');
@@ -9114,27 +9168,27 @@
             wsState.confirmedTopics.add('tickers.BTCUSDT');
             state.liveTicker = Object.freeze({
               symbol: 'BTCUSDT', lastPrice: 11.5, providerEventTimeMs: 6000,
-              receivedAtMs: Date.now(), connGen: wsState.connGen
+              receivedAtMs: Date.now(), connGen: wsState.connGen, recoveryGen: wsState.recoveryGen
             });
             chart.setData(base, 1, null, 10);
             const olderKline = {
               valid: true, symbol: 'BTCUSDT', interval: '240',
               candle: { ts: 2000, closeTs: 3000, open: 10, high: 12, low: 9, close: 11.2, volume: 3, turnover: 33, confirmed: false },
-              providerEventTimeMs: 5500, receivedAtMs: Date.now(), connGen: wsState.connGen
+              providerEventTimeMs: 5500, receivedAtMs: Date.now(), connGen: wsState.connGen, recoveryGen: wsState.recoveryGen
             };
             handleLiveKline(olderKline);
             assert(chart.candles[1].close === 11.5 && chart.candles[1].volume === 3,
               'An older kline event may update cumulative volume but must not regress a newer ticker close');
             state.liveKline = Object.freeze({
               symbol: 'BTCUSDT', interval: '240', candle: replayEvent.candle,
-              providerEventTimeMs: 7000, receivedAtMs: Date.now(), connGen: wsState.connGen
+              providerEventTimeMs: 7000, receivedAtMs: Date.now(), connGen: wsState.connGen, recoveryGen: wsState.recoveryGen
             });
             const tickerBeforeOlderEvent = state.liveTicker;
             assert(freshLiveTicker('BTCUSDT') === null,
               'A ticker older than the current kline provider time must not be surfaced as the current live price');
             handleLiveTicker({
               symbol: 'BTCUSDT', lastPrice: 10.5, providerEventTimeMs: 6500,
-              receivedAtMs: Date.now(), connGen: wsState.connGen
+              receivedAtMs: Date.now(), connGen: wsState.connGen, recoveryGen: wsState.recoveryGen
             });
             assert(state.liveTicker === tickerBeforeOlderEvent,
               'An older ticker event must not overwrite a newer kline state');
