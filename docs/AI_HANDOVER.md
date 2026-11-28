@@ -1662,3 +1662,14 @@ Important deployment fact: GitHub Pages still serves `main`. The current `main` 
 - Retest label proportions are not predictive success rates; no forward outcome/PnL analysis was performed.
 - Archive ends 2025-12-05. No 2026 data is included.
 - Exact-head GitHub Actions passed on commit \`497d4a5c39ee90a2e667bd447ddf8de420e36364\`, including HTML integration regression tests and ATR sensitivity replay.
+
+
+## 2026-11-28 — B2-E breakout forward-outcome evaluation
+
+- PR #47 / branch \`feature/b2e-breakout-forward-outcomes-2026-11-28\` adds an event-time causal reconstruction and forward-outcome replay for B2-C/B2-D/B2-E breakouts.
+- Each event is reconstructed using 260 closed candles ending exactly at the breakout candle. Zone/retest ATR parameters are measured at that event-time cutoff. Future candles are used only for outcome evaluation.
+- 2,980 zone-matched breakouts were evaluated across BTCUSDT/ETHUSDT 1H/4H/1D.
+- Aggregate median direction-adjusted returns were negative for STRONG_EVIDENCE (-0.183 / -0.198 / -0.143 ATR at 5/10/20 bars), MIXED_EVIDENCE (-0.226 / -0.150 / -0.218 ATR), and WEAK_EVIDENCE (-0.113 / -0.158 / -0.170 ATR).
+- Current B2-E evidence labels do not demonstrate a clear directional follow-through edge in this sample. They remain descriptive and must not be used as predictive confidence in LONG/SHORT decisions.
+- Forward windows overlap, event discovery is sparse, daily samples are small, and archive coverage ends 2025-12-05. This is not a strategy backtest.
+- Exact-head CI and the forward outcome replay passed on commit \`70173382210c82a7323c6f1816bb0fd657e59cda\`.
