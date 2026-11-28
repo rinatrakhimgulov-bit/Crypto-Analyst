@@ -12,7 +12,8 @@ const modules = [
   ['B2CSwingStructureEngine', 'b2c-swing-structure-engine.js', 'B2DSupportResistanceEngine'],
   ['B2DSupportResistanceEngine', 'b2d-support-resistance-engine.js', 'B2EBreakoutRetestEngine'],
   ['B2EBreakoutRetestEngine', 'b2e-breakout-retest-engine.js', 'B2FMtfStructureConfluenceEngine'],
-  ['B2FMtfStructureConfluenceEngine', 'b2f-mtf-structure-confluence-engine.js', 'B2GChartProjectionEngine'],
+  ['B2FMtfStructureConfluenceEngine', 'b2f-mtf-structure-confluence-engine.js', 'B7ExplainableSetupEngine'],
+  ['B7ExplainableSetupEngine', 'b7-explainable-setup-engine.js', 'B2GChartProjectionEngine'],
   ['B2GChartProjectionEngine', 'b2g-chart-projection-engine.js', null]
 ];
 
