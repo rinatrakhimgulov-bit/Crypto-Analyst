@@ -66,3 +66,15 @@ The Stage A B1-D regression now also checks replay of newer WS OHLCV after an ol
 ## Cross-topic ordering hardening
 
 Ticker and kline are separate WebSocket topics, so arrival order is not guaranteed to match provider event time. The branch now compares their provider timestamps: an older ticker cannot overwrite a newer kline state; when an older kline arrives after a newer ticker, cumulative OHLCV is still accepted but the forming candle close is restored to the newer ticker price. Confirmed candles remain immutable. Regression coverage exercises both orderings.
+
+
+## Event-order hardening and B4 branch CI — 2026-11-28
+
+The next review found that ticker and kline topics can be observed at different event timestamps. The bridge now keeps the forming candle monotonic with respect to provider event time:
+
+- An older same-candle kline event is discarded before it can roll back accepted OHLCV.
+- If a kline arrives after a newer ticker, cumulative kline high/low/volume can still be applied, then the newer ticker close is restored to the forming candle.
+- If a ticker arrives after a newer kline, the older ticker event is discarded rather than rolling back the forming close or live price.
+- Regression coverage exercises both delivery orders and same-candle event-time rollback.
+
+The B1 and B2 workflow push filters now include `feature/b4-live-data-hardening-2026-11-28`, so subsequent commits to this branch run both verification workflows rather than depending only on pull-request event delivery. Exact-head workflow results must be checked before merge.
