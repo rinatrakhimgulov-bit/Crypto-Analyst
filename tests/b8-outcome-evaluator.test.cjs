@@ -88,7 +88,7 @@ assert.equal(summary.positive_close_rate, 0.5);
     costModel: { entry_fee_bps: 5, exit_fee_bps: 5, entry_slippage_bps: 5, exit_slippage_bps: 5, funding_status: 'UNKNOWN' }
   });
   assert.equal(r.barriers['1R'].status, 'TARGET');
-  assert.equal(r.barriers['1R'].cost_bps, 20);
+  assert.ok(Math.abs(r.barriers['1R'].cost_bps - (10 + 10 * 107 / 101)) < 1e-10);
   assert.equal(r.barriers['1R'].funding_status, 'UNKNOWN_NOT_MODELED');
   assert.ok(r.barriers['1R'].net_r < r.barriers['1R'].gross_r);
 }
