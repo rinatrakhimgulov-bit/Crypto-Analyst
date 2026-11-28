@@ -84,7 +84,7 @@ All output is deeply immutable. The engine does not mutate the snapshot or upstr
 
 tests/market-regime-engine.test.cjs covers bullish/bearish trend, range, impulse, transition, missing structure, non-VALID quality, insufficient history, forming-candle exclusion, provenance mismatch, snapshot mismatch, candle finality, gaps, policy validation, immutability and non-mutation.
 
-The current isolated local run passes 18/18 deterministic tests and the source parses successfully with Node/V8. These are synthetic tests, not historical calibration or live-market validation.
+The exact candidate head passed GitHub Actions run 46164808349: source syntax parsing PASS and 19/19 deterministic tests PASS. These are synthetic tests, not historical calibration or live-market validation.
 
 ## 8. Next acceptance work
 
