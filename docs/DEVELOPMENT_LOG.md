@@ -927,3 +927,11 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - B1 run `46106500094` SUCCESS: Stage A 58/58, contract 32/32, quality 72/72, MTF 20/20; GitHub runner Bybit probe blocked by HTTP 403 on both public REST hosts.
 - B2 run `46106500087` SUCCESS: B2-A…B2-G and browser/mobile integration passed.
 - Remaining: iPhone Safari acceptance and independent review. B5 is still draft; open-position tracking deferred.
+
+## B6 Analytics Core Audit — 2026-11-28
+
+- Added exact source/inline parity test for B2-A..G; all seven production HTML modules match their tested `src/analysis` implementations.
+- Pinned B2 historical archive to immutable source commit `9ca04178df06ce649f00779a49e11094fe5b1c70` and made synthetic B1/MTF assumptions explicit in replay output.
+- Added 160/400/800/1600 candle lookback sensitivity. At the archive final cutoff, all 24 symbol/timeframe/lookback combinations matched the full-history B2-C state. Longer windows accumulate substantially more zones, so keep production 160-bar limit until zone freshness/relevance exists.
+- Audit report: `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`.
+- B2 app/parity run `46107248773` SUCCESS; historical replay run `46107248819` SUCCESS. Historical archive ends 2025-12-05 and does not prove current live-market accuracy or trading edge.

@@ -856,3 +856,7 @@ B5 PR #25 is a draft stacked on B4 PR #24. Current feature slice includes immuta
 - B1 run `46106500094`: SUCCESS. Stage A 58/58; B1 contract 32/32; quality 72/72; MTF 20/20. Live Bybit probe remains skipped due runner HTTP 403.
 - B2 run `46106500087`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
 - B5 implementation is functionally ready for independent review. iPhone Safari acceptance remains outstanding; open-position tracking is deferred.
+
+## B6 audit checkpoint — 2026-11-28
+
+B2-A through B2-G passed static contract review, source/inline parity, unit/integration tests and pinned historical replay. Exact source/inline parity is now enforced in CI. Historical replay uses BTC/ETH USDT-M perpetual archive pinned to `9ca04178df06ce649f00779a49e11094fe5b1c70`; all six series have zero invalid rows, duplicates, gaps and off-grid timestamps. At final archive cutoff, the 160-bar structure state matched full-history output across all six series and 160/400/800/1600 lookbacks. Longer lookbacks add many old zones, so retain 160 bars until freshness/relevance logic is implemented. B2-F remains display/research context only, not a directional signal. Audit: `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`. CI: B2 app/parity `46107248773` SUCCESS; replay `46107248819` SUCCESS.

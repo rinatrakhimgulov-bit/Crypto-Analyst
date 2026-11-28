@@ -556,3 +556,5 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - B5 Market Journal: immutable observations, local persistence, follow-up events, completed actual trades and validated JSON backup/restore. Spec: `docs/specs/B5_MARKET_JOURNAL_SPEC_2026-11-28.md`.
 
 - B5 exact-head checkpoint: PR #25 head `8f77ff6427e5c5d8021286d971c6a82bfc7f41b5`; B5 browser contract, B1 and B2 workflows all SUCCESS. iPhone Safari acceptance remains pending.
+
+- B6 Analytics Core Audit: B2-A..G source/inline parity gate, pinned historical archive, lookback sensitivity and audit report `docs/audits/B6_ANALYTICS_CORE_AUDIT_2026-11-28.md`. CI: B2 app/parity `46107248773` PASS; historical replay `46107248819` PASS.
