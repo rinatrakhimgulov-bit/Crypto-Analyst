@@ -8066,30 +8066,53 @@
             !Array.isArray(record.dataQuality.reasonCodes)) throw new Error('Observation data quality invalid');
         if (!isObject(record.decision) || !['LONG', 'SHORT', 'WAIT'].includes(record.decision.value) ||
             !Array.isArray(record.decision.reasons)) throw new Error('Observation decision invalid');
-        if (!isObject(record.analysisSnapshot) || !Number.isSafeInteger(record.analysisSnapshot.analysisAsOfMs) ||
+        if (typeof record.snapshotId !== 'string' || !record.snapshotId ||
+            !isObject(record.analysisSnapshot) || !Number.isSafeInteger(record.analysisSnapshot.analysisAsOfMs) ||
             record.analysisSnapshot.analysisAsOfMs <= 0 || !isObject(record.analysisSnapshot.basic) ||
             !isObject(record.analysisSnapshot.structure)) throw new Error('Observation analysis snapshot invalid');
-        if (!isObject(record.engineVersions) || !Array.isArray(record.candleWindow) ||
-            record.candleWindow.length < 1 || record.candleWindow.length > LIMITS.candlesPerObservation) {
-          throw new Error('Observation candle window or engine versions invalid');
+        const structure = record.analysisSnapshot.structure;
+        for (const key of ['swingMarkers', 'supersededPivots', 'ambiguousPivots', 'structureEvents', 'zones', 'candidateLevels', 'retestLifecycles']) {
+          if (!Array.isArray(structure[key])) throw new Error('Observation structure evidence invalid: ' + key);
         }
+        if (!isObject(record.engineVersions) || !Array.isArray(record.candleWindow) ||
+            record.candleWindow.length < 1 || record.candleWindow.length > LIMITS.candlesPerObservation ||
+            (record.note !== undefined && (typeof record.note !== 'string' || record.note.length > 500)) ||
+            typeof record.decision.qualityBlocked !== 'boolean' ||
+            !record.decision.reasons.every(reason => typeof reason === 'string')) {
+          throw new Error('Observation candle window, note or engine versions invalid');
+        }
+        if (record.dataQuality.status !== 'VALID' && record.decision.value !== 'WAIT') {
+          throw new Error('Non-valid data quality can only be recorded with WAIT');
+        }
+        if (!Number.isSafeInteger(record.dataQuality.closedCandleCount) || record.dataQuality.closedCandleCount < 0 ||
+            !Number.isSafeInteger(record.dataQuality.totalCandleCount) || record.dataQuality.totalCandleCount < record.dataQuality.closedCandleCount ||
+            typeof record.dataQuality.hasForming !== 'boolean') throw new Error('Observation data quality counts invalid');
         let previousTs = -1;
-        for (const candle of record.candleWindow) {
+        let formingCount = 0;
+        for (let index = 0; index < record.candleWindow.length; index++) {
+          const candle = record.candleWindow[index];
           if (!isObject(candle) || !Number.isSafeInteger(candle.ts) || candle.ts <= previousTs ||
+              candle.ts > record.analysisSnapshot.analysisAsOfMs ||
               !Number.isSafeInteger(candle.closeTs) || candle.closeTs <= candle.ts ||
               !['CLOSED', 'FORMING'].includes(candle.finality) ||
-              (candle.source !== undefined && !['REST_CONFIRMED', 'REST_FORMING', 'WS_KLINE', 'WS_TICKER_OVER_REST'].includes(candle.source)) ||
-              (candle.providerEventTimeMs !== null && candle.providerEventTimeMs !== undefined &&
+              !['REST_CONFIRMED', 'REST_FORMING', 'WS_KLINE', 'WS_TICKER_OVER_REST'].includes(candle.source) ||
+              (candle.providerEventTimeMs !== null &&
                 (!Number.isSafeInteger(candle.providerEventTimeMs) || candle.providerEventTimeMs <= 0)) ||
-              (candle.localReceivedAtMs !== null && candle.localReceivedAtMs !== undefined &&
+              (candle.localReceivedAtMs !== null &&
                 (!Number.isSafeInteger(candle.localReceivedAtMs) || candle.localReceivedAtMs <= 0)) ||
+              (candle.turnover !== null && !Number.isFinite(candle.turnover)) ||
               !['open', 'high', 'low', 'close', 'volume'].every(key => Number.isFinite(candle[key])) ||
               candle.open <= 0 || candle.high < Math.max(candle.open, candle.close) ||
               candle.low > Math.min(candle.open, candle.close) || candle.low <= 0 || candle.volume < 0) {
             throw new Error('Observation candle window contains invalid or unordered candles');
           }
+          if (candle.finality === 'FORMING') {
+            formingCount += 1;
+            if (index !== record.candleWindow.length - 1) throw new Error('Forming candle must be the final candle in the snapshot');
+          }
           previousTs = candle.ts;
         }
+        if (formingCount > 1) throw new Error('Observation cannot contain multiple forming candles');
       }
       function validateFollowup(record, observationIds) {
         if (!isObject(record) || record.recordType !== 'followup' || record.schemaVersion !== SCHEMA_VERSION ||
@@ -8116,10 +8139,30 @@
         requireSafeTime(record.entry.atMs, 'Actual trade entry time');
         if (!Number.isFinite(record.quantity) || record.quantity <= 0) throw new Error('Actual trade quantity invalid');
         if (record.status === 'closed' && (!isObject(record.exit) || !Number.isFinite(record.exit.price) ||
-            record.exit.price <= 0 || !Number.isSafeInteger(record.exit.atMs) || record.exit.atMs <= 0)) {
+            record.exit.price <= 0 || !Number.isSafeInteger(record.exit.atMs) || record.exit.atMs < record.entry.atMs)) {
           throw new Error('Closed trade exit invalid');
         }
-        if (record.status !== 'closed' && record.exit !== null) throw new Error('Open/void trade cannot contain exit');
+        if (record.status !== 'closed' && (record.exit !== null || record.grossPnlQuote !== null || record.realizedPnlQuote !== null)) {
+          throw new Error('Open/void trade cannot contain exit or PnL');
+        }
+        if (record.status === 'closed') {
+          const expectedGross = (record.side === 'LONG' ? record.exit.price - record.entry.price : record.entry.price - record.exit.price) * record.quantity;
+          if (!Number.isFinite(record.grossPnlQuote) || Math.abs(record.grossPnlQuote - expectedGross) > 1e-8) {
+            throw new Error('Actual trade gross PnL does not match side, prices and quantity');
+          }
+          if (record.feesQuote !== null && record.feesQuote !== undefined &&
+              record.fundingQuote !== null && record.fundingQuote !== undefined) {
+            const expectedNet = expectedGross - record.feesQuote + record.fundingQuote;
+            if (!Number.isFinite(record.realizedPnlQuote) || Math.abs(record.realizedPnlQuote - expectedNet) > 1e-8) {
+              throw new Error('Actual trade net PnL does not match fees and funding');
+            }
+          } else if (record.realizedPnlQuote !== null) {
+            throw new Error('Net PnL requires explicit fees and funding');
+          }
+        }
+        if (record.note !== undefined && (typeof record.note !== 'string' || record.note.length > 2000)) {
+          throw new Error('Actual trade note invalid');
+        }
         for (const key of ['feesQuote', 'fundingQuote', 'grossPnlQuote', 'realizedPnlQuote']) {
           if (record[key] !== null && record[key] !== undefined && !Number.isFinite(record[key])) {
             throw new Error('Actual trade ' + key + ' invalid');
