@@ -294,13 +294,15 @@ async function main() {
       };
     });
 
+    const backupJson = result.backupJson;
+    delete result.backupJson;
     await page.locator('#journalImportFile').setInputFiles({
       name: 'crypto-analyst-journal-backup.json',
       mimeType: 'application/json',
-      buffer: Buffer.from(result.backupJson, 'utf8')
+      buffer: Buffer.from(backupJson, 'utf8')
     });
     await page.waitForFunction(() => window.__CryptoAnalystTestHooks.MarketJournal.load().observations.length === 2,
-      { timeout: 5000 });
+      null, { timeout: 5000 });
     const importedCount = await page.locator('#journalCount').textContent();
     if (importedCount !== '2 наблюдения') throw new Error('Journal UI import did not merge the backup');
 
