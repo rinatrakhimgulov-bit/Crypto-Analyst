@@ -835,3 +835,12 @@ B4 now includes a same-socket subscription-switch regression: delayed messages f
 B4 now scopes live ticker/kline events and cached updates to both `connGen` and `recoveryGen`. This closes a reconnect edge where automatic reconnect could retain `connGen` while advancing `recoveryGen`, allowing a previous-cycle kline cache to appear current after new topic ACKs. Added regression. Latest source commit `d916e9a05b38ccb12758225e28f0a03fb82da3fe`; exact-head CI pending.
 
 Recovery-generation regression fixture now primes ticker readiness explicitly so the test distinguishes topic ACK from ticker snapshot readiness. Latest source commit `40a36c90233c5bcd5186f1d0322620f99bd78939`; exact-head CI pending.
+
+## B4 exact-head verification checkpoint — 2026-11-28
+
+- PR #24 head: `94513b348a36ed3a91385d56ef52f4df4569326d`.
+- Application HTML blob: `fffaa8c6c7448350c6db81bbdf6bee4d3a34504d`.
+- B1 browser/live-data CI run `46105030207`: SUCCESS. Stage A 58/58, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; browser page errors 0.
+- B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
+- Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
+- PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
