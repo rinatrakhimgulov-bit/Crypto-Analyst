@@ -349,13 +349,19 @@ async function main() {
         const prefixZones = runZones(prefix, symbol, tf);
         const fullSetups = runSetups(full, fullZones);
         const prefixSetups = runSetups(prefix, prefixZones);
-        const fullEligible = compactSetups(fullSetups).filter(item => item.available_at_ms <= cutoff);
-        const prefixEligible = compactSetups(prefixSetups);
+        // Compare only confirmed historical lifecycle setups. Pending states can legitimately
+        // evolve after the cutoff, and trend-continuation is intentionally a latest-candle event.
+        const lifecycleOnly = item => item.status === 'CONFIRMED' &&
+          item.setup_type !== 'TREND_CONTINUATION_AFTER_CORRECTION';
+        const fullEligible = compactSetups(fullSetups).filter(item =>
+          lifecycleOnly(item) && item.available_at_ms <= cutoff);
+        const prefixEligible = compactSetups(prefixSetups).filter(lifecycleOnly);
+        const prefixPending = prefixSetups.setup_candidates.filter(item => item.status === 'PENDING').length;
         const same = JSON.stringify(fullEligible) === JSON.stringify(prefixEligible);
-        prefixChecks.push({ quantile: q, b2b2c_prefix_invariance: true, b7_candidate_prefix_invariance: same,
-          full_candidates_available_by_cutoff: fullEligible.length,
-          prefix_candidates: prefixEligible.length });
-        assert(same, symbol + ' ' + tf + ' B7 candidate prefix invariance failed at q=' + q +
+        prefixChecks.push({ quantile: q, b2b2c_prefix_invariance: true, b7_confirmed_lifecycle_prefix_invariance: same,
+          full_confirmed_candidates_available_by_cutoff: fullEligible.length,
+          prefix_confirmed_candidates: prefixEligible.length, prefix_pending_candidates: prefixPending });
+        assert(same, symbol + ' ' + tf + ' B7 confirmed lifecycle prefix invariance failed at q=' + q +
           ': ' + JSON.stringify({ fullEligible, prefixEligible }));
       }
       const windowResults = [];
