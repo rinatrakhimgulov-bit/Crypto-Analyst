@@ -267,3 +267,8 @@ B8 is not complete merely because a script runs.
 - The trend-continuation setup has not appeared in the 30 existing replay windows; synthetic unit tests alone do not establish historical frequency or performance.
 
 These limitations must remain visible in every B8 report until independently resolved.
+
+
+## 12. Implementation checkpoint — 2026-11-28
+
+Initial B8-A/B8-B implementation is in draft PR #28. The causal evaluator, descriptive statistics and B5 journal adapter are implemented with deterministic tests. CI runs `46116869096` and `46116871532` passed. B8-C historical candidate generation/deduplication and chronological out-of-sample validation, B8-D prospective journal outcomes and B8-E independent audit remain open. This checkpoint does not support a profitability conclusion.
