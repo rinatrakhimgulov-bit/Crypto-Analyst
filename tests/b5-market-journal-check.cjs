@@ -129,6 +129,33 @@ async function main() {
         'B2 evidence after analysis-as-of must be filtered out');
       assert(Object.isFrozen(observation) && Object.isFrozen(observation.candleWindow[0]),
         'Captured observation and nested candles must be immutable');
+
+      const chartFixture = makeFixture();
+      const savedChartCandles = hooks.chart.candles;
+      const savedChartClosedCount = hooks.chart.closedCount;
+      const savedChartIdentity = {
+        symbol: state.chartDataSymbol, interval: state.chartDataInterval, snapshotId: state.chartDataSnapshotId
+      };
+      const displayedCandles = chartFixture.dataset.allCandles.map(candle => ({ ...candle }));
+      displayedCandles[2].close = 65100;
+      displayedCandles[2].high = 65300;
+      displayedCandles[2].volume = 6;
+      hooks.chart.candles = displayedCandles;
+      hooks.chart.closedCount = 2;
+      state.chartDataSymbol = 'BTCUSDT';
+      state.chartDataInterval = '240';
+      state.chartDataSnapshotId = chartFixture.dataset.canonicalSnapshot.snapshot_id;
+      const displayedSnapshot = buildJournalObservation(chartFixture, capturedAt, 'chart state');
+      assert(displayedSnapshot.candleWindow[2].close === 65100 &&
+        displayedSnapshot.candleWindow[2].volume === 6 &&
+        displayedSnapshot.candleWindow[2].finality === 'FORMING',
+        'Journal must capture the current forming candle as displayed by the chart, not the older REST copy');
+      hooks.chart.candles = savedChartCandles;
+      hooks.chart.closedCount = savedChartClosedCount;
+      state.chartDataSymbol = savedChartIdentity.symbol;
+      state.chartDataInterval = savedChartIdentity.interval;
+      state.chartDataSnapshotId = savedChartIdentity.snapshotId;
+
       const originalClose = observation.candleWindow[0].close;
       fixture.dataset.allCandles[0].close = 1;
       fixture.analysis.metrics.lastEma20 = 1;
