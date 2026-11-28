@@ -7900,7 +7900,13 @@
         ? wsState.tickerBySymbol.get(symbol) : null;
       const streamReady = Boolean(wsState && wsState.status === 'open' &&
         wsState.confirmedTopics.has(tickerTopic) && entry && entry.ready);
-      return streamReady && item && item.symbol === symbol && Number.isFinite(item.lastPrice) &&
+      const currentKline = state.liveKline;
+      const tickerBehindKline = Boolean(currentKline && currentKline.symbol === symbol &&
+        currentKline.interval === state.interval && currentKline.connGen === (wsState && wsState.connGen) &&
+        Number.isSafeInteger(currentKline.providerEventTimeMs) &&
+        (!Number.isSafeInteger(item && item.providerEventTimeMs) ||
+          item.providerEventTimeMs < currentKline.providerEventTimeMs));
+      return streamReady && !tickerBehindKline && item && item.symbol === symbol && Number.isFinite(item.lastPrice) &&
         item.lastPrice > 0 && Number.isFinite(item.receivedAtMs) &&
         Date.now() - item.receivedAtMs <= LIVE_TICKER_STALE_MS ? item : null;
     }
@@ -7949,7 +7955,8 @@
     function handleLiveTicker(event) {
       if (!event || event.symbol !== state.symbol || !Number.isFinite(event.lastPrice) || event.lastPrice <= 0) return;
       const newerKline = freshLiveKline(event.symbol, state.interval);
-      if (newerKline && isOlderProviderEvent(event.providerEventTimeMs, newerKline.providerEventTimeMs)) {
+      if (newerKline && (!Number.isSafeInteger(event.providerEventTimeMs) ||
+          isOlderProviderEvent(event.providerEventTimeMs, newerKline.providerEventTimeMs))) {
         state.lastCandleUpdate = { status: 'DROPPED_OLDER_TICKER_EVENT', atMs: Date.now() };
         renderLiveDiagnostics();
         return;
@@ -8878,6 +8885,8 @@
               providerEventTimeMs: 7000, receivedAtMs: Date.now(), connGen: wsState.connGen
             });
             const tickerBeforeOlderEvent = state.liveTicker;
+            assert(freshLiveTicker('BTCUSDT') === null,
+              'A ticker older than the current kline provider time must not be surfaced as the current live price');
             handleLiveTicker({
               symbol: 'BTCUSDT', lastPrice: 10.5, providerEventTimeMs: 6500,
               receivedAtMs: Date.now(), connGen: wsState.connGen
