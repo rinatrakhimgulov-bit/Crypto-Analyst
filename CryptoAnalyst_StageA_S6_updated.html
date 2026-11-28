@@ -8316,8 +8316,11 @@
       // REST refresh replaces the candle array. Replay a newer validated WS
       // kline first (including volume), then apply the newest ticker lastPrice.
       reapplyLiveKlineAfterRest(dataset);
-      if (live) {
-        const updated = chart.updateFormingCandleFromTicker(live.lastPrice);
+      // Re-evaluate after replay: REST may prove that a cached WS kline is
+      // older than the snapshot and clear it, making the latest ticker eligible.
+      const liveAfterReplay = freshLiveTicker(dataset.symbol);
+      if (liveAfterReplay) {
+        const updated = chart.updateFormingCandleFromTicker(liveAfterReplay.lastPrice);
         state.lastCandleUpdate = {
           status: updated ? 'UPDATED_AFTER_REST' : (chart.candles.length && chart.candles.length - 1 < chart.closedCount ? 'BLOCKED_CLOSED_AFTER_REST' : 'UNCHANGED_AFTER_REST'),
           atMs: Date.now()
@@ -8953,6 +8956,59 @@
             assert(document.getElementById('priceSourceLabel').textContent.includes('Bybit REST') &&
               document.getElementById('priceSourceLabel').textContent.includes('WS устарел'),
               'The fallback source must identify REST and explicitly mark the WS ticker as stale');
+          });
+
+          await record('B1-D. REST reconciliation re-evaluates ticker after discarding an older WS kline', (restoreList) => {
+            const wsState = BybitWsClient.state;
+            const saved = {
+              liveTicker: state.liveTicker,
+              liveKline: state.liveKline,
+              tickerBySymbol: wsState.tickerBySymbol,
+              status: wsState.status,
+              connGen: wsState.connGen,
+              confirmedTopics: new Set(wsState.confirmedTopics)
+            };
+            restoreList.push(() => {
+              state.liveTicker = saved.liveTicker;
+              state.liveKline = saved.liveKline;
+              wsState.tickerBySymbol = saved.tickerBySymbol;
+              wsState.status = saved.status;
+              wsState.connGen = saved.connGen;
+              wsState.confirmedTopics.clear();
+              for (const topic of saved.confirmedTopics) wsState.confirmedTopics.add(topic);
+            });
+            wsState.status = 'open';
+            wsState.tickerBySymbol = new Map();
+            wsState.confirmedTopics.add('tickers.BTCUSDT');
+            wsState.confirmedTopics.add('kline.240.BTCUSDT');
+            const entry = BybitWsClient._getTickerEntry('BTCUSDT');
+            entry.ready = true;
+            entry.snapshotReceived = true;
+            const now = Date.now();
+            state.liveTicker = Object.freeze({
+              symbol: 'BTCUSDT', lastPrice: 60050,
+              providerEventTimeMs: now - 1500,
+              receivedAtMs: now - 100,
+              connGen: wsState.connGen
+            });
+            state.liveKline = Object.freeze({
+              symbol: 'BTCUSDT', interval: '240',
+              candle: Object.freeze({ ts: 1, closeTs: 2, open: 60000, high: 60100, low: 59900, close: 60020, volume: 1, turnover: 60000, confirmed: false }),
+              providerEventTimeMs: now - 1000,
+              receivedAtMs: now - 100,
+              connGen: wsState.connGen
+            });
+            assert(freshLiveTicker() === null,
+              'Ticker older than cached WS kline must initially be ineligible');
+            const result = reapplyLiveKlineAfterRest({
+              symbol: 'BTCUSDT', interval: '240',
+              providerServerTimeMs: now - 500
+            });
+            assert(result === null && state.liveKline === null,
+              'A REST snapshot newer than the cached kline must discard that kline');
+            const latestTicker = freshLiveTicker('BTCUSDT');
+            assert(latestTicker && latestTicker.lastPrice === 60050,
+              'After discarding the old kline, the still-fresh ticker must become eligible');
           });
 
           await record('B1-D. Malformed kline is rejected and requests reconciliation', () => {
