@@ -10,6 +10,8 @@ const POLICY = Object.freeze({
   b1_contract_version: '1.1.0',
   b1_validator_version: '1.1.0',
   b1_quality_policy_version: 'b1-quality-v1',
+  b2e_policy_version: 'b2e-retest-engine-v1',
+  zone_context_policy_version: 'b2d-zone-context-v1',
   finality_safety_lag_ms: LAG,
   atr_period: 14,
   window_bars: 3,
@@ -90,10 +92,10 @@ run('classifies a bearish impulse when volume expansion is absent', () => {
   assert.equal(result.event.evidence_flags.volume_expansion, false);
 });
 run('classifies partial selloff evidence when volume is unavailable', () => {
-  const result = analyze(fixture({ window: bearishWindow }));
-  for (const c of result.snapshot.candles_by_timeframe['1h'].slice(-3)) delete c.volume_base;
-  const adjusted = analyze(resultInputFrom(result));
-  assert.equal(adjusted.event.classification, 'SELL_OFF_PARTIAL_EVIDENCE');
+  const input = fixture({ window: bearishWindow });
+  for (const c of input.snapshot.candles_by_timeframe['1h'].slice(-3)) delete c.volume_base;
+  const result = analyze(input);
+  assert.equal(result.event.classification, 'SELL_OFF_PARTIAL_EVIDENCE');
 });
 run('classifies a bullish impulse separately from a bearish selloff', () => {
   const window = [
@@ -143,7 +145,7 @@ run('zone context is included only when exact identity matches', () => {
   const input = fixture({ zoneContext: {
     status: 'VALID', engine_version: '1.0.0-b2d-zone-context',
     snapshot_id: 'fixture:market-impulse:btc:1h', symbol: 'BTCUSDT',
-    timeframe: '1h', analysis_as_of_ms: 51 * STEP + LAG,
+    timeframe: '1h', analysis_as_of_ms: 51 * STEP + LAG, policy_version: 'b2d-zone-context-v1',
     admission: { status: 'ADMITTED' },
     active_zone_selection: { nearest_support: null, nearest_resistance: null, intersecting_zone_ids: [] }
   } });
@@ -188,11 +190,4 @@ run('identical inputs produce deterministic impulse classification', () => {
   assert.deepEqual(analyze(input), analyze(input));
 });
 
-function resultInputFrom(result) {
-  return {
-    policy: { ...POLICY }, snapshot: result.snapshot,
-    quality_report: result.quality_report, b2e_result: result.b2e_result,
-    analysis_as_of_ms: result.analysis_as_of_ms, timeframe: result.timeframe
-  };
-}
 if (process.exitCode) process.exit(process.exitCode);
