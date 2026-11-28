@@ -156,6 +156,18 @@ async function main() {
 
   const all = Object.values(output.series).flatMap(byTf => Object.values(byTf));
   output.summary = {
+    series_breakdown: all.map(series => ({
+      symbol: series.symbol,
+      timeframe: series.timeframe,
+      sampled_windows: series.method.sampled_windows,
+      regimes: series.distribution.regimes,
+      impulse_classifications: series.distribution.impulse_classifications,
+      breakout_quality: series.distribution.breakout_quality,
+      support_windows: series.distribution.support_windows,
+      resistance_windows: series.distribution.resistance_windows,
+      windows_with_breakouts: series.distribution.windows_with_breakouts,
+      total_breakout_events: series.distribution.total_breakout_events
+    })),
     series_count: all.length,
     total_sampled_windows: all.reduce((sum, series) => sum + series.method.sampled_windows, 0),
     regime_distribution: {},
