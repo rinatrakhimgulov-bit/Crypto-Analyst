@@ -120,6 +120,9 @@ async function main() {
         'Observation record type must be explicit');
       assert(observation.decision.value === 'WAIT' && observation.market.symbol === 'BTCUSDT',
         'Decision and market identity must be captured');
+      assert(observation.analysisSnapshot.chartDataAsOfMs === observation.analysisSnapshot.analysisAsOfMs &&
+        observation.dataQuality.analysisToChartLagMs === 0,
+        'Analysis time and chart-data time must be recorded separately');
       assert(observation.candleWindow.length === 3 && observation.candleWindow[0].finality === 'CLOSED' &&
         observation.candleWindow[2].finality === 'FORMING', 'Closed and forming candle finality must be preserved');
       assert(observation.analysisSnapshot.structure.swingMarkers.length === 1 &&
