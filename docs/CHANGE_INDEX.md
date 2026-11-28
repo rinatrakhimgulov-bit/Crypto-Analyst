@@ -566,3 +566,10 @@ Market Journal must include WAIT and skipped observations, distinguish paper obs
 - Added separate B7 market-setups panel; existing LONG/SHORT/WAIT decision path remains unchanged. B2-F is not a directional gate.
 - Added 22 unit tests, B7 source/inline parity and browser/mobile assertions. CI run `46115303655` SUCCESS, including 22 B7 tests, exact source/inline parity, B2 regression, pinned historical replay and browser/mobile integration.
 - Draft PR #27 is stacked on B6 PR #26. Historical replay passed on pinned archive commit `9ca04178df06ce649f00779a49e11094fe5b1c70`: 30 production-equivalent 160-bar windows and 18 prefix cutoffs across BTC/ETH 1H/4H/1D. Remaining gates: independent review and iPhone Safari acceptance.
+
+
+### B7 historical replay — 2026-11-28
+
+- Extended `tools/b2_historical_replay.cjs` to execute B7 on 30 pinned 160-candle rolling windows and 18 prefix cutoffs; deterministic output and causal availability are asserted.
+- CI `46115303655` SUCCESS. 40 detected candidates (36 confirmed, 4 pending); 20 breakout+retest and 20 false-breakout+reclaim. No trend-continuation candidate in this sample.
+- Added `docs/audits/B7_HISTORICAL_REPLAY_2026-11-28.md`. This is research consistency validation, not a trading backtest.
