@@ -890,3 +890,5 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Updated valid ticker integration fixtures to include provider `ts` after introducing the fail-closed ticker timestamp contract; the dedicated missing-timestamp regression remains intentionally timestamp-free. Source commit `109048c38bcaaabf18663e3897e87ecfdbe313d4`; exact-head CI pending.
 
 - B4 stale-stream coverage: added deterministic regression for stale ticker/kline rejection and REST price fallback with an explicit WS-stale label. Source commit: `4f5e369b52b4262dbad88d9ba54a3fc6d7378301`. Exact-head B1/B2 CI pending.
+
+- B4 subscription transition coverage: added deterministic integration regression for in-flight ticker/kline messages arriving from the previous timeframe or symbol after same-socket subscription changes. Old topics must be dropped; new ETHUSDT/60 topics must work after ACK. Source commit: `67dfd2f36d46c58e66b5fcb2f233cca61626da69`. Exact-head CI pending.
