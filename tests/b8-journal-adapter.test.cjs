@@ -57,6 +57,14 @@ function envelope(observations) {
   assert.equal(result.observations[0].excluded_candidate_count, 1);
 }
 {
+  const source = envelope([makeObservation('observation-future-cutoff', 'LONG')]);
+  source.observations[0].analysisSnapshot.b2.setups.analysis_as_of_ms = 240000;
+  const result = importJournalEnvelope(source);
+  assert.equal(result.observations[0].setup_candidates.length, 0,
+    'future analysis cutoff must not be accepted for a past journal capture');
+  assert.equal(result.observations[0].excluded_candidate_count, 1);
+}
+{
   const source = envelope([makeObservation('observation-4', 'LONG')]);
   source.observations[0].candleWindow[1].finality = 'future';
   assert.throws(() => validateEnvelope(source), /B8_JOURNAL_CANDLE_INVALID/);
