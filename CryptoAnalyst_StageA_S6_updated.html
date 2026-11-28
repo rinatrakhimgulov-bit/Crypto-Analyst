@@ -495,6 +495,11 @@
     .app-tabs .btn[aria-selected="true"] { border-color: var(--accent); background: var(--panel-2); }
     [hidden] { display: none !important; }
     .journal-card { min-width: 0; }
+    .cloud-auth-panel { margin: 8px 0 14px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); }
+    .cloud-auth-title { font-size: 12px; font-weight: 700; margin-bottom: 5px; }
+    .cloud-auth-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cloud-auth-actions .btn { min-height: 34px; }
+
     .journal-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
     .journal-status { min-height: 18px; color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
     .journal-status.error { color: #f87171; }
@@ -698,6 +703,14 @@
         <input type="file" id="journalImportInput" class="journal-hidden-input" accept="application/json,.json">
       </div>
       <div class="journal-status" id="journalStatus">Журнал хранится только в этом браузере. Экспортируйте резервную копию самостоятельно.</div>
+      <div class="cloud-auth-panel" id="cloudAuthPanel">
+        <div class="cloud-auth-title">Облачный аккаунт</div>
+        <div class="journal-status" id="cloudAuthStatus">Проверка подключения авторизации…</div>
+        <div class="cloud-auth-actions">
+          <button type="button" class="btn" id="cloudSignInBtn" disabled>Войти через GitHub</button>
+          <button type="button" class="btn" id="cloudSignOutBtn" disabled hidden>Выйти</button>
+        </div>
+      </div>
       <div class="journal-subtitle">Отметка по наблюдению</div>
       <div class="journal-form">
         <select id="journalFollowupObservation" aria-label="Наблюдение для отметки"></select>
@@ -796,6 +809,8 @@
       })();
     </script>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js"></script>
 
   <script>
     // =========================================================================
@@ -11269,6 +11284,110 @@
           .forEach((id) => { document.getElementById(id).value = ''; });
       } catch (error) { journalSetStatus(error && error.message ? error.message : String(error), 'error'); }
     });
+
+    const SUPABASE_URL = 'https://ktqsaunwinmrsgrgojzf.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_XcUd_rYSkz4-nGomh7LDQA__Izb0pIi';
+    let cloudSupabaseClient = null;
+    let cloudAuthBusy = false;
+
+    function cloudAuthSetStatus(message, kind = '') {
+      const el = document.getElementById('cloudAuthStatus');
+      if (!el) return;
+      el.textContent = message;
+      el.className = 'journal-status' + (kind ? ' ' + kind : '');
+    }
+
+    function cloudAuthRender(session) {
+      const signIn = document.getElementById('cloudSignInBtn');
+      const signOut = document.getElementById('cloudSignOutBtn');
+      const user = session && session.user ? session.user : null;
+      if (signIn) {
+        signIn.hidden = Boolean(user);
+        signIn.disabled = Boolean(user) || cloudAuthBusy || !cloudSupabaseClient || window.location.protocol !== 'https:';
+      }
+      if (signOut) {
+        signOut.hidden = !user;
+        signOut.disabled = !user || cloudAuthBusy;
+      }
+      if (user) {
+        const label = user.email || (user.user_metadata && (user.user_metadata.user_name || user.user_metadata.full_name)) || user.id.slice(0, 8);
+        cloudAuthSetStatus('Вход выполнен · ' + label + '. Синхронизация журнала ещё не подключена.', 'success');
+      } else {
+        cloudAuthSetStatus('Не выполнен вход. Журнал продолжает работать локально на этом устройстве.');
+      }
+    }
+
+    function cloudAuthRedirectUrl() {
+      const url = new URL(window.location.href);
+      url.search = '';
+      url.hash = '';
+      return url.toString();
+    }
+
+    async function cloudAuthInitialize() {
+      const signIn = document.getElementById('cloudSignInBtn');
+      const signOut = document.getElementById('cloudSignOutBtn');
+      if (!signIn || !signOut) return;
+      if (window.location.protocol !== 'https:') {
+        cloudAuthSetStatus('Для безопасного входа откройте приложение по HTTPS-адресу GitHub Pages.');
+        return;
+      }
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        cloudAuthSetStatus('Библиотека Supabase не загрузилась. Локальный журнал не затронут.', 'error');
+        return;
+      }
+      try {
+        cloudSupabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' }
+        });
+        signIn.addEventListener('click', async () => {
+          if (cloudAuthBusy || !cloudSupabaseClient) return;
+          cloudAuthBusy = true;
+          signIn.disabled = true;
+          cloudAuthSetStatus('Переход к авторизации GitHub…');
+          try {
+            const { error } = await cloudSupabaseClient.auth.signInWithOAuth({
+              provider: 'github',
+              options: { redirectTo: cloudAuthRedirectUrl() }
+            });
+            if (error) throw error;
+          } catch (error) {
+            cloudAuthSetStatus('Ошибка входа: ' + (error && error.message ? error.message : String(error)), 'error');
+            cloudAuthBusy = false;
+            const { data } = await cloudSupabaseClient.auth.getSession();
+            cloudAuthRender(data.session);
+          }
+        });
+        signOut.addEventListener('click', async () => {
+          if (cloudAuthBusy || !cloudSupabaseClient) return;
+          cloudAuthBusy = true;
+          signOut.disabled = true;
+          try {
+            const { error } = await cloudSupabaseClient.auth.signOut();
+            if (error) throw error;
+            cloudAuthSetStatus('Вы вышли из облачного аккаунта. Локальный журнал сохранён.');
+          } catch (error) {
+            cloudAuthSetStatus('Ошибка выхода: ' + (error && error.message ? error.message : String(error)), 'error');
+          } finally {
+            cloudAuthBusy = false;
+            const { data } = await cloudSupabaseClient.auth.getSession();
+            cloudAuthRender(data.session);
+          }
+        });
+        cloudSupabaseClient.auth.onAuthStateChange((_event, session) => cloudAuthRender(session));
+        const { data, error } = await cloudSupabaseClient.auth.getSession();
+        if (error) throw error;
+        cloudAuthRender(data.session);
+      } catch (error) {
+        cloudAuthSetStatus('Не удалось инициализировать Supabase Auth: ' +
+          (error && error.message ? error.message : String(error)), 'error');
+        signIn.disabled = true;
+        signOut.hidden = true;
+      }
+    }
+
+    cloudAuthInitialize();
+
     journalInitialize();
 
     document.getElementById('refreshBtn').addEventListener('click', () => loadAndAnalyze(false));
