@@ -3496,7 +3496,7 @@
           this.state.invalidStreamMessages += 1;
           this._log('warn', `Kline ${msg.topic}: сообщение отклонено — ${reason}`);
           if (typeof onKline === 'function') {
-            try { onKline(Object.freeze({ valid: false, symbol, interval, reason, receivedAtMs: recvAt, connGen: cGen })); }
+            try { onKline(Object.freeze({ valid: false, symbol, interval, reason, receivedAtMs: recvAt, connGen: cGen, recoveryGen: this.state.recoveryGen })); }
             catch (err) { this._log('error', 'onKline hook failed', err && err.message ? err.message : err); }
           }
         };
