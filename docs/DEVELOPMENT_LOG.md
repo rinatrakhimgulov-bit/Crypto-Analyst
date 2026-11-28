@@ -902,3 +902,12 @@ GitHub Actions run [46011622297](https://github.com/rinatrakhimgulov-bit/Crypto-
 - Added `recoveryGen` to invalid-kline callbacks as well as valid events, preserving the generation guard while allowing invalid events to trigger REST reconciliation. Source commit `ff3fa83f59883fbe8f32864369dec7e5b697bc95`; exact-head CI pending.
 
 - Updated B1 Playwright live-UI synthetic ticker/kline events to include both current `connGen` and `recoveryGen`, matching the production event contract. The prior browser test failure was a fixture mismatch, not a runtime regression. Test commit `d5979626c38b51cd20decd5ab58cb92b510462c5`; exact-head CI pending.
+
+## B4 exact-head verification checkpoint — 2026-11-28
+
+- PR #24 head: `94513b348a36ed3a91385d56ef52f4df4569326d`.
+- Application HTML blob: `fffaa8c6c7448350c6db81bbdf6bee4d3a34504d`.
+- B1 browser/live-data CI run `46105030207`: SUCCESS. Stage A 58/58, B1 contract 32/32, B1 quality 72/72, B1 MTF 20/20; browser page errors 0.
+- B2 application integration CI run `46105030212`: SUCCESS. B2-A through B2-G and browser/mobile integration passed.
+- Live Bybit probe: `SKIPPED_PROVIDER_BLOCKED`; GitHub Actions received HTTP 403 from `api.bybit.com` and `api.bytick.com`. Do not treat this as live-provider verification.
+- PR #24 remains open and unmerged. Remaining acceptance: real Bybit REST/WS behavior on iPhone/Safari, including timestamp payloads, forming candle, confirmed candle finality, REST/WS reconciliation, reconnect and prior-recovery cache invalidation, stale REST fallback, BTC/ETH plus 1H/4H/1D switching, and background/foreground recovery. Independent review of exact source also remains required.
