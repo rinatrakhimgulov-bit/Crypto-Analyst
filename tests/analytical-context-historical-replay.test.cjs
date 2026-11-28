@@ -33,6 +33,8 @@ for (const symbol of ['BTCUSDT', 'ETHUSDT']) {
 
 assert.ok(Object.keys(report.summary.regime_distribution).length >= 1);
 assert.ok(Object.keys(report.summary.impulse_distribution).length >= 1);
+assert.ok(Number.isInteger(report.summary.range_thresholds_pass_windows));
+assert.ok(Number.isInteger(report.summary.range_structure_eligible_windows));
 assert.ok(Array.isArray(report.limitations) && report.limitations.length >= 5);
 process.stdout.write('PASS six historical series and dataset integrity\n');
 process.stdout.write('PASS at least 500 causal analytical snapshots\n');
