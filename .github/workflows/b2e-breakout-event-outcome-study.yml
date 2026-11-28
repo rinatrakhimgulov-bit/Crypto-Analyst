@@ -1,0 +1,42 @@
+name: B2-E breakout event outcome study
+
+on:
+  push:
+    branches:
+      - feature/b2e-breakout-event-outcomes-2026-11-28
+  pull_request:
+    branches:
+      - feature/market-regime-v2-local-consolidation-2026-11-28
+    paths:
+      - 'tools/b2e_breakout_event_outcome_study.cjs'
+      - 'tools/b2_historical_replay.cjs'
+      - 'src/analysis/b2d-*'
+      - 'src/analysis/b2e-*'
+      - 'src/research/b8-outcome-evaluator.js'
+      - 'tests/b2e-breakout-event-outcome-study.test.cjs'
+      - '.github/workflows/b2e-breakout-event-outcome-study.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  breakout-event-study:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Replay unique breakout events and causal forward outcomes
+        run: node tools/b2e_breakout_event_outcome_study.cjs
+      - name: Verify unique events and causal outcome entry
+        run: node tests/b2e-breakout-event-outcome-study.test.cjs
+      - name: Upload breakout event outcome report
+        uses: actions/upload-artifact@v4
+        with:
+          name: b2e-breakout-event-outcome-report
+          path: b2e_breakout_event_outcome_report.json
+          if-no-files-found: error
+          retention-days: 30
