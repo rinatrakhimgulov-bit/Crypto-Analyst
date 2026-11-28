@@ -92,10 +92,25 @@ async function main() {
         acc[c.status] = (acc[c.status] || 0) + 1;
         return acc;
       }, {});
-      let evaluated = 0, excluded = 0;
+      let evaluated = 0, excluded = 0, purged = 0;
       for (const candidate of selected) {
         if (candidate.status !== 'CONFIRMED') continue;
-        const split = chronologicalSplit(candidate, startMs, endMs);
+        const entryIndex = rows.findIndex(c => c.close_time_ms + LAG_MS > candidate.available_at_ms);
+        const maxOutcomeIndex = entryIndex < 0 ? -1 : entryIndex + 12;
+        const maxOutcomeAvailableAt = maxOutcomeIndex >= 0 && maxOutcomeIndex < rows.length
+          ? rows[maxOutcomeIndex].close_time_ms + LAG_MS : null;
+        const split = chronologicalSplit(candidate, startMs, endMs, maxOutcomeAvailableAt);
+        if (split.startsWith('PURGED_')) {
+          purged++;
+          results.push({
+            symbol, timeframe, split, setup_type: candidate.setup_type,
+            direction: candidate.direction, setup_id: candidate.setup_id,
+            available_at_ms: candidate.available_at_ms,
+            first_seen_window_quantile: candidate.first_seen_window_quantile,
+            outcome: { status: 'PURGED', reason: split }
+          });
+          continue;
+        }
         const outcome = evaluateCandidate({
           candidate, candles: rows, finalitySafetyLagMs: LAG_MS,
           horizons: [1, 3, 6, 12], targetRMultiples: [1, 2], barrierMaxBars: 12
@@ -113,7 +128,7 @@ async function main() {
         symbol, timeframe, dataset_start: new Date(startMs).toISOString(),
         dataset_end: new Date(endMs).toISOString(), unique_candidate_count: selected.length,
         status_counts: statusCounts, confirmed_evaluated: evaluated,
-        confirmed_excluded: excluded,
+        confirmed_excluded: excluded, confirmed_purged_at_split_boundary: purged,
         split_boundaries: {
           train_end_exclusive: new Date(startMs + (endMs - startMs) * 0.6).toISOString(),
           validation_end_exclusive: new Date(startMs + (endMs - startMs) * 0.8).toISOString()
@@ -152,6 +167,7 @@ async function main() {
     caveats: [
       'B2 replay uses a synthetic B1-VALID wrapper; the real B1 validator is not executed on this archive.',
       'The B7 candidate population is sampled from five quantile windows per series and is not exhaustive.',
+      'TRAIN and VALIDATION candidates whose 12-bar outcome endpoint crosses the next split boundary are purged; purged candidates are not reassigned.',
       'Overlapping candidates and common market moves are correlated; Wilson intervals are naive-independence descriptors, not cluster-aware inference.',
       'Entry is a bar-close proxy after candidate availability, not an executable exchange fill.',
       'No tick data, spread, fees, funding, slippage observations or actual trade outcomes are available.',
@@ -169,11 +185,11 @@ async function main() {
     'Dataset: `' + REPOSITORY + '` at commit `' + DATASET_COMMIT + '`.',
     'Unique sampled candidates: **' + candidates.length + '**.',
     '',
-    '| Symbol | TF | Unique candidates | Confirmed evaluated | Confirmed excluded |',
-    '|---|---:|---:|---:|---:|'
+    '| Symbol | TF | Unique candidates | Confirmed evaluated | Confirmed excluded | Confirmed purged |',
+    '|---|---:|---:|---:|---:|---:|'
   ];
   for (const s of seriesSummary) lines.push('| ' + s.symbol + ' | ' + s.timeframe + ' | ' +
-    s.unique_candidate_count + ' | ' + s.confirmed_evaluated + ' | ' + s.confirmed_excluded + ' |');
+    s.unique_candidate_count + ' | ' + s.confirmed_evaluated + ' | ' + s.confirmed_excluded + ' | ' + s.confirmed_purged_at_split_boundary + ' |');
   lines.push('', '## Metrics', '',
     '| Symbol | TF | Split | Setup | Side | Horizon bars | N | Positive close rate | Mean return % | Mean MFE % | Mean MAE % |',
     '|---|---:|---|---|---|---:|---:|---:|---:|---:|---:|');
