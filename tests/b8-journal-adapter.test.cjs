@@ -21,8 +21,8 @@ function makeObservation(id, decision, withSetup = true) {
       reasons: ['fixture'],
       b2: { status: 'VALID', setups: withSetup ? {
         engine_version: '1.0.0-b7', policy_version: 'b7-explainable-setups-v1',
-        status: 'VALID', setup_candidates: [candidate]
-      } : { status: 'VALID', setup_candidates: [] } }
+        status: 'VALID', analysis_as_of_ms: 120500, setup_candidates: [candidate]
+      } : { status: 'VALID', analysis_as_of_ms: 120500, setup_candidates: [] } }
     },
     candleWindow: [
       { ts: 0, closeTs: 60000, open: 100, high: 101, low: 99, close: 100, volume: 10, turnover: 1000, finality: 'closed' },
@@ -47,6 +47,7 @@ function envelope(observations) {
   assert.equal(result.observations[0].forming_candle_count, 1);
   assert.equal(result.observations[1].setup_candidates.length, 0);
   assert.equal(JSON.stringify(source), before, 'import must not mutate source envelope');
+  assert.equal(Object.isFrozen(result.observations[0].setup_candidates[0].evidence), true);
 }
 {
   const source = envelope([makeObservation('observation-3', 'SHORT')]);
