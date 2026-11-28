@@ -26,6 +26,7 @@ jobs:
           node --check src/research/b8-statistics.js
           node --check src/research/b8-journal-adapter.js
           node --check src/research/b8-candidate-collection.js
+          node --check tests/b8-statistics.test.cjs
           node --check tools/b8_historical_validation.cjs
           node --check tests/b8-outcome-evaluator.test.cjs
           node --check tests/b8-journal-adapter.test.cjs
@@ -35,6 +36,7 @@ jobs:
           node tests/b8-outcome-evaluator.test.cjs
           node tests/b8-journal-adapter.test.cjs
           node tests/b8-candidate-collection.test.cjs
+          node tests/b8-statistics.test.cjs
       - name: Generate pinned B7 candidate sample
         run: node tools/b2_historical_replay.cjs > /dev/null
       - name: Evaluate historical outcomes
